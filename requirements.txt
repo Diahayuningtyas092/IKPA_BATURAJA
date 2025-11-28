@@ -1,0 +1,7 @@
+streamlit
+pandas
+numpy
+plotly==5.18.0
+requests
+PyGithub
+openpyxl
