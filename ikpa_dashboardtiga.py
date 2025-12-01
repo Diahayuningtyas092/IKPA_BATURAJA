@@ -390,13 +390,10 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
             cmin=min_val,
             cmax=max_val,
         ),
-        text=[f"<b>{val:.2f}</b>" for val in df_filtered[column]],  #Bold memakai HTML
+        text=df_filtered[column].round(2),
         textposition='outside',
-        textangle=0,
-        textfont=dict(
-            size=11,          
-            color="black"     
-        ),
+        textangle=0,  # Nilai tetap horizontal
+        textfont=dict(weight='bold', size=11),  # Bold untuk nilai di atas batang
         hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
     ))
 
@@ -409,25 +406,26 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         annotation_position="top right"
     )
 
-   # Layout dengan X-axis labels rotasi 45 derajat
+    # Layout dengan X-axis labels rotasi 45 derajat
     fig.update_layout(
-    title=f"⚠️ {title}",
-    xaxis_title="",
-    yaxis_title="Nilai" if show_yaxis else "",
-    yaxis_range=[y_min, y_max],
-    xaxis=dict(
-        tickangle=-45,
-        tickmode='linear',
-        tickfont=dict(
-            family="Arial Black",   # ⭐ Bold
-            size=11,
-            color="black"
-        )
-    ),
-    height=500,
-    margin=dict(l=50, r=20, t=50, b=150),
-    showlegend=False,
-)
+        title=f"⚠️ {title}",
+        xaxis_title="",
+        yaxis_title="Nilai" if show_yaxis else "",
+        yaxis_range=[y_min, y_max],
+        xaxis=dict(
+            tickangle=-45,  # Rotasi 45 derajat ke kiri
+            tickmode='linear',
+            tickfont=dict(size=11, weight='bold')  # Bold untuk label X-axis
+        ),
+        height=500,
+        margin=dict(l=50, r=20, t=50, b=150),  # Margin bawah diperbesar untuk label miring
+        showlegend=False,
+    )
+
+    if not show_yaxis:
+        fig.update_yaxes(showticklabels=False)
+
+    return fig
 
 
 # ===============================================
