@@ -348,10 +348,6 @@ def create_ranking_chart(df, title, top=True, limit=10):
 def create_problem_chart(df, column, threshold, title, comparison='less', y_min=None, y_max=None, show_yaxis=True):
     """
     Membuat visualisasi vertikal untuk satker dengan masalah.
-    - Menampilkan satker secara urut berdasarkan nilai (ascending)
-    - Menghapus nilai 0 khusus untuk kolom Pengelolaan UP dan TUP
-    - Label X-axis dirotasi 45 derajat
-    - Opsi pengaturan rentang Y-axis dari slider
     """
     if comparison == 'less':
         df_filtered = df[df[column] < threshold]
@@ -392,9 +388,8 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         ),
         text=df_filtered[column].round(2),
         textposition='outside',
-        textangle=0,  # Nilai tetap horizontal
-        textfont=dict(family="Arial Black", size=12),  # Bold untuk nilai di atas batang
-
+        textangle=0,
+        textfont=dict(family="Arial Black", size=12),
         hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
     ))
 
@@ -407,20 +402,20 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         annotation_position="top right"
     )
 
-    # Layout dengan X-axis labels rotasi 45 derajat
+    # Layout dengan X-axis labels rotasi 45 derajat dan margin yang cukup
     fig.update_layout(
         title=f"⚠️ {title}",
         xaxis_title="",
         yaxis_title="Nilai" if show_yaxis else "",
         yaxis_range=[y_min, y_max],
         xaxis=dict(
-            tickangle=-45,  # Rotasi 45 derajat ke kiri
+            tickangle=-45,  # Rotasi 45 derajat
             tickmode='linear',
-            tickfont=dict(family="bold", size=11)
-
+            tickfont=dict(size=9),  # 👈 PERKECIL ukuran font
+            automargin=True  # 👈 TAMBAHKAN ini untuk margin otomatis
         ),
-        height=500,
-        margin=dict(l=50, r=20, t=50, b=150),  # Margin bawah diperbesar untuk label miring
+        height=600,  # 👈 TINGKATKAN height chart
+        margin=dict(l=50, r=20, t=80, b=200),  # 👈 PERBESAR margin bawah
         showlegend=False,
     )
 
