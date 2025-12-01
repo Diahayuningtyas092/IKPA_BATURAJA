@@ -393,7 +393,7 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         text=df_filtered[column].round(2),
         textposition='outside',
         textangle=0,  # Nilai tetap horizontal
-        textfont=dict(family="Arial Black", size=11),  # Bold untuk nilai di atas batang
+        textfont=dict(family="Arial Black", size=12),  # Bold untuk nilai di atas batang
 
         hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
     ))
@@ -416,7 +416,7 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         xaxis=dict(
             tickangle=-45,  # Rotasi 45 derajat ke kiri
             tickmode='linear',
-            tickfont=dict(family="bold", size=12)
+            tickfont=dict(family="bold", size=11)
 
         ),
         height=500,
