@@ -345,7 +345,7 @@ def create_ranking_chart(df, title, top=True, limit=10):
 # ============================================================
 # Improved Problem Chart (with sorting, sliders, and filters)
 # ============================================================
-def create_problem_chart(data, title, color_scale, y_min, y_max, limit=10, show_yaxis=False):
+def make_column_chart(data, title, color_scale, y_min, y_max, limit=10, show_yaxis=False):
     df_top = data.nlargest(limit, "Nilai Akhir (Nilai Total/Konversi Bobot)")
     fig = px.bar(
         df_top,
@@ -375,7 +375,75 @@ def create_problem_chart(data, title, color_scale, y_min, y_max, limit=10, show_
 
     return fig
 
+# ============================================================
+# Problem Chart untuk Dashboard Internal
+# ============================================================
+def create_problem_chart(df, column, threshold, title, comparison='less', y_min=None, y_max=None, show_yaxis=True):
 
+    if comparison == 'less':
+        df_filtered = df[df[column] < threshold]
+    elif comparison == 'greater':
+        df_filtered = df[df[column] > threshold]
+    else:
+        df_filtered = df.copy()
+
+    # Jika hasil filter kosong → Cegah error
+    if df_filtered.empty:
+        df_filtered = df.head(1)
+
+    df_filtered = df_filtered.sort_values(by=column, ascending=False)
+
+    # Ambil nilai range untuk colormap
+    min_val = df_filtered[column].min()
+    max_val = df_filtered[column].max()
+
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df_filtered['Satker'],
+        y=df_filtered[column],
+        marker=dict(
+            color=df_filtered[column],
+            colorscale='OrRd_r',
+            showscale=True,
+            cmin=min_val,
+            cmax=max_val,
+        ),
+        text=df_filtered[column].round(2),
+        textposition='outside',
+        textangle=0,
+        textfont=dict(family="Arial Black", size=12), 
+        hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
+    ))
+
+    # Garis target threshold (tidak berubah)
+    fig.add_hline(
+        y=threshold,
+        line_dash="dash",
+        line_color="red",
+        annotation_text=f"Target: {threshold}",
+        annotation_position="top right"
+    )
+
+    # Bold judul dan label axis
+    fig.update_layout(
+        xaxis=dict(
+        tickangle=-45,
+        tickmode='linear',
+        tickfont=dict(family="Arial Black", size=10),
+        automargin=True
+    ),
+    yaxis=dict(
+        tickfont=dict(family="Arial Black", size=11)
+        ),
+        height=600,
+        margin=dict(l=50, r=20, t=80, b=200),
+        showlegend=False,
+    )
+
+    if not show_yaxis:
+        fig.update_yaxes(showticklabels=False)
+
+    return fig
 # ===============================================
 # Helper to apply reference short names (Simplified)
 # ===============================================
@@ -491,6 +559,36 @@ def create_satker_column(df):
 def page_dashboard():
     st.title("📊 Dashboard Utama IKPA Satker Mitra KPPN Baturaja")
     
+    st.markdown("""
+<style>
+/* Warna tombol popover */
+/* Target utama */
+div[data-testid="stPopover"] button {
+    background-color: #FFF9E6 !important;
+    border: 1px solid #E6C200 !important;
+    color: #664400 !important;
+}
+
+/* Hover */
+div[data-testid="stPopover"] button:hover {
+    background-color: #FFE4B5 !important;
+    color: black !important;
+}
+
+/* Tambahan: jika Streamlit mengubah struktur DOM */
+button[data-testid="baseButton"][kind="popover"] {
+    background-color: #FFF9E6 !important;
+    border: 1px solid #E6C200 !important;
+    color: #664400 !important;
+}
+
+button[data-testid="baseButton"][kind="popover"]:hover {
+    background-color: #FFE4B5 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+    
     if not st.session_state.data_storage:
         st.warning("⚠️ Belum ada data yang diunggah. Silakan unggah data melalui halaman Admin.")
         return
@@ -528,17 +626,67 @@ def page_dashboard():
 
         df = st.session_state.data_storage[selected_period]
 
+        # Hitung data
+        avg_score = df['Nilai Akhir (Nilai Total/Konversi Bobot)'].mean()
+        perfect_df = df[df['Nilai Akhir (Nilai Total/Konversi Bobot)'] == 100]
+        below89_df = df[df['Nilai Akhir (Nilai Total/Konversi Bobot)'] < 89]
+        
+        # Pastikan kolom Satker tersedia
+        def make_satker_col(dd):
+            if 'Satker' in dd.columns:
+                return dd
+            # fallback jika kolom Satker tidak ada
+            uraian = dd.get('Uraian Satker-RINGKAS', dd.index.astype(str))
+            kode = dd.get('Kode Satker', '')
+            dd['Satker'] = uraian.astype(str) + " (" + kode.astype(str) + ")"
+            return dd
+
+        # Perbaiki dataframe
+        perfect_df = make_satker_col(perfect_df)
+        below89_df = make_satker_col(below89_df)
+
+        # Hitung jumlah
+        jumlah_100 = len(perfect_df)
+        jumlah_below = len(below89_df)
+
         with col1:
             st.metric("📋 Total Satker", len(df))
         with col2:
             avg_score = df['Nilai Akhir (Nilai Total/Konversi Bobot)'].mean()
             st.metric("📈 Rata-rata Nilai", f"{avg_score:.2f}")
+        
         with col3:
-            perfect_count = len(df[df['Nilai Akhir (Nilai Total/Konversi Bobot)'] == 100])
-            st.metric("⭐ Nilai 100", perfect_count)
+            st.metric("⭐ Nilai 100", jumlah_100)
+            with st.popover("Lihat daftar satker"):
+                if jumlah_100 == 0:
+                    st.write("Tidak ada satker dengan nilai 100.")
+                else:
+                    # Buat dataframe dengan nomor urut
+                    display_df = perfect_df[['Satker']].reset_index(drop=True)
+                    display_df.insert(0, 'No', range(1, len(display_df) + 1))
+                    
+                    st.dataframe(
+                        display_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        height=min(400, len(display_df) * 35 + 38)
+                    )
         with col4:
-            below_89 = len(df[df['Nilai Akhir (Nilai Total/Konversi Bobot)'] < 89])
-            st.metric("⚠️ Nilai < 89 (Predikat Belum Baik)", below_89)
+            st.metric("⚠️ Nilai < 89 (Predikat Belum Baik)", jumlah_below)
+            with st.popover("Lihat daftar satker"):
+                if jumlah_below == 0:
+                    st.write("Tidak ada satker dengan nilai < 89.")
+                else:
+                    # Buat dataframe dengan nomor urut
+                    display_df = below89_df[['Satker']].reset_index(drop=True)
+                    display_df.insert(0, 'No', range(1, len(display_df) + 1))
+                    
+                    st.dataframe(
+                        display_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        height=min(400, len(display_df) * 35 + 38)
+                    )
 
         # ===============================
         # Chart controls
