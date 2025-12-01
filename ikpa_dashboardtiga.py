@@ -345,82 +345,33 @@ def create_ranking_chart(df, title, top=True, limit=10):
 # ============================================================
 # Improved Problem Chart (with sorting, sliders, and filters)
 # ============================================================
-def create_problem_chart(df, column, threshold, title, comparison='less', y_min=None, y_max=None, show_yaxis=True):
-    """
-    Membuat visualisasi vertikal untuk satker dengan masalah.
-    """
-    if comparison == 'less':
-        df_filtered = df[df[column] < threshold]
-    else:
-        df_filtered = df[df[column] > threshold]
-
-    # 🧹 Khusus Pengelolaan UP dan TUP: abaikan nilai 0
-    if "UP" in column.upper() and "TUP" in column.upper():
-        df_filtered = df_filtered[df_filtered[column] != 0]
-
-    if len(df_filtered) == 0:
-        return None
-
-    # Urutkan berdasarkan nilai (descending untuk tampilan yang lebih baik)
-    df_filtered = df_filtered.sort_values(by=column, ascending=False)
-
-    # Nilai min/max data
-    min_val = df_filtered[column].min()
-    max_val = df_filtered[column].max()
-
-    # Gunakan nilai dari slider jika ada
-    if y_min is None:
-        y_min = max(0, int(min_val) - 5)
-    if y_max is None:
-        y_max = min(110, int(max_val) + 5)
-
-    fig = go.Figure()
-
-    fig.add_trace(go.Bar(
-        x=df_filtered['Satker'],
-        y=df_filtered[column],
-        marker=dict(
-            color=df_filtered[column],
-            colorscale='OrRd_r',
-            showscale=True,
-            cmin=min_val,
-            cmax=max_val,
-        ),
-        text=df_filtered[column].round(2),
-        textposition='outside',
-        textangle=0,
-        textfont=dict(family="Arial Black", size=12),
-        hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
-    ))
-
-    # Garis target threshold
-    fig.add_hline(
-        y=threshold,
-        line_dash="dash",
-        line_color="red",
-        annotation_text=f"Target: {threshold}",
-        annotation_position="top right"
+def create_problem_chart(data, title, color_scale, y_min, y_max, limit=10, show_yaxis=False):
+    df_top = data.nlargest(limit, "Nilai Akhir (Nilai Total/Konversi Bobot)")
+    fig = px.bar(
+        df_top,
+        x="Nilai Akhir (Nilai Total/Konversi Bobot)",
+        y="Satker",
+        orientation="h",
+        color="Nilai Akhir (Nilai Total/Konversi Bobot)",
+        color_continuous_scale=color_scale,
+        title=title
     )
 
-    # Layout dengan X-axis labels rotasi 45 derajat dan margin yang cukup
     fig.update_layout(
-        title=f"⚠️ {title}",
-        xaxis_title="",
-        yaxis_title="Nilai" if show_yaxis else "",
-        yaxis_range=[y_min, y_max],
-        xaxis=dict(
-            tickangle=-45,  # Rotasi 45 derajat
-            tickmode='linear',
-            tickfont=dict(size=9),  # 👈 PERKECIL ukuran font
-            automargin=True  # 👈 TAMBAHKAN ini untuk margin otomatis
-        ),
-        height=600,  # 👈 TINGKATKAN height chart
-        margin=dict(l=50, r=20, t=80, b=200),  # 👈 PERBESAR margin bawah
-        showlegend=False,
+        xaxis_range=[y_min, y_max],
+        yaxis_title="",
+        xaxis_title="Nilai IKPA",
+        height=500,
+        margin=dict(l=10, r=10, t=40, b=20),
+        coloraxis_showscale=False,
+        showlegend=False
     )
 
-    if not show_yaxis:
-        fig.update_yaxes(showticklabels=False)
+    fig.update_traces(
+        texttemplate="%{x:.2f}",  
+        textposition="outside",
+        hovertemplate="<b>%{y}</b><br>Nilai: %{x:.2f}<extra></extra>"
+    )
 
     return fig
 
@@ -643,7 +594,7 @@ def page_dashboard():
             )
 
             fig.update_traces(
-            texttemplate="%{x:.1f}",
+            texttemplate="%{x:.2f}",
             textposition="outside",
             hovertemplate="<b>%{y}</b><br>Nilai: %{x:.2f}<extra></extra>"
             )
