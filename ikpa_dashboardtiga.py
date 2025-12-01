@@ -390,10 +390,13 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
             cmin=min_val,
             cmax=max_val,
         ),
-        text=df_filtered[column].round(2),
+        text=[f"<b>{val:.2f}</b>" for val in df_filtered[column]],  #Bold memakai HTML
         textposition='outside',
-        textangle=0,  # Nilai tetap horizontal
-        textfont=dict(weight='bold', size=11),  # Bold untuk nilai di atas batang
+        textangle=0,
+        textfont=dict(
+            size=11,          
+            color="black"     
+        ),
         hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
     ))
 
