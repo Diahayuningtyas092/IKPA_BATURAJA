@@ -409,26 +409,25 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         annotation_position="top right"
     )
 
-    # Layout dengan X-axis labels rotasi 45 derajat
+   # Layout dengan X-axis labels rotasi 45 derajat
     fig.update_layout(
-        title=f"⚠️ {title}",
-        xaxis_title="",
-        yaxis_title="Nilai" if show_yaxis else "",
-        yaxis_range=[y_min, y_max],
-        xaxis=dict(
-            tickangle=-45,  # Rotasi 45 derajat ke kiri
-            tickmode='linear',
-            tickfont=dict(size=11, weight='bold')  # Bold untuk label X-axis
-        ),
-        height=500,
-        margin=dict(l=50, r=20, t=50, b=150),  # Margin bawah diperbesar untuk label miring
-        showlegend=False,
-    )
-
-    if not show_yaxis:
-        fig.update_yaxes(showticklabels=False)
-
-    return fig
+    title=f"⚠️ {title}",
+    xaxis_title="",
+    yaxis_title="Nilai" if show_yaxis else "",
+    yaxis_range=[y_min, y_max],
+    xaxis=dict(
+        tickangle=-45,
+        tickmode='linear',
+        tickfont=dict(
+            family="Arial Black",   # ⭐ Bold
+            size=11,
+            color="black"
+        )
+    ),
+    height=500,
+    margin=dict(l=50, r=20, t=50, b=150),
+    showlegend=False,
+)
 
 
 # ===============================================
