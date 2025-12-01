@@ -416,7 +416,8 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         xaxis=dict(
             tickangle=-45,  # Rotasi 45 derajat ke kiri
             tickmode='linear',
-            tickfont=dict(size=11, weight='bold')  # Bold untuk label X-axis
+            tickfont=dict(family="bold", size=12)
+
         ),
         height=500,
         margin=dict(l=50, r=20, t=50, b=150),  # Margin bawah diperbesar untuk label miring
