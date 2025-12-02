@@ -854,7 +854,18 @@ button[data-testid="baseButton"][kind="popover"]:hover {
                 default_year = years[0]
                 selected_year = st.selectbox("Pilih Tahun", options=years, index=0)
 
-                period_type = st.radio("Jenis Periode", options=['quarterly', 'monthly'], format_func=lambda x: 'Triwulan' if x=='quarterly' else 'Bulanan', horizontal=True)
+                if 'period_type' not in st.session_state:
+                    st.session_state.period_type = 'quarterly'
+                period_type = st.radio(
+                    "Jenis Periode", 
+                    options=['quarterly', 'monthly'], 
+                    format_func=lambda x: 'Triwulan' if x=='quarterly' else 'Bulanan', 
+                    horizontal=True,
+                    key='period_type_radio',
+                    index=0 if st.session_state.period_type == 'quarterly' else 1
+                )
+                # Update session state
+                st.session_state.period_type = period_type
 
                 indicator_options = [
                     'Kualitas Perencanaan Anggaran', 'Kualitas Pelaksanaan Anggaran', 'Kualitas Hasil Pelaksanaan Anggaran',
