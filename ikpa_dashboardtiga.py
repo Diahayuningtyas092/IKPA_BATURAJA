@@ -604,13 +604,21 @@ button[data-testid="baseButton"][kind="popover"]:hover {
         st.warning("⚠️ Belum ada data yang tersedia.")
         return
 
-    # Tabs: Highlights (charts) as default, Data Detail Satker (table)
-    tab_highlights, tab_table = st.tabs(["🎯 Highlights", "📋 Data Detail Satker"])
+    if "main_tab" not in st.session_state:
+        st.session_state.main_tab = "highlights"
+
+    main_tab = st.radio(
+        "Pilih Bagian Dashboard",
+        ["🎯 Highlights", "📋 Data Detail Satker"],
+        key="main_tab_choice",
+        horizontal=True
+    )
+    st.session_state["main_tab"] = main_tab
 
     # -------------------------
-    # Common: period selection and metrics (keep at top of Highlights)
+    # HIGHLIGHTS (sebelumnya with tab_highlights)
     # -------------------------
-    with tab_highlights:
+    if main_tab == "🎯 Highlights":
         st.markdown("## 🎯 Highlights Kinerja Satker")
 
         # Single-row layout for period + metrics
@@ -635,13 +643,11 @@ button[data-testid="baseButton"][kind="popover"]:hover {
         def make_satker_col(dd):
             if 'Satker' in dd.columns:
                 return dd
-            # fallback jika kolom Satker tidak ada
             uraian = dd.get('Uraian Satker-RINGKAS', dd.index.astype(str))
             kode = dd.get('Kode Satker', '')
             dd['Satker'] = uraian.astype(str) + " (" + kode.astype(str) + ")"
             return dd
 
-        # Perbaiki dataframe
         perfect_df = make_satker_col(perfect_df)
         below89_df = make_satker_col(below89_df)
 
@@ -661,36 +667,20 @@ button[data-testid="baseButton"][kind="popover"]:hover {
                 if jumlah_100 == 0:
                     st.write("Tidak ada satker dengan nilai 100.")
                 else:
-                    # Buat dataframe dengan nomor urut
                     display_df = perfect_df[['Satker']].reset_index(drop=True)
                     display_df.insert(0, 'No', range(1, len(display_df) + 1))
-                    
-                    st.dataframe(
-                        display_df,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=min(400, len(display_df) * 35 + 38)
-                    )
+                    st.dataframe(display_df, use_container_width=True, hide_index=True, height=min(400, len(display_df) * 35 + 38))
         with col4:
             st.metric("⚠️ Nilai < 89 (Predikat Belum Baik)", jumlah_below)
             with st.popover("Lihat daftar satker"):
                 if jumlah_below == 0:
                     st.write("Tidak ada satker dengan nilai < 89.")
                 else:
-                    # Buat dataframe dengan nomor urut
                     display_df = below89_df[['Satker']].reset_index(drop=True)
                     display_df.insert(0, 'No', range(1, len(display_df) + 1))
-                    
-                    st.dataframe(
-                        display_df,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=min(400, len(display_df) * 35 + 38)
-                    )
+                    st.dataframe(display_df, use_container_width=True, hide_index=True, height=min(400, len(display_df) * 35 + 38))
 
-        # ===============================
         # Chart controls
-        # ===============================
         st.markdown("###### Atur Skala Nilai (Sumbu Y)")
         col_min, col_max = st.columns(2)
         with col_min:
@@ -698,7 +688,7 @@ button[data-testid="baseButton"][kind="popover"]:hover {
                 "Nilai Minimum (Y-Axis)",
                 min_value=0,
                 max_value=50,
-                value=50,  # Default to start from 50
+                value=50,
                 step=1,
                 key="high_ymin"
             )
@@ -712,42 +702,9 @@ button[data-testid="baseButton"][kind="popover"]:hover {
                 key="high_ymax"
             )
 
-        # ===============================
         # Data preparation for charts
-        # ===============================
         df_with_kontrak = df[df['Belanja Kontraktual'] != 0]
         df_without_kontrak = df[df['Belanja Kontraktual'] == 0]
-
-        # chart helper unchanged
-        def make_column_chart(data, title, color_scale, y_min, y_max, limit=10, show_yaxis=False):
-            df_top = data.nlargest(limit, "Nilai Akhir (Nilai Total/Konversi Bobot)")
-            fig = px.bar(
-            df_top,
-            x="Nilai Akhir (Nilai Total/Konversi Bobot)",
-            y="Satker",
-            orientation="h",
-            color="Nilai Akhir (Nilai Total/Konversi Bobot)",
-            color_continuous_scale=color_scale,
-            title=title
-            )
-
-            fig.update_layout(
-            xaxis_range=[y_min, y_max],
-            yaxis_title="",
-            xaxis_title="Nilai IKPA",
-            height=500,
-            margin=dict(l=10, r=10, t=40, b=20),
-            coloraxis_showscale=False,
-            showlegend=False
-            )
-
-            fig.update_traces(
-            texttemplate="%{x:.2f}",
-            textposition="outside",
-            hovertemplate="<b>%{y}</b><br>Nilai: %{x:.2f}<extra></extra>"
-            )
-
-            return fig
 
         # 4 charts side-by-side
         col1, col2, col3, col4 = st.columns(4)
@@ -829,21 +786,30 @@ button[data-testid="baseButton"][kind="popover"]:hover {
             st.success("✅ Semua satker sudah optimal untuk Deviasi Hal 3 DIPA")
 
     # -------------------------
-    # Table tab (with new Periodik default)
+    # DATA DETAIL SATKER (sebelumnya with tab_table)
     # -------------------------
-    with tab_table:
+    else:
         st.subheader("📋 Tabel Detail Satker")
 
-        # Create sub-tabs inside the table area: Periodik (default) and Detail Satker (legacy)
-        tab_periodik, tab_detail = st.tabs(["📆 Periodik", "📋 Detail Satker"])
+        # persistent sub-tab for Periodik / Detail Satker
+        if "active_table_tab" not in st.session_state:
+            st.session_state.active_table_tab = "📆 Periodik"
+
+        sub_tab = st.radio(
+            "Pilih Mode Tabel",
+            ["📆 Periodik", "📋 Detail Satker"],
+            key="sub_tab_choice",
+            horizontal=True
+        )
+        st.session_state['active_table_tab'] = sub_tab
 
         # -------------------------
         # PERIODIK TABLE
         # -------------------------
-        with tab_periodik:
+        if sub_tab == "📆 Periodik":
             st.markdown("#### Periodik — ringkasan per bulan / triwulan")
 
-            # --- determine available years from all data in session
+            # determine available years from all data in session
             years = set()
             for k, df_period in st.session_state.data_storage.items():
                 years.update(df_period['Tahun'].astype(str).unique())
@@ -852,243 +818,221 @@ button[data-testid="baseButton"][kind="popover"]:hover {
                 st.info("Tidak ada data periodik untuk ditampilkan.")
             else:
                 default_year = years[0]
-                selected_year = st.selectbox("Pilih Tahun", options=years, index=0)
+                selected_year = st.selectbox("Pilih Tahun", options=years, index=0, key='tab_periodik_year_select')
+                
+                # session state untuk period type
+                if "period_type" not in st.session_state:
+                    st.session_state.period_type = "quarterly"
 
-                if 'period_type' not in st.session_state:
-                    st.session_state.period_type = 'quarterly'
+                period_options = ["quarterly", "monthly"]
+                try:
+                    period_index = period_options.index(st.session_state.period_type)
+                except ValueError:
+                    period_index = 0
+                    st.session_state.period_type = "quarterly"
+
+                # Radio button tanpa callback (Streamlit akan simpan ke session_state via key)
                 period_type = st.radio(
-                    "Jenis Periode", 
-                    options=['quarterly', 'monthly'], 
-                    format_func=lambda x: 'Triwulan' if x=='quarterly' else 'Bulanan', 
+                    "Jenis Periode",
+                    options=period_options,
+                    format_func=lambda x: "Triwulan" if x == "quarterly" else "Bulanan",
                     horizontal=True,
-                    key='period_type_radio',
-                    index=0 if st.session_state.period_type == 'quarterly' else 1
+                    index=period_index,
+                    key="period_type_radio_v2"
                 )
-                # Update session state
+                # Update session state directly
                 st.session_state.period_type = period_type
 
-                indicator_options = [
-                    'Kualitas Perencanaan Anggaran', 'Kualitas Pelaksanaan Anggaran', 'Kualitas Hasil Pelaksanaan Anggaran',
-                    'Revisi DIPA', 'Deviasi Halaman III DIPA', 'Penyerapan Anggaran', 'Belanja Kontraktual',
-                    'Penyelesaian Tagihan', 'Pengelolaan UP dan TUP', 'Capaian Output', 'Dispensasi SPM (Pengurang)',
-                    'Nilai Akhir (Nilai Total/Konversi Bobot)'
-                ]
-                default_indicator = 'Deviasi Halaman III DIPA'
-                selected_indicator = st.selectbox("Pilih Indikator", options=indicator_options, index=indicator_options.index(default_indicator) if default_indicator in indicator_options else 0)
+            indicator_options = [
+                'Kualitas Perencanaan Anggaran', 'Kualitas Pelaksanaan Anggaran', 'Kualitas Hasil Pelaksanaan Anggaran',
+                'Revisi DIPA', 'Deviasi Halaman III DIPA', 'Penyerapan Anggaran', 'Belanja Kontraktual',
+                'Penyelesaian Tagihan', 'Pengelolaan UP dan TUP', 'Capaian Output', 'Dispensasi SPM (Pengurang)',
+                'Nilai Akhir (Nilai Total/Konversi Bobot)'
+            ]
+            default_indicator = 'Deviasi Halaman III DIPA'
+            selected_indicator = st.selectbox(
+                "Pilih Indikator", 
+                options=indicator_options, 
+                index=indicator_options.index(default_indicator) if default_indicator in indicator_options else 0,
+                key='tab_periodik_indicator_select'
+            )
 
-                # build dataframe for the selected year across all available periods
-                dfs = []
-                for (mon, yr), df_period in st.session_state.data_storage.items():
-                    try:
-                        if int(yr) == int(selected_year):
-                            dfs.append(df_period.copy())
-                    except Exception:
-                        continue
-                if not dfs:
-                    st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
-                else:
-                    df_year = pd.concat(dfs, ignore_index=True)
+            # build dataframe for the selected year across all available periods
+            dfs = []
+            for (mon, yr), df_period in st.session_state.data_storage.items():
+                try:
+                    if int(yr) == int(selected_year):
+                        dfs.append(df_period.copy())
+                except Exception:
+                    continue
+            if not dfs:
+                st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
+            else:
+                df_year = pd.concat(dfs, ignore_index=True)
 
-                    # --- normalize month names (defensive) and get available months sorted ---
-                    df_year['Bulan_raw'] = df_year['Bulan'].astype(str).fillna('').str.strip()
+                # normalize month names and get available months sorted
+                df_year['Bulan_raw'] = df_year['Bulan'].astype(str).fillna('').str.strip()
 
-                    # common misspellings / variants mapping to canonical uppercase month names
-                    month_aliases = {
-                        'PEBRUARI': 'FEBRUARI', 'PEBRUARY': 'FEBRUARI', 'NOPEMBER': 'NOVEMBER',
-                        'NOVEMBER ': 'NOVEMBER', 'SEPT': 'SEPTEMBER', 'SEP': 'SEPTEMBER',
-                        'MAR': 'MARET', 'MRT': 'MARET'
-                    }
-                    # canonical display name mapping (upper -> Capitalized) using your MONTH_ORDER keys
-                    canonical_display = {k.upper(): k.capitalize() for k in MONTH_ORDER.keys()}
+                month_aliases = {
+                    'PEBRUARI': 'FEBRUARI', 'PEBRUARY': 'FEBRUARI', 'NOPEMBER': 'NOVEMBER',
+                    'NOVEMBER ': 'NOVEMBER', 'SEPT': 'SEPTEMBER', 'SEP': 'SEPTEMBER',
+                    'MAR': 'MARET', 'MRT': 'MARET'
+                }
+                canonical_display = {k.upper(): k.capitalize() for k in MONTH_ORDER.keys()}
 
-                    def normalize_month_text(txt):
-                        t = str(txt).strip().upper()
-                        # remove punctuation and stray whitespace
-                        t = re.sub(r'[^A-Z]', '', t)
-                        # substitute aliases
-                        if t in month_aliases:
-                            return month_aliases[t]
-                        # If it's already a known canonical month, return as-is
-                        if t in MONTH_ORDER:
-                            return t
-                        # try to match by prefix (e.g. 'JAN' -> 'JANUARI')
-                        for mm in MONTH_ORDER.keys():
-                            if mm.startswith(t) or mm.startswith(t[:3]):
-                                return mm
-                        # fallback: return original upper (may produce NaNs later which we drop)
+                def normalize_month_text(txt):
+                    t = str(txt).strip().upper()
+                    t = re.sub(r'[^A-Z]', '', t)
+                    if t in month_aliases:
+                        return month_aliases[t]
+                    if t in MONTH_ORDER:
                         return t
+                    for mm in MONTH_ORDER.keys():
+                        if mm.startswith(t) or mm.startswith(t[:3]):
+                            return mm
+                    return t
 
-                    df_year['Bulan_upper'] = df_year['Bulan_raw'].apply(normalize_month_text)
+                df_year['Bulan_upper'] = df_year['Bulan_raw'].apply(normalize_month_text)
 
-                    # collect months present in this year and sort by MONTH_ORDER
-                    months_available = sorted(
-                        [m for m in df_year['Bulan_upper'].unique() if m and m in MONTH_ORDER],
-                        key=lambda m: MONTH_ORDER.get(m, 0)
-                    )
+                months_available = sorted(
+                    [m for m in df_year['Bulan_upper'].unique() if m and m in MONTH_ORDER],
+                    key=lambda m: MONTH_ORDER.get(m, 0)
+                )
 
-                    # -------------------------
-                    # decide period columns (monthly or quarterly)
-                    # -------------------------
+                # decide period columns (monthly or quarterly)
+                if period_type == 'monthly':
+                    months_sorted = months_available
+                    display_month_names_ordered = [canonical_display.get(m, m.capitalize()) for m in months_sorted]
+                else:
+                    quarter_map = {
+                        'Tw I': 'MARET',
+                        'Tw II': 'JUNI',
+                        'Tw III': 'SEPTEMBER',
+                        'Tw IV': 'DESEMBER'
+                    }
+                    quarter_order = []
+                    for tw, end_month in quarter_map.items():
+                        if end_month in months_available:
+                            quarter_order.append(tw)
+
+                # Build records for pivoting
+                records = []
+                for _, row in df_year.iterrows():
+                    rec = {
+                        'Kode BA': row.get('Kode BA', ''),
+                        'Kode Satker': row.get('Kode Satker', ''),
+                        'Uraian Satker-RINGKAS': row.get('Uraian Satker-RINGKAS', row.get('Uraian Satker Final', row.get('Uraian Satker','')))
+                    }
+                    month_up = row.get('Bulan_upper', '')
                     if period_type == 'monthly':
-                        # ordered canonical month keys (e.g. ['JANUARI','FEBRUARI',...]) for months actually present
-                        months_sorted = months_available
-                        # display names in the same order (e.g. 'Januari', 'Februari'...)
-                        display_month_names_ordered = [canonical_display.get(m, m.capitalize()) for m in months_sorted]
+                        if month_up in MONTH_ORDER:
+                            rec[month_up] = row.get(selected_indicator, np.nan)
                     else:
-                        # quarterly: check end-month presence
-                        quarter_map = {
-                            'Tw I': 'MARET',
-                            'Tw II': 'JUNI',
-                            'Tw III': 'SEPTEMBER',
-                            'Tw IV': 'DESEMBER'
-                        }
-                        quarter_order = []
-                        for tw, end_month in quarter_map.items():
-                            if end_month in months_available:
-                                quarter_order.append(tw)
+                        if month_up == 'MARET':
+                            rec['Tw I'] = row.get(selected_indicator, np.nan)
+                        elif month_up == 'JUNI':
+                            rec['Tw II'] = row.get(selected_indicator, np.nan)
+                        elif month_up == 'SEPTEMBER':
+                            rec['Tw III'] = row.get(selected_indicator, np.nan)
+                        elif month_up == 'DESEMBER':
+                            rec['Tw IV'] = row.get(selected_indicator, np.nan)
+                    records.append(rec)
 
-                    # -------------------------
-                    # Build records for pivoting (use normalized months)
-                    # -------------------------
-                    records = []
-                    for _, row in df_year.iterrows():
-                        rec = {
-                            'Kode BA': row.get('Kode BA', ''),
-                            'Kode Satker': row.get('Kode Satker', ''),
-                            'Uraian Satker-RINGKAS': row.get('Uraian Satker-RINGKAS', row.get('Uraian Satker Final', row.get('Uraian Satker','')))
-                        }
-                        month_up = row.get('Bulan_upper', '')
-                        if period_type == 'monthly':
-                            # only include canonical months
-                            if month_up in MONTH_ORDER:
-                                rec[month_up] = row.get(selected_indicator, np.nan)
-                        else:
-                            # map to quarter label if it's exactly an end-month
-                            if month_up == 'MARET':
-                                rec['Tw I'] = row.get(selected_indicator, np.nan)
-                            elif month_up == 'JUNI':
-                                rec['Tw II'] = row.get(selected_indicator, np.nan)
-                            elif month_up == 'SEPTEMBER':
-                                rec['Tw III'] = row.get(selected_indicator, np.nan)
-                            elif month_up == 'DESEMBER':
-                                rec['Tw IV'] = row.get(selected_indicator, np.nan)
-                        records.append(rec)
+                df_rec = pd.DataFrame(records)
+                if df_rec.empty:
+                    st.info("Tidak ada data detail untuk indikator/periode yang dipilih.")
+                else:
+                    # aggregate by Kode Satker (take last non-null)
+                    agg_dict = {}
+                    possible_period_cols = [c for c in df_rec.columns if c not in ['Kode BA','Kode Satker','Uraian Satker-RINGKAS']]
+                    for c in possible_period_cols:
+                        def last_non_null(x):
+                            s = x.dropna()
+                            return float(s.iloc[-1]) if len(s) > 0 else np.nan
+                        agg_dict[c] = last_non_null
 
-                    df_rec = pd.DataFrame(records)
-                    if df_rec.empty:
-                        st.info("Tidak ada data detail untuk indikator/periode yang dipilih.")
+                    df_agg = df_rec.groupby(['Kode BA','Kode Satker','Uraian Satker-RINGKAS']).agg(agg_dict).reset_index()
+
+                    # rename raw canonical month columns to display names in order
+                    display_period_cols = []
+                    if period_type == 'monthly':
+                        raw_cols_upper = {c.upper(): c for c in df_agg.columns}
+                        for m in months_sorted:
+                            if m in raw_cols_upper:
+                                raw_col = raw_cols_upper[m]
+                                display_name = canonical_display.get(m, m.capitalize())
+                                if raw_col != display_name:
+                                    df_agg.rename(columns={raw_col: display_name}, inplace=True)
+                                display_period_cols.append(display_name)
                     else:
-                        # aggregate by Kode Satker (take last non-null value for each period column)
-                        agg_dict = {}
-                        possible_period_cols = [c for c in df_rec.columns if c not in ['Kode BA','Kode Satker','Uraian Satker-RINGKAS']]
-                        for c in possible_period_cols:
-                            # use a named function to avoid late-binding lambda issues
-                            def last_non_null(x):
-                                s = x.dropna()
-                                return float(s.iloc[-1]) if len(s) > 0 else np.nan
-                            agg_dict[c] = last_non_null
+                        for tw in ['Tw I','Tw II','Tw III','Tw IV']:
+                            if tw in df_agg.columns:
+                                display_period_cols.append(tw)
 
-                        df_agg = df_rec.groupby(['Kode BA','Kode Satker','Uraian Satker-RINGKAS']).agg(agg_dict).reset_index()
+                    # drop all-NaN period columns
+                    display_period_cols = [c for c in display_period_cols if not df_agg[c].isna().all()]
 
-                        # === AFTER df_agg exists: rename raw canonical month columns to display names in order ===
-                        display_period_cols = []
-                        if period_type == 'monthly':
-                            # raw canonical months present in df_agg (uppercase like 'JANUARI')
-                            raw_cols_upper = {c.upper(): c for c in df_agg.columns}
-                            for m in months_sorted:  # months_sorted is already in calendar order
-                                if m in raw_cols_upper:
-                                    raw_col = raw_cols_upper[m]
-                                    display_name = canonical_display.get(m, m.capitalize())
-                                    if raw_col != display_name:
-                                        # rename raw -> nice display (e.g. 'JANUARI' -> 'Januari')
-                                        df_agg.rename(columns={raw_col: display_name}, inplace=True)
-                                    display_period_cols.append(display_name)
-                        else:
-                            # quarter names in the desired order (Tw I..Tw IV)
-                            for tw in ['Tw I','Tw II','Tw III','Tw IV']:
-                                if tw in df_agg.columns:
-                                    display_period_cols.append(tw)
+                    if display_period_cols:
+                        last_col = display_period_cols[-1]
+                        df_agg['Latest_Value'] = df_agg[last_col]
+                    else:
+                        df_agg['Latest_Value'] = np.nan
 
-                        # drop period columns that are all NaN (not available)
-                        display_period_cols = [c for c in display_period_cols if not df_agg[c].isna().all()]
+                    df_agg['Peringkat'] = df_agg['Latest_Value'].rank(ascending=False, method='dense').astype('Int64')
+                    df_agg_sorted = df_agg.sort_values(by=['Peringkat'], ascending=False)
 
-                        # pick the latest column for ranking (last in display_period_cols)
-                        if display_period_cols:
-                            last_col = display_period_cols[-1]
-                            df_agg['Latest_Value'] = df_agg[last_col]
-                        else:
-                            df_agg['Latest_Value'] = np.nan
+                    final_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + display_period_cols
+                    for c in final_cols:
+                        if c not in df_agg_sorted.columns:
+                            df_agg_sorted[c] = np.nan
 
-                        # compute ranks (1 = highest)
-                        df_agg['Peringkat'] = df_agg['Latest_Value'].rank(ascending=False, method='dense').astype('Int64')
+                    df_display = df_agg_sorted[final_cols].copy()
 
-                        # default display order: bottom ranking first
-                        df_agg_sorted = df_agg.sort_values(by=['Peringkat'], ascending=False)
+                    # SEARCH widget for Periodik
+                    search_query = st.text_input("🔎 Cari (Periodik) – ketik untuk filter di semua kolom", value="", key='tab_periodik_search')
+                    if search_query:
+                        q = str(search_query).strip().lower()
+                        mask = df_display.apply(lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(), axis=1)
+                        df_display_filtered = df_display[mask].copy()
+                    else:
+                        df_display_filtered = df_display.copy()
 
-                        final_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + display_period_cols
-                        for c in final_cols:
-                            if c not in df_agg_sorted.columns:
-                                df_agg_sorted[c] = np.nan
-
-                        df_display = df_agg_sorted[final_cols].copy()
-
-                        # -------------------------
-                        # Search widget for Periodik
-                        # -------------------------
-                        search_query = st.text_input("🔎 Cari (Periodik) — ketik untuk filter di semua kolom", value="", key='search_periodik')
-                        if search_query:
-                            q = str(search_query).strip().lower()
-                            mask = df_display.apply(lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(), axis=1)
-                            df_display_filtered = df_display[mask].copy()
-                        else:
-                            df_display_filtered = df_display.copy()
-
-                        # -------------------------
-                        # Trend gimmick (cell coloring based on last two periods)
-                        # -------------------------
-                        def color_trend(row):
-                            styles = []
-                            # compare last two available period columns
-                            vals = [row[c] for c in display_period_cols if pd.notna(row[c])]
-                            if len(vals) >= 2:
-                                if vals[-1] > vals[-2]:
-                                    # uptrend
-                                    color = 'background-color: #c6efce'  # light green
-                                elif vals[-1] < vals[-2]:
-                                    color = 'background-color: #f8d7da'  # light red
-                                else:
-                                    color = ''
+                    # Trend cell coloring & styling
+                    def color_trend(row):
+                        styles = []
+                        vals = [row[c] for c in display_period_cols if pd.notna(row[c])]
+                        if len(vals) >= 2:
+                            if vals[-1] > vals[-2]:
+                                color = 'background-color: #c6efce'
+                            elif vals[-1] < vals[-2]:
+                                color = 'background-color: #f8d7da'
                             else:
                                 color = ''
-                            # apply color to last column cell only for visual cue
-                            for i, c in enumerate(df_display_filtered.columns):
-                                if c == display_period_cols[-1]:
-                                    styles.append(color)
-                                else:
-                                    styles.append('')
-                            return styles
+                        else:
+                            color = ''
+                        for i, c in enumerate(df_display_filtered.columns):
+                            if display_period_cols and c == display_period_cols[-1]:
+                                styles.append(color)
+                            else:
+                                styles.append('')
+                        return styles
 
-                        # Apply highlight for top 3 ranks separately
-                        def highlight_top(s):
-                            if s.name == 'Peringkat':
-                                return ['background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else '' for v in s]
-                            return ['' for _ in s]
+                    def highlight_top(s):
+                        if s.name == 'Peringkat':
+                            return ['background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else '' for v in s]
+                        return ['' for _ in s]
 
-                        # Combine styler: color last period cell per-row and highlight Peringkat
-                        styler = df_display_filtered.style.format(precision=2)
-                        # apply per-row color for last period
-                        if display_period_cols:
-                            styler = styler.apply(lambda r: color_trend(r), axis=1)
-                        styler = styler.apply(highlight_top)
-
-                        st.dataframe(styler, use_container_width=True, height=600)
+                    styler = df_display_filtered.style.format(precision=2)
+                    if display_period_cols:
+                        styler = styler.apply(lambda r: color_trend(r), axis=1)
+                    styler = styler.apply(highlight_top)
+                    st.dataframe(styler, use_container_width=True, height=600)
 
         # -------------------------
-        # DETAIL SATKER (legacy table) — updated label names
+        # DETAIL SATKER (legacy table)
         # -------------------------
-        with tab_detail:
+        else:
             col1, col2 = st.columns([2, 1])
-
             with col1:
                 view_mode = st.radio(
                     "Tampilan",
@@ -1096,13 +1040,10 @@ button[data-testid="baseButton"][kind="popover"]:hover {
                     format_func=lambda x: 'Berdasarkan Aspek' if x == 'aspek' else 'Berdasarkan Komponen',
                     horizontal=True
                 )
-
             with col2:
-                st.write("")  # placeholder to keep alignment
+                st.write("")
 
-            # Kolom yang ditampilkan (Konversi Bobot removed) — use Uraian Satker-RINGKAS
             display_columns = ['Peringkat', 'Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS']
-
             if view_mode == 'aspek':
                 display_columns += [
                     'Kualitas Perencanaan Anggaran',
@@ -1118,24 +1059,17 @@ button[data-testid="baseButton"][kind="popover"]:hover {
                     'Belanja Kontraktual', 'Penyelesaian Tagihan', 
                     'Pengelolaan UP dan TUP', 'Capaian Output'
                 ]
-
                 df_display = df[display_columns + ['Nilai Total',
                                                    'Dispensasi SPM (Pengurang)',
                                                    'Nilai Akhir (Nilai Total/Konversi Bobot)']].copy()
-
-                # fill component values directly from df (Nilai)
                 for col in component_cols:
                     df_display[col] = df.get(col, 0)
-
-                # Reorder columns
                 final_cols = display_columns + component_cols + ['Nilai Total',
                                                                  'Dispensasi SPM (Pengurang)',
                                                                  'Nilai Akhir (Nilai Total/Konversi Bobot)']
                 df_display = df_display[final_cols]
 
-            # -------------------------
-            # Search widget: filter across all columns (case-insensitive substring)
-            # -------------------------
+            # Search widget & styling
             search_query = st.text_input("🔎 Cari (ketik untuk filter di semua kolom)", value="", help="Cari teks pada semua kolom (case-insensitive).", key='search_detail')
             if search_query:
                 q = str(search_query).strip().lower()
@@ -1144,18 +1078,17 @@ button[data-testid="baseButton"][kind="popover"]:hover {
             else:
                 df_display_filtered = df_display.copy()
 
-            # Styling untuk tabel (same highlight_top)
             def highlight_top(s):
                 if s.name == 'Peringkat':
                     return ['background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else '' for v in s]
                 return ['' for _ in s]
 
-            # Render table
             st.dataframe(
                 df_display_filtered.style.apply(highlight_top).format(precision=2),
                 use_container_width=True,
                 height=600
             )
+
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)
 def page_trend():
@@ -2206,19 +2139,27 @@ def main():
                 st.error(f"⚠️ Gagal memuat data dari GitHub: {e}")
 
     # ===============================
-    # 🔹 Sidebar Navigation
+    # 🔹 Sidebar Navigation 
     # ===============================
     st.sidebar.title("🧭 Navigasi")
     st.sidebar.markdown("---")
 
-    page = st.sidebar.radio(
+    # Inisialisasi page sekali saja
+    if "page" not in st.session_state:
+        st.session_state.page = "📊 Dashboard Utama"
+
+    # Pastikan page aman (fallback jika terjadi glitch)
+    st.session_state.page = st.session_state.get("page", "📊 Dashboard Utama")
+
+    # Radio navigation (Streamlit akan otomatis update session_state["page"])
+    selected_page = st.sidebar.radio(
         "Pilih Halaman",
         options=[
             "📊 Dashboard Utama",
             "📈 Dashboard Internal",
             "🔐 Admin"
         ],
-        index=0
+        key="page"   # gunakan key yg sama
     )
 
     st.sidebar.markdown("---")
@@ -2230,26 +2171,18 @@ def main():
     📧 Support: ameer.noor@kemenkeu.go.id
     """)
 
+
     # ===============================
     # 🔹 Routing Halaman
     # ===============================
-    if page == "📊 Dashboard Utama":
-        try:
-            page_dashboard()
-        except Exception as e:
-            st.error(f"❌ Terjadi kesalahan di Dashboard Utama: {e}")
+    if st.session_state.page == "📊 Dashboard Utama":
+        page_dashboard()
 
-    elif page == "📈 Dashboard Internal":
-        try:
-            page_trend()
-        except Exception as e:
-            st.error(f"❌ Terjadi kesalahan di Dashboard Internal KPPN: {e}")
+    elif st.session_state.page == "📈 Dashboard Internal":
+        page_trend()
 
-    elif page == "🔐 Admin":
-        try:
-            page_admin()
-        except Exception as e:
-            st.error(f"❌ Terjadi kesalahan di Halaman Admin: {e}")
+    elif st.session_state.page == "🔐 Admin":
+        page_admin()
 
 # ===============================
 # 🔹 ENTRY POINT
