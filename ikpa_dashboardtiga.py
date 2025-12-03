@@ -560,53 +560,69 @@ def page_dashboard():
     st.title("📊 Dashboard Utama IKPA Satker Mitra KPPN Baturaja")
     
     st.markdown("""
-<style>
-/* Warna tombol popover */
-/* Target utama */
-div[data-testid="stPopover"] button {
-    background-color: #FFF9E6 !important;
-    border: 1px solid #E6C200 !important;
-    color: #664400 !important;
-}
+    <style>
+    /* Warna tombol popover */
+    div[data-testid="stPopover"] button {
+        background-color: #FFF9E6 !important;
+        border: 1px solid #E6C200 !important;
+        color: #664400 !important;
+    }
+    div[data-testid="stPopover"] button:hover {
+        background-color: #FFE4B5 !important;
+        color: black !important;
+    }
+    button[data-testid="baseButton"][kind="popover"] {
+        background-color: #FFF9E6 !important;
+        border: 1px solid #E6C200 !important;
+        color: #664400 !important;
+    }
+    button[data-testid="baseButton"][kind="popover"]:hover {
+        background-color: #FFE4B5 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-/* Hover */
-div[data-testid="stPopover"] button:hover {
-    background-color: #FFE4B5 !important;
-    color: black !important;
-}
-
-/* Tambahan: jika Streamlit mengubah struktur DOM */
-button[data-testid="baseButton"][kind="popover"] {
-    background-color: #FFF9E6 !important;
-    border: 1px solid #E6C200 !important;
-    color: #664400 !important;
-}
-
-button[data-testid="baseButton"][kind="popover"]:hover {
-    background-color: #FFE4B5 !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-    
-    if not st.session_state.data_storage:
+    # protect against missing data_storage
+    if not st.session_state.get('data_storage'):
         st.warning("⚠️ Belum ada data yang diunggah. Silakan unggah data melalui halaman Admin.")
         return
-    
+
     # Dapatkan data terbaru
-    all_periods = sorted(
-        st.session_state.data_storage.keys(),
-        key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)),
-        reverse=True
-    )
-    
+    try:
+        all_periods = sorted(
+            st.session_state.data_storage.keys(),
+            key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)),
+            reverse=True
+        )
+    except Exception:
+        st.warning("⚠️ Format periode pada data tidak sesuai. Periksa struktur data di session_state.data_storage.")
+        return
+
     if not all_periods:
         st.warning("⚠️ Belum ada data yang tersedia.")
         return
 
-    if "main_tab" not in st.session_state:
-        st.session_state.main_tab = "highlights"
+    # ---------------------------
+    # Ensure a selected_period and df exist BEFORE any branch uses df
+    # ---------------------------
+    if "selected_period" not in st.session_state:
+        st.session_state.selected_period = all_periods[0]
 
+    # safe fetch of df for the selected_period (always a tuple key like ('JANUARI','2025'))
+    selected_period_key = st.session_state.get("selected_period", all_periods[0])
+    df = st.session_state.data_storage.get(selected_period_key, None)
+
+    if df is None:
+        st.warning(f"⚠️ Data untuk periode {selected_period_key} tidak ditemukan. Periksa st.session_state.data_storage keys.")
+        # show available keys to help debugging (optional - remove if sensitive)
+        st.write("Periode yang tersedia:", list(st.session_state.data_storage.keys()))
+        return
+
+    # ensure main_tab state exists
+    if "main_tab" not in st.session_state:
+        st.session_state.main_tab = "🎯 Highlights"
+
+    # ---------- persistent main tab ----------
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
         ["🎯 Highlights", "📋 Data Detail Satker"],
@@ -616,7 +632,7 @@ button[data-testid="baseButton"][kind="popover"]:hover {
     st.session_state["main_tab"] = main_tab
 
     # -------------------------
-    # HIGHLIGHTS (sebelumnya with tab_highlights)
+    # HIGHLIGHTS
     # -------------------------
     if main_tab == "🎯 Highlights":
         st.markdown("## 🎯 Highlights Kinerja Satker")
@@ -625,16 +641,19 @@ button[data-testid="baseButton"][kind="popover"]:hover {
         col_period, col1, col2, col3, col4 = st.columns([1, 1, 1, 1, 1])
 
         with col_period:
-            selected_period = st.selectbox(
+            # update selected_period in session_state when changed here
+            st.session_state.selected_period = st.selectbox(
                 "Pilih Periode",
                 options=all_periods,
                 index=0,
-                format_func=lambda x: f"{x[0].capitalize()} {x[1]}"
+                format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+                key="select_period_main"
             )
+            # refresh df variable to reflect selection immediately (keeps consistency)
+            selected_period_key = st.session_state.selected_period
+            df = st.session_state.data_storage.get(selected_period_key, df)
 
-        df = st.session_state.data_storage[selected_period]
-
-        # Hitung data
+        # now df is guaranteed to be set (we checked earlier)
         avg_score = df['Nilai Akhir (Nilai Total/Konversi Bobot)'].mean()
         perfect_df = df[df['Nilai Akhir (Nilai Total/Konversi Bobot)'] == 100]
         below89_df = df[df['Nilai Akhir (Nilai Total/Konversi Bobot)'] < 89]
@@ -658,7 +677,6 @@ button[data-testid="baseButton"][kind="popover"]:hover {
         with col1:
             st.metric("📋 Total Satker", len(df))
         with col2:
-            avg_score = df['Nilai Akhir (Nilai Total/Konversi Bobot)'].mean()
             st.metric("📈 Rata-rata Nilai", f"{avg_score:.2f}")
         
         with col3:
@@ -786,7 +804,7 @@ button[data-testid="baseButton"][kind="popover"]:hover {
             st.success("✅ Semua satker sudah optimal untuk Deviasi Hal 3 DIPA")
 
     # -------------------------
-    # DATA DETAIL SATKER (sebelumnya with tab_table)
+    # DATA DETAIL SATKER
     # -------------------------
     else:
         st.subheader("📋 Tabel Detail Satker")
@@ -1032,6 +1050,12 @@ button[data-testid="baseButton"][kind="popover"]:hover {
         # DETAIL SATKER (legacy table)
         # -------------------------
         else:
+            # ensure df available (use selected period if set)
+            df = st.session_state.data_storage.get(st.session_state.get('selected_period', all_periods[0]), None)
+            if df is None:
+                st.info("Data untuk detail satker tidak tersedia untuk periode yang dipilih.")
+                return
+
             col1, col2 = st.columns([2, 1])
             with col1:
                 view_mode = st.radio(
