@@ -1019,39 +1019,42 @@ def page_dashboard():
                         styler = styler.apply(highlight_top)
                         st.dataframe(styler, use_container_width=True, height=600)
 
-            # -------------------------
-            # Compare
-            # -------------------------
             elif period_type == "compare":
                 st.markdown("### Perbandingan Antara Dua Tahun")
 
-                # Gabungkan seluruh data
+               # Gabungkan seluruh data
                 all_data = []
                 for (mon, yr), df in st.session_state.data_storage.items():
                     df2 = df.copy()
                     df2["Bulan_upper"] = df2["Bulan"].astype(str).str.upper().str.strip()
                     df2["Tahun"] = df2["Tahun"].astype(int)
                     all_data.append(df2)
+
                 if not all_data:
-                    st.warning("Belum ada data yang di-upload. Silakan upload data terlebih dahulu.")
+                    st.warning("Belum ada data yang di-upload.")
                     st.stop()
 
                 df_full = pd.concat(all_data, ignore_index=True)
+
+
+                # Tahun yang valid
                 available_years = sorted([y for y in df_full["Tahun"].unique() if 2022 <= y <= 2025])
                 if len(available_years) < 2:
-                    st.warning("Data tahun 2022–2025 tidak cukup untuk perbandingan.")
+                    st.warning("Data tahun tidak cukup.")
                     st.stop()
 
+                # Pilih Tahun A dan B
                 colA, colB = st.columns(2)
                 with colA:
-                    year_a = st.selectbox("Tahun A (Awal)", available_years, index=0)
+                    year_a = st.selectbox("Tahun A (Awal)", available_years, index=0, key="tahunA_compare")
                 with colB:
-                    year_b = st.selectbox("Tahun B (Akhir)", available_years, index=1)
+                    year_b = st.selectbox("Tahun B (Akhir)", available_years, index=1, key="tahunB_compare")
 
                 if year_a == year_b:
                     st.info("Pilih dua tahun yang berbeda.")
                     st.stop()
 
+                # Filter tahun
                 df_a = df_full[df_full["Tahun"] == year_a]
                 df_b = df_full[df_full["Tahun"] == year_b]
 
@@ -1060,16 +1063,14 @@ def page_dashboard():
                         "Tw I": df_[df_["Bulan_upper"] == "MARET"],
                         "Tw II": df_[df_["Bulan_upper"] == "JUNI"],
                         "Tw III": df_[df_["Bulan_upper"] == "SEPTEMBER"],
-                        "Tw IV": df_[df_["Bulan_upper"] == "DESEMBER"]
+                        "Tw IV": df_[df_["Bulan_upper"] == "DESEMBER"],
                     }
 
                 tw_a = extract_tw(df_a)
                 tw_b = extract_tw(df_b)
 
-                # Pilihan satker — dengan opsi "SEMUA SATKER"
+                # Pilihan Satker
                 satker_list = df_full[['Kode Satker', 'Uraian Satker-RINGKAS']].drop_duplicates()
-
-                # Tambahkan pilihan "SEMUA SATKER"
                 satker_options = ["SEMUA SATKER"] + satker_list['Kode Satker'].tolist()
 
                 selected_satkers = st.multiselect(
@@ -1079,20 +1080,16 @@ def page_dashboard():
                         "SEMUA SATKER" if x == "SEMUA SATKER"
                         else satker_list[satker_list['Kode Satker'] == x]['Uraian Satker-RINGKAS'].values[0]
                     ),
-                    default=["SEMUA SATKER"]
+                    default=["SEMUA SATKER"],
+                    key="satker_compare"
                 )
 
-                # Final selected satkers
                 if "SEMUA SATKER" in selected_satkers:
                     selected_satkers_final = satker_list['Kode Satker'].tolist()
                 else:
                     selected_satkers_final = selected_satkers
 
-                if not selected_satkers_final:
-                    st.info("Pilih setidaknya satu satker.")
-                    st.stop()
-
-                # Bangun tabel hasil
+                # Build tabel
                 rows = []
                 for _, m in satker_list.iterrows():
                     kode = m['Kode Satker']
@@ -1107,20 +1104,20 @@ def page_dashboard():
 
                     for tw in ['Tw I', 'Tw II', 'Tw III', 'Tw IV']:
                         # Tahun A
-                        valA_list = tw_a[tw][tw_a[tw]['Kode Satker'] == kode][selected_indicator].values
-                        valA = valA_list[0] if len(valA_list) else None
+                        valA = tw_a[tw][tw_a[tw]['Kode Satker'] == kode][selected_indicator].values
+                        valA = valA[0] if len(valA) else None
                         row[f"{tw} {year_a}"] = valA
                         if valA is not None:
                             latest_a = valA
 
                         # Tahun B
-                        valB_list = tw_b[tw][tw_b[tw]['Kode Satker'] == kode][selected_indicator].values
-                        valB = valB_list[0] if len(valB_list) else None
+                        valB = tw_b[tw][tw_b[tw]['Kode Satker'] == kode][selected_indicator].values
+                        valB = valB[0] if len(valB) else None
                         row[f"{tw} {year_b}"] = valB
                         if valB is not None:
                             latest_b = valB
 
-                    # Selisih satu kolom
+                    # Selisih
                     if latest_a is not None and latest_b is not None:
                         row[f"Δ Total ({year_b}-{year_a})"] = latest_b - latest_a
                     else:
@@ -1129,9 +1126,22 @@ def page_dashboard():
                     rows.append(row)
 
                 df_compare = pd.DataFrame(rows)
-                st.markdown("### Hasil Perbandingan")
-                st.dataframe(df_compare.style.format(precision=2), use_container_width=True, height=600)
 
+                # Styling warna
+                def highlight_years(col_name):
+                    if str(year_a) in col_name:
+                        return 'background-color: #FFF8C6;'  # kuning muda
+                    if str(year_b) in col_name:
+                        return 'background-color: #DCEBFF;'  # biru muda
+                    return ''
+
+                df_style = df_compare.style.apply(
+                    lambda row: [highlight_years(col) for col in df_compare.columns],
+                    axis=1
+                ).format(precision=2)
+
+                st.markdown("### Hasil Perbandingan")
+                st.dataframe(df_style, use_container_width=True, height=600)
 
         # -------------------------
         # DETAIL SATKER (legacy table)
@@ -1679,76 +1689,160 @@ def page_admin():
                     except Exception as e:
                         st.error(f"❌ Gagal menyimpan ke GitHub: {e}")
 
+    # ============================================================
+    # SUBMENU BARU: UPLOAD DATA DIPA
+    # ============================================================
+    st.markdown("---")
+    st.subheader("📤 Upload Data DIPA")
 
-        # Sub Menu Upload Data Referensi
-        st.markdown("---")
-        st.subheader("📚 Upload / Perbarui Data Referensi Satker & K/L")
-        st.info("""
-        - File referensi ini berisi kolom: **Kode BA, K/L, Kode Satker, Uraian Satker-SINGKAT, Uraian Satker-LENGKAP**  
-        - Saat diupload, sistem akan **menggabungkan** dengan data lama:  
-        🔹 Jika `Kode Satker` sudah ada → baris lama akan **diganti**  
-        🔹 Jika `Kode Satker` belum ada → akan **ditambahkan baru**
-        """)
+    upload_year_dipa = st.selectbox(
+        "Pilih Tahun DIPA",
+        list(range(2020, 2031)),
+        index=list(range(2020, 2031)).index(datetime.now().year),
+        key="year_dipa"
+    )
 
-        uploaded_ref = st.file_uploader(
-            "📤 Pilih File Data Referensi Satker & K/L",
-            type=['xlsx', 'xls'],
-            key="ref_upload"
-        )
+    uploaded_dipa_file = st.file_uploader("Pilih file Excel DIPA", type=['xlsx', 'xls'], key="dipa_upload")
 
-        if uploaded_ref is not None:
-            try:
-                new_ref = pd.read_excel(uploaded_ref)
-                new_ref.columns = [c.strip() for c in new_ref.columns]
+    if uploaded_dipa_file is not None:
+        try:
+            df_temp_dipa = pd.read_excel(uploaded_dipa_file, header=None)
+            month_text_dipa = str(df_temp_dipa.iloc[1, 0])
+            month_preview_dipa = month_text_dipa.split(":")[-1].strip() if ":" in month_text_dipa else "UNKNOWN"
 
-                required = ['Kode BA', 'K/L', 'Kode Satker', 'Uraian Satker-SINGKAT', 'Uraian Satker-LENGKAP']
-                if not all(col in new_ref.columns for col in required):
-                    st.error("❌ Kolom wajib tidak lengkap dalam file referensi.")
-                    st.stop()
+            period_key_preview_dipa = (str(month_preview_dipa), str(upload_year_dipa))
+            uploaded_dipa_file.seek(0)
 
-                new_ref['Kode Satker'] = new_ref['Kode Satker'].apply(normalize_kode_satker)
+            # Jika sudah ada data periode ini
+            if period_key_preview_dipa in st.session_state.get("data_dipa", {}):
+                st.warning(f"⚠️ Data DIPA untuk **{month_preview_dipa} {upload_year_dipa}** sudah ada.")
+                confirm_replace_dipa = st.checkbox(
+                    "Ganti data DIPA yang sudah ada?",
+                    key=f"confirm_replace_dipa_{month_preview_dipa}_{upload_year_dipa}"
+                )
+            else:
+                confirm_replace_dipa = True
+                st.info(f"📝 Akan mengunggah data baru DIPA untuk periode: **{month_preview_dipa} {upload_year_dipa}**")
 
-                # Gabungkan atau buat baru
-                if 'reference_df' in st.session_state:
-                    old_ref = st.session_state.reference_df.copy()
+        except Exception as e:
+            st.error(f"❌ Gagal membaca preview file DIPA: {e}")
+            confirm_replace_dipa = False
 
-                    # 🔹 Normalize old reference too (critical!)
-                    if 'Kode Satker' in old_ref.columns:
-                        old_ref['Kode Satker'] = old_ref['Kode Satker'].apply(normalize_kode_satker)
-
-                    # 🔹 Combine and deduplicate
-                    merged = pd.concat([old_ref, new_ref], ignore_index=True)
-                    merged = merged.drop_duplicates(subset=['Kode Satker'], keep='last')
-
-                    # 🔹 Optional: enforce consistent string stripping
-                    merged['Kode Satker'] = merged['Kode Satker'].astype(str).str.strip()
-
-                    st.session_state.reference_df = merged
-                    st.success(f"✅ Data Referensi diperbarui ({len(merged)} total baris).")
-                else:
-                    st.session_state.reference_df = new_ref
-                    st.success(f"✅ Data Referensi baru dimuat ({len(new_ref)} baris).")
-
-                st.dataframe(st.session_state.reference_df.tail(10), use_container_width=True)
-
-                # 🧩 Save merged reference data permanently to GitHub
+        # Tombol proses
+        if st.button("🔄 Proses Data DIPA", type="primary", disabled=not confirm_replace_dipa, key="btn_process_dipa"):
+            with st.spinner("Memproses data DIPA..."):
+                df_dipa_processed = None
                 try:
-                    excel_bytes_ref = io.BytesIO()
-                    with pd.ExcelWriter(excel_bytes_ref, engine='openpyxl') as writer:
-                        st.session_state.reference_df.to_excel(writer, index=False, sheet_name='Data Referensi')
-                    excel_bytes_ref.seek(0)
+                    uploaded_dipa_file.seek(0)
+                    df_dipa_processed = pd.read_excel(uploaded_dipa_file)
 
-                    save_file_to_github(
-                        excel_bytes_ref.getvalue(),
-                        "Template_Data_Referensi.xlsx",
-                        folder="templates"
-                    )
-                    st.success("💾 Data Referensi berhasil disimpan ke GitHub (templates/Template_Data_Referensi.xlsx).")
+                    # Normalisasi kolom kode satker (jika ada)
+                    if 'Kode Satker' in df_dipa_processed.columns:
+                        df_dipa_processed['Kode Satker'] = df_dipa_processed['Kode Satker'].astype(str).str.strip()
+
+                    month_dipa = month_preview_dipa
+                    year_dipa = upload_year_dipa
+                    period_key_dipa = (str(month_dipa), str(year_dipa))
+
+                    # Simpan ke session state
+                    if "data_dipa" not in st.session_state:
+                        st.session_state.data_dipa = {}
+
+                    st.session_state.data_dipa[period_key_dipa] = df_dipa_processed
+
+                    # Simpan ke GitHub
+                    filename_dipa = f"DIPA_{month_dipa}_{year_dipa}.xlsx"
+                    excel_bytes_dipa = io.BytesIO()
+                    with pd.ExcelWriter(excel_bytes_dipa, engine='openpyxl') as writer:
+                        df_dipa_processed.to_excel(writer, index=False, sheet_name='Data DIPA')
+                    excel_bytes_dipa.seek(0)
+
+                    save_file_to_github(excel_bytes_dipa.getvalue(), filename_dipa, folder="data_dipa")
+
+                    st.success(f"✅ Data DIPA {month_dipa} {year_dipa} berhasil disimpan.")
+                    st.snow()
+
+                    # Tambahkan ke log aktivitas
+                    st.session_state.activity_log.append({
+                        "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Aksi": "Upload DIPA",
+                        "Periode": f"{month_dipa} {year_dipa}",
+                        "Status": "Sukses"
+                    })
+
                 except Exception as e:
-                    st.error(f"❌ Gagal menyimpan Data Referensi ke GitHub: {e}")
+                    st.error(f"❌ Gagal memproses atau menyimpan data DIPA: {e}")
 
+
+    # Sub Menu Upload Data Referensi
+    st.markdown("---")
+    st.subheader("📚 Upload / Perbarui Data Referensi Satker & K/L")
+    st.info("""
+    - File referensi ini berisi kolom: **Kode BA, K/L, Kode Satker, Uraian Satker-SINGKAT, Uraian Satker-LENGKAP**  
+    - Saat diupload, sistem akan **menggabungkan** dengan data lama:  
+    🔹 Jika `Kode Satker` sudah ada → baris lama akan **diganti**  
+    🔹 Jika `Kode Satker` belum ada → akan **ditambahkan baru**
+    """)
+
+    uploaded_ref = st.file_uploader(
+        "📤 Pilih File Data Referensi Satker & K/L",
+        type=['xlsx', 'xls'],
+        key="ref_upload"
+    )
+
+    if uploaded_ref is not None:
+        try:
+            new_ref = pd.read_excel(uploaded_ref)
+            new_ref.columns = [c.strip() for c in new_ref.columns]
+
+            required = ['Kode BA', 'K/L', 'Kode Satker', 'Uraian Satker-SINGKAT', 'Uraian Satker-LENGKAP']
+            if not all(col in new_ref.columns for col in required):
+                st.error("❌ Kolom wajib tidak lengkap dalam file referensi.")
+                st.stop()
+
+            new_ref['Kode Satker'] = new_ref['Kode Satker'].apply(normalize_kode_satker)
+
+            # Gabungkan atau buat baru
+            if 'reference_df' in st.session_state:
+                old_ref = st.session_state.reference_df.copy()
+
+                # 🔹 Normalize old reference too (critical!)
+                if 'Kode Satker' in old_ref.columns:
+                    old_ref['Kode Satker'] = old_ref['Kode Satker'].apply(normalize_kode_satker)
+
+                # 🔹 Combine and deduplicate
+                merged = pd.concat([old_ref, new_ref], ignore_index=True)
+                merged = merged.drop_duplicates(subset=['Kode Satker'], keep='last')
+
+                # 🔹 Optional: enforce consistent string stripping
+                merged['Kode Satker'] = merged['Kode Satker'].astype(str).str.strip()
+
+                st.session_state.reference_df = merged
+                st.success(f"✅ Data Referensi diperbarui ({len(merged)} total baris).")
+            else:
+                st.session_state.reference_df = new_ref
+                st.success(f"✅ Data Referensi baru dimuat ({len(new_ref)} baris).")
+
+            st.dataframe(st.session_state.reference_df.tail(10), use_container_width=True)
+
+            # 🧩 Save merged reference data permanently to GitHub
+            try:
+                excel_bytes_ref = io.BytesIO()
+                with pd.ExcelWriter(excel_bytes_ref, engine='openpyxl') as writer:
+                    st.session_state.reference_df.to_excel(writer, index=False, sheet_name='Data Referensi')
+                excel_bytes_ref.seek(0)
+
+                save_file_to_github(
+                    excel_bytes_ref.getvalue(),
+                    "Template_Data_Referensi.xlsx",
+                    folder="templates"
+                )
+                st.success("💾 Data Referensi berhasil disimpan ke GitHub (templates/Template_Data_Referensi.xlsx).")
             except Exception as e:
-                st.error(f"❌ Gagal memproses Data Referensi: {e}")
+                st.error(f"❌ Gagal menyimpan Data Referensi ke GitHub: {e}")
+
+        except Exception as e:
+            st.error(f"❌ Gagal memproses Data Referensi: {e}")
 
 
     # ============================================================
