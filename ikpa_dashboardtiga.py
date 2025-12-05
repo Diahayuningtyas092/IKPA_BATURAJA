@@ -17,10 +17,20 @@ from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 
 # define month order map
 MONTH_ORDER = {
-    "JANUARI": 1, "FEBRUARI": 2, "PEBRUARI": 2, "MARET": 3, "APRIL": 4, "MEI": 5, "JUNI": 6,
-    "JULI": 7, "AGUSTUS": 8, "SEPTEMBER": 9, "OKTOBER": 10, 
-    "NOVEMBER": 11, "NOPEMBER": 11, "DESEMBER": 12
+    'JANUARI': 1,
+    'FEBRUARI': 2, 'PEBRUARI': 2, 'PEBRUARY': 2,
+    'MARET': 3, 'MAR': 3, 'MRT': 3,
+    'APRIL': 4,
+    'MEI': 5,
+    'JUNI': 6,
+    'JULI': 7,
+    'AGUSTUS': 8, 'AGUSTUSS': 8,
+    'SEPTEMBER': 9, 'SEPT': 9, 'SEP': 9,
+    'OKTOBER': 10,
+    'NOVEMBER': 11, 'NOPEMBER': 11,
+    'DESEMBER': 12
 }
+
 # Konfigurasi halaman
 st.set_page_config(
     page_title="Dashboard IKPA KPPN Baturaja",
@@ -1136,148 +1146,181 @@ def page_dashboard():
                 index=indicator_options.index(default_indicator) if default_indicator in indicator_options else 0,
                 key='tab_periodik_indicator_select'
             )
-
+            
             # -------------------------
             # Monthly / Quarterly
             # -------------------------
             if period_type in ['monthly', 'quarterly']:
-                # gabungkan data untuk tahun terpilih
-                dfs = []
+    
+                # Gabungkan data berdasarkan tahun
+                df_list = []
                 for (mon, yr), df_period in st.session_state.data_storage.items():
-                    try:
-                        if int(yr) == int(selected_year):
-                            dfs.append(df_period.copy())
-                    except Exception:
-                        continue
-                if not dfs:
+                    if str(yr).strip() == str(selected_year).strip():
+                        temp = df_period.copy()
+                        temp["Bulan_raw"] = mon.upper()
+                        temp["Bulan_upper"] = mon.upper()
+                        df_list.append(temp)
+
+                if not df_list:
                     st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
+                    st.stop()
+
+                df_year = pd.concat(df_list, ignore_index=True)
+                
+                # NORMALISASI NAMA BULAN
+                MONTH_FIX = {
+                    "JAN": "JANUARI", "JANUARY": "JANUARI",
+                    "FEB": "FEBRUARI",
+                    "MAR": "MARET", "MRT": "MARET",
+                    "APR": "APRIL",
+                    "AGT": "AGUSTUS", "AUG": "AGUSTUS",
+                    "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER",
+                    "OKT": "OKTOBER", "OCT": "OKTOBER",
+                    "DES": "DESEMBER", "DEC": "DESEMBER"
+                }
+
+                import re
+                def normalize_month(b):
+                    b = re.sub(r'[^A-Z]', '', str(b).upper())
+                    return MONTH_FIX.get(b, b)
+
+                df_year["Bulan_upper"] = df_year["Bulan_raw"].apply(normalize_month)
+
+                months_available = sorted(
+                    [m for m in df_year['Bulan_upper'].unique() if m],
+                    key=lambda m: MONTH_ORDER.get(m, 999)
+                )
+
+                # =============================
+                # 🔧 PERBAIKAN UTAMA: Pivot berdasarkan Kode Satker
+                # =============================
+                
+                # 1. Buat kolom periode yang sesuai
+                if period_type == 'monthly':
+                    df_year['Period_Column'] = df_year['Bulan_upper']
+                else:  # quarterly
+                    def map_to_quarter(month):
+                        if month in ['MARET', 'MAR', 'MRT']:
+                            return 'Tw I'
+                        elif month == 'JUNI':
+                            return 'Tw II'
+                        elif month in ['SEPTEMBER', 'SEPT', 'SEP']:
+                            return 'Tw III'
+                        elif month == 'DESEMBER':
+                            return 'Tw IV'
+                        return None
+                    
+                    df_year['Period_Column'] = df_year['Bulan_upper'].apply(map_to_quarter)
+                    df_year = df_year[df_year['Period_Column'].notna()]
+
+                # 2. Ambil kolom yang diperlukan
+                base_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS', 'Period_Column']
+                df_pivot = df_year[base_cols + [selected_indicator]].copy()
+
+                # 3. Groupby untuk menghindari duplikasi (ambil nilai terakhir per satker per periode)
+                df_pivot = df_pivot.sort_values('Period_Column')
+                df_pivot = df_pivot.groupby(
+                    ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS', 'Period_Column'],
+                    as_index=False
+                ).last()
+
+                # 4. Pivot tabel
+                df_wide = df_pivot.pivot_table(
+                    index=['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'],
+                    columns='Period_Column',
+                    values=selected_indicator,
+                    aggfunc='last'  # ambil nilai terakhir jika ada duplikasi
+                ).reset_index()
+
+                # 5. Urutkan kolom periode
+                if period_type == 'monthly':
+                    ordered_periods = [m for m in months_available if m in df_wide.columns]
                 else:
-                    df_year = pd.concat(dfs, ignore_index=True)
-                    df_year['Bulan_raw'] = df_year['Bulan'].astype(str).fillna('').str.strip()
+                    ordered_periods = [tw for tw in ['Tw I', 'Tw II', 'Tw III', 'Tw IV'] if tw in df_wide.columns]
 
-                    month_aliases = {
-                        'PEBRUARI': 'FEBRUARI', 'PEBRUARY': 'FEBRUARI', 'NOPEMBER': 'NOVEMBER',
-                        'NOVEMBER ': 'NOVEMBER', 'SEPT': 'SEPTEMBER', 'SEP': 'SEPTEMBER',
-                        'MAR': 'MARET', 'MRT': 'MARET'
-                    }
-                    canonical_display = {k.upper(): k.capitalize() for k in MONTH_ORDER.keys()}
+                # 6. Susun ulang kolom
+                final_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'] + ordered_periods
+                df_wide = df_wide[final_cols]
 
-                    def normalize_month_text(txt):
-                        t = str(txt).strip().upper()
-                        t = re.sub(r'[^A-Z]', '', t)
-                        if t in month_aliases:
-                            return month_aliases[t]
-                        if t in MONTH_ORDER:
-                            return t
-                        for mm in MONTH_ORDER.keys():
-                            if mm.startswith(t) or mm.startswith(t[:3]):
-                                return mm
-                        return t
-
-                    df_year['Bulan_upper'] = df_year['Bulan_raw'].apply(normalize_month_text)
-                    months_available = sorted(
-                        [m for m in df_year['Bulan_upper'].unique() if m and m in MONTH_ORDER],
-                        key=lambda m: MONTH_ORDER.get(m, 0)
+                # 7. Hitung peringkat berdasarkan periode terakhir
+                if ordered_periods:
+                    last_period = ordered_periods[-1]
+                    df_wide['Latest_Value'] = df_wide[last_period]
+                    df_wide['Peringkat'] = (
+                        df_wide['Latest_Value']
+                        .rank(ascending=False, method='dense')
+                        .astype('Int64')
                     )
+                else:
+                    df_wide['Peringkat'] = None
 
-                    # build records
-                    records = []
-                    for _, row in df_year.iterrows():
-                        rec = {
-                            'Kode BA': row.get('Kode BA', ''),
-                            'Kode Satker': row.get('Kode Satker', ''),
-                            'Uraian Satker-RINGKAS': row.get('Uraian Satker-RINGKAS', row.get('Uraian Satker Final', row.get('Uraian Satker','')))
-                        }
-                        month_up = row.get('Bulan_upper', '')
-                        if period_type == 'monthly':
-                            if month_up in MONTH_ORDER:
-                                rec[month_up] = row.get(selected_indicator, np.nan)
-                        else:  # quarterly
-                            if month_up == 'MARET':
-                                rec['Tw I'] = row.get(selected_indicator, np.nan)
-                            elif month_up == 'JUNI':
-                                rec['Tw II'] = row.get(selected_indicator, np.nan)
-                            elif month_up == 'SEPTEMBER':
-                                rec['Tw III'] = row.get(selected_indicator, np.nan)
-                            elif month_up == 'DESEMBER':
-                                rec['Tw IV'] = row.get(selected_indicator, np.nan)
-                        records.append(rec)
+                # 8. Urutkan berdasarkan peringkat
+                df_wide = df_wide.sort_values('Peringkat', ascending=True)
 
-                    df_rec = pd.DataFrame(records)
-                    if df_rec.empty:
-                        st.info("Tidak ada data detail untuk indikator/periode yang dipilih.")
+                # 9. Susun kolom final untuk display
+                display_cols = ['Peringkat', 'Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'] + ordered_periods
+                df_display = df_wide[display_cols].copy()
+
+                # 10. Rename kolom periode untuk display yang lebih baik
+                if period_type == 'monthly':
+                    rename_dict = {m: m.capitalize() for m in ordered_periods}
+                    df_display = df_display.rename(columns=rename_dict)
+                    display_period_cols = [m.capitalize() for m in ordered_periods]
+                else:
+                    display_period_cols = ordered_periods
+
+                # =============================
+                # SEARCH & STYLING (sama seperti sebelumnya)
+                # =============================
+                search_query = st.text_input(
+                    "🔎 Cari (Periodik) – ketik untuk filter di semua kolom",
+                    value="",
+                    key='tab_periodik_search'
+                )
+
+                if search_query:
+                    q = str(search_query).strip().lower()
+                    mask = df_display.apply(
+                        lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(),
+                        axis=1
+                    )
+                    df_display_filtered = df_display[mask].copy()
+                else:
+                    df_display_filtered = df_display.copy()
+
+                # Trend coloring
+                def color_trend(row):
+                    styles = []
+                    vals = [row[c] for c in display_period_cols if pd.notna(row[c])]
+                    if len(vals) >= 2:
+                        if vals[-1] > vals[-2]:
+                            color = 'background-color: #c6efce'
+                        elif vals[-1] < vals[-2]:
+                            color = 'background-color: #f8d7da'
+                        else:
+                            color = ''
                     else:
-                        # aggregate
-                        agg_dict = {c: (lambda x: float(x.dropna().iloc[-1]) if len(x.dropna()) else np.nan)
-                                    for c in df_rec.columns if c not in ['Kode BA','Kode Satker','Uraian Satker-RINGKAS']}
-                        df_agg = df_rec.groupby(['Kode BA','Kode Satker','Uraian Satker-RINGKAS']).agg(agg_dict).reset_index()
+                        color = ''
 
-                        # rename columns untuk display
-                        display_period_cols = []
-                        if period_type == 'monthly':
-                            raw_cols_upper = {c.upper(): c for c in df_agg.columns}
-                            for m in months_available:
-                                if m in raw_cols_upper:
-                                    raw_col = raw_cols_upper[m]
-                                    display_name = canonical_display.get(m, m.capitalize())
-                                    if raw_col != display_name:
-                                        df_agg.rename(columns={raw_col: display_name}, inplace=True)
-                                    display_period_cols.append(display_name)
-                        else:  # quarterly
-                            for tw in ['Tw I','Tw II','Tw III','Tw IV']:
-                                if tw in df_agg.columns:
-                                    display_period_cols.append(tw)
+                    for c in df_display_filtered.columns:
+                        styles.append(color if (display_period_cols and c == display_period_cols[-1]) else '')
+                    return styles
 
-                        # drop all-NaN period columns
-                        display_period_cols = [c for c in display_period_cols if not df_agg[c].isna().all()]
-                        if display_period_cols:
-                            last_col = display_period_cols[-1]
-                            df_agg['Latest_Value'] = df_agg[last_col]
-                        else:
-                            df_agg['Latest_Value'] = np.nan
+                def highlight_top(s):
+                    if s.name == 'Peringkat':
+                        return [
+                            'background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else ''
+                            for v in s
+                        ]
+                    return ['' for _ in s]
 
-                        df_agg['Peringkat'] = df_agg['Latest_Value'].rank(ascending=False, method='dense').astype('Int64')
-                        df_agg_sorted = df_agg.sort_values(by=['Peringkat'], ascending=False)
+                styler = df_display_filtered.style.format(precision=2, na_rep='–')
+                if display_period_cols:
+                    styler = styler.apply(color_trend, axis=1)
+                styler = styler.apply(highlight_top)
 
-                        final_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + display_period_cols
-                        df_display = df_agg_sorted[final_cols].copy()
+                st.dataframe(styler, use_container_width=True, height=600)
 
-                        # search
-                        search_query = st.text_input("🔎 Cari (Periodik) – ketik untuk filter di semua kolom", value="", key='tab_periodik_search')
-                        if search_query:
-                            q = str(search_query).strip().lower()
-                            mask = df_display.apply(lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(), axis=1)
-                            df_display_filtered = df_display[mask].copy()
-                        else:
-                            df_display_filtered = df_display.copy()
-
-                        # trend coloring
-                        def color_trend(row):
-                            styles = []
-                            vals = [row[c] for c in display_period_cols if pd.notna(row[c])]
-                            if len(vals) >= 2:
-                                if vals[-1] > vals[-2]:
-                                    color = 'background-color: #c6efce'
-                                elif vals[-1] < vals[-2]:
-                                    color = 'background-color: #f8d7da'
-                                else:
-                                    color = ''
-                            else:
-                                color = ''
-                            for c in df_display_filtered.columns:
-                                styles.append(color if c == display_period_cols[-1] else '')
-                            return styles
-
-                        def highlight_top(s):
-                            if s.name == 'Peringkat':
-                                return ['background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else '' for v in s]
-                            return ['' for _ in s]
-
-                        styler = df_display_filtered.style.format(precision=2)
-                        if display_period_cols:
-                            styler = styler.apply(color_trend, axis=1)
-                        styler = styler.apply(highlight_top)
-                        st.dataframe(styler, use_container_width=True, height=600)
 
             elif period_type == "compare":
                 st.markdown("### Perbandingan Antara Dua Tahun")
@@ -1911,66 +1954,102 @@ def page_admin():
 
             if st.button("🔄 Proses Data IKPA", type="primary", disabled=not confirm_replace):
                 with st.spinner("Memproses data..."):
-                    df_processed, month, year = process_excel_file(uploaded_file, upload_year)
-                    if df_processed is None:
-                        st.error("❌ Gagal memproses file.")
-                        st.stop()
-
-                    # 🧩 Normalize Kode Satker before saving or matching
-                    if 'Kode Satker' in df_processed.columns:
-                        df_processed['Kode Satker'] = df_processed['Kode Satker'].apply(normalize_kode_satker)
-                    else:
-                        df_processed['Kode Satker'] = ''
-
-                    period_key = (str(month), str(year))
-                    filename = f"IKPA_{month}_{year}.xlsx"
 
                     try:
-                        df_processed['Kode Satker'] = df_processed['Kode Satker'].astype(str)
-                        st.session_state.data_storage[period_key] = df_processed
+                        # ==========================================================
+                        # 1) PROSES DATA EXCEL
+                        # ==========================================================
+                        df_processed, _, _ = process_excel_file(uploaded_file, upload_year)
+                        if df_processed is None:
+                            st.error("❌ Gagal memproses file.")
+                            st.stop()
 
+                        # ==========================================================
+                        # 2) AMBIL BULAN & TAHUN DARI NAMA FILE
+                        # ==========================================================
+                        filename_raw = uploaded_file.name.upper().replace(".XLSX", "").replace(".XLS", "")
+                        parts = filename_raw.split("_")
+
+                        if len(parts) < 3:
+                            st.error("❌ Nama file harus format: IKPA_[BULAN]_[TAHUN].xlsx")
+                            st.stop()
+
+                        month_raw = parts[-2]
+                        year_raw = parts[-1]
+
+                        MONTH_FIX = {
+                            "JAN": "JANUARI", "JANUARY": "JANUARI",
+                            "FEB": "FEBRUARI",
+                            "MAR": "MARET", "MRT": "MARET",
+                            "APR": "APRIL",
+                            "AGT": "AGUSTUS", "AUG": "AGUSTUS",
+                            "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER",
+                            "OKT": "OKTOBER", "OCT": "OKTOBER",
+                            "DES": "DESEMBER", "DEC": "DESEMBER"
+                        }
+
+                        import re
+                        clean_month = re.sub(r'[^A-Z]', '', month_raw)
+                        month = MONTH_FIX.get(clean_month, clean_month)
+                        year = year_raw
+
+                        # ==========================================================
+                        # 3) NORMALISASI KODE SATKER
+                        # ==========================================================
+                        if "Kode Satker" in df_processed.columns:
+                            df_processed["Kode Satker"] = df_processed["Kode Satker"].apply(normalize_kode_satker)
+                        else:
+                            df_processed["Kode Satker"] = ""
+
+                        # ==========================================================
+                        # 4) SIMPAN DATA KE STORAGE
+                        # ==========================================================
+                        period_key = (month, str(year))
+                        st.session_state.data_storage[period_key] = df_processed.copy()
+
+                        # ==========================================================
+                        # 5) SIMPAN EXCEL KE GITHUB
+                        # ==========================================================
                         excel_bytes = io.BytesIO()
-                        with pd.ExcelWriter(excel_bytes, engine='openpyxl') as writer:
-                            df_excel = df_processed.drop(['Bobot', 'Nilai Terbobot'], axis=1, errors='ignore')
-                            # ✅ PERBAIKAN: Mulai dari A1
-                            df_excel.to_excel(writer, index=False, sheet_name='Data IKPA', startrow=0, startcol=0)
-                            
-                            # ✅ Format header (opsional tapi bagus)
+                        with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                            df_excel = df_processed.drop(["Bobot", "Nilai Terbobot"], axis=1, errors="ignore")
+                            df_excel.to_excel(writer, index=False, sheet_name="Data IKPA", startrow=0, startcol=0)
+
                             workbook = writer.book
-                            worksheet = writer.sheets['Data IKPA']
-                            
-                            # Bold dan warna header
+                            worksheet = writer.sheets["Data IKPA"]
+
                             for cell in worksheet[1]:
                                 cell.font = Font(bold=True, color="FFFFFF")
                                 cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
                                 cell.alignment = Alignment(horizontal="center", vertical="center")
-                            
-                            # Auto-adjust column width
+
                             for column in worksheet.columns:
                                 max_length = 0
                                 column_letter = column[0].column_letter
                                 for cell in column:
                                     try:
-                                        if len(str(cell.value)) > max_length:
-                                            max_length = len(str(cell.value))
+                                        max_length = max(max_length, len(str(cell.value)))
                                     except:
                                         pass
-                                adjusted_width = min(max_length + 2, 50)
-                                worksheet.column_dimensions[column_letter].width = adjusted_width
-                        
+                                worksheet.column_dimensions[column_letter].width = min(max_length + 2, 50)
+
                         excel_bytes.seek(0)
+                        save_file_to_github(excel_bytes.getvalue(), f"IKPA_{month}_{year}.xlsx", folder="data")
 
-                        save_file_to_github(excel_bytes.getvalue(), filename, folder="data")
-
+                        # ==========================================================
+                        # SUCCESS
+                        # ==========================================================
                         st.success(f"✅ Data {month} {year} berhasil disimpan.")
                         st.snow()
 
+                        # LOG
                         st.session_state.activity_log.append({
                             "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "Aksi": "Upload",
                             "Periode": f"{month} {year}",
                             "Status": "✅ Sukses"
                         })
+
                     except Exception as e:
                         st.error(f"❌ Gagal menyimpan ke GitHub: {e}")
 
