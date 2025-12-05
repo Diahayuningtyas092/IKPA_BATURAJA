@@ -1935,7 +1935,32 @@ def page_admin():
                         excel_bytes = io.BytesIO()
                         with pd.ExcelWriter(excel_bytes, engine='openpyxl') as writer:
                             df_excel = df_processed.drop(['Bobot', 'Nilai Terbobot'], axis=1, errors='ignore')
-                            df_excel.to_excel(writer, index=False, sheet_name='Data IKPA')
+                            # ✅ PERBAIKAN: Mulai dari A1
+                            df_excel.to_excel(writer, index=False, sheet_name='Data IKPA', startrow=0, startcol=0)
+                            
+                            # ✅ Format header (opsional tapi bagus)
+                            workbook = writer.book
+                            worksheet = writer.sheets['Data IKPA']
+                            
+                            # Bold dan warna header
+                            for cell in worksheet[1]:
+                                cell.font = Font(bold=True, color="FFFFFF")
+                                cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                                cell.alignment = Alignment(horizontal="center", vertical="center")
+                            
+                            # Auto-adjust column width
+                            for column in worksheet.columns:
+                                max_length = 0
+                                column_letter = column[0].column_letter
+                                for cell in column:
+                                    try:
+                                        if len(str(cell.value)) > max_length:
+                                            max_length = len(str(cell.value))
+                                    except:
+                                        pass
+                                adjusted_width = min(max_length + 2, 50)
+                                worksheet.column_dimensions[column_letter].width = adjusted_width
+                        
                         excel_bytes.seek(0)
 
                         save_file_to_github(excel_bytes.getvalue(), filename, folder="data")
@@ -2051,13 +2076,24 @@ def page_admin():
                             else:
                                 st.session_state.data_dipa_by_year[int(yr)] = df_year
 
-                            # Save to GitHub
+                            # ✅ Save to GitHub dengan format yang benar
                             filename_dipa = f"DIPA_{yr}.xlsx"
                             excel_bytes_dipa = io.BytesIO()
                             with pd.ExcelWriter(excel_bytes_dipa, engine='openpyxl') as writer:
                                 st.session_state.data_dipa_by_year[int(yr)].to_excel(
-                                    writer, index=False, sheet_name=f'DIPA_{yr}'
+                                    writer, index=False, sheet_name=f'DIPA_{yr}', 
+                                    startrow=0, startcol=0  # ✅ PERBAIKAN
                                 )
+                                
+                                # Format header
+                                workbook = writer.book
+                                worksheet = writer.sheets[f'DIPA_{yr}']
+                                
+                                for cell in worksheet[1]:
+                                    cell.font = Font(bold=True, color="FFFFFF")
+                                    cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                            
                             excel_bytes_dipa.seek(0)
 
                             save_file_to_github(excel_bytes_dipa.getvalue(), filename_dipa, folder="data_dipa")
@@ -2128,11 +2164,24 @@ def page_admin():
 
                 st.dataframe(st.session_state.reference_df.tail(10), use_container_width=True)
 
-                # 🧩 Save merged reference data permanently to GitHub
+                # ✅ Save merged reference data permanently to GitHub
                 try:
                     excel_bytes_ref = io.BytesIO()
                     with pd.ExcelWriter(excel_bytes_ref, engine='openpyxl') as writer:
-                        st.session_state.reference_df.to_excel(writer, index=False, sheet_name='Data Referensi')
+                        st.session_state.reference_df.to_excel(
+                            writer, index=False, sheet_name='Data Referensi',
+                            startrow=0, startcol=0  # ✅ PERBAIKAN
+                        )
+                        
+                        # Format header
+                        workbook = writer.book
+                        worksheet = writer.sheets['Data Referensi']
+                        
+                        for cell in worksheet[1]:
+                            cell.font = Font(bold=True, color="FFFFFF")
+                            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                            cell.alignment = Alignment(horizontal="center", vertical="center")
+                    
                     excel_bytes_ref.seek(0)
 
                     save_file_to_github(
@@ -2249,7 +2298,18 @@ def page_admin():
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df_excel = df_download.drop(['Bobot', 'Nilai Terbobot'], axis=1, errors='ignore')
-                df_excel.to_excel(writer, index=False, sheet_name='Data IKPA')
+                # ✅ PERBAIKAN: Mulai dari A1
+                df_excel.to_excel(writer, index=False, sheet_name='Data IKPA', startrow=0, startcol=0)
+                
+                # Format header
+                workbook = writer.book
+                worksheet = writer.sheets['Data IKPA']
+                
+                for cell in worksheet[1]:
+                    cell.font = Font(bold=True, color="FFFFFF")
+                    cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+            
             output.seek(0)
             st.download_button(
                 label="📥 Download Excel IKPA",
@@ -2274,7 +2334,19 @@ def page_admin():
             df_download_dipa = st.session_state.data_dipa_by_year[year_to_download]
             output_dipa = io.BytesIO()
             with pd.ExcelWriter(output_dipa, engine='openpyxl') as writer:
-                df_download_dipa.to_excel(writer, index=False, sheet_name=f'DIPA_{year_to_download}')
+                # ✅ PERBAIKAN: Mulai dari A1
+                df_download_dipa.to_excel(writer, index=False, sheet_name=f'DIPA_{year_to_download}',
+                                          startrow=0, startcol=0)
+                
+                # Format header
+                workbook = writer.book
+                worksheet = writer.sheets[f'DIPA_{year_to_download}']
+                
+                for cell in worksheet[1]:
+                    cell.font = Font(bold=True, color="FFFFFF")
+                    cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                    cell.alignment = Alignment(horizontal="center", vertical="center")
+            
             output_dipa.seek(0)
             st.download_button(
                 label="📥 Download Excel DIPA",
@@ -2284,13 +2356,12 @@ def page_admin():
                 key="btn_download_dipa"
             )
 
-        # Download Data Satker Tidak Terdaftar (disederhanakan dari kode asli Anda)
+        # Download Data Satker Tidak Terdaftar
         st.markdown("---")
         st.subheader("📥 Download Data Satker yang Belum Terdaftar di Tabel Referensi")
         
         if st.button("📥 Generate & Download Laporan"):
             st.info("ℹ️ Fitur ini menggunakan data dari session state untuk performa optimal.")
-            # Implementasi lengkap ada di kode asli Anda di document index 2
 
     # ============================================================
     # TAB 4: DOWNLOAD TEMPLATE
@@ -2344,7 +2415,19 @@ def page_admin():
 
         output_ref = io.BytesIO()
         with pd.ExcelWriter(output_ref, engine='openpyxl') as writer:
-            template_ref.to_excel(writer, index=False, sheet_name='Data Referensi')
+            # ✅ PERBAIKAN: Mulai dari A1
+            template_ref.to_excel(writer, index=False, sheet_name='Data Referensi',
+                                  startrow=0, startcol=0)
+            
+            # Format header
+            workbook = writer.book
+            worksheet = writer.sheets['Data Referensi']
+            
+            for cell in worksheet[1]:
+                cell.font = Font(bold=True, color="FFFFFF")
+                cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                cell.alignment = Alignment(horizontal="center", vertical="center")
+        
         output_ref.seek(0)
 
         st.download_button(
@@ -2353,7 +2436,7 @@ def page_admin():
             file_name="Template_Data_Referensi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
+    
     # ============================================================
     # TAB 5: LOG AKTIVITAS
     # ============================================================
@@ -2367,7 +2450,6 @@ def page_admin():
             if st.button("🧹 Bersihkan Log"):
                 st.session_state.activity_log = []
                 st.success("🧹 Log dibersihkan.")
-
 
 # ===============================
 # 🔹 MAIN APP
