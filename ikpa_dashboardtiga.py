@@ -84,61 +84,64 @@ def process_dipa_dataframe(df, source_name=None, date_col_candidates=None):
     Proses dataframe DIPA mentah -> normalisasi Kode Satker, parse tanggal revisi,
     ekstrak Year dari tanggal revisi (atau fallback ke kolom Tahun jika tersedia),
     lalu pilih revisi terbaru per Kode Satker per Year.
-    Mengembalikan dataframe bersih dengan kolom minimal:
-      ['Kode Satker','Tahun','Tanggal Posting Revisi', ... kolom asli lainnya ...]
     """
     if df is None or not isinstance(df, pd.DataFrame):
         return None
 
-    # ✅ PERBAIKAN 1: Bersihkan kolom "Unnamed" di awal
+    # ✅ PERBAIKAN: Bersihkan kolom "Unnamed" di awal
     df = df.loc[:, ~df.columns.str.contains('^Unnamed', case=False, na=False)]
     
-    # ✅ PERBAIKAN 2: Buang baris kosong
+    # ✅ PERBAIKAN: Buang baris kosong
     df = df.dropna(how='all').reset_index(drop=True)
 
-    # normalize headers whitespace
+    # Normalize headers whitespace
     df = df.rename(columns={c: c.strip() for c in df.columns})
 
-    # 1) Temukan kolom tanggal revisi (gunakan header yang diberikan: 'Tanggal Posting Revisi')
+    # ✅ JIKA DATAFRAME KOSONG SETELAH CLEANUP, RETURN NONE
+    if df.empty:
+        return None
+
+    # 1) Temukan kolom tanggal revisi
     date_col = None
     if date_col_candidates is None:
-        date_col_candidates = ['Tanggal Posting Revisi','Tanggal Revisi','Tgl Revisi','Tanggal','TGL REVISI']
-    # check exact presence first
+        date_col_candidates = ['Tanggal Posting Revisi', 'Tanggal Revisi', 'Tgl Revisi', 
+                                'Tanggal', 'TGL REVISI', 'Tanggal Posting']
+    
     for name in date_col_candidates:
         if name in df.columns:
             date_col = name
             break
-    # fallback: coba cari kolom yang mengandung kata 'revisi' atau 'tanggal'
+    
     if date_col is None:
         for c in df.columns:
             if 'revisi' in c.lower() or 'tanggal' in c.lower() or 'tgl' in c.lower():
                 date_col = c
                 break
 
-    # 2) Temukan kolom kode/kolom satker: prioritas 'Satker', 'Kode Satker', 'Nama Satker'
+    # 2) Temukan kolom Kode Satker
     kode_col = None
     if 'Kode Satker' in df.columns:
         kode_col = 'Kode Satker'
     else:
-        for c in ['Satker','Nama Satker','Nama','Satker Nama','No']:
+        for c in ['Satker', 'Nama Satker', 'Nama', 'Satker Nama', 'Kode']:
             if c in df.columns:
                 kode_col = c
                 break
-        # fallback: cari kolom yang mengandung 'satker' di nama
         if kode_col is None:
             for c in df.columns:
-                if 'satker' in c.lower():
+                if 'satker' in c.lower() or 'kode' in c.lower():
                     kode_col = c
                     break
 
-    # 3) Pastikan kolom kode sebagai string, dan buat kolom 'Kode Satker' standar
     df_work = df.copy()
 
+    # 3) Buat kolom 'Kode Satker' standar
     if kode_col is not None:
-        # Some satker columns may contain "001234 - NAMA" -> use extraction
-        df_work['Kode Satker'] = df_work[kode_col].astype(str).fillna('').apply(lambda s: extract_kode_from_satker_field(s))
+        df_work['Kode Satker'] = df_work[kode_col].astype(str).fillna('').apply(
+            lambda s: extract_kode_from_satker_field(s)
+        )
     else:
-        # if no satker-like column, try to find any column with many digits
+        # Cari kolom yang isinya angka
         found = None
         for c in df_work.columns:
             sample = df_work[c].dropna().astype(str).head(10).tolist()
@@ -146,84 +149,98 @@ def process_dipa_dataframe(df, source_name=None, date_col_candidates=None):
                 found = c
                 break
         if found:
-            df_work['Kode Satker'] = df_work[found].astype(str).fillna('').apply(lambda s: extract_kode_from_satker_field(s))
+            df_work['Kode Satker'] = df_work[found].astype(str).fillna('').apply(
+                lambda s: extract_kode_from_satker_field(s)
+            )
         else:
             df_work['Kode Satker'] = ''
 
-    # 4) Parse tanggal revisi column (if exists) -> create 'Tanggal Posting Revisi' normalized
+    # 4) Parse tanggal revisi
     if date_col is not None and date_col in df_work.columns:
-        # try robust parsing
         def parse_date_safe(x):
             if pd.isna(x) or str(x).strip() == '':
                 return pd.NaT
-            # if already Timestamp
             if isinstance(x, (pd.Timestamp, datetime)):
                 return pd.to_datetime(x)
             s = str(x).strip()
-            # try common formats
-            for fmt in ("%Y-%m-%d","%d-%m-%Y","%d/%m/%Y","%Y/%m/%d","%d %b %Y","%d %B %Y"):
+            for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%Y/%m/%d", 
+                        "%d %b %Y", "%d %B %Y", "%d-%b-%Y", "%d-%B-%Y"):
                 try:
                     return pd.to_datetime(s, format=fmt)
-                except Exception:
+                except:
                     pass
-            # fallback to pandas parser
             try:
                 return pd.to_datetime(s, dayfirst=True, errors='coerce')
-            except Exception:
+            except:
                 return pd.NaT
+        
         df_work['Tanggal Posting Revisi'] = df_work[date_col].apply(parse_date_safe)
     else:
-        # no date column found -> create NaT
         df_work['Tanggal Posting Revisi'] = pd.NaT
 
-    # 5) Determine Year: prefer explicit 'Tahun' column if present, else take from Tanggal Posting Revisi
+    # 5) Tentukan Tahun
     if 'Tahun' in df_work.columns:
-        # coerce to int where possible, else infer from date
-        def year_from_cell(x, fallback_dt):
+        def year_from_cell(row):
+            # Coba dari kolom Tahun dulu
             try:
-                y = int(str(x).strip())
+                y = int(str(row['Tahun']).strip())
                 if 1900 < y < 3000:
                     return int(y)
-            except Exception:
+            except:
                 pass
-            if not pd.isna(fallback_dt):
-                return int(fallback_dt.year)
+            # Fallback ke tanggal
+            if not pd.isna(row.get('Tanggal Posting Revisi')):
+                return int(row['Tanggal Posting Revisi'].year)
             return None
-        df_work['Tahun'] = df_work.apply(lambda r: year_from_cell(r.get('Tahun', ''), r['Tanggal Posting Revisi']), axis=1)
+        
+        df_work['Tahun'] = df_work.apply(year_from_cell, axis=1)
     else:
-        df_work['Tahun'] = df_work['Tanggal Posting Revisi'].apply(lambda d: int(d.year) if not pd.isna(d) else None)
+        df_work['Tahun'] = df_work['Tanggal Posting Revisi'].apply(
+            lambda d: int(d.year) if not pd.isna(d) else None
+        )
 
-    # 6) Normalize Kode Satker padding
+    # ✅ PERBAIKAN KRITIS: Jika kolom Tahun masih kosong semua, coba extract dari filename
+    if df_work['Tahun'].isna().all() and source_name:
+        year_match = re.search(r'(\d{4})', source_name)
+        if year_match:
+            default_year = int(year_match.group(1))
+            df_work['Tahun'] = default_year
+            st.info(f"ℹ️ Tahun tidak ditemukan di data, menggunakan tahun dari nama file: {default_year}")
+
+    # 6) Normalize Kode Satker
     df_work['Kode Satker'] = df_work['Kode Satker'].apply(lambda x: normalize_kode_satker(x))
 
-    # 7) For safety, keep original columns (but ensure date col parsed)
-    # 8) Select latest revision per Kode Satker per Tahun (groupby)
-    # Only keep rows where Tahun not None
+    # 7) Filter data yang valid
     df_valid = df_work[df_work['Tahun'].notna()].copy()
+    
+    # ✅ PERBAIKAN: Jika setelah filter kosong, return dataframe asli
     if df_valid.empty:
-        # fallback: return empty df with standardized cols
+        st.warning("⚠️ Tidak ada data dengan Tahun yang valid. Mengembalikan data tanpa grouping.")
+        # Tambahkan kolom core yang hilang
+        if 'Tanggal Posting Revisi' not in df_work.columns:
+            df_work['Tanggal Posting Revisi'] = pd.NaT
+        if '_source_file' not in df_work.columns and source_name:
+            df_work['_source_file'] = source_name
         return df_work
 
-    # If Tanggal Posting Revisi is all NaT, try to group by Kode Satker and take last occurrence
+    # 8) Pilih revisi terbaru per Kode Satker per Tahun
     if df_valid['Tanggal Posting Revisi'].isna().all():
-        # take last occurrence per (Kode Satker, Tahun) keeping last by index
         df_valid = df_valid.sort_index()
-        df_latest = df_valid.groupby(['Kode Satker','Tahun'], as_index=False).last()
+        df_latest = df_valid.groupby(['Kode Satker', 'Tahun'], as_index=False).last()
     else:
         df_valid = df_valid.sort_values(by=['Tanggal Posting Revisi'])
-        df_latest = df_valid.groupby(['Kode Satker','Tahun'], as_index=False).last()
+        df_latest = df_valid.groupby(['Kode Satker', 'Tahun'], as_index=False).last()
 
-    # Ensure result columns include core fields
-    core_cols = ['Kode Satker','Tahun','Tanggal Posting Revisi']
-    # bring core cols first then others
+    # 9) Susun ulang kolom
+    core_cols = ['Kode Satker', 'Tahun', 'Tanggal Posting Revisi']
     other_cols = [c for c in df_latest.columns if c not in core_cols]
     df_latest = df_latest[core_cols + other_cols]
 
-    # add source info
+    # 10) Tambahkan source info
     if source_name:
         df_latest['_source_file'] = source_name
 
-    # ✅ PERBAIKAN 3: Bersihkan lagi kolom "Unnamed" sebelum return (final cleanup)
+    # 11) Final cleanup
     df_latest = df_latest.loc[:, ~df_latest.columns.str.contains('^Unnamed', case=False, na=False)]
 
     return df_latest
@@ -2075,6 +2092,17 @@ def page_admin():
                         if dfp is None or dfp.empty:
                             st.error("❌ Gagal memproses file DIPA.")
                             st.stop()
+
+                        # ✅ TAMBAHKAN: Validasi jumlah baris
+                        if len(dfp) == 0:
+                            st.error("❌ File DIPA tidak mengandung data yang valid.")
+                            st.info("💡 Pastikan file Excel memiliki kolom: Kode Satker, Tahun (atau Tanggal Posting Revisi)")
+                            st.stop()
+
+                        # ✅ TAMBAHKAN: Tampilkan preview data
+                        st.success(f"✅ Berhasil memproses {len(dfp)} baris data")
+                        with st.expander("👁️ Preview Data (5 baris pertama)"):
+                            st.dataframe(dfp.head())
 
                         # Normalize Kode Satker
                         if 'Kode Satker' in dfp.columns:
