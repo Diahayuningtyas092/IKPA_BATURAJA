@@ -15,29 +15,6 @@ from github import Github
 from github import Auth
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 
-def clean_dipa(df):
-    # Hapus kolom kosong atau kolom Unnamed
-    df = df.loc[:, ~df.columns.str.contains("Unnamed")]
-
-    # Jika baris pertama bukan kolom yang benar → jadikan header
-    if df.iloc[0].str.contains("No", case=False, na=False).any():
-        df.columns = df.iloc[0]
-        df = df[1:]
-
-    # Hapus baris yang seluruhnya kosong
-    df = df.dropna(how="all")
-
-    # Reset index
-    df = df.reset_index(drop=True)
-
-    # Normalisasi kolom angka
-    for col in df.columns:
-        # Hanya konversi kolom angka
-        if df[col].astype(str).str.replace('.', '', 1).str.isnumeric().any():
-            df[col] = pd.to_numeric(df[col], errors="ignore")
-
-    return df
-
 # define month order map
 MONTH_ORDER = {
     "JANUARI": 1, "FEBRUARI": 2, "PEBRUARI": 2, "MARET": 3, "APRIL": 4, "MEI": 5, "JUNI": 6,
@@ -2011,6 +1988,33 @@ def page_admin():
         )
 
         uploaded_dipa_file = st.file_uploader("Pilih file Excel DIPA", type=['xlsx', 'xls', 'csv'], key="dipa_upload")
+        
+        # ============================
+        # Fungsi untuk membersihkan file DIPA
+        # ============================
+        def clean_dipa(df):
+            # 1. Buang seluruh kolom Unnamed atau kolom yang kosong
+            df = df.loc[:, ~df.columns.str.contains("Unnamed")]
+
+            # 2. Cari baris header sebenarnya (baris yang dimulai dengan "No")
+            header_row = None
+            for i in range(5):
+                if df.iloc[i].astype(str).str.contains("No", case=False, na=False).any():
+                    header_row = i
+                    break
+
+            # Jika ditemukan, jadikan sebagai header
+            if header_row is not None:
+                df.columns = df.iloc[header_row]
+                df = df[(header_row + 1):]
+
+            # 3. Hapus baris kosong
+            df = df.dropna(how="all")
+
+            # 4. Reset index
+            df = df.reset_index(drop=True)
+
+            return df
 
         if uploaded_dipa_file is not None:
             try:
@@ -2020,7 +2024,8 @@ def page_admin():
                 else:
                     uploaded_dipa_file.seek(0)
                     df_temp_dipa = pd.read_excel(uploaded_dipa_file, dtype=str)
-                    
+
+                # 🔥 PENTING: Bersihkan tabel DIPA
                 df_temp_dipa = clean_dipa(df_temp_dipa)
 
                 # Preview tahun yang terdeteksi dari data
@@ -2035,6 +2040,7 @@ def page_admin():
 
                 period_key_preview = str(year_preview)
                 uploaded_dipa_file.seek(0)
+
 
                 # Cek apakah data tahun ini sudah ada
                 if "data_dipa_by_year" not in st.session_state:
