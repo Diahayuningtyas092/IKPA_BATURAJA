@@ -240,9 +240,6 @@ def load_data_dipa_from_github():
 
         # FIX UTAMA: membaca root repo harus string kosong ""
         root_items = repo.get_contents("")
-        st.write("DEBUG: Folder di root GitHub:")
-        for item in root_items:
-            st.write("-", item.name, "(dir)" if item.type == "dir" else "(file)")
 
 
         # Cari folder yang mengandung kata 'dipa'
