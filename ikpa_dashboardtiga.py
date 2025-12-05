@@ -90,6 +90,12 @@ def process_dipa_dataframe(df, source_name=None, date_col_candidates=None):
     if df is None or not isinstance(df, pd.DataFrame):
         return None
 
+    # ✅ PERBAIKAN 1: Bersihkan kolom "Unnamed" di awal
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed', case=False, na=False)]
+    
+    # ✅ PERBAIKAN 2: Buang baris kosong
+    df = df.dropna(how='all').reset_index(drop=True)
+
     # normalize headers whitespace
     df = df.rename(columns={c: c.strip() for c in df.columns})
 
@@ -217,7 +223,11 @@ def process_dipa_dataframe(df, source_name=None, date_col_candidates=None):
     if source_name:
         df_latest['_source_file'] = source_name
 
+    # ✅ PERBAIKAN 3: Bersihkan lagi kolom "Unnamed" sebelum return (final cleanup)
+    df_latest = df_latest.loc[:, ~df_latest.columns.str.contains('^Unnamed', case=False, na=False)]
+
     return df_latest
+
 
 # ============================================================
 # 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub
@@ -240,7 +250,6 @@ def load_data_dipa_from_github():
 
         # FIX UTAMA: membaca root repo harus string kosong ""
         root_items = repo.get_contents("")
-
 
         # Cari folder yang mengandung kata 'dipa'
         dipa_folder = None
@@ -280,8 +289,14 @@ def load_data_dipa_from_github():
                 file_content = repo.get_contents(content_file.path)
                 file_data = base64.b64decode(file_content.content)
 
-                # Baca Excel
-                df = pd.read_excel(io.BytesIO(file_data), dtype=str)
+                # ✅ PERBAIKAN 1: Baca Excel dengan header=0
+                df = pd.read_excel(io.BytesIO(file_data), dtype=str, header=0)
+                
+                # ✅ PERBAIKAN 2: Bersihkan kolom "Unnamed"
+                df = df.loc[:, ~df.columns.str.contains('^Unnamed', case=False, na=False)]
+                
+                # ✅ PERBAIKAN 3: Buang baris kosong
+                df = df.dropna(how='all').reset_index(drop=True)
 
                 # Normalisasi kode satker
                 if "Kode Satker" in df.columns:
@@ -1999,7 +2014,10 @@ def page_admin():
                     df_temp_dipa = pd.read_csv(uploaded_dipa_file, dtype=str, encoding='utf-8', engine='python')
                 else:
                     uploaded_dipa_file.seek(0)
-                    df_temp_dipa = pd.read_excel(uploaded_dipa_file, dtype=str)
+                    # ✅ PERBAIKAN: Tambahkan header=0 untuk membaca dari baris pertama
+                    df_temp_dipa = pd.read_excel(uploaded_dipa_file, dtype=str, header=0)
+                    # ✅ PERBAIKAN: Bersihkan kolom "Unnamed"
+                    df_temp_dipa = df_temp_dipa.loc[:, ~df_temp_dipa.columns.str.contains('^Unnamed', case=False, na=False)]
 
                 # Preview tahun yang terdeteksi dari data
                 if 'Tanggal Posting Revisi' in df_temp_dipa.columns:
@@ -2042,7 +2060,14 @@ def page_admin():
                         if filename_preview.lower().endswith('.csv'):
                             df_read = pd.read_csv(uploaded_dipa_file, dtype=str, encoding='utf-8', engine='python')
                         else:
-                            df_read = pd.read_excel(uploaded_dipa_file, dtype=str)
+                            # ✅ PERBAIKAN: Tambahkan header=0
+                            df_read = pd.read_excel(uploaded_dipa_file, dtype=str, header=0)
+                        
+                        # ✅ PERBAIKAN: Bersihkan kolom "Unnamed" SEBELUM processing
+                        df_read = df_read.loc[:, ~df_read.columns.str.contains('^Unnamed', case=False, na=False)]
+                        
+                        # ✅ PERBAIKAN: Buang baris yang semuanya kosong
+                        df_read = df_read.dropna(how='all').reset_index(drop=True)
 
                         # Process DIPA
                         dfp = process_dipa_dataframe(df_read, source_name=filename_preview)
@@ -2056,6 +2081,9 @@ def page_admin():
                             dfp['Kode Satker'] = dfp['Kode Satker'].apply(normalize_kode_satker)
                         else:
                             dfp['Kode Satker'] = ''
+                        
+                        # ✅ PERBAIKAN: Bersihkan lagi kolom "Unnamed" setelah processing (just in case)
+                        dfp = dfp.loc[:, ~dfp.columns.str.contains('^Unnamed', case=False, na=False)]
 
                         # Group by year and save
                         years = sorted(dfp['Tahun'].dropna().unique().astype(int).tolist())
@@ -2082,17 +2110,31 @@ def page_admin():
                             with pd.ExcelWriter(excel_bytes_dipa, engine='openpyxl') as writer:
                                 st.session_state.data_dipa_by_year[int(yr)].to_excel(
                                     writer, index=False, sheet_name=f'DIPA_{yr}', 
-                                    startrow=0, startcol=0  # ✅ PERBAIKAN
+                                    startrow=0, startcol=0
                                 )
                                 
                                 # Format header
                                 workbook = writer.book
                                 worksheet = writer.sheets[f'DIPA_{yr}']
                                 
+                                # Bold dan warna header
                                 for cell in worksheet[1]:
-                                    cell.font = Font(bold=True, color="FFFFFF")
+                                    cell.font = Font(bold=True, color="FFFFFF", size=11)
                                     cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
                                     cell.alignment = Alignment(horizontal="center", vertical="center")
+                                
+                                # ✅ BONUS: Auto-adjust column width
+                                for column in worksheet.columns:
+                                    max_length = 0
+                                    column_letter = column[0].column_letter
+                                    for cell in column:
+                                        try:
+                                            if len(str(cell.value)) > max_length:
+                                                max_length = len(str(cell.value))
+                                        except:
+                                            pass
+                                    adjusted_width = min(max_length + 2, 50)
+                                    worksheet.column_dimensions[column_letter].width = adjusted_width
                             
                             excel_bytes_dipa.seek(0)
 
@@ -2110,6 +2152,8 @@ def page_admin():
 
                     except Exception as e:
                         st.error(f"❌ Gagal menyimpan ke GitHub: {e}")
+                        import traceback
+                        st.code(traceback.format_exc())
 
         # ============================================================
         # SUBMENU: Upload Data Referensi
