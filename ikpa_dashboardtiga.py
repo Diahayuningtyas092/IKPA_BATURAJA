@@ -2010,14 +2010,20 @@ def page_admin():
                                     # Pastikan Tahun IKPA ada
                                     df_processed["Tahun"] = int(upload_year)
 
-                                    # Merge
+                                    # --- RENAME KOLOM DIPA ---
+                                    dipa_clean = dipa_year.rename(columns={
+                                        "Pagu Belanja": "Total Pagu",
+                                        "Tanggal Revisi": "Tanggal Posting Revisi"
+                                    })
+
+                                    # --- MERGE IKPA + DIPA ---
                                     df_processed = df_processed.merge(
-                                        dipa_year[['Kode Satker', 'Total Pagu', 'Tanggal Posting Revisi']],
+                                        dipa_clean[['Kode Satker', 'Total Pagu', 'Tanggal Posting Revisi']],
                                         on='Kode Satker',
                                         how='left'
                                     )
 
-                                    # KATEGORI SATKER
+                                    # --- KATEGORI SATKER ---
                                     if 'Total Pagu' in df_processed.columns:
                                         p70 = df_processed['Total Pagu'].astype(float).quantile(0.70)
                                         p40 = df_processed['Total Pagu'].astype(float).quantile(0.40)
