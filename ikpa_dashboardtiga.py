@@ -2252,7 +2252,14 @@ def page_admin():
         # Fungsi untuk membersihkan file DIPA
         # ============================
         def clean_dipa(df):
-
+            """
+            Membersihkan DataFrame DIPA dari:
+            1. Kolom Unnamed
+            2. Kolom yang seluruhnya kosong
+            3. Baris header yang salah
+            4. Whitespace berlebih
+            """
+            
             # defensive copy
             df = df.copy()
 
@@ -2263,7 +2270,10 @@ def page_admin():
             # 1. Remove Unnamed columns (case-insensitive)
             df = df.loc[:, ~df.columns.astype(str).str.lower().str.contains("unnamed")]
 
-            # 2. Try to detect header row by scanning first few rows for keywords
+            # 2. HAPUS KOLOM YANG SELURUHNYA KOSONG
+            df = df.dropna(axis=1, how='all')
+
+            # 3. Try to detect header row by scanning first few rows for keywords
             header_row = None
             max_scan = min(10, len(df))
             for i in range(max_scan):
@@ -2276,7 +2286,7 @@ def page_admin():
                     header_row = i
                     break
 
-            # 3. If header row found, set columns; else try first row as header if it looks like strings
+            # 4. If header row found, set columns; else try first row as header if it looks like strings
             if header_row is not None:
                 df.columns = df.iloc[header_row].fillna('').astype(str)
                 df = df[(header_row + 1):]
@@ -2284,10 +2294,10 @@ def page_admin():
                 # fallback: ensure columns are strings
                 df.columns = df.columns.astype(str)
 
-            # 4. Drop rows that are completely empty
+            # 5. Drop rows that are completely empty
             df = df.dropna(how="all")
 
-            # 5. Normalize column names: strip, remove newlines, collapse multiple spaces, uppercase for matching
+            # 6. Normalize column names: strip, remove newlines, collapse multiple spaces
             clean_cols = (
                 df.columns.astype(str)
                 .str.strip()
@@ -2297,10 +2307,14 @@ def page_admin():
             )
             df.columns = clean_cols
 
-            # 6. Secondary removal of 'Unnamed' columns if any remained
+            # 7. Secondary removal of 'Unnamed' columns if any remained
             df = df.loc[:, ~df.columns.astype(str).str.lower().str.contains("unnamed")]
 
-            # 7. Standardize important column names (handle variants)
+            # 8. HAPUS KOLOM KOSONG MAYORITAS (>95% kosong)
+            threshold = len(df) * 0.05  # Minimal 5% harus terisi
+            df = df.dropna(axis=1, thresh=threshold)
+
+            # 9. Standardize important column names (handle variants)
             rename_map = {}
             for c in df.columns:
                 cu = c.strip().lower()
@@ -2317,7 +2331,7 @@ def page_admin():
             if rename_map:
                 df = df.rename(columns=rename_map)
 
-            # 8. Reset index
+            # 10. Reset index
             df = df.reset_index(drop=True)
 
             return df
@@ -2339,9 +2353,9 @@ def page_admin():
                 df_read = clean_dipa(df_read)
 
                 # Preview tahun yang terdeteksi dari data (prefer Tanggal Posting Revisi)
-                if 'Tanggal Posting Revisi' in df_temp_dipa.columns and not df_temp_dipa['Tanggal Posting Revisi'].dropna().empty:
+                if 'Tanggal Posting Revisi' in df_read.columns and not df_read['Tanggal Posting Revisi'].dropna().empty:
                     try:
-                        sample_date = pd.to_datetime(df_temp_dipa['Tanggal Posting Revisi'].dropna().iloc[0], errors='coerce')
+                        sample_date = pd.to_datetime(df_read['Tanggal Posting Revisi'].dropna().iloc[0], errors='coerce')
                         if pd.isna(sample_date):
                             year_preview = upload_year_dipa
                         else:
@@ -2351,8 +2365,8 @@ def page_admin():
                 else:
                     # fallback: try to detect year from any column that contains 4-digit year
                     year_preview = upload_year_dipa
-                    for col in df_temp_dipa.columns:
-                        sample_vals = df_temp_dipa[col].dropna().astype(str).head(10).tolist()
+                    for col in df_read.columns:
+                        sample_vals = df_read[col].dropna().astype(str).head(10).tolist()
                         for v in sample_vals:
                             m = re.search(r'(\b20\d{2}\b)', v)
                             if m:
@@ -2725,9 +2739,10 @@ def page_admin():
                 key="download_dipa_year"
             )
             df_download_dipa = st.session_state.data_dipa_by_year[year_to_download]
+            df_download_dipa = clean_dipa(df_download_dipa)
+            
             output_dipa = io.BytesIO()
             with pd.ExcelWriter(output_dipa, engine='openpyxl') as writer:
-                # ✅ PERBAIKAN: Mulai dari A1
                 df_download_dipa.to_excel(writer, index=False, sheet_name=f'DIPA_{year_to_download}',
                                           startrow=0, startcol=0)
                 
