@@ -2085,14 +2085,22 @@ def page_admin():
                             # ============================================
                             # MERGE IKPA + DIPA (REVISI TERBARU)
                             # ============================================
-                            df_final = df_processed.copy()  
+                            df_final = df_processed.copy()
 
+                            # Pastikan data DIPA ada
                             if "data_dipa_by_year" in st.session_state:
                                 dipa_year = st.session_state.data_dipa_by_year.get(upload_year)
 
                                 if dipa_year is not None and not dipa_year.empty:
 
-                                    # --- deteksi otomatis kolom pagu ---
+                                    # ============================================
+                                    # 1. Hilangkan kolom Unnamed otomatis
+                                    # ============================================
+                                    dipa_year = dipa_year.loc[:, ~dipa_year.columns.str.contains("^Unnamed")]
+
+                                    # ============================================
+                                    # 2. Deteksi otomatis kolom Total Pagu
+                                    # ============================================
                                     pagu_candidates = [
                                         "Pagu (Jumlah)", "Total Pagu", "Pagu",
                                         "Jumlah", "Total Anggaran"
@@ -2104,7 +2112,9 @@ def page_admin():
                                     else:
                                         dipa_year["Total Pagu"] = 0
 
-                                    # --- deteksi otomatis tanggal posting revisi ---
+                                    # ============================================
+                                    # 3. Deteksi otomatis kolom Tanggal Posting Revisi
+                                    # ============================================
                                     tgl_candidates = [
                                         "Tanggal Posting Revisi", "Tgl Posting Revisi",
                                         "Tanggal_Revisi", "Tanggal Posting"
@@ -2116,21 +2126,29 @@ def page_admin():
                                     else:
                                         dipa_year["Tanggal Posting Revisi"] = None
 
-                                    # --- normalisasi kode satker ---
+                                    # ============================================
+                                    # 4. Normalisasi kode satker
+                                    # ============================================
                                     if "Kode Satker" in dipa_year.columns:
                                         dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
 
-                                    # --- MERGE ---
+                                    # ============================================
+                                    # 5. MERGE ke IKPA
+                                    #    (rename agar konsisten dengan KEEP_COLUMNS)
+                                    # ============================================
                                     df_final = df_final.merge(
-                                        dipa_year[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi"]],
+                                        dipa_year[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi"]]
+                                            .rename(columns={"Total Pagu": "Total Pagu DIPA"}),
                                         on="Kode Satker",
                                         how="left"
                                     )
 
-                                    # --- kategori satker ---
-                                    if "Total Pagu" in df_final.columns:
-                                        p70 = df_final["Total Pagu"].astype(float).quantile(0.70)
-                                        p40 = df_final["Total Pagu"].astype(float).quantile(0.40)
+                                    # ============================================
+                                    # 6. Kategori Satker
+                                    # ============================================
+                                    if "Total Pagu DIPA" in df_final.columns:
+                                        p70 = df_final["Total Pagu DIPA"].astype(float).quantile(0.70)
+                                        p40 = df_final["Total Pagu DIPA"].astype(float).quantile(0.40)
 
                                         def kategori(pagu):
                                             pagu = float(pagu) if pagu not in [None, ""] else 0
@@ -2140,7 +2158,8 @@ def page_admin():
                                                 return "Satker Sedang"
                                             return "Satker Kecil"
 
-                                        df_final["Jenis Satker"] = df_final["Total Pagu"].apply(kategori)
+                                        df_final["Jenis Satker"] = df_final["Total Pagu DIPA"].apply(kategori)
+
 
                             # ========================
                             # SIMPAN SESSION STATE
