@@ -2092,6 +2092,13 @@ def page_admin():
                                 dipa_year = st.session_state.data_dipa_by_year.get(upload_year)
 
                                 if dipa_year is not None and not dipa_year.empty:
+                                    
+                            # --- SIMPAN DATA DIPA KE SESSION STATE UNTUK DOWNLOAD ---
+                                    if "dipa_storage" not in st.session_state:
+                                        st.session_state.dipa_storage = {}
+
+                                    # key download pakai tahun
+                                    st.session_state.dipa_storage[str(upload_year)] = dipa_year.copy()
 
                                     # ============================================
                                     # 1. Hilangkan kolom Unnamed otomatis
@@ -2206,7 +2213,8 @@ def page_admin():
                                 f"IKPA_{final_month}_{upload_year}.xlsx",
                                 folder="data"
                             )
-
+                            
+                            # Log
                             st.session_state.activity_log.append({
                                 "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "Aksi": "Upload",
@@ -2678,7 +2686,6 @@ def page_admin():
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df_excel = df_download.drop(['Bobot', 'Nilai Terbobot'], axis=1, errors='ignore')
-                # ✅ PERBAIKAN: Mulai dari A1
                 df_excel.to_excel(writer, index=False, sheet_name='Data IKPA', startrow=0, startcol=0)
                 
                 # Format header
