@@ -2739,21 +2739,30 @@ def page_admin():
                 key="download_dipa_year"
             )
             df_download_dipa = st.session_state.data_dipa_by_year[year_to_download]
-            df_download_dipa = clean_dipa(df_download_dipa)
+            
+            # HAPUS HANYA KOLOM UNNAMED
+            df_download_dipa = df_download_dipa.loc[:, ~df_download_dipa.columns.astype(str).str.contains('^Unnamed', case=False, na=False)]
+            
+            # HAPUS KOLOM YANG 100% KOSONG
+            df_download_dipa = df_download_dipa.dropna(axis=1, how='all')
             
             output_dipa = io.BytesIO()
             with pd.ExcelWriter(output_dipa, engine='openpyxl') as writer:
+                # ✅ PERBAIKAN: Mulai dari A1
                 df_download_dipa.to_excel(writer, index=False, sheet_name=f'DIPA_{year_to_download}',
                                           startrow=0, startcol=0)
                 
                 # Format header
-                workbook = writer.book
-                worksheet = writer.sheets[f'DIPA_{year_to_download}']
-                
-                for cell in worksheet[1]:
-                    cell.font = Font(bold=True, color="FFFFFF")
-                    cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                try:
+                    workbook = writer.book
+                    worksheet = writer.sheets[f'DIPA_{year_to_download}']
+                    
+                    for cell in worksheet[1]:
+                        cell.font = Font(bold=True, color="FFFFFF")
+                        cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                except Exception:
+                    pass
             
             output_dipa.seek(0)
             st.download_button(
