@@ -440,106 +440,173 @@ def save_file_to_github(file_bytes, filename, folder="data"):
         repo.create_file(path, f"Upload {filename}", file_bytes)
         st.success(f"✅ File {filename} diunggah ke GitHub.")
 
-# Load all uploaded data from GitHub (run on startup)
+# ============================
+#  LOAD DATA IKPA DARI GITHUB
+# ============================
 def load_data_from_github():
     """
-    Load all IKPA Excel files from the GitHub 'data' folder into session state.
-    Each file name must follow 'IKPA_<Bulan>_<Tahun>.xlsx'.
-    Normalizes 'Kode Satker' using the global helper before merging.
+    Load all IKPA Excel files from GitHub /data folder.
+    Filename format expected: IKPA_<BULAN>_<TAHUN>.xlsx
     """
+
+    # ---------------------------
+    # Validasi token GitHub
+    # ---------------------------
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
-    # Ensure credentials exist
     if not token or not repo_name:
-        st.error("❌ Gagal mengakses GitHub: GITHUB_TOKEN atau GITHUB_REPO tidak ditemukan di secrets.")
+        st.error("❌ Gagal mengakses GitHub: GITHUB_TOKEN atau GITHUB_REPO tidak ditemukan.")
         st.stop()
         return
 
     g = Github(auth=Auth.Token(token))
     repo = g.get_repo(repo_name)
 
+    # ---------------------------
+    # Ambil list file di folder /data
+    # ---------------------------
     try:
         contents = repo.get_contents("data")
     except Exception:
         st.info("📁 Folder 'data' belum ada di repository GitHub.")
         return
 
-    st.session_state.data_storage = {}
+    if "data_storage" not in st.session_state:
+        st.session_state.data_storage = {}
+    else:
+        st.session_state.data_storage.clear()
 
-    # 🔄 Process all Excel files from GitHub
+    # ================================
+    # Helper: Hapus kolom Unnamed
+    # ================================
+    def clean_unnamed(df):
+        return df.loc[:, ~df.columns.str.contains('^Unnamed')]
+
+    # ================================
+    # Proses setiap file Excel
+    # ================================
     for file in contents:
         if not file.name.endswith(".xlsx"):
             continue
 
+        # ---------------------------
+        # Baca file Excel
+        # ---------------------------
         decoded = base64.b64decode(file.content)
         df = pd.read_excel(io.BytesIO(decoded))
+        df = clean_unnamed(df)
 
-        # Parse period (expects filenames like IKPA_JANUARI_2025.xlsx)
-        parts = file.name.replace("IKPA_", "").replace(".xlsx", "").split("_")
-        if len(parts) != 2:
+        # ---------------------------
+        # PARSE NAMA FILE
+        # IKPA_JANUARI_2025.xlsx
+        # ---------------------------
+        name = file.name.replace("IKPA_", "").replace(".xlsx", "")
+        parts = name.split("_")
+
+        if len(parts) < 2:
             continue
-        month, year = parts
 
-        # Ensure period fields exist before normalization
-        df['Bulan'] = df.get('Bulan', month)
-        df['Tahun'] = df.get('Tahun', year)
+        year = parts[-1]
+        month = "_".join(parts[:-1]).upper().replace(" ", "")
 
-        # 🧩 Normalize Kode Satker (using global helper)
-        if 'Kode Satker' in df.columns:
-            df['Kode Satker'] = df['Kode Satker'].apply(normalize_kode_satker)
+        # Standardisasi bulan (misal "PEBRUARI" → "FEBRUARI")
+        MONTH_FIX = {
+            "PEBRUARI": "FEBRUARI",
+            "PEBRUARY": "FEBRUARI",
+            "OKT": "OKTOBER",
+        }
+        month = MONTH_FIX.get(month, month)
+
+        month_num = MONTH_ORDER.get(month.upper(), 0)
+
+        # ---------------------------
+        # Pastikan kolom Bulan & Tahun exist
+        # ---------------------------
+        df["Bulan"] = df.get("Bulan", month)
+        df["Tahun"] = df.get("Tahun", year)
+
+        df["Bulan"] = df["Bulan"].astype(str).str.upper()
+        df["Tahun"] = df["Tahun"].astype(str)
+
+        # ---------------------------
+        # Normalisasi Kode Satker
+        # ---------------------------
+        if "Kode Satker" in df.columns:
+            df["Kode Satker"] = df["Kode Satker"].astype(str).apply(normalize_kode_satker)
         else:
-            df['Kode Satker'] = ''
+            df["Kode Satker"] = ""
 
-        # Apply references & cleanup
-        df = apply_reference_short_names(df)
-        df = create_satker_column(df)
+        # ---------------------------
+        # Reference Names (aman jika fungsi ada)
+        # ---------------------------
+        try:
+            df = apply_reference_short_names(df)
+        except:
+            pass
 
-        # Ensure numeric columns are numeric
+        try:
+            df = create_satker_column(df)
+        except:
+            pass
+
+        # ---------------------------
+        # Numeric columns
+        # ---------------------------
         numeric_cols = [
-            'Nilai Akhir (Nilai Total/Konversi Bobot)', 'Nilai Total', 'Konversi Bobot',
-            'Revisi DIPA', 'Deviasi Halaman III DIPA', 'Penyerapan Anggaran',
-            'Belanja Kontraktual', 'Penyelesaian Tagihan',
-            'Pengelolaan UP dan TUP', 'Capaian Output'
+            "Nilai Akhir (Nilai Total/Konversi Bobot)",
+            "Nilai Total", "Konversi Bobot",
+            "Revisi DIPA", "Deviasi Halaman III DIPA",
+            "Penyerapan Anggaran",
+            "Belanja Kontraktual", "Penyelesaian Tagihan",
+            "Pengelolaan UP dan TUP", "Capaian Output"
         ]
         for col in numeric_cols:
             if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-        # Add helper columns for sorting and source tracking
-        df['Source'] = 'GitHub'
-        df['Period'] = f"{month} {year}"
-        month_num = MONTH_ORDER.get(month.upper(), 0)
-        df['Period_Sort'] = f"{int(year):04d}-{month_num:02d}"
+        # ---------------------------
+        # Date columns
+        # ---------------------------
+        if "Tanggal Posting Revisi" in df.columns:
+            df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Posting Revisi"], errors="coerce")
 
-        # Generate ranking if missing
-        if 'Peringkat' not in df.columns and 'Nilai Akhir (Nilai Total/Konversi Bobot)' in df.columns:
-            df = df.sort_values('Nilai Akhir (Nilai Total/Konversi Bobot)', ascending=False)
-            df['Peringkat'] = range(1, len(df) + 1)
+        # ---------------------------
+        # Tambahan kolom helper
+        # ---------------------------
+        df["Source"] = "GitHub"
+        df["Period"] = f"{month} {year}"
+        df["Period_Sort"] = f"{int(year):04d}-{month_num:02d}"
 
-        # Store to session state
-        st.session_state.data_storage[(str(month), str(year))] = df
+        # ---------------------------
+        # Generate ranking jika belum ada
+        # ---------------------------
+        if "Peringkat" not in df.columns and "Nilai Akhir (Nilai Total/Konversi Bobot)" in df.columns:
+            df = df.sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)", ascending=False)
+            df["Peringkat"] = range(1, len(df) + 1)
+
+        # ---------------------------
+        # Simpan ke session_state
+        # ---------------------------
+        st.session_state.data_storage[(month, year)] = df
 
     st.success(f"✅ {len(st.session_state.data_storage)} file berhasil dimuat dari GitHub.")
 
-# Fungsi untuk membaca template Excel yang sudah ada
+
+# ============================
+#  BACA TEMPLATE FILE
+# ============================
 def get_template_file():
-    """
-    Membaca file template Excel yang sudah ada
-    """
     try:
-        # Cek apakah file template ada di path default
         if Path(TEMPLATE_PATH).exists():
-            with open(TEMPLATE_PATH, 'rb') as f:
+            with open(TEMPLATE_PATH, "rb") as f:
                 return f.read()
         else:
-            # Jika tidak ada, gunakan template dari session state (jika di-upload admin)
-            if 'template_file' in st.session_state:
+            if "template_file" in st.session_state:
                 return st.session_state.template_file
-            else:
-                return None
+            return None
     except Exception as e:
-        st.error(f"Error membaca template: {str(e)}")
+        st.error(f"Error membaca template: {e}")
         return None
 
 # Fungsi visualisasi podium/bintang
@@ -1963,26 +2030,39 @@ def page_admin():
 
                     import re
 
+                    # ==============================
+                    # NORMALISASI KODE SATKER KUAT
+                    # ==============================
+                    def normalize_kode_satker(x):
+                        if pd.isna(x): return ""
+                        x = str(x)
+                        x = re.sub(r"[^0-9]", "", x)  # keep numeric only
+                        return x.zfill(6)
+
                     for uploaded_file in uploaded_files:
                         try:
-                            # 1) Dapatkan bulan dari isi file
+                            # 1) Load file untuk deteksi bulan
                             df_temp = pd.read_excel(uploaded_file, header=None)
-                            month_text = str(df_temp.iloc[1, 0])
-                            month_from_content = month_text.split(":")[-1].strip() if ":" in month_text else ""
+                            df_temp = df_temp.loc[:, ~df_temp.columns.astype(str).str.contains("Unnamed")]
 
-                            # 2) Dapatkan bulan dari nama file
-                            filename = uploaded_file.name.upper().replace(".XLSX", "").replace(".XLS", "")
-                            parts = filename.split("_")
+                            raw_text = " ".join(df_temp.astype(str).fillna("").values.flatten()).upper()
 
-                            if len(parts) >= 3:
-                                month_raw = parts[-2]
-                                clean_month = re.sub(r"[^A-Z]", "", month_raw)
-                                month_from_filename = MONTH_FIX.get(clean_month, clean_month)
-                            else:
-                                month_from_filename = ""
+                            # 2) Cari bulan otomatis dari seluruh isi file
+                            final_month = "UNKNOWN"
+                            for k, v in MONTH_FIX.items():
+                                if k in raw_text:
+                                    final_month = v
+                                    break
 
-                            # 3) Tentukan final month
-                            final_month = (month_from_filename or month_from_content or "UNKNOWN").upper()
+                            # 3) Jika gagal, ambil dari nama file
+                            if final_month == "UNKNOWN":
+                                filename = uploaded_file.name.upper().replace(".XLSX", "").replace(".XLS", "")
+                                parts = filename.split("_")
+                                if len(parts) >= 2:
+                                    clean_month = re.sub(r"[^A-Z]", "", parts[-2])
+                                    final_month = MONTH_FIX.get(clean_month, clean_month)
+
+                            final_month = final_month.upper()
 
                             # 4) Proses Excel
                             df_processed, _, _ = process_excel_file(uploaded_file, upload_year)
@@ -1990,43 +2070,61 @@ def page_admin():
                                 st.warning(f"⚠️ Gagal memproses file: {uploaded_file.name}")
                                 continue
 
-                            # Tambah ini untuk memperbaiki bulan
                             df_processed["Bulan"] = final_month
+                            df_processed["Tahun"] = int(upload_year)
 
-                            # Normalisasi kode satker
+                            # Hapus semua unnamed
+                            df_processed = df_processed.loc[:, ~df_processed.columns.str.contains("Unnamed")]
+
+                            # Normalisasi kode satker IKPA
                             if "Kode Satker" in df_processed.columns:
                                 df_processed["Kode Satker"] = df_processed["Kode Satker"].apply(normalize_kode_satker)
                             else:
                                 df_processed["Kode Satker"] = ""
-                            
+
                             # ============================================
-                            # MERGE IKPA + DIPA (mengambil revisi terbaru)
+                            # MERGE IKPA + DIPA (REVISI TERBARU)
                             # ============================================
                             if "data_dipa_by_year" in st.session_state:
                                 dipa_year = st.session_state.data_dipa_by_year.get(upload_year)
 
                                 if dipa_year is not None and not dipa_year.empty:
 
-                                    df_processed["Tahun"] = int(upload_year)
+                                    # --- deteksi otomatis kolom pagu ---
+                                    pagu_candidates = [
+                                        "Pagu (Jumlah)", "Total Pagu", "Pagu",
+                                        "Jumlah", "Total Anggaran"
+                                    ]
+                                    pagu_col = next((c for c in pagu_candidates if c in dipa_year.columns), None)
 
-                                    # --- PERBAIKAN RENAME ---
-                                    dipa_clean = dipa_year.rename(columns={
-                                        "Pagu (Jumlah)": "Total Pagu",
-                                        "Tanggal Posting Revisi": "Tanggal Posting Revisi"
-                                    })
+                                    if pagu_col:
+                                        dipa_year = dipa_year.rename(columns={pagu_col: "Total Pagu"})
+                                    else:
+                                        dipa_year["Total Pagu"] = 0
 
-                                    # --- NORMALISASI KODE SATKER DIPA ---
-                                    if "Kode Satker" in dipa_clean.columns:
-                                        dipa_clean["Kode Satker"] = dipa_clean["Kode Satker"].apply(normalize_kode_satker)
+                                    # --- deteksi otomatis tanggal posting revisi ---
+                                    tgl_candidates = [
+                                        "Tanggal Posting Revisi", "Tgl Posting Revisi",
+                                        "Tanggal_Revisi", "Tanggal Posting"
+                                    ]
+                                    tgl_col = next((c for c in tgl_candidates if c in dipa_year.columns), None)
 
-                                    # --- MERGE ---
+                                    if tgl_col:
+                                        dipa_year = dipa_year.rename(columns={tgl_col: "Tanggal Posting Revisi"})
+                                    else:
+                                        dipa_year["Tanggal Posting Revisi"] = None
+
+                                    # normalisasi kode satker DIPA
+                                    if "Kode Satker" in dipa_year.columns:
+                                        dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
+
+                                    # merge
                                     df_processed = df_processed.merge(
-                                        dipa_clean[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi"]],
-                                        on="Kode Satker",
-                                        how="left"
+                                        dipa_year[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi"]],
+                                        on="Kode Satker", how="left"
                                     )
 
-                                    # --- KATEGORI SATKER ---
+                                    # kategori satker
                                     if 'Total Pagu' in df_processed.columns:
                                         p70 = df_processed['Total Pagu'].astype(float).quantile(0.70)
                                         p40 = df_processed['Total Pagu'].astype(float).quantile(0.40)
@@ -2041,11 +2139,15 @@ def page_admin():
 
                                         df_processed["Jenis Satker"] = df_processed["Total Pagu"].apply(kategori)
 
-                            # 5) Simpan di Session State
+                            # ========================
+                            # SIMPAN SESSION STATE
+                            # ========================
                             key = (final_month, str(upload_year))
                             st.session_state.data_storage[key] = df_processed.copy()
 
-                            # 6) Simpan file ke GitHub
+                            # ========================
+                            # SIMPAN KE GITHUB
+                            # ========================
                             excel_bytes = io.BytesIO()
                             with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
                                 df_excel = df_processed.drop(["Bobot", "Nilai Terbobot"], axis=1, errors="ignore")
@@ -2058,7 +2160,7 @@ def page_admin():
                                 folder="data"
                             )
 
-                            # 7) LOG
+                            # Log
                             st.session_state.activity_log.append({
                                 "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "Aksi": "Upload",
@@ -2070,6 +2172,7 @@ def page_admin():
 
                         except Exception as e:
                             st.error(f"❌ Error memproses {uploaded_file.name}: {e}")
+
 
         # ============================================================
         # SUBMENU: UPLOAD DATA DIPA
@@ -2085,59 +2188,119 @@ def page_admin():
         )
 
         uploaded_dipa_file = st.file_uploader("Pilih file Excel DIPA", type=['xlsx', 'xls', 'csv'], key="dipa_upload")
-        
+
         # ============================
         # Fungsi untuk membersihkan file DIPA
         # ============================
         def clean_dipa(df):
-            # 1. Buang seluruh kolom Unnamed atau kolom yang kosong
-            df = df.loc[:, ~df.columns.str.contains("Unnamed")]
 
-            # 2. Cari baris header sebenarnya (baris yang dimulai dengan "No")
+            # defensive copy
+            df = df.copy()
+
+            # 0. If dataframe has no columns (empty) -> return as is
+            if df is None or df.shape[1] == 0:
+                return df
+
+            # 1. Remove Unnamed columns (case-insensitive)
+            df = df.loc[:, ~df.columns.astype(str).str.lower().str.contains("unnamed")]
+
+            # 2. Try to detect header row by scanning first few rows for keywords
             header_row = None
-            for i in range(5):
-                if df.iloc[i].astype(str).str.contains("No", case=False, na=False).any():
+            max_scan = min(10, len(df))
+            for i in range(max_scan):
+                # join sample of row text
+                try:
+                    row_text = " ".join([str(x) for x in df.iloc[i].tolist()]).lower()
+                except Exception:
+                    row_text = ""
+                if any(k in row_text for k in ["kode satker", "kode", "satker", "pagu", "no", "tanggal"]):
                     header_row = i
                     break
 
-            # Jika ditemukan, jadikan sebagai header
+            # 3. If header row found, set columns; else try first row as header if it looks like strings
             if header_row is not None:
-                df.columns = df.iloc[header_row]
+                df.columns = df.iloc[header_row].fillna('').astype(str)
                 df = df[(header_row + 1):]
+            else:
+                # fallback: ensure columns are strings
+                df.columns = df.columns.astype(str)
 
-            # 3. Hapus baris kosong
+            # 4. Drop rows that are completely empty
             df = df.dropna(how="all")
 
-            # 4. Reset index
+            # 5. Normalize column names: strip, remove newlines, collapse multiple spaces, uppercase for matching
+            clean_cols = (
+                df.columns.astype(str)
+                .str.strip()
+                .str.replace('\n', ' ', regex=False)
+                .str.replace('\r', ' ', regex=False)
+                .str.replace('\s+', ' ', regex=True)
+            )
+            df.columns = clean_cols
+
+            # 6. Secondary removal of 'Unnamed' columns if any remained
+            df = df.loc[:, ~df.columns.astype(str).str.lower().str.contains("unnamed")]
+
+            # 7. Standardize important column names (handle variants)
+            rename_map = {}
+            for c in df.columns:
+                cu = c.strip().lower()
+                if "kode" in cu and "satker" in cu:
+                    rename_map[c] = "Kode Satker"
+                elif "pagu" in cu or "total pagu" in cu or "jumlah pagu" in cu:
+                    rename_map[c] = "Total Pagu"
+                elif "tanggal" in cu and "revisi" in cu:
+                    rename_map[c] = "Tanggal Posting Revisi"
+                elif cu in ["tgl revisi", "tgl posting revisi"]:
+                    rename_map[c] = "Tanggal Posting Revisi"
+                # keep other columns as-is
+
+            if rename_map:
+                df = df.rename(columns=rename_map)
+
+            # 8. Reset index
             df = df.reset_index(drop=True)
 
             return df
 
         if uploaded_dipa_file is not None:
             try:
-                # Baca file untuk preview
-                if hasattr(uploaded_dipa_file, "name") and uploaded_dipa_file.name.lower().endswith('.csv'):
+                # Baca file untuk preview (pastikan seek ke awal)
+                uploaded_dipa_file.seek(0)
+                filename_preview = getattr(uploaded_dipa_file, "name", "uploaded_dipa")
+                if filename_preview.lower().endswith('.csv'):
                     df_temp_dipa = pd.read_csv(uploaded_dipa_file, dtype=str, encoding='utf-8', engine='python')
                 else:
-                    uploaded_dipa_file.seek(0)
                     df_temp_dipa = pd.read_excel(uploaded_dipa_file, dtype=str)
 
                 # 🔥 PENTING: Bersihkan tabel DIPA
                 df_temp_dipa = clean_dipa(df_temp_dipa)
 
-                # Preview tahun yang terdeteksi dari data
-                if 'Tanggal Posting Revisi' in df_temp_dipa.columns:
+                # Preview tahun yang terdeteksi dari data (prefer Tanggal Posting Revisi)
+                if 'Tanggal Posting Revisi' in df_temp_dipa.columns and not df_temp_dipa['Tanggal Posting Revisi'].dropna().empty:
                     try:
-                        sample_date = pd.to_datetime(df_temp_dipa['Tanggal Posting Revisi'].dropna().iloc[0])
-                        year_preview = sample_date.year
-                    except:
+                        sample_date = pd.to_datetime(df_temp_dipa['Tanggal Posting Revisi'].dropna().iloc[0], errors='coerce')
+                        if pd.isna(sample_date):
+                            year_preview = upload_year_dipa
+                        else:
+                            year_preview = sample_date.year
+                    except Exception:
                         year_preview = upload_year_dipa
                 else:
+                    # fallback: try to detect year from any column that contains 4-digit year
                     year_preview = upload_year_dipa
+                    for col in df_temp_dipa.columns:
+                        sample_vals = df_temp_dipa[col].dropna().astype(str).head(10).tolist()
+                        for v in sample_vals:
+                            m = re.search(r'(\b20\d{2}\b)', v)
+                            if m:
+                                year_preview = int(m.group(1))
+                                break
+                        if year_preview != upload_year_dipa:
+                            break
 
                 period_key_preview = str(year_preview)
                 uploaded_dipa_file.seek(0)
-
 
                 # Cek apakah data tahun ini sudah ada
                 if "data_dipa_by_year" not in st.session_state:
@@ -2160,67 +2323,107 @@ def page_admin():
             if st.button("🔄 Proses Data DIPA", type="primary", disabled=not confirm_replace_dipa):
                 with st.spinner("Memproses data DIPA..."):
                     try:
-                        # Re-read file
+                        # Re-read file and clean
                         uploaded_dipa_file.seek(0)
                         filename_preview = getattr(uploaded_dipa_file, "name", "uploaded_dipa")
-                        
                         if filename_preview.lower().endswith('.csv'):
                             df_read = pd.read_csv(uploaded_dipa_file, dtype=str, encoding='utf-8', engine='python')
                         else:
                             df_read = pd.read_excel(uploaded_dipa_file, dtype=str)
 
-                        # Process DIPA
+                        # Clean the DIPA table BEFORE processing
+                        df_read = clean_dipa(df_read)
+
+                        # Process DIPA (your existing robust processor)
                         dfp = process_dipa_dataframe(df_read, source_name=filename_preview)
 
                         if dfp is None or dfp.empty:
                             st.error("❌ Gagal memproses file DIPA.")
                             st.stop()
 
-                        # Normalize Kode Satker
+                        # Normalize Kode Satker in processed DIPA
                         if 'Kode Satker' in dfp.columns:
                             dfp['Kode Satker'] = dfp['Kode Satker'].apply(normalize_kode_satker)
                         else:
                             dfp['Kode Satker'] = ''
 
+                        # Ensure 'Tanggal Posting Revisi' datetime
+                        if 'Tanggal Posting Revisi' in dfp.columns:
+                            dfp['Tanggal Posting Revisi'] = pd.to_datetime(dfp['Tanggal Posting Revisi'], errors='coerce')
+
+                        # Normalize/rename Total Pagu variations in dfp (if present)
+                        for c in list(dfp.columns):
+                            if 'pagu' in c.lower() and 'total' not in c.lower():
+                                # rename loosely to 'Total Pagu' to be safe
+                                dfp = dfp.rename(columns={c: 'Total Pagu'})
+
                         # Group by year and save
                         years = sorted(dfp['Tahun'].dropna().unique().astype(int).tolist())
-                        
+
                         for yr in years:
                             df_year = dfp[dfp['Tahun'] == yr].copy().reset_index(drop=True)
-                            
-                            # Merge with existing data if any
+
+                            # Ensure Kode Satker normalized in existing dataset too
                             existing = st.session_state.data_dipa_by_year.get(int(yr))
                             if existing is not None and not existing.empty:
-                                combined = pd.concat([existing, df_year], ignore_index=True)
-                                if 'Tanggal Posting Revisi' in combined.columns:
-                                    combined = combined.sort_values(by=['Tanggal Posting Revisi'])
-                                    combined_latest = combined.groupby('Kode Satker', as_index=False).last()
+                                existing = existing.copy()
+                                if 'Kode Satker' in existing.columns:
+                                    existing['Kode Satker'] = existing['Kode Satker'].apply(normalize_kode_satker)
                                 else:
-                                    combined_latest = combined.groupby('Kode Satker', as_index=False).last()
+                                    existing['Kode Satker'] = ''
+
+                                # Normalize tanggal in existing as well
+                                if 'Tanggal Posting Revisi' in existing.columns:
+                                    existing['Tanggal Posting Revisi'] = pd.to_datetime(existing['Tanggal Posting Revisi'], errors='coerce')
+
+                                combined = pd.concat([existing, df_year], ignore_index=True, sort=False)
+
+                                # If Tanggal Posting Revisi present, sort by (Kode Satker, Tanggal Posting Revisi) then take last per Kode Satker
+                                if 'Tanggal Posting Revisi' in combined.columns:
+                                    combined = combined.sort_values(by=['Kode Satker', 'Tanggal Posting Revisi'])
+                                    # take last row per Kode Satker
+                                    combined_latest = combined.groupby('Kode Satker', as_index=False).tail(1).reset_index(drop=True)
+                                else:
+                                    # fallback: last occurrence per Kode Satker
+                                    combined_latest = combined.groupby('Kode Satker', as_index=False).last().reset_index(drop=True)
+
                                 st.session_state.data_dipa_by_year[int(yr)] = combined_latest
                             else:
-                                st.session_state.data_dipa_by_year[int(yr)] = df_year
+                                # Ensure df_year has normalized kode and date types
+                                if 'Kode Satker' in df_year.columns:
+                                    df_year['Kode Satker'] = df_year['Kode Satker'].apply(normalize_kode_satker)
+                                else:
+                                    df_year['Kode Satker'] = ''
+                                if 'Tanggal Posting Revisi' in df_year.columns:
+                                    df_year['Tanggal Posting Revisi'] = pd.to_datetime(df_year['Tanggal Posting Revisi'], errors='coerce')
 
-                            # ✅ Save to GitHub dengan format yang benar
+                                st.session_state.data_dipa_by_year[int(yr)] = df_year.reset_index(drop=True)
+
+                            # ✅ Save to GitHub with standard names
                             filename_dipa = f"DIPA_{yr}.xlsx"
                             excel_bytes_dipa = io.BytesIO()
                             with pd.ExcelWriter(excel_bytes_dipa, engine='openpyxl') as writer:
                                 st.session_state.data_dipa_by_year[int(yr)].to_excel(
-                                    writer, index=False, sheet_name=f'DIPA_{yr}', 
-                                    startrow=0, startcol=0  # ✅ PERBAIKAN
+                                    writer, index=False, sheet_name=f'DIPA_{yr}',
+                                    startrow=0, startcol=0
                                 )
-                                
-                                # Format header
-                                workbook = writer.book
-                                worksheet = writer.sheets[f'DIPA_{yr}']
-                                
-                                for cell in worksheet[1]:
-                                    cell.font = Font(bold=True, color="FFFFFF")
-                                    cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                                    cell.alignment = Alignment(horizontal="center", vertical="center")
-                            
-                            excel_bytes_dipa.seek(0)
 
+                                # Format header (if worksheet exists)
+                                try:
+                                    workbook = writer.book
+                                    worksheet = writer.sheets[f'DIPA_{yr}']
+                                    # apply header formatting to first row (row 1 is header)
+                                    for cell in worksheet[1]:
+                                        try:
+                                            cell.font = Font(bold=True, color="FFFFFF")
+                                            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                                            cell.alignment = Alignment(horizontal="center", vertical="center")
+                                        except Exception:
+                                            pass
+                                except Exception:
+                                    pass
+
+                            excel_bytes_dipa.seek(0)
                             save_file_to_github(excel_bytes_dipa.getvalue(), filename_dipa, folder="data_dipa")
 
                         st.success(f"✅ Data DIPA tahun {', '.join(map(str, years))} berhasil disimpan.")
