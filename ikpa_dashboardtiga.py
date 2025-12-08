@@ -2006,21 +2006,24 @@ def page_admin():
                                 dipa_year = st.session_state.data_dipa_by_year.get(upload_year)
 
                                 if dipa_year is not None and not dipa_year.empty:
-                                    
-                                    # Pastikan Tahun IKPA ada
+
                                     df_processed["Tahun"] = int(upload_year)
 
-                                    # --- RENAME KOLOM DIPA ---
+                                    # --- PERBAIKAN RENAME ---
                                     dipa_clean = dipa_year.rename(columns={
-                                        "Pagu Belanja": "Total Pagu",
-                                        "Tanggal Revisi": "Tanggal Posting Revisi"
+                                        "Pagu (Jumlah)": "Total Pagu",
+                                        "Tanggal Posting Revisi": "Tanggal Posting Revisi"
                                     })
 
-                                    # --- MERGE IKPA + DIPA ---
+                                    # --- NORMALISASI KODE SATKER DIPA ---
+                                    if "Kode Satker" in dipa_clean.columns:
+                                        dipa_clean["Kode Satker"] = dipa_clean["Kode Satker"].apply(normalize_kode_satker)
+
+                                    # --- MERGE ---
                                     df_processed = df_processed.merge(
-                                        dipa_clean[['Kode Satker', 'Total Pagu', 'Tanggal Posting Revisi']],
-                                        on='Kode Satker',
-                                        how='left'
+                                        dipa_clean[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi"]],
+                                        on="Kode Satker",
+                                        how="left"
                                     )
 
                                     # --- KATEGORI SATKER ---
