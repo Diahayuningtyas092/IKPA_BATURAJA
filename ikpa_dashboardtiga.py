@@ -506,34 +506,6 @@ def load_data_from_github():
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
 
-        # ============================================
-        # MERGE IKPA + DIPA (Revisi Terbaru)
-        # ============================================  
-        if "dipa_latest" in st.session_state:
-            df_dipa = st.session_state["dipa_latest"]
-
-            df['Tahun'] = df['Tahun'].astype(int)
-
-            df = df.merge(
-                df_dipa[['Kode Satker', 'Tahun', 'Total Pagu', 'Tanggal Posting Revisi']],
-                on=['Kode Satker', 'Tahun'],
-                how='left'
-            )
-
-            # Tambahkan Jenis Satker
-            if 'Total Pagu' in df.columns:
-                p70 = df['Total Pagu'].quantile(0.70)
-                p40 = df['Total Pagu'].quantile(0.40)
-
-                def kategori(pagu):
-                    if pagu >= p70:
-                        return "Satker Besar"
-                    elif pagu >= p40:
-                        return "Satker Sedang"
-                    return "Satker Kecil"
-
-                df['Jenis Satker'] = df['Total Pagu'].apply(kategori)
-
         # Add helper columns for sorting and source tracking
         df['Source'] = 'GitHub'
         df['Period'] = f"{month} {year}"
@@ -2021,12 +1993,44 @@ def page_admin():
                             # Tambah ini untuk memperbaiki bulan
                             df_processed["Bulan"] = final_month
 
-
                             # Normalisasi kode satker
                             if "Kode Satker" in df_processed.columns:
                                 df_processed["Kode Satker"] = df_processed["Kode Satker"].apply(normalize_kode_satker)
                             else:
                                 df_processed["Kode Satker"] = ""
+                            
+                            # ============================================
+                            # MERGE IKPA + DIPA (mengambil revisi terbaru)
+                            # ============================================
+                            if "data_dipa_by_year" in st.session_state:
+                                dipa_year = st.session_state.data_dipa_by_year.get(upload_year)
+
+                                if dipa_year is not None and not dipa_year.empty:
+                                    
+                                    # Pastikan Tahun IKPA ada
+                                    df_processed["Tahun"] = int(upload_year)
+
+                                    # Merge
+                                    df_processed = df_processed.merge(
+                                        dipa_year[['Kode Satker', 'Total Pagu', 'Tanggal Posting Revisi']],
+                                        on='Kode Satker',
+                                        how='left'
+                                    )
+
+                                    # KATEGORI SATKER
+                                    if 'Total Pagu' in df_processed.columns:
+                                        p70 = df_processed['Total Pagu'].astype(float).quantile(0.70)
+                                        p40 = df_processed['Total Pagu'].astype(float).quantile(0.40)
+
+                                        def kategori(pagu):
+                                            pagu = float(pagu) if pagu not in [None, ""] else 0
+                                            if pagu >= p70:
+                                                return "Satker Besar"
+                                            elif pagu >= p40:
+                                                return "Satker Sedang"
+                                            return "Satker Kecil"
+
+                                        df_processed["Jenis Satker"] = df_processed["Total Pagu"].apply(kategori)
 
                             # 5) Simpan di Session State
                             key = (final_month, str(upload_year))
