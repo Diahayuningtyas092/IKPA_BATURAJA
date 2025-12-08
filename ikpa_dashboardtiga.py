@@ -2134,7 +2134,6 @@ def page_admin():
 
                                     # ============================================
                                     # 5. MERGE ke IKPA
-                                    #    (rename agar konsisten dengan KEEP_COLUMNS)
                                     # ============================================
                                     df_final = df_final.merge(
                                         dipa_year[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi"]]
@@ -2160,7 +2159,6 @@ def page_admin():
 
                                         df_final["Jenis Satker"] = df_final["Total Pagu DIPA"].apply(kategori)
 
-
                             # ========================
                             # SIMPAN SESSION STATE
                             # ========================
@@ -2171,7 +2169,6 @@ def page_admin():
                             # SIMPAN KE GITHUB + DOWNLOAD (HASIL BERSIH)
                             # ============================================
 
-                            # Daftar kolom yang ingin dipertahankan
                             KEEP_COLUMNS = [
                                 "Kode KPPN", "Kode BA", "Kode Satker",
                                 "Uraian Satker-RINGKAS",
@@ -2188,16 +2185,15 @@ def page_admin():
                                 "Nilai Total",
                                 "Nilai Akhir (Nilai Total/Konversi Bobot)",
 
-                                # kolom dari DIPA
-                                "Total Pagu",
+                                # kolom hasil merge
+                                "Total Pagu DIPA",
                                 "Tanggal Posting Revisi",
+                                "Jenis Satker",
 
                                 "Bulan",
-                                "Tahun",
-                                "Jenis Satker"
+                                "Tahun"
                             ]
 
-                            # Gunakan df_final (hasil merge DIPA)
                             df_excel = df_final[[c for c in KEEP_COLUMNS if c in df_final.columns]]
 
                             excel_bytes = io.BytesIO()
@@ -2211,7 +2207,6 @@ def page_admin():
                                 folder="data"
                             )
 
-                            # Log
                             st.session_state.activity_log.append({
                                 "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "Aksi": "Upload",
@@ -2221,8 +2216,11 @@ def page_admin():
 
                             st.success(f"✅ {uploaded_file.name} → {final_month} {upload_year} berhasil disimpan.")
 
+                        # ====================================
+                        # PERBAIKAN PENTING → Tutup try agar tidak error
+                        # ====================================
                         except Exception as e:
-                            st.error(f"❌ Error memproses {uploaded_file.name}: {e}")
+                            st.error(f"❌ Error saat memproses data: {e}")
 
 
         # ============================================================
