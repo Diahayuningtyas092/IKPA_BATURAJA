@@ -2148,11 +2148,11 @@ def page_admin():
                             key = (final_month, str(upload_year))
                             st.session_state.data_storage[key] = df_final.copy()
 
-                            # ========================
-                            # SIMPAN KE GITHUB
-                            # ========================
+                            # ============================================
+                            # SIMPAN KE GITHUB + DOWNLOAD (HASIL BERSIH)
+                            # ============================================
 
-                            # kolom yang ingin dipertahankan di Excel
+                            # Daftar kolom yang ingin dipertahankan
                             KEEP_COLUMNS = [
                                 "Kode KPPN", "Kode BA", "Kode Satker",
                                 "Uraian Satker-RINGKAS",
@@ -2169,7 +2169,7 @@ def page_admin():
                                 "Nilai Total",
                                 "Nilai Akhir (Nilai Total/Konversi Bobot)",
 
-                                # dari DIPA
+                                # kolom dari DIPA
                                 "Total Pagu",
                                 "Tanggal Posting Revisi",
 
@@ -2178,6 +2178,7 @@ def page_admin():
                                 "Jenis Satker"
                             ]
 
+                            # Gunakan df_final (hasil merge DIPA)
                             df_excel = df_final[[c for c in KEEP_COLUMNS if c in df_final.columns]]
 
                             excel_bytes = io.BytesIO()
