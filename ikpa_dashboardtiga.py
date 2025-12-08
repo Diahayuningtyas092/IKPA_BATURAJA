@@ -2784,13 +2784,9 @@ def page_admin():
             # ✅ HAPUS BARIS YANG 100% KOSONG
             df_download_dipa = df_download_dipa.dropna(axis=0, how='all')
             
-            # Debugging info
-            st.write(f"📊 Total baris setelah dibersihkan: {len(df_download_dipa)}")
-            st.write(f"📊 Total kolom setelah dibersihkan: {len(df_download_dipa.columns)}")
-            st.write(f"📊 Nama kolom: {df_download_dipa.columns.tolist()}")
             
             # Preview data
-            with st.expander("👁️ Preview Data (5 baris pertama)"):
+            with st.expander("Preview Data (5 baris pertama)"):
                 st.dataframe(df_download_dipa.head(5))
             
             output_dipa = io.BytesIO()
