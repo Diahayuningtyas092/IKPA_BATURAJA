@@ -2315,15 +2315,18 @@ def page_admin():
         if uploaded_dipa_file is not None:
             try:
                 # Baca file untuk preview (pastikan seek ke awal)
+                # Re-read file and clean
                 uploaded_dipa_file.seek(0)
                 filename_preview = getattr(uploaded_dipa_file, "name", "uploaded_dipa")
-                if filename_preview.lower().endswith('.csv'):
-                    df_temp_dipa = pd.read_csv(uploaded_dipa_file, dtype=str, encoding='utf-8', engine='python')
-                else:
-                    df_temp_dipa = pd.read_excel(uploaded_dipa_file, dtype=str)
 
-                # 🔥 PENTING: Bersihkan tabel DIPA
-                df_temp_dipa = clean_dipa(df_temp_dipa)
+                if filename_preview.lower().endswith('.csv'):
+                    df_read = pd.read_csv(uploaded_dipa_file, dtype=str, encoding='utf-8', engine='python')
+                else:
+                    # HEADER ASLI ADA DI BARIS KE-3 → row index 2
+                    df_read = pd.read_excel(uploaded_dipa_file, dtype=str, header=2)
+
+                # Bersihkan tabel sebelum diproses
+                df_read = clean_dipa(df_read)
 
                 # Preview tahun yang terdeteksi dari data (prefer Tanggal Posting Revisi)
                 if 'Tanggal Posting Revisi' in df_temp_dipa.columns and not df_temp_dipa['Tanggal Posting Revisi'].dropna().empty:
