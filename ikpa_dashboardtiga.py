@@ -2085,6 +2085,8 @@ def page_admin():
                             # ============================================
                             # MERGE IKPA + DIPA (REVISI TERBARU)
                             # ============================================
+                            df_final = df_processed.copy()  
+
                             if "data_dipa_by_year" in st.session_state:
                                 dipa_year = st.session_state.data_dipa_by_year.get(upload_year)
 
@@ -2114,20 +2116,21 @@ def page_admin():
                                     else:
                                         dipa_year["Tanggal Posting Revisi"] = None
 
-                                    # normalisasi kode satker DIPA
+                                    # --- normalisasi kode satker ---
                                     if "Kode Satker" in dipa_year.columns:
                                         dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
 
-                                    # merge
-                                    df_processed = df_processed.merge(
+                                    # --- MERGE ---
+                                    df_final = df_final.merge(
                                         dipa_year[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi"]],
-                                        on="Kode Satker", how="left"
+                                        on="Kode Satker",
+                                        how="left"
                                     )
 
-                                    # kategori satker
-                                    if 'Total Pagu' in df_processed.columns:
-                                        p70 = df_processed['Total Pagu'].astype(float).quantile(0.70)
-                                        p40 = df_processed['Total Pagu'].astype(float).quantile(0.40)
+                                    # --- kategori satker ---
+                                    if "Total Pagu" in df_final.columns:
+                                        p70 = df_final["Total Pagu"].astype(float).quantile(0.70)
+                                        p40 = df_final["Total Pagu"].astype(float).quantile(0.40)
 
                                         def kategori(pagu):
                                             pagu = float(pagu) if pagu not in [None, ""] else 0
@@ -2137,20 +2140,48 @@ def page_admin():
                                                 return "Satker Sedang"
                                             return "Satker Kecil"
 
-                                        df_processed["Jenis Satker"] = df_processed["Total Pagu"].apply(kategori)
+                                        df_final["Jenis Satker"] = df_final["Total Pagu"].apply(kategori)
 
                             # ========================
                             # SIMPAN SESSION STATE
                             # ========================
                             key = (final_month, str(upload_year))
-                            st.session_state.data_storage[key] = df_processed.copy()
+                            st.session_state.data_storage[key] = df_final.copy()
 
                             # ========================
                             # SIMPAN KE GITHUB
                             # ========================
+
+                            # kolom yang ingin dipertahankan di Excel
+                            KEEP_COLUMNS = [
+                                "Kode KPPN", "Kode BA", "Kode Satker",
+                                "Uraian Satker-RINGKAS",
+                                "Kualitas Perencanaan Anggaran",
+                                "Kualitas Pelaksanaan Anggaran",
+                                "Kualitas Hasil Pelaksanaan Anggaran",
+                                "Revisi DIPA",
+                                "Deviasi Halaman III DIPA",
+                                "Penyerapan Anggaran",
+                                "Belanja Kontraktual",
+                                "Penyelesaian Tagihan",
+                                "Pengelolaan UP dan TUP",
+                                "Capaian Output",
+                                "Nilai Total",
+                                "Nilai Akhir (Nilai Total/Konversi Bobot)",
+
+                                # dari DIPA
+                                "Total Pagu",
+                                "Tanggal Posting Revisi",
+
+                                "Bulan",
+                                "Tahun",
+                                "Jenis Satker"
+                            ]
+
+                            df_excel = df_final[[c for c in KEEP_COLUMNS if c in df_final.columns]]
+
                             excel_bytes = io.BytesIO()
                             with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                                df_excel = df_processed.drop(["Bobot", "Nilai Terbobot"], axis=1, errors="ignore")
                                 df_excel.to_excel(writer, index=False, sheet_name="Data IKPA")
 
                             excel_bytes.seek(0)
