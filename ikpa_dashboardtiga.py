@@ -68,6 +68,7 @@ def normalize_kode_satker(k, width=6):
     kod = kod.zfill(width)
     return kod
 
+
 def extract_kode_from_satker_field(s, width=6):
     """
     Jika kolom 'Satker' mengandung '001234 – NAMA SATKER', ambil angka di awal.
@@ -85,6 +86,99 @@ def extract_kode_from_satker_field(s, width=6):
     if m2:
         return normalize_kode_satker(m2.group(1), width=width)
     return ''
+
+
+# =============================================================
+# ✅ FUNGSI BARU 1: Memastikan DIPA Unik per Satker
+# =============================================================
+def ensure_unique_dipa_per_satker(df_dipa):
+    """
+    Memastikan setiap Kode Satker hanya punya 1 row dengan revisi terbaru.
+    """
+    if df_dipa is None or df_dipa.empty:
+        return df_dipa
+    
+    df = df_dipa.copy()
+    
+    # Normalize Kode Satker
+    if 'Kode Satker' in df.columns:
+        df['Kode Satker'] = df['Kode Satker'].apply(normalize_kode_satker)
+    
+    # Pastikan Tanggal Posting Revisi dalam format datetime
+    if 'Tanggal Posting Revisi' in df.columns:
+        df['Tanggal Posting Revisi'] = pd.to_datetime(
+            df['Tanggal Posting Revisi'], 
+            errors='coerce'
+        )
+        
+        # Sort by Kode Satker dan Tanggal (terbaru di bawah)
+        df = df.sort_values(
+            by=['Kode Satker', 'Tanggal Posting Revisi'], 
+            ascending=[True, True]
+        )
+        
+        # Ambil row terakhir (terbaru) per Kode Satker
+        df_unique = df.groupby('Kode Satker', as_index=False).last()
+    else:
+        # Jika tidak ada tanggal, ambil row terakhir per Kode Satker
+        df_unique = df.groupby('Kode Satker', as_index=False).last()
+    
+    return df_unique.reset_index(drop=True)
+
+
+# =============================================================
+# ✅ FUNGSI BARU 2: Menambahkan Kolom Jenis Satker
+# =============================================================
+def add_jenis_satker_column(df_merged):
+    """
+    Menambahkan kolom 'Jenis Satker' berdasarkan Total Pagu DIPA.
+    - Top 30% = "Satker Besar"
+    - 40%-70% = "Satker Sedang"  
+    - 0%-40% = "Satker Kecil"
+    """
+    if df_merged is None or df_merged.empty:
+        return df_merged
+    
+    df = df_merged.copy()
+    
+    # Pastikan kolom Total Pagu DIPA ada dan numeric
+    if 'Total Pagu DIPA' not in df.columns:
+        df['Jenis Satker'] = 'Tidak Ada Data Pagu'
+        return df
+    
+    # Convert ke numeric, handle errors
+    df['Total Pagu DIPA'] = pd.to_numeric(
+        df['Total Pagu DIPA'], 
+        errors='coerce'
+    ).fillna(0)
+    
+    # Hitung persentil (hanya dari nilai > 0)
+    valid_pagu = df[df['Total Pagu DIPA'] > 0]['Total Pagu DIPA']
+    
+    if len(valid_pagu) == 0:
+        df['Jenis Satker'] = 'Tidak Ada Data Pagu'
+        return df
+    
+    # Persentil 70 (top 30%)
+    p70 = valid_pagu.quantile(0.70)
+    # Persentil 40
+    p40 = valid_pagu.quantile(0.40)
+    
+    # Fungsi kategorisasi
+    def kategorisasi(pagu):
+        if pd.isna(pagu) or pagu == 0:
+            return "Tidak Ada Data Pagu"
+        elif pagu >= p70:
+            return "Satker Besar"
+        elif pagu >= p40:
+            return "Satker Sedang"
+        else:
+            return "Satker Kecil"
+    
+    df['Jenis Satker'] = df['Total Pagu DIPA'].apply(kategorisasi)
+    
+    return df
+
 
 def process_dipa_dataframe(df, source_name=None, date_col_candidates=None):
     """
@@ -226,6 +320,7 @@ def process_dipa_dataframe(df, source_name=None, date_col_candidates=None):
 
     return df_latest
 
+
 # ============================================================
 # 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
@@ -247,7 +342,6 @@ def load_data_dipa_from_github():
 
         # FIX UTAMA: membaca root repo harus string kosong ""
         root_items = repo.get_contents("")
-
 
         # Cari folder yang mengandung kata 'dipa'
         dipa_folder = None
@@ -296,6 +390,9 @@ def load_data_dipa_from_github():
                 else:
                     df["Kode Satker"] = ""
 
+                # ✅ Pastikan unik per satker (revisi terbaru)
+                df = ensure_unique_dipa_per_satker(df)
+
                 # Simpan
                 st.session_state.data_dipa_by_year[year] = df
                 loaded_count += 1
@@ -307,18 +404,6 @@ def load_data_dipa_from_github():
     except Exception as e:
         st.error(f"❌ Error saat load data DIPA dari GitHub: {e}")
 
-
-#fungsi untuk menormalisasi kode satker
-def normalize_kode_satker(kode: str) -> str:
-    """Normalize Kode Satker to always 6 digits, keep leading zeros, add apostrophe if needed."""
-    if pd.isna(kode): return ''
-    kode_str = str(kode).strip().lstrip("'")
-    kode_str = ''.join(ch for ch in kode_str if ch.isdigit())
-    if len(kode_str) < 6:
-        kode_str = kode_str.zfill(6)
-    elif len(kode_str) > 6:
-        kode_str = kode_str[-6:]
-    return f"'{kode_str}" if kode_str.startswith("0") else kode_str
 
 # Fungsi untuk memproses file Excel
 def process_excel_file(uploaded_file, year):
@@ -418,6 +503,7 @@ def process_excel_file(uploaded_file, year):
         st.error(f"Error memproses file: {str(e)}")
         return None, None, None
 
+
 # Save any file (Excel/template) to your GitHub repo
 def save_file_to_github(file_bytes, filename, folder="data"):
     token = st.secrets.get("GITHUB_TOKEN")
@@ -439,6 +525,7 @@ def save_file_to_github(file_bytes, filename, folder="data"):
     except Exception:
         repo.create_file(path, f"Upload {filename}", file_bytes)
         st.success(f"✅ File {filename} diunggah ke GitHub.")
+
 
 # ============================
 #  LOAD DATA IKPA DARI GITHUB
