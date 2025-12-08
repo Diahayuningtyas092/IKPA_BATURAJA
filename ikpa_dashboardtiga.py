@@ -2738,27 +2738,60 @@ def page_admin():
                 format_func=lambda x: f"Tahun {x}",
                 key="download_dipa_year"
             )
-            # Ambil data dari session state
             df_download_dipa = st.session_state.data_dipa_by_year[year_to_download].copy()
             
-            # ✅ DEBUGGING: Lihat data sebelum dibersihkan
-            st.write(f"📊 Debug - Total baris: {len(df_download_dipa)}")
-            st.write(f"📊 Debug - Total kolom: {len(df_download_dipa.columns)}")
-            st.write(f"📊 Debug - Nama kolom: {df_download_dipa.columns.tolist()}")
+            # ✅ PERBAIKAN UTAMA: Deteksi dan perbaiki header yang salah
+            # Jika kolom pertama adalah "DOWNLOAD DATA DETAIL PENGANGGARAN", maka header salah
+            if df_download_dipa.columns[0] == 'DOWNLOAD DATA DETAIL PENGANGGARAN':
+                
+                # Cari baris yang mengandung header sebenarnya (cari "Kode Satker" atau "Nama Satker")
+                header_row_idx = None
+                for idx in range(min(5, len(df_download_dipa))):
+                    row_values = df_download_dipa.iloc[idx].astype(str).str.lower().tolist()
+                    if any('kode satker' in val or 'satker' in val or 'pagu' in val for val in row_values):
+                        header_row_idx = idx
+                        break
+                
+                if header_row_idx is not None:
+                    # Set header yang benar
+                    new_columns = df_download_dipa.iloc[header_row_idx].tolist()
+                    df_download_dipa.columns = new_columns
+                    
+                    # Hapus baris-baris sebelum data (termasuk header lama)
+                    df_download_dipa = df_download_dipa.iloc[header_row_idx + 1:].reset_index(drop=True)
+                    
+                    st.success(f"✅ Header diperbaiki dari baris {header_row_idx + 1}")
             
-            # ✅ HAPUS HANYA KOLOM UNNAMED - METODE AMAN
-            # Cari kolom yang namanya BUKAN "Unnamed"
+            # ✅ Bersihkan nama kolom dari whitespace dan newline
+            df_download_dipa.columns = (
+                df_download_dipa.columns.astype(str)
+                .str.strip()
+                .str.replace('\n', ' ', regex=False)
+                .str.replace('\r', ' ', regex=False)
+                .str.replace('\s+', ' ', regex=True)
+            )
+            
+            # ✅ HAPUS KOLOM UNNAMED
             cols_to_keep = [col for col in df_download_dipa.columns 
-                           if not str(col).startswith('Unnamed')]
+                           if not str(col).lower().startswith('unnamed')]
             
             if cols_to_keep:
                 df_download_dipa = df_download_dipa[cols_to_keep]
             
-            # ✅ HAPUS KOLOM YANG 100% KOSONG (opsional - comment jika tidak perlu)
-            # df_download_dipa = df_download_dipa.dropna(axis=1, how='all')
+            # ✅ HAPUS KOLOM YANG 100% KOSONG
+            df_download_dipa = df_download_dipa.dropna(axis=1, how='all')
             
-            st.write(f"✅ Setelah dibersihkan - Total kolom: {len(df_download_dipa.columns)}")
-            st.dataframe(df_download_dipa.head(3))  # Preview 3 baris pertama
+            # ✅ HAPUS BARIS YANG 100% KOSONG
+            df_download_dipa = df_download_dipa.dropna(axis=0, how='all')
+            
+            # Debugging info
+            st.write(f"📊 Total baris setelah dibersihkan: {len(df_download_dipa)}")
+            st.write(f"📊 Total kolom setelah dibersihkan: {len(df_download_dipa.columns)}")
+            st.write(f"📊 Nama kolom: {df_download_dipa.columns.tolist()}")
+            
+            # Preview data
+            with st.expander("👁️ Preview Data (5 baris pertama)"):
+                st.dataframe(df_download_dipa.head(5))
             
             output_dipa = io.BytesIO()
             with pd.ExcelWriter(output_dipa, engine='openpyxl') as writer:
@@ -2779,7 +2812,7 @@ def page_admin():
                         cell.font = Font(bold=True, color="FFFFFF")
                         cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
                         cell.alignment = Alignment(horizontal="center", vertical="center")
-                except Exception as pass_error:
+                except Exception:
                     pass
             
             output_dipa.seek(0)
