@@ -328,9 +328,7 @@ def process_excel_file(uploaded_file, year):
     try:
         df_raw = pd.read_excel(uploaded_file, header=None)
         
-        # 1️⃣ Ekstrak bulan dari baris ke-2 (index 1)
-        month_text = str(df_raw.iloc[1, 0])
-        month = month_text.split(":")[-1].strip() if ":" in month_text else "UNKNOWN"
+        month = None   # tidak ambil bulan dari isi file karena tidak konsisten
         
         # 2️⃣ Ekstrak data (baris ke-5 dst)
         df_data = df_raw.iloc[4:].reset_index(drop=True)
@@ -398,7 +396,8 @@ def process_excel_file(uploaded_file, year):
                 'Nilai Total': nilai_total, 'Konversi Bobot': konversi_bobot,
                 'Dispensasi SPM (Pengurang)': dispensasi_spm,
                 'Nilai Akhir (Nilai Total/Konversi Bobot)': nilai_akhir,
-                'Bulan': month, 'Tahun': year,
+                'Bulan': None,  
+                'Tahun': year,
                 'Bobot': bobot_dict, 'Nilai Terbobot': nilai_terbobot_dict
             }
             processed_rows.append(row_data)
@@ -506,6 +505,34 @@ def load_data_from_github():
         for col in numeric_cols:
             if col in df.columns:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+
+        # ============================================
+        # MERGE IKPA + DIPA (Revisi Terbaru)
+        # ============================================  
+        if "dipa_latest" in st.session_state:
+            df_dipa = st.session_state["dipa_latest"]
+
+            df['Tahun'] = df['Tahun'].astype(int)
+
+            df = df.merge(
+                df_dipa[['Kode Satker', 'Tahun', 'Total Pagu', 'Tanggal Posting Revisi']],
+                on=['Kode Satker', 'Tahun'],
+                how='left'
+            )
+
+            # Tambahkan Jenis Satker
+            if 'Total Pagu' in df.columns:
+                p70 = df['Total Pagu'].quantile(0.70)
+                p40 = df['Total Pagu'].quantile(0.40)
+
+                def kategori(pagu):
+                    if pagu >= p70:
+                        return "Satker Besar"
+                    elif pagu >= p40:
+                        return "Satker Sedang"
+                    return "Satker Kecil"
+
+                df['Jenis Satker'] = df['Total Pagu'].apply(kategori)
 
         # Add helper columns for sorting and source tracking
         df['Source'] = 'GitHub'
@@ -1194,10 +1221,12 @@ def page_dashboard():
                 # =============================
                 # 🔧 PERBAIKAN UTAMA: Pivot berdasarkan Kode Satker
                 # =============================
-                
+
                 # 1. Buat kolom periode yang sesuai
                 if period_type == 'monthly':
-                    df_year['Period_Column'] = df_year['Bulan_upper']
+                    # gunakan BUKAN Bulan_upper, tetapi Bulan dari uploader
+                    df_year['Period_Column'] = df_year['Bulan'].str.upper()
+
                 else:  # quarterly
                     def map_to_quarter(month):
                         if month in ['MARET', 'MAR', 'MRT']:
@@ -1210,7 +1239,7 @@ def page_dashboard():
                             return 'Tw IV'
                         return None
                     
-                    df_year['Period_Column'] = df_year['Bulan_upper'].apply(map_to_quarter)
+                    df_year['Period_Column'] = df_year['Bulan'].str.upper().apply(map_to_quarter)
                     df_year = df_year[df_year['Period_Column'].notna()]
 
                 # 2. Ambil kolom yang diperlukan
@@ -1919,7 +1948,7 @@ def page_admin():
     # TAB 1: UPLOAD DATA (IKPA, DIPA, Referensi)
     # ============================================================
     with tab1:
-        # Submenu Upload Data Bulanan IKPA
+
         st.subheader("📤 Upload Data Bulanan IKPA")
 
         upload_year = st.selectbox(
@@ -1928,130 +1957,106 @@ def page_admin():
             index=list(range(2020, 2031)).index(datetime.now().year)
         )
 
-        uploaded_file = st.file_uploader("Pilih file Excel IKPA", type=['xlsx', 'xls'])
+        uploaded_files = st.file_uploader(
+            "Pilih satu atau beberapa file Excel IKPA",
+            type=['xlsx', 'xls'],
+            accept_multiple_files=True
+        )
 
-        if uploaded_file is not None:
-            try:
-                df_temp = pd.read_excel(uploaded_file, header=None)
-                month_text = str(df_temp.iloc[1, 0])
-                month_preview = month_text.split(":")[-1].strip() if ":" in month_text else "UNKNOWN"
-                period_key_preview = (str(month_preview), str(upload_year))
-                uploaded_file.seek(0)
+        if uploaded_files:
 
-                if period_key_preview in st.session_state.data_storage:
-                    st.warning(f"⚠️ Data untuk **{month_preview} {upload_year}** sudah ada.")
-                    confirm_replace = st.checkbox(
-                        "✅ Ganti data yang sudah ada.",
-                        key=f"confirm_replace_{month_preview}_{upload_year}"
-                    )
-                else:
-                    confirm_replace = True
-                    st.info(f"📝 Akan mengunggah data baru untuk periode: **{month_preview} {upload_year}**")
+            st.info("📄 File yang diupload:")
+            for f in uploaded_files:
+                st.write("•", f.name)
 
-            except Exception as e:
-                st.error(f"❌ Gagal membaca preview file: {e}")
-                confirm_replace = False
+            if st.button("🔄 Proses Semua Data IKPA", type="primary"):
 
-            if st.button("🔄 Proses Data IKPA", type="primary", disabled=not confirm_replace):
-                with st.spinner("Memproses data..."):
+                with st.spinner("Memproses semua file..."):
 
-                    try:
-                        # ==========================================================
-                        # 1) PROSES DATA EXCEL
-                        # ==========================================================
-                        df_processed, _, _ = process_excel_file(uploaded_file, upload_year)
-                        if df_processed is None:
-                            st.error("❌ Gagal memproses file.")
-                            st.stop()
+                    # Mapping Bulan Lengkap
+                    MONTH_FIX = {
+                        "JAN": "JANUARI", "JANUARY": "JANUARI", "JANUARI": "JANUARI",
+                        "FEB": "FEBRUARI", "FEBRUARY": "FEBRUARI", "FEBRUARI": "FEBRUARI",
+                        "MAR": "MARET", "MRT": "MARET", "MARET": "MARET",
+                        "APR": "APRIL", "APRIL": "APRIL",
+                        "MEI": "MEI",
+                        "JUN": "JUNI", "JUNE": "JUNI", "JUNI": "JUNI",
+                        "JUL": "JULI", "JULY": "JULI", "JULI": "JULI",
+                        "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AUG": "AGUSTUS", "AGUSTUS": "AGUSTUS",
+                        "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
+                        "OKT": "OKTOBER", "OCT": "OKTOBER", "OKTOBER": "OKTOBER",
+                        "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
+                        "DES": "DESEMBER", "DEC": "DESEMBER", "DESEMBER": "DESEMBER"
+                    }
 
-                        # ==========================================================
-                        # 2) AMBIL BULAN & TAHUN DARI NAMA FILE
-                        # ==========================================================
-                        filename_raw = uploaded_file.name.upper().replace(".XLSX", "").replace(".XLS", "")
-                        parts = filename_raw.split("_")
+                    import re
 
-                        if len(parts) < 3:
-                            st.error("❌ Nama file harus format: IKPA_[BULAN]_[TAHUN].xlsx")
-                            st.stop()
+                    for uploaded_file in uploaded_files:
+                        try:
+                            # 1) Dapatkan bulan dari isi file
+                            df_temp = pd.read_excel(uploaded_file, header=None)
+                            month_text = str(df_temp.iloc[1, 0])
+                            month_from_content = month_text.split(":")[-1].strip() if ":" in month_text else ""
 
-                        month_raw = parts[-2]
-                        year_raw = parts[-1]
+                            # 2) Dapatkan bulan dari nama file
+                            filename = uploaded_file.name.upper().replace(".XLSX", "").replace(".XLS", "")
+                            parts = filename.split("_")
 
-                        MONTH_FIX = {
-                            "JAN": "JANUARI", "JANUARY": "JANUARI",
-                            "FEB": "FEBRUARI",
-                            "MAR": "MARET", "MRT": "MARET",
-                            "APR": "APRIL",
-                            "AGT": "AGUSTUS", "AUG": "AGUSTUS",
-                            "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER",
-                            "OKT": "OKTOBER", "OCT": "OKTOBER",
-                            "DES": "DESEMBER", "DEC": "DESEMBER"
-                        }
+                            if len(parts) >= 3:
+                                month_raw = parts[-2]
+                                clean_month = re.sub(r"[^A-Z]", "", month_raw)
+                                month_from_filename = MONTH_FIX.get(clean_month, clean_month)
+                            else:
+                                month_from_filename = ""
 
-                        import re
-                        clean_month = re.sub(r'[^A-Z]', '', month_raw)
-                        month = MONTH_FIX.get(clean_month, clean_month)
-                        year = year_raw
+                            # 3) Tentukan final month
+                            final_month = (month_from_filename or month_from_content or "UNKNOWN").upper()
 
-                        # ==========================================================
-                        # 3) NORMALISASI KODE SATKER
-                        # ==========================================================
-                        if "Kode Satker" in df_processed.columns:
-                            df_processed["Kode Satker"] = df_processed["Kode Satker"].apply(normalize_kode_satker)
-                        else:
-                            df_processed["Kode Satker"] = ""
+                            # 4) Proses Excel
+                            df_processed, _, _ = process_excel_file(uploaded_file, upload_year)
+                            if df_processed is None:
+                                st.warning(f"⚠️ Gagal memproses file: {uploaded_file.name}")
+                                continue
 
-                        # ==========================================================
-                        # 4) SIMPAN DATA KE STORAGE
-                        # ==========================================================
-                        period_key = (month, str(year))
-                        st.session_state.data_storage[period_key] = df_processed.copy()
+                            # Tambah ini untuk memperbaiki bulan
+                            df_processed["Bulan"] = final_month
 
-                        # ==========================================================
-                        # 5) SIMPAN EXCEL KE GITHUB
-                        # ==========================================================
-                        excel_bytes = io.BytesIO()
-                        with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                            df_excel = df_processed.drop(["Bobot", "Nilai Terbobot"], axis=1, errors="ignore")
-                            df_excel.to_excel(writer, index=False, sheet_name="Data IKPA", startrow=0, startcol=0)
 
-                            workbook = writer.book
-                            worksheet = writer.sheets["Data IKPA"]
+                            # Normalisasi kode satker
+                            if "Kode Satker" in df_processed.columns:
+                                df_processed["Kode Satker"] = df_processed["Kode Satker"].apply(normalize_kode_satker)
+                            else:
+                                df_processed["Kode Satker"] = ""
 
-                            for cell in worksheet[1]:
-                                cell.font = Font(bold=True, color="FFFFFF")
-                                cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                                cell.alignment = Alignment(horizontal="center", vertical="center")
+                            # 5) Simpan di Session State
+                            key = (final_month, str(upload_year))
+                            st.session_state.data_storage[key] = df_processed.copy()
 
-                            for column in worksheet.columns:
-                                max_length = 0
-                                column_letter = column[0].column_letter
-                                for cell in column:
-                                    try:
-                                        max_length = max(max_length, len(str(cell.value)))
-                                    except:
-                                        pass
-                                worksheet.column_dimensions[column_letter].width = min(max_length + 2, 50)
+                            # 6) Simpan file ke GitHub
+                            excel_bytes = io.BytesIO()
+                            with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                                df_excel = df_processed.drop(["Bobot", "Nilai Terbobot"], axis=1, errors="ignore")
+                                df_excel.to_excel(writer, index=False, sheet_name="Data IKPA")
 
-                        excel_bytes.seek(0)
-                        save_file_to_github(excel_bytes.getvalue(), f"IKPA_{month}_{year}.xlsx", folder="data")
+                            excel_bytes.seek(0)
+                            save_file_to_github(
+                                excel_bytes.getvalue(),
+                                f"IKPA_{final_month}_{upload_year}.xlsx",
+                                folder="data"
+                            )
 
-                        # ==========================================================
-                        # SUCCESS
-                        # ==========================================================
-                        st.success(f"✅ Data {month} {year} berhasil disimpan.")
-                        st.snow()
+                            # 7) LOG
+                            st.session_state.activity_log.append({
+                                "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                "Aksi": "Upload",
+                                "Periode": f"{final_month} {upload_year}",
+                                "Status": "Sukses"
+                            })
 
-                        # LOG
-                        st.session_state.activity_log.append({
-                            "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "Aksi": "Upload",
-                            "Periode": f"{month} {year}",
-                            "Status": "✅ Sukses"
-                        })
+                            st.success(f"✅ {uploaded_file.name} → {final_month} {upload_year} berhasil disimpan.")
 
-                    except Exception as e:
-                        st.error(f"❌ Gagal menyimpan ke GitHub: {e}")
+                        except Exception as e:
+                            st.error(f"❌ Error memproses {uploaded_file.name}: {e}")
 
         # ============================================================
         # SUBMENU: UPLOAD DATA DIPA
