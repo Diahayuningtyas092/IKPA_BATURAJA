@@ -2760,7 +2760,7 @@ def page_admin():
                     # Hapus baris-baris sebelum data (termasuk header lama)
                     df_download_dipa = df_download_dipa.iloc[header_row_idx + 1:].reset_index(drop=True)
                     
-                    st.success()
+                    st.success(f"✅ Header diperbaiki dari baris {header_row_idx + 1}")
             
             # ✅ Bersihkan nama kolom dari whitespace dan newline
             df_download_dipa.columns = (
