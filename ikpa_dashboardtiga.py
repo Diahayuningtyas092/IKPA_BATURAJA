@@ -2738,19 +2738,37 @@ def page_admin():
                 format_func=lambda x: f"Tahun {x}",
                 key="download_dipa_year"
             )
-            df_download_dipa = st.session_state.data_dipa_by_year[year_to_download]
+            # Ambil data dari session state
+            df_download_dipa = st.session_state.data_dipa_by_year[year_to_download].copy()
             
-            # HAPUS HANYA KOLOM UNNAMED
-            df_download_dipa = df_download_dipa.loc[:, ~df_download_dipa.columns.astype(str).str.contains('^Unnamed', case=False, na=False)]
+            # ✅ DEBUGGING: Lihat data sebelum dibersihkan
+            st.write(f"📊 Debug - Total baris: {len(df_download_dipa)}")
+            st.write(f"📊 Debug - Total kolom: {len(df_download_dipa.columns)}")
+            st.write(f"📊 Debug - Nama kolom: {df_download_dipa.columns.tolist()}")
             
-            # HAPUS KOLOM YANG 100% KOSONG
-            df_download_dipa = df_download_dipa.dropna(axis=1, how='all')
+            # ✅ HAPUS HANYA KOLOM UNNAMED - METODE AMAN
+            # Cari kolom yang namanya BUKAN "Unnamed"
+            cols_to_keep = [col for col in df_download_dipa.columns 
+                           if not str(col).startswith('Unnamed')]
+            
+            if cols_to_keep:
+                df_download_dipa = df_download_dipa[cols_to_keep]
+            
+            # ✅ HAPUS KOLOM YANG 100% KOSONG (opsional - comment jika tidak perlu)
+            # df_download_dipa = df_download_dipa.dropna(axis=1, how='all')
+            
+            st.write(f"✅ Setelah dibersihkan - Total kolom: {len(df_download_dipa.columns)}")
+            st.dataframe(df_download_dipa.head(3))  # Preview 3 baris pertama
             
             output_dipa = io.BytesIO()
             with pd.ExcelWriter(output_dipa, engine='openpyxl') as writer:
-                # ✅ PERBAIKAN: Mulai dari A1
-                df_download_dipa.to_excel(writer, index=False, sheet_name=f'DIPA_{year_to_download}',
-                                          startrow=0, startcol=0)
+                df_download_dipa.to_excel(
+                    writer, 
+                    index=False, 
+                    sheet_name=f'DIPA_{year_to_download}',
+                    startrow=0, 
+                    startcol=0
+                )
                 
                 # Format header
                 try:
@@ -2761,7 +2779,7 @@ def page_admin():
                         cell.font = Font(bold=True, color="FFFFFF")
                         cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
                         cell.alignment = Alignment(horizontal="center", vertical="center")
-                except Exception:
+                except Exception as pass_error:
                     pass
             
             output_dipa.seek(0)
