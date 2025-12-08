@@ -2755,62 +2755,259 @@ def page_admin():
                     st.error(f"❌ Gagal menghapus data DIPA: {e}")
 
     # ============================================================
-    # TAB 3: DOWNLOAD DATA
+    # TAB 3: DOWNLOAD DATA (DIPERBAIKI LENGKAP)
     # ============================================================
     with tab3:
-        # Submenu Download Data IKPA
+        # =========================================================
+        # Submenu Download Data IKPA (DIPERBAIKI)
+        # =========================================================
         st.subheader("📥 Download Data IKPA")
+        
         if not st.session_state.data_storage:
             st.info("ℹ️ Belum ada data IKPA.")
         else:
-            available_periods = sorted(st.session_state.data_storage.keys(), reverse=True)
+            available_periods = sorted(
+                st.session_state.data_storage.keys(), 
+                reverse=True
+            )
+            
             period_to_download = st.selectbox(
                 "Pilih periode untuk download",
                 options=available_periods,
                 format_func=lambda x: f"{x[0].capitalize()} {x[1]}"
             )
-            df_download = st.session_state.data_storage[period_to_download]
+            
+            # Ambil data IKPA
+            df_download = st.session_state.data_storage[period_to_download].copy()
+            month, year = period_to_download
+            
+            # ✅ PERBAIKAN: Merge dengan DIPA yang sudah unik
+            if 'data_dipa_by_year' in st.session_state:
+                dipa_year = st.session_state.data_dipa_by_year.get(int(year))
+                
+                if dipa_year is not None and not dipa_year.empty:
+                    # 🔹 Pastikan DIPA unik per Kode Satker
+                    dipa_unique = ensure_unique_dipa_per_satker(dipa_year)
+                    
+                    # 🔹 Normalize Kode Satker di kedua dataframe
+                    if 'Kode Satker' in df_download.columns:
+                        df_download['Kode Satker'] = df_download['Kode Satker'].apply(
+                            normalize_kode_satker
+                        )
+                    
+                    if 'Kode Satker' in dipa_unique.columns:
+                        dipa_unique['Kode Satker'] = dipa_unique['Kode Satker'].apply(
+                            normalize_kode_satker
+                        )
+                    
+                    # 🔹 Deteksi kolom Total Pagu di DIPA
+                    pagu_col = None
+                    pagu_candidates = [
+                        "Pagu (Jumlah)", "Total Pagu", "Pagu",
+                        "Jumlah", "Total Anggaran"
+                    ]
+                    for col in pagu_candidates:
+                        if col in dipa_unique.columns:
+                            pagu_col = col
+                            break
+                    
+                    if pagu_col:
+                        dipa_unique = dipa_unique.rename(columns={pagu_col: "Total Pagu"})
+                    else:
+                        dipa_unique["Total Pagu"] = 0
+                    
+                    # 🔹 Merge IKPA dengan DIPA
+                    cols_to_merge = ['Kode Satker', 'Total Pagu']
+                    
+                    if 'Tanggal Posting Revisi' in dipa_unique.columns:
+                        cols_to_merge.append('Tanggal Posting Revisi')
+                    
+                    df_download = df_download.merge(
+                        dipa_unique[cols_to_merge].rename(
+                            columns={'Total Pagu': 'Total Pagu DIPA'}
+                        ),
+                        on='Kode Satker',
+                        how='left'
+                    )
+                    
+                    # 🔹 Tambahkan Kolom Jenis Satker
+                    df_download = add_jenis_satker_column(df_download)
+                    
+                    st.success(
+                        f"✅ Data DIPA tahun {year} berhasil digabung "
+                        f"({len(dipa_unique)} satker unik)"
+                    )
+                else:
+                    st.info(f"ℹ️ Data DIPA untuk tahun {year} tidak tersedia.")
+                    df_download['Total Pagu DIPA'] = None
+                    df_download['Tanggal Posting Revisi'] = None
+                    df_download['Jenis Satker'] = 'Tidak Ada Data Pagu'
+            else:
+                st.info("ℹ️ Data DIPA belum dimuat ke sistem.")
+                df_download['Total Pagu DIPA'] = None
+                df_download['Tanggal Posting Revisi'] = None
+                df_download['Jenis Satker'] = 'Tidak Ada Data Pagu'
+            
+            # =========================================================
+            # Generate Excel dengan formatting
+            # =========================================================
             output = io.BytesIO()
+            
+            # Kolom yang akan di-export (sesuaikan urutan)
+            export_columns = [
+                'Peringkat', 'Kode KPPN', 'Kode BA', 'Kode Satker',
+                'Uraian Satker-RINGKAS',
+                'Total Pagu DIPA',
+                'Jenis Satker',
+                'Tanggal Posting Revisi',
+                'Kualitas Perencanaan Anggaran',
+                'Kualitas Pelaksanaan Anggaran',
+                'Kualitas Hasil Pelaksanaan Anggaran',
+                'Revisi DIPA', 'Deviasi Halaman III DIPA',
+                'Penyerapan Anggaran', 'Belanja Kontraktual',
+                'Penyelesaian Tagihan', 'Pengelolaan UP dan TUP',
+                'Capaian Output',
+                'Nilai Total', 'Konversi Bobot',
+                'Dispensasi SPM (Pengurang)',
+                'Nilai Akhir (Nilai Total/Konversi Bobot)',
+                'Bulan', 'Tahun'
+            ]
+            
+            # Filter kolom yang ada
+            df_excel = df_download[[col for col in export_columns if col in df_download.columns]]
+            
+            # Drop kolom internal jika ada
+            df_excel = df_excel.drop(
+                ['Bobot', 'Nilai Terbobot', 'Source', 'Period', 'Period_Sort'], 
+                axis=1, 
+                errors='ignore'
+            )
+            
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_excel = df_download.drop(['Bobot', 'Nilai Terbobot'], axis=1, errors='ignore')
-                df_excel.to_excel(writer, index=False, sheet_name='Data IKPA', startrow=0, startcol=0)
+                df_excel.to_excel(
+                    writer, 
+                    index=False, 
+                    sheet_name='Data IKPA', 
+                    startrow=0, 
+                    startcol=0
+                )
                 
                 # Format header
                 workbook = writer.book
                 worksheet = writer.sheets['Data IKPA']
                 
+                # Style header row
+                header_font = Font(bold=True, color="FFFFFF", size=11)
+                header_fill = PatternFill(
+                    start_color="366092", 
+                    end_color="366092", 
+                    fill_type="solid"
+                )
+                header_alignment = Alignment(
+                    horizontal="center", 
+                    vertical="center",
+                    wrap_text=True
+                )
+                
                 for cell in worksheet[1]:
-                    cell.font = Font(bold=True, color="FFFFFF")
-                    cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                    cell.font = header_font
+                    cell.fill = header_fill
+                    cell.alignment = header_alignment
+                
+                # Auto-adjust column width
+                for column in worksheet.columns:
+                    max_length = 0
+                    column_letter = column[0].column_letter
+                    
+                    for cell in column:
+                        try:
+                            if len(str(cell.value)) > max_length:
+                                max_length = len(str(cell.value))
+                        except:
+                            pass
+                    
+                    adjusted_width = min(max_length + 2, 50)
+                    worksheet.column_dimensions[column_letter].width = adjusted_width
             
             output.seek(0)
+            
+            # Download button
             st.download_button(
-                label="📥 Download Excel IKPA",
+                label="📥 Download Excel IKPA (dengan Data DIPA & Jenis Satker)",
                 data=output,
-                file_name=f"IKPA_{period_to_download[0]}_{period_to_download[1]}.xlsx",
+                file_name=f"IKPA_{period_to_download[0]}_{period_to_download[1]}_lengkap.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
-
+            
+            # Preview data
+            with st.expander("👁️ Preview Data yang Akan Di-Download"):
+                st.dataframe(
+                    df_excel.head(20),
+                    use_container_width=True
+                )
+                
+                # Statistik Jenis Satker
+                if 'Jenis Satker' in df_excel.columns:
+                    st.markdown("##### 📊 Distribusi Jenis Satker")
+                    jenis_counts = df_excel['Jenis Satker'].value_counts()
+                    
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric(
+                            "Satker Besar", 
+                            jenis_counts.get('Satker Besar', 0)
+                        )
+                    with col2:
+                        st.metric(
+                            "Satker Sedang", 
+                            jenis_counts.get('Satker Sedang', 0)
+                        )
+                    with col3:
+                        st.metric(
+                            "Satker Kecil", 
+                            jenis_counts.get('Satker Kecil', 0)
+                        )
+                    with col4:
+                        st.metric(
+                            "Tanpa Data Pagu", 
+                            jenis_counts.get('Tidak Ada Data Pagu', 0)
+                        )
+        
+        # =========================================================
         # Submenu Download Data DIPA
+        # =========================================================
         st.markdown("---")
         st.subheader("📥 Download Data DIPA")
+        
         if not st.session_state.get("data_dipa_by_year"):
             st.info("ℹ️ Belum ada data DIPA.")
         else:
-            available_years_download = sorted(st.session_state.data_dipa_by_year.keys(), reverse=True)
+            available_years_download = sorted(
+                st.session_state.data_dipa_by_year.keys(), 
+                reverse=True
+            )
+            
             year_to_download = st.selectbox(
                 "Pilih tahun DIPA untuk download",
                 options=available_years_download,
                 format_func=lambda x: f"Tahun {x}",
                 key="download_dipa_year"
             )
-            df_download_dipa = st.session_state.data_dipa_by_year[year_to_download]
+            
+            # ✅ Pastikan DIPA unik sebelum download
+            df_download_dipa = st.session_state.data_dipa_by_year[year_to_download].copy()
+            df_download_dipa = ensure_unique_dipa_per_satker(df_download_dipa)
+            
             output_dipa = io.BytesIO()
+            
             with pd.ExcelWriter(output_dipa, engine='openpyxl') as writer:
-                # ✅ PERBAIKAN: Mulai dari A1
-                df_download_dipa.to_excel(writer, index=False, sheet_name=f'DIPA_{year_to_download}',
-                                          startrow=0, startcol=0)
+                df_download_dipa.to_excel(
+                    writer, 
+                    index=False, 
+                    sheet_name=f'DIPA_{year_to_download}',
+                    startrow=0, 
+                    startcol=0
+                )
                 
                 # Format header
                 workbook = writer.book
@@ -2818,17 +3015,27 @@ def page_admin():
                 
                 for cell in worksheet[1]:
                     cell.font = Font(bold=True, color="FFFFFF")
-                    cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                    cell.alignment = Alignment(horizontal="center", vertical="center")
+                    cell.fill = PatternFill(
+                        start_color="366092", 
+                        end_color="366092", 
+                        fill_type="solid"
+                    )
+                    cell.alignment = Alignment(
+                        horizontal="center", 
+                        vertical="center"
+                    )
             
             output_dipa.seek(0)
+            
             st.download_button(
-                label="📥 Download Excel DIPA",
+                label=f"📥 Download Excel DIPA {year_to_download} (Unik per Satker)",
                 data=output_dipa,
-                file_name=f"DIPA_{year_to_download}.xlsx",
+                file_name=f"DIPA_{year_to_download}_unik.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="btn_download_dipa"
             )
+            
+            st.info(f"ℹ️ Total satker unik: {len(df_download_dipa)}")
 
         # Download Data Satker Tidak Terdaftar
         st.markdown("---")
@@ -2836,7 +3043,7 @@ def page_admin():
         
         if st.button("📥 Generate & Download Laporan"):
             st.info("ℹ️ Fitur ini menggunakan data dari session state untuk performa optimal.")
-
+            
     # ============================================================
     # TAB 4: DOWNLOAD TEMPLATE
     # ============================================================
