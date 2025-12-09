@@ -1946,6 +1946,67 @@ def clean_dipa(df_raw):
 
     return df
 
+def detect_dipa_header(uploaded_file):
+    """
+    Auto-detect header row dalam file DIPA mentah dari SAS/SMART/Kemenkeu.
+    Returns: DataFrame dengan header yang sudah benar
+    """
+    try:
+        uploaded_file.seek(0)
+        
+        # Baca preview 15 baris pertama untuk deteksi header
+        preview = pd.read_excel(uploaded_file, header=None, nrows=15, dtype=str)
+        
+        # Keywords yang biasanya ada di header DIPA
+        header_keywords = [
+            "satker", "kode", "pagu", "jumlah", "dipa", 
+            "tanggal", "revisi", "kementerian", "eselon"
+        ]
+        
+        header_row = None
+        
+        # Cari baris yang mengandung keyword header
+        for i in range(len(preview)):
+            row_text = " ".join(preview.iloc[i].fillna("").astype(str).str.lower())
+            
+            # Jika minimal 3 keyword ditemukan, ini kemungkinan header
+            matches = sum(1 for keyword in header_keywords if keyword in row_text)
+            
+            if matches >= 3:
+                header_row = i
+                break
+        
+        # Default ke baris 0 jika tidak ditemukan
+        if header_row is None:
+            header_row = 0
+            st.warning("⚠️ Header otomatis tidak terdeteksi, menggunakan baris pertama sebagai header.")
+        else:
+            st.info(f"✅ Header terdeteksi di baris {header_row + 1}")
+        
+        # Baca ulang file dengan header yang benar
+        uploaded_file.seek(0)
+        df = pd.read_excel(uploaded_file, header=header_row, dtype=str)
+        
+        # Bersihkan nama kolom
+        df.columns = (
+            df.columns.astype(str)
+            .str.replace("\n", " ", regex=False)
+            .str.replace("\r", " ", regex=False)
+            .str.replace("\s+", " ", regex=True)
+            .str.strip()
+        )
+        
+        # Hapus baris kosong setelah header
+        df = df.dropna(how='all')
+        
+        return df
+        
+    except Exception as e:
+        st.error(f"❌ Error saat mendeteksi header DIPA: {e}")
+        # Fallback: baca dengan header default
+        uploaded_file.seek(0)
+        return pd.read_excel(uploaded_file, dtype=str)
+
 # ======================================================================================
 # JENIS SATKER
 # ======================================================================================
@@ -1969,45 +2030,63 @@ def assign_jenis_satker(df):
 # PROCESS UPLOAD DIPA
 # ======================================================================================
 def process_uploaded_dipa(uploaded_file, save_file_to_github):
-    
-    raw = detect_dipa_header(uploaded_file)
-    clean = clean_dipa(raw)
+    """
+    Process uploaded DIPA file and return cleaned dataframe with year info.
+    Returns: (df_clean, tahun_dipa, status_message)
+    """
+    try:
+        # 1️⃣ Deteksi header otomatis
+        raw = detect_dipa_header(uploaded_file)
+        
+        # 2️⃣ Bersihkan data DIPA
+        clean = clean_dipa(raw)
+        
+        # 3️⃣ Merge dengan referensi jika ada
+        if "reference_df" in st.session_state:
+            ref = st.session_state.reference_df.copy()
+            ref["Kode Satker"] = ref["Kode Satker"].apply(normalize_kode_satker)
+            clean["Kode Satker"] = clean["Kode Satker"].apply(normalize_kode_satker)
 
-    # Merge referensi ke dalam DIPA
-    if "reference_df" in st.session_state:
-        ref = st.session_state.reference_df.copy()
-        ref["Kode Satker"] = ref["Kode Satker"].apply(normalize_kode_satker)
-        clean["Kode Satker"] = clean["Kode Satker"].apply(normalize_kode_satker)
-
-        clean = clean.merge(
-            ref[["Kode BA", "K/L", "Kode Satker",
-                 "Uraian Satker-SINGKAT", "Uraian Satker-LENGKAP"]],
-            on="Kode Satker",
-            how="left"
-        )
-
-    # Klasifikasi besar/sedang/kecil
-    clean = assign_jenis_satker(clean)
-
-    # Simpan per tahun
-    if "data_dipa_by_year" not in st.session_state:
-        st.session_state.data_dipa_by_year = {}
-
-    for yr in clean["Tahun"].dropna().unique():
-        yr = int(yr)
-        df_year = clean[clean["Tahun"] == yr].copy()
-
-        st.session_state.data_dipa_by_year[yr] = df_year.copy()
-
-        # Save to GitHub
-        out = io.BytesIO()
-        with pd.ExcelWriter(out, engine="openpyxl") as writer:
-            df_year.to_excel(writer, index=False, sheet_name=f"DIPA_{yr}")
-        out.seek(0)
-
-        save_file_to_github(out.getvalue(), f"DIPA_{yr}.xlsx", "data_dipa")
-
-    st.success("✔ DIPA berhasil diproses dan disimpan!")
+            clean = clean.merge(
+                ref[["Kode BA", "K/L", "Kode Satker",
+                     "Uraian Satker-SINGKAT", "Uraian Satker-LENGKAP"]],
+                on="Kode Satker",
+                how="left"
+            )
+        
+        # 4️⃣ Klasifikasi satker (besar/sedang/kecil)
+        clean = assign_jenis_satker(clean)
+        
+        # 5️⃣ Ambil tahun dari data
+        if "Tahun" in clean.columns and not clean["Tahun"].isna().all():
+            tahun_dipa = int(clean["Tahun"].mode()[0])  # Ambil tahun yang paling sering muncul
+        else:
+            tahun_dipa = datetime.now().year
+            st.warning(f"⚠️ Tahun tidak ditemukan di data, menggunakan tahun sekarang: {tahun_dipa}")
+        
+        # 6️⃣ Simpan per tahun ke session state
+        if "data_dipa_by_year" not in st.session_state:
+            st.session_state.data_dipa_by_year = {}
+        
+        for yr in clean["Tahun"].dropna().unique():
+            yr = int(yr)
+            df_year = clean[clean["Tahun"] == yr].copy()
+            st.session_state.data_dipa_by_year[yr] = df_year.copy()
+            
+            # 7️⃣ Save to GitHub per tahun
+            out = io.BytesIO()
+            with pd.ExcelWriter(out, engine="openpyxl") as writer:
+                df_year.to_excel(writer, index=False, sheet_name=f"DIPA_{yr}")
+            out.seek(0)
+            
+            save_file_to_github(out.getvalue(), f"DIPA_{yr}.xlsx", "data_dipa")
+        
+        return clean, tahun_dipa, "✅ Sukses"
+        
+    except Exception as e:
+        error_msg = f"❌ Error: {str(e)}"
+        st.error(error_msg)
+        return None, None, error_msg
 
 # ------------------------------------------------------------
 # PAGE ADMIN
