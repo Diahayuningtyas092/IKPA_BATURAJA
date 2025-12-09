@@ -2770,28 +2770,49 @@ def page_admin():
 
 
 # ===============================
-# 🔹 MAIN APP
+# 🔹 MAIN APP (FIXED VERSION)
 # ===============================
 def main():
     # ============================================================
-    # Load Reference Data FIRST
+    # Load Reference Data FIRST (FIXED)
     # ============================================================
     if 'reference_df' not in st.session_state:
         token = st.secrets.get("GITHUB_TOKEN")
         repo_name = st.secrets.get("GITHUB_REPO")
+
         if not token or not repo_name:
             st.warning("⚠️ GitHub credentials belum tersedia")
         else:
             try:
                 g = Github(auth=Auth.Token(token))
                 repo = g.get_repo(repo_name)
+
                 ref_path = "templates/Template_Data_Referensi.xlsx"
-                ref_file = repo.get_contents(ref_path)
-                ref_data = base64.b64decode(ref_file.content)
-                ref_df = pd.read_excel(io.BytesIO(ref_data))
-                ref_df.columns = [c.strip() for c in ref_df.columns]
-                st.session_state.reference_df = ref_df
-                st.info(f"📚 Data Referensi dimuat ({len(ref_df)} baris)")
+
+                try:
+                    # 🔹 Coba load reference dari GitHub
+                    ref_file = repo.get_contents(ref_path)
+                    ref_data = base64.b64decode(ref_file.content)
+                    ref_df = pd.read_excel(io.BytesIO(ref_data))
+                    ref_df.columns = [c.strip() for c in ref_df.columns]
+
+                    st.session_state.reference_df = ref_df
+                    st.info(f"📚 Data Referensi dimuat ({len(ref_df)} baris)")
+
+                except Exception:
+                    # 🔹 Jika file tidak ada, buat template default
+                    st.warning("⚠️ Reference Data tidak ditemukan, menggunakan template kosong.")
+
+                    default_ref = pd.DataFrame({
+                        'Kode BA': [],
+                        'K/L': [],
+                        'Kode Satker': [],
+                        'Uraian Satker-SINGKAT': [],
+                        'Uraian Satker-LENGKAP': []
+                    })
+
+                    st.session_state.reference_df = default_ref
+
             except Exception as e:
                 st.error(f"❌ Gagal memuat reference data: {e}")
 
@@ -2824,7 +2845,6 @@ def main():
         st.info(f"📥 Data DIPA tersedia untuk tahun: {', '.join(map(str, tahun_loaded))}")
     else:
         st.error("❌ Tidak ada DATA_DIPA yang berhasil dimuat")
-
 
 
     # ===============================
