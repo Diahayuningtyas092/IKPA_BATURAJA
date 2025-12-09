@@ -2107,6 +2107,14 @@ def page_admin():
                         # ====================================
                         except Exception as e:
                             st.error(f"❌ Error saat memproses data: {e}")
+                            
+        #upload data DIPA
+        # ============================================================
+        # IMPORT MODUL
+        # ============================================================
+        import pandas as pd
+        import io
+        import streamlit as st
 
         # ============================================================
         # SUBMENU: UPLOAD DATA DIPA 
@@ -2121,13 +2129,6 @@ def page_admin():
         )
 
         # ============================================================
-        # IMPORT MODUL
-        # ============================================================
-        import pandas as pd
-        import io
-        import streamlit as st
-
-        # ============================================================
         # FUNGSI 1 — DETEKSI HEADER OTOMATIS
         # ============================================================
         def detect_dipa_header(uploaded_file):
@@ -2136,8 +2137,6 @@ def page_admin():
             dan mengembalikan DataFrame dengan header yang bersih.
             """
             uploaded_file.seek(0)
-            
-            # Baca 10 baris pertama tanpa header untuk mencari baris header
             raw = pd.read_excel(uploaded_file, header=None, dtype=str, engine="openpyxl")
             
             header_row = None
@@ -2147,14 +2146,11 @@ def page_admin():
                     header_row = i
                     break
 
-            # Default ke baris ke-3 (index 2) jika tidak ditemukan
             if header_row is None:
-                header_row = 2
-
+                header_row = 2  # default
+            
             uploaded_file.seek(0)
             df = pd.read_excel(uploaded_file, header=header_row, dtype=str, engine="openpyxl")
-            
-            # Bersihkan nama kolom dari spasi
             df.columns = df.columns.str.strip()
             
             return df
@@ -2164,16 +2160,9 @@ def page_admin():
         # ============================================================
         def clean_dipa(df_raw):
             df = df_raw.copy()
-            
-            # Hapus kolom Unnamed
             df = df.loc[:, ~df.columns.astype(str).str.contains("unnamed", case=False, na=False)]
-            
-            # Bersihkan nama kolom
             df.columns = df.columns.astype(str).str.strip()
-            
-            # Hapus baris kosong
             df = df.dropna(how="all").reset_index(drop=True)
-            
             return df
 
         # ============================================================
@@ -2182,22 +2171,16 @@ def page_admin():
         def process_dipa_dataframe(df):
             df = df.copy()
             
-            # Pengecekan kolom wajib
+            # Pastikan kolom wajib ada
             required_cols = ["Satker", "Pagu Belanja", "Tanggal Revisi", "Tahun"]
             missing = [c for c in required_cols if c not in df.columns]
             if missing:
                 raise ValueError(f"Kolom berikut tidak ditemukan: {missing}")
             
-            # Buat kode Satker dari angka di kolom Satker
             df["Kode Satker"] = df["Satker"].astype(str).str.extract(r"(\d{6})", expand=False).fillna("").str.zfill(6)
-            
-            # Total Pagu
             df["Total Pagu"] = pd.to_numeric(df["Pagu Belanja"], errors="coerce").fillna(0)
-            
-            # Tanggal revisi
             df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Revisi"], errors="coerce")
             
-            # Tahun, isi dari tanggal jika kosong
             df["Tahun"] = pd.to_numeric(df["Tahun"], errors="coerce")
             df["Tahun"] = df["Tahun"].fillna(df["Tanggal Posting Revisi"].dt.year)
             
@@ -2205,34 +2188,31 @@ def page_admin():
             df = df.sort_values(["Kode Satker", "Tahun", "Tanggal Posting Revisi"])
             df_latest = df.groupby(["Kode Satker", "Tahun"], as_index=False).tail(1)
             
-            # Fungsi kategori Satker berdasarkan kuantil
+            # Kategori Satker
             def kategori(dfyr):
                 q70 = dfyr["Total Pagu"].quantile(0.70)
                 q40 = dfyr["Total Pagu"].quantile(0.40)
-                
                 def fn(x):
                     if x >= q70: return "Satker Besar"
                     if x >= q40: return "Satker Sedang"
                     return "Satker Kecil"
-                
                 return dfyr.assign(Jenis_Satker=dfyr["Total Pagu"].apply(fn))
             
             df_final = df_latest.groupby("Tahun", group_keys=False).apply(kategori)
-            
             return df_final.reset_index(drop=True)
 
         # ============================================================
-        # 🚀 PROSES FILE DIPA
+        # FUNGSI UTAMA — PROSES FILE DIPA
         # ============================================================
-        def process_uploaded_dipa(uploaded_dipa_file, save_file_to_github):
+        def process_uploaded_dipa(uploaded_file, save_file_to_github):
             """
-            Fungsi utama untuk memproses file DIPA:
-            - Detect header
+            Proses file DIPA:
+            - Deteksi header
             - Clean data
             - Proses final
             - Simpan per tahun ke Streamlit session_state & GitHub
             """
-            if uploaded_dipa_file is None:
+            if uploaded_file is None:
                 st.warning("Silakan unggah file DIPA terlebih dahulu.")
                 return
             
@@ -2240,8 +2220,11 @@ def page_admin():
             if "data_dipa_by_year" not in st.session_state:
                 st.session_state.data_dipa_by_year = {}
             
+            # Inisialisasi variabel agar aman
+            raw = clean = final = None
+            
             try:
-                raw = detect_dipa_header(uploaded_dipa_file)
+                raw = detect_dipa_header(uploaded_file)
                 clean = clean_dipa(raw)
                 final = process_dipa_dataframe(clean)
                 
@@ -2268,6 +2251,14 @@ def page_admin():
             
             except Exception as e:
                 st.error(f"❌ Error memproses DIPA: {e}")
+
+        # ============================================================
+        # PEMANGGILAN FUNGSI
+        # ============================================================
+        # Pastikan save_file_to_github sudah didefinisikan sebelumnya
+        if uploaded_dipa_file is not None:
+            process_uploaded_dipa(uploaded_dipa_file, save_file_to_github)
+
 
 
 
