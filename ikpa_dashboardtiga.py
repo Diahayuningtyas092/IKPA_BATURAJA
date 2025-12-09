@@ -2507,6 +2507,7 @@ def main():
             ref_df = pd.read_excel(io.BytesIO(ref_data))
             short_col = 'Uraian Satker-SINGKAT'
             ref_df.columns = [c.strip() for c in ref_df.columns]  # normalize header whitespace
+            st.session_state.reference_df = ref_df
 
             if short_col not in ref_df.columns:
                 # Build simple diagnostic workbook with reference columns + example head
@@ -2514,6 +2515,7 @@ def main():
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
                     pd.DataFrame({"Reference Columns": list(ref_df.columns)}).to_excel(writer, sheet_name='Reference_Columns', index=False)
                     ref_df.head(200).to_excel(writer, sheet_name='Reference_Sample', index=False)
+                    # (optional) include a note sheet
                     pd.DataFrame({"Issue": [f"Missing expected column: {short_col}"]}).to_excel(writer, sheet_name='Issue', index=False)
                 excel_data = output.getvalue()
 
@@ -2528,12 +2530,11 @@ def main():
             ref_df['Kode Satker'] = ref_df['Kode Satker'].astype(str)
             st.session_state.reference_df = ref_df
             st.info(f"📚 Data Referensi dimuat otomatis ({len(ref_df)} baris).")
-
         except Exception as e:
-            st.warning(f"⚠️ Gagal memuat Data Referensi: {e}")
+            pass 
 
     # ============================================================
-    # ✅ Load main data from GitHub
+    # ✅ Then load data from GitHub (files can now be merged cleanly)
     # ============================================================
     if not st.session_state.get("data_storage"):
         with st.spinner("🔄 Memuat data dari GitHub..."):
@@ -2541,7 +2542,8 @@ def main():
                 load_data_from_github()
             except Exception as e:
                 st.error(f"⚠️ Gagal memuat data dari GitHub: {e}")
-
+    
+    
     if 'data_dipa_by_year' not in st.session_state:
         with st.spinner("🔄 Memuat data DIPA dari GitHub..."):
             try:
@@ -2551,14 +2553,19 @@ def main():
             except Exception as e:
                 st.warning(f"⚠️ Gagal memuat data DIPA otomatis: {e}")
 
+
     # ===============================
-    # 🔹 Sidebar Navigation
+    # 🔹 Sidebar Navigation 
     # ===============================
     st.sidebar.title("🧭 Navigasi")
     st.sidebar.markdown("---")
 
+    # Inisialisasi page sekali saja
     if "page" not in st.session_state:
         st.session_state.page = "📊 Dashboard Utama"
+
+    # Pastikan page aman (fallback jika terjadi glitch)
+    st.session_state.page = st.session_state.get("page", "📊 Dashboard Utama")
 
     # Radio navigation (Streamlit akan otomatis update session_state["page"])
     selected_page = st.sidebar.radio(
@@ -2568,7 +2575,7 @@ def main():
             "📈 Dashboard Internal",
             "🔐 Admin"
         ],
-        key="page"
+        key="page"   # gunakan key yg sama
     )
 
     st.sidebar.markdown("---")
@@ -2580,17 +2587,18 @@ def main():
     📧 Support: ameer.noor@kemenkeu.go.id
     """)
 
+
     # ===============================
     # 🔹 Routing Halaman
     # ===============================
     if st.session_state.page == "📊 Dashboard Utama":
         page_dashboard()
+
     elif st.session_state.page == "📈 Dashboard Internal":
         page_trend()
+
     elif st.session_state.page == "🔐 Admin":
         page_admin()
-    else:
-        st.error("⚠️ Halaman tidak ditemukan.")
 
 # ===============================
 # 🔹 ENTRY POINT
