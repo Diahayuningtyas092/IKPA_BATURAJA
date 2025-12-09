@@ -92,41 +92,46 @@ def load_DATA_DIPA_from_github():
     import base64, io, pandas as pd
     import streamlit as st
 
-    if 'DATA_DIPA_by_year' not in st.session_state:
-        st.session_state.DATA_DIPA_by_year = {}
+    def load_DATA_DIPA_from_github():
+        if 'DATA_DIPA_by_year' not in st.session_state:
+            st.session_state.DATA_DIPA_by_year = {}
 
-    token = st.secrets.get("GITHUB_TOKEN")
-    repo_name = st.secrets.get("GITHUB_REPO")
+        token = st.secrets.get("GITHUB_TOKEN")
+        repo_name = st.secrets.get("GITHUB_REPO")
 
-    if not token or not repo_name:
-        st.warning("🔑 Token atau repo GitHub belum tersedia di secrets")
-        return
+        if not token or not repo_name:
+            st.warning("🔑 Token atau repo GitHub belum tersedia di secrets")
+            return
 
-    try:
-        g = Github(auth=Auth.Token(token))
-        repo = g.get_repo(repo_name)
-    except Exception as e:
-        st.error(f"❌ Gagal mengakses GitHub: {e}")
-        return
-
-    tahun_gagal = []
-    tahun_berhasil = []
-
-    for tahun in [2022, 2023, 2024, 2025]:
-        file_path = f"DATA_DIPA/DIPA_{tahun}.csv"  # sesuaikan path di repo
         try:
-            file_content = repo.get_contents(file_path)
-            data = pd.read_csv(io.BytesIO(base64.b64decode(file_content.content)))
-            st.session_state.DATA_DIPA_by_year[str(tahun)] = data
-            tahun_berhasil.append(str(tahun))
+            g = Github(auth=Auth.Token(token))
+            repo = g.get_repo(repo_name)
         except Exception as e:
-            tahun_gagal.append(str(tahun))
-            st.warning(f"⚠️ Gagal memuat DIPA {tahun}: {e}")
+            st.error(f"❌ Gagal mengakses GitHub: {e}")
+            return
 
-    if tahun_berhasil:
-        st.success(f"📥 Data DIPA berhasil dimuat untuk tahun: {', '.join(tahun_berhasil)}")
-    if tahun_gagal:
-        st.error(f"❌ Data DIPA gagal dimuat untuk tahun: {', '.join(tahun_gagal)}")
+        tahun_gagal = []
+        tahun_berhasil = []
+
+        for tahun in [2022, 2023, 2024, 2025]:
+            file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
+            try:
+                # Ambil file dari GitHub
+                file_content = repo.get_contents(file_path)
+                # Load ke DataFrame
+                data = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
+                # Simpan di session_state
+                st.session_state.DATA_DIPA_by_year[str(tahun)] = data
+                tahun_berhasil.append(str(tahun))
+            except Exception as e:
+                tahun_gagal.append(str(tahun))
+                st.warning(f"⚠️ Gagal memuat DIPA {tahun}: {e}")
+
+        if tahun_berhasil:
+            st.success(f"📥 Data DIPA berhasil dimuat untuk tahun: {', '.join(tahun_berhasil)}")
+        if tahun_gagal:
+            st.error(f"❌ Data DIPA gagal dimuat untuk tahun: {', '.join(tahun_gagal)}")
+
 
 # Fungsi untuk memproses file Excel
 def process_excel_file(uploaded_file, year):
