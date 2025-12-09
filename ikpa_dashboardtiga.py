@@ -2740,7 +2740,7 @@ def page_admin():
             )
             df_download_dipa = st.session_state.data_dipa_by_year[year_to_download].copy()
             
-            # ✅ PERBAIKAN UTAMA: Deteksi dan perbaiki header yang salah
+            # PERBAIKAN UTAMA: Deteksi dan perbaiki header yang salah
             # Jika kolom pertama adalah "DOWNLOAD DATA DETAIL PENGANGGARAN", maka header salah
             if df_download_dipa.columns[0] == 'DOWNLOAD DATA DETAIL PENGANGGARAN':
                 
@@ -2760,7 +2760,7 @@ def page_admin():
                     # Hapus baris-baris sebelum data (termasuk header lama)
                     df_download_dipa = df_download_dipa.iloc[header_row_idx + 1:].reset_index(drop=True)
                     
-                    st.success(f"✅ Header diperbaiki dari baris {header_row_idx + 1}")
+                    st.success(f"")
             
             # ✅ Bersihkan nama kolom dari whitespace dan newline
             df_download_dipa.columns = (
@@ -2771,19 +2771,18 @@ def page_admin():
                 .str.replace('\s+', ' ', regex=True)
             )
             
-            # ✅ HAPUS KOLOM UNNAMED
+            # HAPUS KOLOM UNNAMED
             cols_to_keep = [col for col in df_download_dipa.columns 
                            if not str(col).lower().startswith('unnamed')]
             
             if cols_to_keep:
                 df_download_dipa = df_download_dipa[cols_to_keep]
             
-            # ✅ HAPUS KOLOM YANG 100% KOSONG
+            # HAPUS KOLOM YANG 100% KOSONG
             df_download_dipa = df_download_dipa.dropna(axis=1, how='all')
             
-            # ✅ HAPUS BARIS YANG 100% KOSONG
+            # HAPUS BARIS YANG 100% KOSONG
             df_download_dipa = df_download_dipa.dropna(axis=0, how='all')
-            
             
             # Preview data
             with st.expander("Preview Data (5 baris pertama)"):
