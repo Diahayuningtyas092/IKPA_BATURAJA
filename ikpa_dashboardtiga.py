@@ -223,6 +223,30 @@ def process_dipa_dataframe(df, source_name=None, date_col_candidates=None):
     # add source info
     if source_name:
         df_latest['_source_file'] = source_name
+    
+    # cari kolom pagu
+    pagu_candidates = [c for c in df_latest.columns if 'pagu' in c.lower() or 'total pagu' in c.lower() or 'jumlah' in c.lower() or 'total anggaran' in c.lower()]
+    if pagu_candidates:
+        pagu_col = pagu_candidates[0]
+        df_latest['Total Pagu'] = pd.to_numeric(df_latest[pagu_col], errors='coerce').fillna(0)
+    else:
+        # jika tidak ada kolom pagu, buat kolom default 0
+        df_latest['Total Pagu'] = 0
+
+    # --- Hitung persentil untuk menentukan Jenis Satker
+    if df_latest['Total Pagu'].notna().any() and (df_latest['Total Pagu'] > 0).any():
+        q70 = df_latest['Total Pagu'].quantile(0.70)  # threshold top 30% (>= q70 => "Besar")
+        q40 = df_latest['Total Pagu'].quantile(0.40)  # threshold 40%
+        def jenis_fn(x):
+            if x >= q70:
+                return 'Satker Besar'
+            elif x >= q40:
+                return 'Satker Sedang'
+            else:
+                return 'Satker Kecil'
+        df_latest['Jenis Satker'] = df_latest['Total Pagu'].apply(jenis_fn)
+    else:
+        df_latest['Jenis Satker'] = 'Satker Kecil'
 
     return df_latest
 
@@ -307,18 +331,6 @@ def load_data_dipa_from_github():
     except Exception as e:
         st.error(f"❌ Error saat load data DIPA dari GitHub: {e}")
 
-
-#fungsi untuk menormalisasi kode satker
-def normalize_kode_satker(kode: str) -> str:
-    """Normalize Kode Satker to always 6 digits, keep leading zeros, add apostrophe if needed."""
-    if pd.isna(kode): return ''
-    kode_str = str(kode).strip().lstrip("'")
-    kode_str = ''.join(ch for ch in kode_str if ch.isdigit())
-    if len(kode_str) < 6:
-        kode_str = kode_str.zfill(6)
-    elif len(kode_str) > 6:
-        kode_str = kode_str[-6:]
-    return f"'{kode_str}" if kode_str.startswith("0") else kode_str
 
 # Fungsi untuk memproses file Excel
 def process_excel_file(uploaded_file, year):
@@ -2032,15 +2044,6 @@ def page_admin():
 
                     import re
 
-                    # ==============================
-                    # NORMALISASI KODE SATKER KUAT
-                    # ==============================
-                    def normalize_kode_satker(x):
-                        if pd.isna(x): return ""
-                        x = str(x)
-                        x = re.sub(r"[^0-9]", "", x)  # keep numeric only
-                        return x.zfill(6)
-
                     for uploaded_file in uploaded_files:
                         try:
                             # 1) Load file untuk deteksi bulan
@@ -2085,88 +2088,71 @@ def page_admin():
                                 df_processed["Kode Satker"] = ""
 
                             # ============================================
-                            # MERGE IKPA + DIPA (REVISI TERBARU)
+                            # MERGE IKPA + DIPA 
                             # ============================================
                             df_final = df_processed.copy()
 
-                            # Pastikan data DIPA ada
+                            # Ambil DIPA yang sudah diproses per tahun
                             if "data_dipa_by_year" in st.session_state:
-                                dipa_year = st.session_state.data_dipa_by_year.get(upload_year)
+                                dipa_year = st.session_state.data_dipa_by_year.get(int(upload_year))
 
                                 if dipa_year is not None and not dipa_year.empty:
-                                    
-                            # --- SIMPAN DATA DIPA KE SESSION STATE UNTUK DOWNLOAD ---
-                                    if "dipa_storage" not in st.session_state:
-                                        st.session_state.dipa_storage = {}
 
-                                    # key download pakai tahun
-                                    st.session_state.dipa_storage[str(upload_year)] = dipa_year.copy()
+                                    # Normalisasi Kode Satker di DIPA
+                                    dipa_year = dipa_year.copy()
+                                    dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
 
-                                    # ============================================
-                                    # 1. Hilangkan kolom Unnamed otomatis
-                                    # ============================================
-                                    dipa_year = dipa_year.loc[:, ~dipa_year.columns.str.contains("^Unnamed")]
+                                    # Pastikan Jenis Satker ADA
+                                    if "Jenis Satker" not in dipa_year.columns:
 
-                                    # ============================================
-                                    # 2. Deteksi otomatis kolom Total Pagu
-                                    # ============================================
-                                    pagu_candidates = [
-                                        "Pagu (Jumlah)", "Total Pagu", "Pagu",
-                                        "Jumlah", "Total Anggaran"
-                                    ]
-                                    pagu_col = next((c for c in pagu_candidates if c in dipa_year.columns), None)
+                                        # --- fallback: hitung ulang Jenis Satker (jaga-jaga)
+                                        pagu_candidates = [
+                                            c for c in dipa_year.columns
+                                            if "pagu" in c.lower() or "total anggaran" in c.lower() or "jumlah" in c.lower()
+                                        ]
 
-                                    if pagu_col:
-                                        dipa_year = dipa_year.rename(columns={pagu_col: "Total Pagu"})
-                                    else:
-                                        dipa_year["Total Pagu"] = 0
+                                        if pagu_candidates:
+                                            pagu_col = pagu_candidates[0]
+                                            dipa_year["Total Pagu"] = pd.to_numeric(
+                                                dipa_year[pagu_col], errors="coerce"
+                                            ).fillna(0)
+                                        else:
+                                            dipa_year["Total Pagu"] = 0
 
-                                    # ============================================
-                                    # 3. Deteksi otomatis kolom Tanggal Posting Revisi
-                                    # ============================================
-                                    tgl_candidates = [
-                                        "Tanggal Posting Revisi", "Tgl Posting Revisi",
-                                        "Tanggal_Revisi", "Tanggal Posting"
-                                    ]
-                                    tgl_col = next((c for c in tgl_candidates if c in dipa_year.columns), None)
+                                        # Hitung persentil hanya jika angka pagu valid
+                                        if (dipa_year["Total Pagu"] > 0).any():
+                                            q70 = dipa_year["Total Pagu"].quantile(0.70)
+                                            q40 = dipa_year["Total Pagu"].quantile(0.40)
 
-                                    if tgl_col:
-                                        dipa_year = dipa_year.rename(columns={tgl_col: "Tanggal Posting Revisi"})
-                                    else:
-                                        dipa_year["Tanggal Posting Revisi"] = None
+                                            def jenis_fn(x):
+                                                if x >= q70: return "Satker Besar"
+                                                elif x >= q40: return "Satker Sedang"
+                                                return "Satker Kecil"
 
-                                    # ============================================
-                                    # 4. Normalisasi kode satker
-                                    # ============================================
-                                    if "Kode Satker" in dipa_year.columns:
-                                        dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
+                                            dipa_year["Jenis Satker"] = dipa_year["Total Pagu"].apply(jenis_fn)
+                                        else:
+                                            dipa_year["Jenis Satker"] = "Satker Kecil"
 
-                                    # ============================================
-                                    # 5. MERGE ke IKPA
-                                    # ============================================
+                                    # -------------- MERGE DIPA → IKPA ----------------
                                     df_final = df_final.merge(
-                                        dipa_year[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi"]]
+                                        dipa_year[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi", "Jenis Satker"]]
                                             .rename(columns={"Total Pagu": "Total Pagu DIPA"}),
                                         on="Kode Satker",
                                         how="left"
                                     )
 
-                                    # ============================================
-                                    # 6. Kategori Satker
-                                    # ============================================
-                                    if "Total Pagu DIPA" in df_final.columns:
-                                        p70 = df_final["Total Pagu DIPA"].astype(float).quantile(0.70)
-                                        p40 = df_final["Total Pagu DIPA"].astype(float).quantile(0.40)
+                                else:
+                                    # ---- DIPA untuk tahun upload tidak ditemukan ----
+                                    st.warning(
+                                        f"⚠️ Data DIPA untuk tahun {upload_year} tidak ditemukan — "
+                                        "Jenis Satker tidak dapat ditentukan."
+                                    )
+                                    df_final["Jenis Satker"] = pd.NA
 
-                                        def kategori(pagu):
-                                            pagu = float(pagu) if pagu not in [None, ""] else 0
-                                            if pagu >= p70:
-                                                return "Satker Besar"
-                                            elif pagu >= p40:
-                                                return "Satker Sedang"
-                                            return "Satker Kecil"
-
-                                        df_final["Jenis Satker"] = df_final["Total Pagu DIPA"].apply(kategori)
+                            else:
+                                # ---- Tidak ada DIPA sama sekali di session ----
+                                st.warning("⚠️ Data DIPA belum pernah di-upload — Jenis Satker tidak tersedia.")
+                                df_final["Jenis Satker"] = pd.NA
 
                             # ========================
                             # SIMPAN SESSION STATE
@@ -2314,22 +2300,33 @@ def page_admin():
             threshold = len(df) * 0.05  # Minimal 5% harus terisi
             df = df.dropna(axis=1, thresh=threshold)
 
-            # 9. Standardize important column names (handle variants)
+            # 9. Standardize important column names (handle many variants)
             rename_map = {}
+
             for c in df.columns:
                 cu = c.strip().lower()
-                if "kode" in cu and "satker" in cu:
-                    rename_map[c] = "Kode Satker"
-                elif "pagu" in cu or "total pagu" in cu or "jumlah pagu" in cu:
-                    rename_map[c] = "Total Pagu"
-                elif "tanggal" in cu and "revisi" in cu:
-                    rename_map[c] = "Tanggal Posting Revisi"
-                elif cu in ["tgl revisi", "tgl posting revisi"]:
-                    rename_map[c] = "Tanggal Posting Revisi"
-                # keep other columns as-is
 
-            if rename_map:
-                df = df.rename(columns=rename_map)
+                # --- Standardisasi Kode Satker ---
+                if "kode satker" in cu or ( "kode" in cu and "satker" in cu ):
+                    rename_map[c] = "Kode Satker"
+
+                # --- Standardisasi Total Pagu ---
+                elif cu in [
+                    "pagu", "total pagu", "pagu (jumlah)", "jumlah pagu",
+                    "pagu jumlah", "pagu total", "jumlah", "total anggaran"
+                ]:
+                    rename_map[c] = "Total Pagu"
+                elif "pagu" in cu:
+                    rename_map[c] = "Total Pagu"
+
+                # --- Standardisasi Tanggal Posting Revisi ---
+                elif cu in [
+                    "tanggal posting revisi", "tanggal revisi", "tgl revisi",
+                    "tgl posting revisi", "tanggal_revisi"
+                ]:
+                    rename_map[c] = "Tanggal Posting Revisi"
+                elif ("tanggal" in cu and "revisi" in cu) or ("posting" in cu and "tanggal" in cu):
+                    rename_map[c] = "Tanggal Posting Revisi"
 
             # 10. Reset index
             df = df.reset_index(drop=True)
@@ -2443,6 +2440,44 @@ def page_admin():
                         for yr in years:
                             df_year = dfp[dfp['Tahun'] == yr].copy().reset_index(drop=True)
 
+                            # =====================================
+                            # Tambahkan Total Pagu + Jenis Satker
+                            # =====================================
+                            if 'Jenis Satker' not in df_year.columns:
+
+                                # --- Cari kolom pagu ---
+                                pagu_candidates = [
+                                    c for c in df_year.columns
+                                    if 'pagu' in c.lower()
+                                    or 'total pagu' in c.lower()
+                                    or 'total anggaran' in c.lower()
+                                    or 'jumlah' in c.lower()
+                                ]
+
+                                if pagu_candidates:
+                                    pagu_col = pagu_candidates[0]
+                                    df_year['Total Pagu'] = pd.to_numeric(df_year[pagu_col], errors='coerce').fillna(0)
+                                else:
+                                    df_year['Total Pagu'] = 0
+
+                                # --- Hitung persentil ---
+                                if (df_year['Total Pagu'] > 0).any():
+                                    q70 = df_year['Total Pagu'].quantile(0.70)
+                                    q40 = df_year['Total Pagu'].quantile(0.40)
+
+                                    def jenis_fn(x):
+                                        if x >= q70:
+                                            return 'Satker Besar'
+                                        elif x >= q40:
+                                            return 'Satker Sedang'
+                                        else:
+                                            return 'Satker Kecil'
+
+                                    df_year['Jenis Satker'] = df_year['Total Pagu'].apply(jenis_fn)
+                                else:
+                                    df_year['Jenis Satker'] = 'Satker Kecil'
+
+                            
                             # Ensure Kode Satker normalized in existing dataset too
                             existing = st.session_state.data_dipa_by_year.get(int(yr))
                             if existing is not None and not existing.empty:
@@ -2479,7 +2514,7 @@ def page_admin():
 
                                 st.session_state.data_dipa_by_year[int(yr)] = df_year.reset_index(drop=True)
 
-                            # ✅ Save to GitHub with standard names
+                            #  Save to GitHub with standard names
                             filename_dipa = f"DIPA_{yr}.xlsx"
                             excel_bytes_dipa = io.BytesIO()
                             with pd.ExcelWriter(excel_bytes_dipa, engine='openpyxl') as writer:
