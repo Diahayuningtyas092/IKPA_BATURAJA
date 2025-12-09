@@ -1838,17 +1838,22 @@ def page_trend():
 # ============================================================
 # 🔐 HALAMAN 3: ADMIN 
 # ============================================================
+# ======================================================================================
+# PROCESS IKPA
+# ======================================================================================
+
 def process_ikpa_file(uploaded_file, upload_year):
     """
     Membaca & membersihkan file IKPA mentah.
     - Auto header detection
-    - Auto numeric detection
-    - Normalisasi nama kolom
-    - Merge referensi satker (jika ada)
+    - Bersihkan Unnamed
+    - Normalisasi kode satker
+    - Merge referensi
     """
+
     uploaded_file.seek(0)
 
-    # 🔍 Deteksi header
+    # 🔍 Deteksi baris header
     preview = pd.read_excel(uploaded_file, header=None, nrows=12, dtype=str)
     header_row = None
     keys = ["kode satker", "uraian", "nilai total", "nilai akhir", "konversi"]
@@ -1862,10 +1867,11 @@ def process_ikpa_file(uploaded_file, upload_year):
     if header_row is None:
         header_row = 0
 
+    # Baca data utama
     uploaded_file.seek(0)
     df = pd.read_excel(uploaded_file, header=header_row, dtype=str)
 
-    # Bersihkan nama kolom
+    # Bersihkan kolom
     df.columns = (
         df.columns.astype(str)
         .str.replace("\n", " ", regex=False)
@@ -1873,22 +1879,24 @@ def process_ikpa_file(uploaded_file, upload_year):
         .str.strip()
     )
 
-    # Hapus kolom Unnamed
+    # Hapus Unnamed
     df = df.loc[:, ~df.columns.str.contains("Unnamed")]
 
     # Normalisasi Kode Satker
     col_kode = [c for c in df.columns if "satker" in c.lower()]
     if col_kode:
         df["Kode Satker"] = df[col_kode[0]].astype(str).str.extract(r"(\d{6})", expand=False)
+
     df["Kode Satker"] = df["Kode Satker"].fillna("").apply(normalize_kode_satker)
 
-    # Tambahkan kolom Tahun
+    # Tahun
     df["Tahun"] = int(upload_year)
 
-    # Tambahkan uraian ringkas (jika referensi ada)
+    # Merge referensi
     if "reference_df" in st.session_state:
         ref = st.session_state.reference_df.copy()
         ref["Kode Satker"] = ref["Kode Satker"].apply(normalize_kode_satker)
+
         df = df.merge(
             ref[["Kode Satker", "Uraian Satker-SINGKAT"]],
             on="Kode Satker",
@@ -1898,35 +1906,36 @@ def process_ikpa_file(uploaded_file, upload_year):
 
     return df
 
-
-# ------------------------------------------------------------
-# UTILS: CLEAN DIPA RAW
-# ------------------------------------------------------------
+# ======================================================================================
+# CLEAN DIPA
+# ======================================================================================
 
 def clean_dipa(df_raw):
-    """Membersihkan file DIPA mentah & ambil revisi terbaru tiap tahun."""
+    """Membersihkan raw DIPA & mengambil revisi terbaru tiap tahun."""
+
     df = df_raw.copy()
 
     # Hapus kolom Unnamed
     df = df.loc[:, ~df.columns.str.contains("Unnamed")]
 
-    # Kolom Satker
+    # Kolom satker
     satker_col = None
     for c in df.columns:
         if "satker" in c.lower():
             satker_col = c
             break
-    if satker_col is None:
-        raise ValueError("Kolom Satker tidak ditemukan")
+    if not satker_col:
+        raise ValueError("Kolom Satker tidak ditemukan dalam file DIPA!")
 
     df["Kode Satker"] = df[satker_col].astype(str).str.extract(r"(\d{6})").fillna("").str.zfill(6)
 
-    # Kolom pagu
+    # Kolom Pagu
     pagu_col = None
     for c in df.columns:
         if "pagu" in c.lower() or "jumlah" in c.lower():
             pagu_col = c
             break
+
     df["Total Pagu"] = pd.to_numeric(df[pagu_col], errors="coerce").fillna(0)
 
     # Kolom tanggal revisi
@@ -1935,20 +1944,19 @@ def clean_dipa(df_raw):
         if "tanggal" in c.lower():
             tgl_col = c
             break
-    df["Tanggal Posting Revisi"] = pd.to_datetime(df[tgl_col], errors="coerce")
 
+    df["Tanggal Posting Revisi"] = pd.to_datetime(df[tgl_col], errors="coerce")
     df["Tahun"] = df["Tanggal Posting Revisi"].dt.year
 
-    # Ambil revisi terbaru tiap satker–tahun
+    # Ambil revisi terbaru per satker-per tahun
     df = df.sort_values(["Kode Satker", "Tahun", "Tanggal Posting Revisi"])
     df = df.groupby(["Kode Satker", "Tahun"], as_index=False).tail(1)
 
     return df
 
-
-# ------------------------------------------------------------
-# UTILS: KLASIFIKASI SATKER
-# ------------------------------------------------------------
+# ======================================================================================
+# JENIS SATKER
+# ======================================================================================
 
 def assign_jenis_satker(df):
     if df.empty:
@@ -1958,28 +1966,27 @@ def assign_jenis_satker(df):
     q70 = df["Total Pagu"].quantile(0.70)
     q40 = df["Total Pagu"].quantile(0.40)
 
-    def fn(x):
-        if x >= q70: return "Satker Besar"
-        if x >= q40: return "Satker Sedang"
+    def fn(p):
+        if p >= q70: return "Satker Besar"
+        if p >= q40: return "Satker Sedang"
         return "Satker Kecil"
 
     df["Jenis Satker"] = df["Total Pagu"].apply(fn)
     return df
 
-
-# ------------------------------------------------------------
+# ======================================================================================
 # PROCESS UPLOAD DIPA
-# ------------------------------------------------------------
+# ======================================================================================
 
 def process_uploaded_dipa(uploaded_file, save_file_to_github):
+
     raw = detect_dipa_header(uploaded_file)
     clean = clean_dipa(raw)
 
-    # Merge referensi
+    # Merge referensi (Kode BA, K/L, uraian)
     if "reference_df" in st.session_state:
         ref = st.session_state.reference_df.copy()
         ref["Kode Satker"] = ref["Kode Satker"].apply(normalize_kode_satker)
-
         clean["Kode Satker"] = clean["Kode Satker"].apply(normalize_kode_satker)
 
         clean = clean.merge(
@@ -2000,6 +2007,7 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
     for yr in clean["Tahun"].dropna().unique():
         yr = int(yr)
         df_year = clean[clean["Tahun"] == yr].copy()
+
         df_year = assign_jenis_satker(df_year)
 
         st.session_state.data_dipa_by_year[yr] = df_year.copy()
@@ -2013,7 +2021,6 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
         save_file_to_github(out.getvalue(), f"DIPA_{yr}.xlsx", "data_dipa")
 
     st.success("✔ DIPA berhasil diproses dan disimpan!")
-
 
 # ------------------------------------------------------------
 # PAGE ADMIN
