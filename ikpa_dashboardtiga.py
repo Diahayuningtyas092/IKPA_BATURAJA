@@ -2593,85 +2593,42 @@ def page_admin():
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
  
-        # Submenu Download Data DIPA
-        st.markdown("### 📥 Download Data DIPA")
+        # Download DIPA
+        import io
+        import pandas as pd
+        import xlsxwriter
 
-        if not st.session_state.get("DATA_DIPA_by_year"):
-            st.info("ℹ️ Belum ada data DIPA.")
-        else:
-            available_years_download = sorted(
-                st.session_state.DATA_DIPA_by_year.keys(), 
-                reverse=True
-            )
-            year_to_download = st.selectbox(
-                "Pilih tahun DIPA untuk download",
-                options=available_years_download,
-                format_func=lambda x: f"Tahun {x}",
-                key="download_dipa_year"
-            )
+        def download_all_DATA_DIPA():
+            data_by_year = st.session_state.get("DATA_DIPA_by_year", {})
 
-            # Ambil data DIPA yang sudah bersih
-            df_download_dipa = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
+            if not data_by_year:
+                st.info("📌 Tidak ada DATA_DIPA yang tersedia untuk di-download.")
+                return
 
-            # ✅ Pastikan urutan kolom sesuai
-            desired_columns = [
-                "Kode Satker",
-                "Satker",
-                "Tahun",
-                "Tanggal Posting Revisi",
-                "Total Pagu",
-                "Jenis Satker",
-                "NO",
-                "Kementerian",
-                "Kode Status History",
-                "Jenis Revisi",
-                "Revisi ke-",
-                "No Dipa",
-                "Tanggal Dipa",
-                "Owner",
-                "Digital Stamp"
-            ]
-            
-            # Ambil hanya kolom yang ada
-            available_cols = [col for col in desired_columns if col in df_download_dipa.columns]
-            df_download_dipa = df_download_dipa[available_cols]
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                for tahun, df in data_by_year.items():
+                    if df is not None and not df.empty:
+                        # Pastikan kolom 'Uraian Satker-RINGKAS' ada
+                        if 'Uraian Satker-RINGKAS' not in df.columns:
+                            if 'Uraian Satker' in df.columns:
+                                df['Uraian Satker-RINGKAS'] = df['Uraian Satker'].fillna('-').apply(lambda x: str(x)[:30])
+                            else:
+                                df['Uraian Satker-RINGKAS'] = '-'
+                        # Tulis ke sheet sesuai tahun
+                        df.to_excel(writer, index=False, sheet_name=str(tahun))
+                    else:
+                        # Sheet kosong tetap dibuat
+                        pd.DataFrame({"Info": ["Data kosong"]}).to_excel(writer, index=False, sheet_name=str(tahun))
+            output.seek(0)
 
-            # Preview
-            with st.expander("Preview Data (5 baris pertama)"):
-                st.dataframe(df_download_dipa.head(5), use_container_width=True)
-
-            # Export to Excel
-            output_dipa = io.BytesIO()
-            with pd.ExcelWriter(output_dipa, engine='openpyxl') as writer:
-                df_download_dipa.to_excel(
-                    writer,
-                    index=False,
-                    sheet_name=f'DIPA_{year_to_download}',
-                    startrow=0,
-                    startcol=0
-                )
-
-                # Format header
-                try:
-                    workbook = writer.book
-                    worksheet = writer.sheets[f'DIPA_{year_to_download}']
-
-                    for cell in worksheet[1]:
-                        cell.font = Font(bold=True, color="FFFFFF")
-                        cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                        cell.alignment = Alignment(horizontal="center", vertical="center")
-                except:
-                    pass
-
-            output_dipa.seek(0)
-            
             st.download_button(
-                label="📥 Download Excel DIPA",
-                data=output_dipa,
-                file_name=f"DIPA_{year_to_download}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="btn_download_dipa"
+                label="📥 Download Semua DATA_DIPA.xlsx",
+                data=output,
+                file_name="DATA_DIPA_ALL.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
 
         # Download Data Satker Tidak Terdaftar
         st.markdown("---")
