@@ -2096,14 +2096,14 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
         tahun_dipa = int(clean["Tahun"].mode()[0]) if "Tahun" in clean.columns else datetime.now().year
         
         # 6️⃣ Save per tahun
-        if "data_dipa_by_year" not in st.session_state:
-            st.session_state.data_dipa_by_year = {}
+        if "DATA_DIPA_by_year" not in st.session_state:
+            st.session_state.DATA_DIPAa_by_year = {}
         
         for yr in clean["Tahun"].unique():
             yr = int(yr)
             df_year = clean[clean["Tahun"] == yr].copy()
             
-            st.session_state.data_dipa_by_year[yr] = df_year
+            st.session_state.DATA_DIPA_by_year[yr] = df_year
             
             # Save to GitHub
             out = io.BytesIO()
