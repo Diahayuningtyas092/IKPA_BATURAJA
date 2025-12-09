@@ -93,6 +93,11 @@ def load_DATA_DIPA_from_github():
     import streamlit as st
 
     def load_DATA_DIPA_from_github():
+        """
+        🔹 Memuat file DATA_DIPA dari GitHub untuk tahun 2022–2025
+        🔹 Menyimpan per tahun di st.session_state.DATA_DIPA_by_year
+        🔹 Memberikan notifikasi tahun mana yang berhasil dimuat
+        """
         if 'DATA_DIPA_by_year' not in st.session_state:
             st.session_state.DATA_DIPA_by_year = {}
 
@@ -110,17 +115,16 @@ def load_DATA_DIPA_from_github():
             st.error(f"❌ Gagal mengakses GitHub: {e}")
             return
 
-        tahun_gagal = []
         tahun_berhasil = []
+        tahun_gagal = []
 
         for tahun in [2022, 2023, 2024, 2025]:
-            file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
+            file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"  # case-sensitive
             try:
-                # Ambil file dari GitHub
                 file_content = repo.get_contents(file_path)
-                # Load ke DataFrame
                 data = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
-                # Simpan di session_state
+
+                # Simpan di session_state per tahun
                 st.session_state.DATA_DIPA_by_year[str(tahun)] = data
                 tahun_berhasil.append(str(tahun))
             except Exception as e:
@@ -131,6 +135,7 @@ def load_DATA_DIPA_from_github():
             st.success(f"📥 Data DIPA berhasil dimuat untuk tahun: {', '.join(tahun_berhasil)}")
         if tahun_gagal:
             st.error(f"❌ Data DIPA gagal dimuat untuk tahun: {', '.join(tahun_gagal)}")
+
 
 
 # Fungsi untuk memproses file Excel
