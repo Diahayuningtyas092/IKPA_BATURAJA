@@ -2770,11 +2770,11 @@ def page_admin():
 
 
 # ===============================
-# 🔹 MAIN APP (FIXED VERSION)
+# MAIN APP 
 # ===============================
 def main():
     # ============================================================
-    # Load Reference Data FIRST (FIXED)
+    # Load Reference Data FIRST
     # ============================================================
     if 'reference_df' not in st.session_state:
         token = st.secrets.get("GITHUB_TOKEN")
@@ -2804,10 +2804,10 @@ def main():
                     st.warning("⚠️ Reference Data tidak ditemukan, menggunakan template kosong.")
 
                     default_ref = pd.DataFrame({
-                        'Kode BA': [],
-                        'K/L': [],
-                        'Kode Satker': [],
-                        'Uraian Satker-SINGKAT': [],
+                        'Kode BA': [], 
+                        'K/L': [], 
+                        'Kode Satker': [], 
+                        'Uraian Satker-SINGKAT': [], 
                         'Uraian Satker-LENGKAP': []
                     })
 
@@ -2843,6 +2843,15 @@ def main():
     if st.session_state.get('DATA_DIPA_by_year'):
         tahun_loaded = list(st.session_state.DATA_DIPA_by_year.keys())
         st.info(f"📥 Data DIPA tersedia untuk tahun: {', '.join(map(str, tahun_loaded))}")
+
+        # 🔹 Buat kolom 'Uraian Satker-RINGKAS' untuk semua tahun
+        for tahun, df in st.session_state.DATA_DIPA_by_year.items():
+            if 'Uraian Satker' in df.columns:
+                df['Uraian Satker-RINGKAS'] = df['Uraian Satker'].fillna('-').apply(lambda x: str(x)[:30])
+            else:
+                df['Uraian Satker-RINGKAS'] = '-'
+            st.session_state.DATA_DIPA_by_year[tahun] = df
+
     else:
         st.error("❌ Tidak ada DATA_DIPA yang berhasil dimuat")
 
