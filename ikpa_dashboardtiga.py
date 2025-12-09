@@ -84,8 +84,8 @@ def extract_kode_from_satker_field(s, width=6):
 # ============================================================
 def load_data_dipa_from_github():
     """
-    Load semua file DIPA dari folder manapun di root repo yang mengandung nama 'dipa'.
-    File valid: DIPA_2022.xlsx, DIPA_2023.xlsx, DIPA_2024.xlsx, DIPA_2025.xlsx, dll.
+    Load semua file DIPA dari folder data_dipa di GitHub.
+    File valid: DIPA_2022.xlsx, DIPA_2023.xlsx, DIPA_2024.xlsx, DIPA_2025.xlsx
     """
     try:
         token = st.secrets.get("GITHUB_TOKEN")
@@ -98,23 +98,13 @@ def load_data_dipa_from_github():
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
 
-        # FIX UTAMA: membaca root repo harus string kosong ""
-        root_items = repo.get_contents("")
-
-
-        # Cari folder yang mengandung kata 'dipa'
-        dipa_folder = None
-        for item in root_items:
-            if item.type == "dir" and "dipa" in item.name.lower():
-                dipa_folder = item.name  # contoh: "DATA_DIPA"
-                break
-
-        if not dipa_folder:
-            st.warning("⚠️ Folder DIPA tidak ditemukan di GitHub.")
+        # Cari folder data_dipa
+        try:
+            contents = repo.get_contents("data_dipa")
+        except:
+            st.info("📁 Folder data_dipa belum ada di GitHub")
             return
 
-        # Ambil isi folder DATA_DIPA
-        contents = repo.get_contents(dipa_folder)
         if not isinstance(contents, list):
             contents = [contents]
 
@@ -143,11 +133,46 @@ def load_data_dipa_from_github():
                 # Baca Excel
                 df = pd.read_excel(io.BytesIO(file_data), dtype=str)
 
+                # ✅ PASTIKAN URUTAN KOLOM TETAP TERJAGA
+                desired_columns = [
+                    "Kode Satker",
+                    "Satker",
+                    "Tahun",
+                    "Tanggal Posting Revisi",
+                    "Total Pagu",
+                    "Jenis Satker",
+                    "NO",
+                    "Kementerian",
+                    "Kode Status History",
+                    "Jenis Revisi",
+                    "Revisi ke-",
+                    "No Dipa",
+                    "Tanggal Dipa",
+                    "Owner",
+                    "Digital Stamp"
+                ]
+                
+                # Ambil hanya kolom yang ada
+                available_cols = [col for col in desired_columns if col in df.columns]
+                df = df[available_cols]
+
                 # Normalisasi kode satker
                 if "Kode Satker" in df.columns:
                     df["Kode Satker"] = df["Kode Satker"].apply(lambda x: normalize_kode_satker(str(x)))
-                else:
-                    df["Kode Satker"] = ""
+                
+                # Convert numeric columns
+                if "Total Pagu" in df.columns:
+                    df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0).astype(int)
+                
+                if "Revisi ke-" in df.columns:
+                    df["Revisi ke-"] = pd.to_numeric(df["Revisi ke-"], errors="coerce").fillna(0).astype(int)
+                
+                if "Tahun" in df.columns:
+                    df["Tahun"] = pd.to_numeric(df["Tahun"], errors="coerce").fillna(year).astype(int)
+                
+                # Convert date columns
+                if "Tanggal Posting Revisi" in df.columns:
+                    df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Posting Revisi"], errors="coerce")
 
                 # Simpan
                 st.session_state.data_dipa_by_year[year] = df
@@ -159,6 +184,8 @@ def load_data_dipa_from_github():
 
     except Exception as e:
         st.error(f"❌ Error saat load data DIPA dari GitHub: {e}")
+        import traceback
+        st.code(traceback.format_exc())
 
 
 # Fungsi untuk memproses file Excel
@@ -1851,7 +1878,177 @@ def process_ikpa_file(uploaded_file, upload_year):
 # ======================================================================================
 # CLEAN DIPA
 # ======================================================================================
+def clean_dipa(df_raw):
+    """
+    Membersihkan file DIPA mentah SPAN/SAS dan mengembalikan format yang konsisten.
+    
+    Output Columns:
+    - Kode Satker
+    - Satker
+    - Tahun
+    - Tanggal Posting Revisi
+    - Total Pagu
+    - Jenis Satker (will be added later by assign_jenis_satker)
+    - NO
+    - Kementerian
+    - Kode Status History
+    - Jenis Revisi
+    - Revisi ke-
+    - No Dipa
+    - Tanggal Dipa
+    - Owner
+    - Digital Stamp
+    """
 
+    df = df_raw.copy()
+
+    # Hapus kolom Unnamed
+    df = df.loc[:, ~df.columns.astype(str).str.contains("Unnamed")]
+
+    # ====== HELPER: Find column by keywords ======
+    def find_column(keywords, columns):
+        """Find column that contains any of the keywords (case-insensitive)"""
+        keywords_lower = [k.lower().replace(" ", "") for k in keywords]
+        for col in columns:
+            col_clean = str(col).lower().replace(" ", "").replace("_", "")
+            if any(kw in col_clean for kw in keywords_lower):
+                return col
+        return None
+
+    # ====== 1. KODE SATKER & NAMA SATKER ======
+    satker_col = find_column(["satker", "kodesatker", "kode satker"], df.columns)
+    
+    if satker_col is None:
+        raise ValueError("❌ Kolom Satker tidak ditemukan!")
+
+    # Extract 6-digit kode satker
+    df["Kode Satker"] = (
+        df[satker_col].astype(str)
+        .str.extract(r"(\d{6})", expand=False)
+        .fillna("")
+        .str.zfill(6)
+    )
+
+    # Extract nama satker (remove kode di depan)
+    df["Satker"] = (
+        df[satker_col].astype(str)
+        .str.replace(r"^\d{6}\s*-?\s*", "", regex=True)
+        .str.strip()
+    )
+    
+    # Jika nama kosong, isi dengan format "KODE - SATKER"
+    mask_empty = df["Satker"].str.strip() == ""
+    df.loc[mask_empty, "Satker"] = df.loc[mask_empty, "Kode Satker"] + " - SATKER"
+
+    # ====== 2. TOTAL PAGU ======
+    pagu_col = find_column(["pagu", "jumlah", "total pagu", "totalpagu"], df.columns)
+    
+    if pagu_col:
+        df["Total Pagu"] = pd.to_numeric(df[pagu_col], errors="coerce").fillna(0).astype(int)
+    else:
+        df["Total Pagu"] = 0
+
+    # ====== 3. TANGGAL POSTING REVISI & TAHUN ======
+    tgl_posting_col = find_column([
+        "tanggal posting", "tglposting", "tanggalposting",
+        "tanggal revisi", "tgl revisi"
+    ], df.columns)
+    
+    if tgl_posting_col:
+        df["Tanggal Posting Revisi"] = pd.to_datetime(df[tgl_posting_col], errors="coerce")
+    else:
+        df["Tanggal Posting Revisi"] = pd.NaT
+    
+    # Extract tahun dari tanggal posting, fallback ke tahun sekarang
+    df["Tahun"] = df["Tanggal Posting Revisi"].dt.year
+    df["Tahun"] = df["Tahun"].fillna(datetime.now().year).astype(int)
+
+    # ====== 4. NO (Nomor Urut) ======
+    no_col = find_column(["no", "nomor", "no."], df.columns)
+    df["NO"] = df[no_col].astype(str).str.strip() if no_col else ""
+
+    # ====== 5. KEMENTERIAN ======
+    kementerian_col = find_column([
+        "kementerian", "kementrian", "kl", "k/l", "kode ba"
+    ], df.columns)
+    df["Kementerian"] = df[kementerian_col].astype(str).str.strip() if kementerian_col else ""
+
+    # ====== 6. KODE STATUS HISTORY ======
+    status_col = find_column([
+        "status history", "kode status", "kodestatus", "status"
+    ], df.columns)
+    df["Kode Status History"] = df[status_col].astype(str).str.strip() if status_col else ""
+
+    # ====== 7. JENIS REVISI ======
+    jenis_revisi_col = find_column([
+        "jenis revisi", "jenisrevisi", "tipe revisi"
+    ], df.columns)
+    df["Jenis Revisi"] = df[jenis_revisi_col].astype(str).str.strip() if jenis_revisi_col else ""
+
+    # ====== 8. REVISI KE- ======
+    revisi_ke_col = find_column([
+        "revisi ke", "revisike", "revisi"
+    ], df.columns)
+    
+    if revisi_ke_col:
+        df["Revisi ke-"] = pd.to_numeric(df[revisi_ke_col], errors="coerce").fillna(0).astype(int)
+    else:
+        df["Revisi ke-"] = 0
+
+    # ====== 9. NO DIPA ======
+    no_dipa_col = find_column([
+        "no dipa", "nodipa", "nomor dipa", "nomordiap"
+    ], df.columns)
+    df["No Dipa"] = df[no_dipa_col].astype(str).str.strip() if no_dipa_col else ""
+
+    # ====== 10. TANGGAL DIPA ======
+    tgl_dipa_col = find_column([
+        "tanggal dipa", "tgldipa", "tgl dipa"
+    ], df.columns)
+    
+    if tgl_dipa_col:
+        df["Tanggal Dipa"] = pd.to_datetime(df[tgl_dipa_col], errors="coerce").dt.strftime("%d-%m-%Y")
+    else:
+        df["Tanggal Dipa"] = ""
+
+    # ====== 11. OWNER ======
+    owner_col = find_column(["owner", "pemilik"], df.columns)
+    df["Owner"] = df[owner_col].astype(str).str.strip() if owner_col else ""
+
+    # ====== 12. DIGITAL STAMP ======
+    stamp_col = find_column([
+        "digital stamp", "digitalstamp", "stamp", "ttd digital"
+    ], df.columns)
+    df["Digital Stamp"] = df[stamp_col].astype(str).str.strip() if stamp_col else ""
+
+    # ====== FINAL: Ambil hanya kolom yang dibutuhkan dengan urutan yang benar ======
+    final_columns = [
+        "Kode Satker",
+        "Satker", 
+        "Tahun",
+        "Tanggal Posting Revisi",
+        "Total Pagu",
+        "NO",
+        "Kementerian",
+        "Kode Status History",
+        "Jenis Revisi",
+        "Revisi ke-",
+        "No Dipa",
+        "Tanggal Dipa",
+        "Owner",
+        "Digital Stamp"
+    ]
+    
+    df_clean = df[final_columns].copy()
+    
+    # ====== Ambil revisi terakhir per satker per tahun ======
+    df_clean = df_clean.sort_values(["Kode Satker", "Tahun", "Tanggal Posting Revisi"])
+    df_clean = df_clean.groupby(["Kode Satker", "Tahun"], as_index=False).tail(1)
+    
+    # ====== Hapus baris yang kode satkernya invalid ======
+    df_clean = df_clean[df_clean["Kode Satker"].str.len() == 6]
+    
+    return df_clean
 
 def detect_dipa_header(uploaded_file):
     """
@@ -1952,9 +2149,12 @@ def assign_jenis_satker(df):
 # ======================================================================================
 # PROCESS UPLOAD DIPA
 # ======================================================================================
+# ======================================================================================
+# PROCESS UPLOAD DIPA (FIXED - Proper Column Order)
+# ======================================================================================
 def process_uploaded_dipa(uploaded_file, save_file_to_github):
     """
-    Process uploaded DIPA file and return cleaned dataframe with year info.
+    Process uploaded DIPA file and save with proper column order.
     Returns: (df_clean, tahun_dipa, status_message)
     """
     try:
@@ -1970,38 +2170,103 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
             ref["Kode Satker"] = ref["Kode Satker"].apply(normalize_kode_satker)
             clean["Kode Satker"] = clean["Kode Satker"].apply(normalize_kode_satker)
 
+            # Merge untuk mendapatkan Kode BA dan K/L
             clean = clean.merge(
-                ref[["Kode BA", "K/L", "Kode Satker",
-                     "Uraian Satker-SINGKAT", "Uraian Satker-LENGKAP"]],
+                ref[["Kode BA", "K/L", "Kode Satker"]],
                 on="Kode Satker",
                 how="left"
             )
+            
+            # Tambahkan kolom Kementerian jika kosong (dari K/L)
+            if "Kementerian" in clean.columns and "K/L" in clean.columns:
+                clean["Kementerian"] = clean["Kementerian"].fillna(clean["K/L"])
         
-        # 4️⃣ Klasifikasi satker (besar/sedang/kecil)
+        # 4️⃣ Klasifikasi satker (besar/sedang/kecil) - ini akan menambah kolom "Jenis Satker"
         clean = assign_jenis_satker(clean)
         
         # 5️⃣ Ambil tahun dari data
         if "Tahun" in clean.columns and not clean["Tahun"].isna().all():
-            tahun_dipa = int(clean["Tahun"].mode()[0])  # Ambil tahun yang paling sering muncul
+            tahun_dipa = int(clean["Tahun"].mode()[0])
         else:
             tahun_dipa = datetime.now().year
-            st.warning(f"⚠️ Tahun tidak ditemukan di data, menggunakan tahun sekarang: {tahun_dipa}")
+            st.warning(f"⚠️ Tahun tidak ditemukan, menggunakan: {tahun_dipa}")
         
-        # 6️⃣ Simpan per tahun ke session state
+        # ✅ 6️⃣ PASTIKAN URUTAN KOLOM YANG BENAR
+        final_column_order = [
+            "Kode Satker",
+            "Satker",
+            "Tahun",
+            "Tanggal Posting Revisi",
+            "Total Pagu",
+            "Jenis Satker",
+            "NO",
+            "Kementerian",
+            "Kode Status History",
+            "Jenis Revisi",
+            "Revisi ke-",
+            "No Dipa",
+            "Tanggal Dipa",
+            "Owner",
+            "Digital Stamp"
+        ]
+        
+        # Ambil hanya kolom yang ada di dataframe
+        available_columns = [col for col in final_column_order if col in clean.columns]
+        clean = clean[available_columns]
+        
+        # 7️⃣ Simpan ke session state per tahun
         if "data_dipa_by_year" not in st.session_state:
             st.session_state.data_dipa_by_year = {}
         
         for yr in clean["Tahun"].dropna().unique():
             yr = int(yr)
             df_year = clean[clean["Tahun"] == yr].copy()
+            
+            # Simpan ke session state dengan kolom yang sudah terurut
             st.session_state.data_dipa_by_year[yr] = df_year.copy()
             
-            # 7️⃣ Save to GitHub per tahun
+            # 8️⃣ Save to GitHub dengan format yang benar
             out = io.BytesIO()
             with pd.ExcelWriter(out, engine="openpyxl") as writer:
-                df_year.to_excel(writer, index=False, sheet_name=f"DIPA_{yr}")
-            out.seek(0)
+                # ✅ PENTING: Pastikan kolom terurut saat save
+                df_year.to_excel(
+                    writer, 
+                    index=False, 
+                    sheet_name=f"DIPA_{yr}",
+                    startrow=0,
+                    startcol=0
+                )
+                
+                # Format header
+                try:
+                    workbook = writer.book
+                    worksheet = writer.sheets[f"DIPA_{yr}"]
+                    
+                    for cell in worksheet[1]:
+                        cell.font = Font(bold=True, color="FFFFFF")
+                        cell.fill = PatternFill(
+                            start_color="366092", 
+                            end_color="366092", 
+                            fill_type="solid"
+                        )
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                        
+                    # Auto-adjust column width
+                    for column in worksheet.columns:
+                        max_length = 0
+                        column_letter = column[0].column_letter
+                        for cell in column:
+                            try:
+                                if len(str(cell.value)) > max_length:
+                                    max_length = len(str(cell.value))
+                            except:
+                                pass
+                        adjusted_width = min(max_length + 2, 50)
+                        worksheet.column_dimensions[column_letter].width = adjusted_width
+                except Exception as e:
+                    st.warning(f"⚠️ Gagal format header: {e}")
             
+            out.seek(0)
             save_file_to_github(out.getvalue(), f"DIPA_{yr}.xlsx", "data_dipa")
         
         return clean, tahun_dipa, "✅ Sukses"
@@ -2009,8 +2274,10 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
     except Exception as e:
         error_msg = f"❌ Error: {str(e)}"
         st.error(error_msg)
+        import traceback
+        st.code(traceback.format_exc())
         return None, None, error_msg
-
+    
 # ------------------------------------------------------------
 # PAGE ADMIN
 # ------------------------------------------------------------
