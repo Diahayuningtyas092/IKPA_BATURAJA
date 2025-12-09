@@ -1900,7 +1900,7 @@ def process_ikpa_file(uploaded_file, upload_year):
 
 
 # ------------------------------------------------------------
-# ⭐ UTILS: CLEAN DIPA RAW
+# UTILS: CLEAN DIPA RAW
 # ------------------------------------------------------------
 
 def clean_dipa(df_raw):
@@ -1947,7 +1947,7 @@ def clean_dipa(df_raw):
 
 
 # ------------------------------------------------------------
-# ⭐ UTILS: KLASIFIKASI SATKER
+# UTILS: KLASIFIKASI SATKER
 # ------------------------------------------------------------
 
 def assign_jenis_satker(df):
@@ -1968,7 +1968,7 @@ def assign_jenis_satker(df):
 
 
 # ------------------------------------------------------------
-# ⭐ PROCESS UPLOAD DIPA
+# PROCESS UPLOAD DIPA
 # ------------------------------------------------------------
 
 def process_uploaded_dipa(uploaded_file, save_file_to_github):
@@ -2016,33 +2016,42 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
 
 # ------------------------------------------------------------
-# ⭐ PAGE ADMIN
+# PAGE ADMIN
 # ------------------------------------------------------------
-
 def page_admin():
     st.title("🔐 Halaman Administrasi")
 
-    # LOGIN
+    # ============================================================
+    # 🔑 LOGIN ADMIN
+    # ============================================================
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
     if not st.session_state.authenticated:
-        password = st.text_input("Password Admin:", type="password")
+        st.warning("🔒 Halaman ini memerlukan autentikasi Admin")
+        password = st.text_input("Masukkan Password Admin", type="password")
         if st.button("Login"):
             if password == "109KPPN":
                 st.session_state.authenticated = True
+                st.success("✔ Login berhasil")
                 st.rerun()
             else:
                 st.error("❌ Password salah")
         return
 
-    st.success("✔ Login berhasil")
+    st.success("✔ Anda login sebagai Admin")
 
     st.markdown("---")
-    tab1, tab2, tab3 = st.tabs([
+
+    # ============================================================
+    # 📌 TAB MENU
+    # ============================================================
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📤 Upload Data",
+        "🗑️ Hapus Data",
         "📥 Download Data",
-        "📚 Referensi Satker"
+        "📋 Download Template",
+        "🕓 Riwayat Aktivitas"
     ])
 
     # ============================================================
