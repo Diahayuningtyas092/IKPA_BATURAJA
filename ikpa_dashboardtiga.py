@@ -245,6 +245,14 @@ def save_file_to_github(content_bytes, filename, folder):
 
     g = Github(auth=Auth.Token(token))
     repo = g.get_repo(repo_name)
+    
+    # DEBUG LIST FOLDER
+    try:
+        folder_list = repo.get_contents("DATA_DIPA")
+        st.write("📂 Isi folder DATA_DIPA:", [f.name for f in folder_list])
+    except Exception as e:
+        st.error(f"Folder DATA_DIPA tidak ditemukan: {e}")
+
 
     # 1️⃣ buat path full
     path = f"{folder}/{filename}"
