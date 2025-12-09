@@ -2434,121 +2434,103 @@ def page_admin():
                                 # rename loosely to 'Total Pagu' to be safe
                                 dfp = dfp.rename(columns={c: 'Total Pagu'})
 
-                        # Group by year and save
+                        # ============================================
+                        # GROUP BY YEAR AND SAVE 
+                        # ============================================
                         years = sorted(dfp['Tahun'].dropna().unique().astype(int).tolist())
 
                         for yr in years:
+
+                            # Ambil hanya DIPA untuk tahun ini (SUDAH LATEST REVISION dari process_dipa_dataframe)
                             df_year = dfp[dfp['Tahun'] == yr].copy().reset_index(drop=True)
+
+                            # Pastikan Kode Satker normalized
+                            df_year['Kode Satker'] = df_year['Kode Satker'].apply(normalize_kode_satker)
 
                             # =====================================
                             # Tambahkan Total Pagu + Jenis Satker
                             # =====================================
-                            if 'Jenis Satker' not in df_year.columns:
+                            # 1. Cari kolom Total Pagu
+                            pagu_candidates = [
+                                c for c in df_year.columns
+                                if 'pagu' in c.lower()
+                                or 'total pagu' in c.lower()
+                                or 'pagu belanja' in c.lower()
+                                or 'jumlah' in c.lower()
+                                or 'anggaran' in c.lower()
+                            ]
 
-                                # --- Cari kolom pagu ---
-                                pagu_candidates = [
-                                    c for c in df_year.columns
-                                    if 'pagu' in c.lower()
-                                    or 'total pagu' in c.lower()
-                                    or 'total anggaran' in c.lower()
-                                    or 'jumlah' in c.lower()
-                                ]
-
-                                if pagu_candidates:
-                                    pagu_col = pagu_candidates[0]
-                                    df_year['Total Pagu'] = pd.to_numeric(df_year[pagu_col], errors='coerce').fillna(0)
-                                else:
-                                    df_year['Total Pagu'] = 0
-
-                                # --- Hitung persentil ---
-                                if (df_year['Total Pagu'] > 0).any():
-                                    q70 = df_year['Total Pagu'].quantile(0.70)
-                                    q40 = df_year['Total Pagu'].quantile(0.40)
-
-                                    def jenis_fn(x):
-                                        if x >= q70:
-                                            return 'Satker Besar'
-                                        elif x >= q40:
-                                            return 'Satker Sedang'
-                                        else:
-                                            return 'Satker Kecil'
-
-                                    df_year['Jenis Satker'] = df_year['Total Pagu'].apply(jenis_fn)
-                                else:
-                                    df_year['Jenis Satker'] = 'Satker Kecil'
-
-                            
-                            # Ensure Kode Satker normalized in existing dataset too
-                            existing = st.session_state.data_dipa_by_year.get(int(yr))
-                            if existing is not None and not existing.empty:
-                                existing = existing.copy()
-                                if 'Kode Satker' in existing.columns:
-                                    existing['Kode Satker'] = existing['Kode Satker'].apply(normalize_kode_satker)
-                                else:
-                                    existing['Kode Satker'] = ''
-
-                                # Normalize tanggal in existing as well
-                                if 'Tanggal Posting Revisi' in existing.columns:
-                                    existing['Tanggal Posting Revisi'] = pd.to_datetime(existing['Tanggal Posting Revisi'], errors='coerce')
-
-                                combined = pd.concat([existing, df_year], ignore_index=True, sort=False)
-
-                                # If Tanggal Posting Revisi present, sort by (Kode Satker, Tanggal Posting Revisi) then take last per Kode Satker
-                                if 'Tanggal Posting Revisi' in combined.columns:
-                                    combined = combined.sort_values(by=['Kode Satker', 'Tanggal Posting Revisi'])
-                                    # take last row per Kode Satker
-                                    combined_latest = combined.groupby('Kode Satker', as_index=False).tail(1).reset_index(drop=True)
-                                else:
-                                    # fallback: last occurrence per Kode Satker
-                                    combined_latest = combined.groupby('Kode Satker', as_index=False).last().reset_index(drop=True)
-
-                                st.session_state.data_dipa_by_year[int(yr)] = combined_latest
+                            if pagu_candidates:
+                                pagu_col = pagu_candidates[0]
+                                df_year['Total Pagu'] = pd.to_numeric(df_year[pagu_col], errors='coerce').fillna(0)
                             else:
-                                # Ensure df_year has normalized kode and date types
-                                if 'Kode Satker' in df_year.columns:
-                                    df_year['Kode Satker'] = df_year['Kode Satker'].apply(normalize_kode_satker)
-                                else:
-                                    df_year['Kode Satker'] = ''
-                                if 'Tanggal Posting Revisi' in df_year.columns:
-                                    df_year['Tanggal Posting Revisi'] = pd.to_datetime(df_year['Tanggal Posting Revisi'], errors='coerce')
+                                df_year['Total Pagu'] = 0
 
-                                st.session_state.data_dipa_by_year[int(yr)] = df_year.reset_index(drop=True)
+                            # 2. Hitung persentil untuk Jenis Satker
+                            if (df_year['Total Pagu'] > 0).any():
+                                q70 = df_year['Total Pagu'].quantile(0.70)
+                                q40 = df_year['Total Pagu'].quantile(0.40)
 
-                            #  Save to GitHub with standard names
+                                def jenis_fn(x):
+                                    if x >= q70:
+                                        return "Satker Besar"
+                                    elif x >= q40:
+                                        return "Satker Sedang"
+                                    else:
+                                        return "Satker Kecil"
+
+                                df_year['Jenis Satker'] = df_year['Total Pagu'].apply(jenis_fn)
+                            else:
+                                df_year['Jenis Satker'] = "Satker Kecil"
+
+                            # =====================================
+                            # SIMPAN KE SESSION STATE
+                            # =====================================
+                            st.session_state.data_dipa_by_year[int(yr)] = df_year.copy()
+
+                            # =====================================
+                            # SIMPAN KE GITHUB
+                            # =====================================
                             filename_dipa = f"DIPA_{yr}.xlsx"
                             excel_bytes_dipa = io.BytesIO()
+
                             with pd.ExcelWriter(excel_bytes_dipa, engine='openpyxl') as writer:
-                                st.session_state.data_dipa_by_year[int(yr)].to_excel(
-                                    writer, index=False, sheet_name=f'DIPA_{yr}',
-                                    startrow=0, startcol=0
+                                df_year.to_excel(
+                                    writer,
+                                    index=False,
+                                    sheet_name=f"DIPA_{yr}",
+                                    startrow=0,
+                                    startcol=0
                                 )
 
-                                # Format header (if worksheet exists)
+                                # Header formatting
                                 try:
                                     workbook = writer.book
-                                    worksheet = writer.sheets[f'DIPA_{yr}']
-                                    # apply header formatting to first row (row 1 is header)
+                                    worksheet = writer.sheets[f"DIPA_{yr}"]
                                     for cell in worksheet[1]:
                                         try:
                                             cell.font = Font(bold=True, color="FFFFFF")
                                             cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
                                             cell.alignment = Alignment(horizontal="center", vertical="center")
-                                        except Exception:
+                                        except:
                                             pass
-                                except Exception:
+                                except:
                                     pass
 
                             excel_bytes_dipa.seek(0)
                             save_file_to_github(excel_bytes_dipa.getvalue(), filename_dipa, folder="data_dipa")
 
-                        st.success(f"✅ Data DIPA tahun {', '.join(map(str, years))} berhasil disimpan.")
+                        # ----------------------------------------------
+                        # NOTIFIKASI
+                        # ----------------------------------------------
+                        st.success(f"Data DIPA tahun {', '.join(map(str, years))} berhasil disimpan.")
                         st.snow()
 
                         st.session_state.activity_log.append({
                             "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "Aksi": "Upload DIPA",
                             "Periode": ", ".join([str(y) for y in years]),
-                            "Status": "✅ Sukses"
+                            "Status": "Sukses"
                         })
 
                     except Exception as e:
