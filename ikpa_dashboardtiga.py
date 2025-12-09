@@ -1844,74 +1844,11 @@ def page_trend():
 # ============================================================
 # 🔐 HALAMAN 3: ADMIN 
 # ============================================================
-import streamlit as st
-import pandas as pd
-import io
-import base64
-from datetime import datetime
-from github import Github, Auth
-from openpyxl.styles import Font, PatternFill, Alignment
-import re
-
-# ============================================================
-# Utility Functions
-# ============================================================
-
-def normalize_kode_satker(kode):
-    kode = str(kode).strip()
-    return kode.zfill(6) if kode.isdigit() else kode
-
-def process_excel_file(uploaded_file, year):
-    """Proses file Excel IKPA (placeholder)."""
-    try:
-        df = pd.read_excel(uploaded_file)
-        return df, None, None
-    except Exception:
-        return None, None, None
-
-def save_file_to_github(file_bytes, filename, folder="data"):
-    """Placeholder simulasi upload ke GitHub."""
-    st.info(f"Simulasi upload {filename} ke folder {folder} (tidak benar-benar upload).")
-
-def load_data_from_github():
-    st.info("Simulasi load data IKPA dari GitHub.")
-
-def load_data_dipa_from_github():
-    st.info("Simulasi load data DIPA dari GitHub.")
-
-def get_template_file():
-    return None
-
-# ============================================================
-# Placeholder Dashboard Pages
-# ============================================================
-def page_dashboard():
-    st.header("📊 Dashboard Utama (Placeholder)")
-
-def page_trend():
-    st.header("📈 Dashboard Internal (Placeholder)")
-
-# ============================================================
-# Admin Page
-# ============================================================
 def page_admin():
     st.title("🔐 Halaman Administrasi")
-
-    # Initialize session_state
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
-    if 'data_storage' not in st.session_state:
-        st.session_state.data_storage = {}
-    if 'activity_log' not in st.session_state:
-        st.session_state.activity_log = []
-    if 'data_dipa_by_year' not in st.session_state:
-        st.session_state.data_dipa_by_year = {}
-    if 'reference_df' not in st.session_state:
-        st.session_state.reference_df = pd.DataFrame()
 
-    # ------------------------------
-    # Login
-    # ------------------------------
     if not st.session_state.authenticated:
         st.warning("🔒 Halaman ini memerlukan autentikasi")
         password = st.text_input("Masukkan Password", type="password")
@@ -1926,23 +1863,17 @@ def page_admin():
 
     st.success("✅ Anda telah login sebagai Admin")
 
-    # ------------------------------
-    # Debug GitHub Connection
-    # ------------------------------
+    # 🧩 Debug GitHub connection
     with st.expander("🧩 Debug GitHub Connection"):
         try:
-            token = st.secrets.get("GITHUB_TOKEN")
-            repo_name = st.secrets.get("GITHUB_REPO")
-            if token and repo_name:
-                g = Github(auth=Auth.Token(token))
-                repo = g.get_repo(repo_name)
-                st.success(f"Terhubung ke GitHub repo: {repo.full_name}")
-            else:
-                st.warning("🔹 GitHub token / repo belum diset di Streamlit secrets.")
+            token = st.secrets["GITHUB_TOKEN"]
+            repo_name = st.secrets["GITHUB_REPO"]
+            g = Github(auth=Auth.Token(token))
+            repo = g.get_repo(repo_name)
+            st.success(f"Terhubung ke GitHub repo: {repo.full_name}")
         except Exception as e:
             st.error(f"❌ Gagal terhubung ke GitHub: {e}")
 
-    # Logout
     if st.button("🚪 Logout"):
         st.session_state.authenticated = False
         st.rerun()
@@ -1960,6 +1891,7 @@ def page_admin():
     # TAB 1: UPLOAD DATA (IKPA, DIPA, Referensi)
     # ============================================================
     with tab1:
+
         st.subheader("📤 Upload Data Bulanan IKPA")
 
         upload_year = st.selectbox(
@@ -1975,39 +1907,49 @@ def page_admin():
         )
 
         if uploaded_files:
+
             st.info("📄 File yang diupload:")
             for f in uploaded_files:
                 st.write("•", f.name)
 
             if st.button("🔄 Proses Semua Data IKPA", type="primary"):
-                MONTH_FIX = {
-                    "JAN": "JANUARI", "JANUARY": "JANUARI", "JANUARI": "JANUARI",
-                    "FEB": "FEBRUARI", "FEBRUARY": "FEBRUARI", "FEBRUARI": "FEBRUARI",
-                    "MAR": "MARET", "MRT": "MARET", "MARET": "MARET",
-                    "APR": "APRIL", "APRIL": "APRIL",
-                    "MEI": "MEI",
-                    "JUN": "JUNI", "JUNE": "JUNI", "JUNI": "JUNI",
-                    "JUL": "JULI", "JULY": "JULI", "JULI": "JULI",
-                    "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AUG": "AGUSTUS", "AGUSTUS": "AGUSTUS",
-                    "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
-                    "OKT": "OKTOBER", "OCT": "OKTOBER", "OKTOBER": "OKTOBER",
-                    "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
-                    "DES": "DESEMBER", "DEC": "DESEMBER", "DESEMBER": "DESEMBER"
-                }
 
                 with st.spinner("Memproses semua file..."):
+
+                    # Mapping Bulan Lengkap
+                    MONTH_FIX = {
+                        "JAN": "JANUARI", "JANUARY": "JANUARI", "JANUARI": "JANUARI",
+                        "FEB": "FEBRUARI", "FEBRUARY": "FEBRUARI", "FEBRUARI": "FEBRUARI",
+                        "MAR": "MARET", "MRT": "MARET", "MARET": "MARET",
+                        "APR": "APRIL", "APRIL": "APRIL",
+                        "MEI": "MEI",
+                        "JUN": "JUNI", "JUNE": "JUNI", "JUNI": "JUNI",
+                        "JUL": "JULI", "JULY": "JULI", "JULI": "JULI",
+                        "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AUG": "AGUSTUS", "AGUSTUS": "AGUSTUS",
+                        "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
+                        "OKT": "OKTOBER", "OCT": "OKTOBER", "OKTOBER": "OKTOBER",
+                        "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
+                        "DES": "DESEMBER", "DEC": "DESEMBER", "DESEMBER": "DESEMBER"
+                    }
+
+                    import re
+
                     for uploaded_file in uploaded_files:
                         try:
+                            # 1) Load file untuk deteksi bulan
                             df_temp = pd.read_excel(uploaded_file, header=None)
                             df_temp = df_temp.loc[:, ~df_temp.columns.astype(str).str.contains("Unnamed")]
 
                             raw_text = " ".join(df_temp.astype(str).fillna("").values.flatten()).upper()
+
+                            # 2) Cari bulan otomatis dari seluruh isi file
                             final_month = "UNKNOWN"
                             for k, v in MONTH_FIX.items():
                                 if k in raw_text:
                                     final_month = v
                                     break
 
+                            # 3) Jika gagal, ambil dari nama file
                             if final_month == "UNKNOWN":
                                 filename = uploaded_file.name.upper().replace(".XLSX", "").replace(".XLS", "")
                                 parts = filename.split("_")
@@ -2016,6 +1958,8 @@ def page_admin():
                                     final_month = MONTH_FIX.get(clean_month, clean_month)
 
                             final_month = final_month.upper()
+
+                            # 4) Proses Excel
                             df_processed, _, _ = process_excel_file(uploaded_file, upload_year)
                             if df_processed is None:
                                 st.warning(f"⚠️ Gagal memproses file: {uploaded_file.name}")
@@ -2023,28 +1967,92 @@ def page_admin():
 
                             df_processed["Bulan"] = final_month
                             df_processed["Tahun"] = int(upload_year)
+
+                            # Hapus semua unnamed
                             df_processed = df_processed.loc[:, ~df_processed.columns.str.contains("Unnamed")]
+
+                            # Normalisasi kode satker IKPA
                             if "Kode Satker" in df_processed.columns:
                                 df_processed["Kode Satker"] = df_processed["Kode Satker"].apply(normalize_kode_satker)
                             else:
                                 df_processed["Kode Satker"] = ""
 
+                            # ============================================
+                            # MERGE IKPA + DIPA 
+                            # ============================================
                             df_final = df_processed.copy()
-                            dipa_year = st.session_state.data_dipa_by_year.get(int(upload_year))
-                            if dipa_year is not None and not dipa_year.empty:
-                                dipa_year = dipa_year.copy()
-                                dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
-                                df_final = df_final.merge(
-                                    dipa_year[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi", "Jenis Satker"]]
-                                        .rename(columns={"Total Pagu": "Total Pagu DIPA"}),
-                                    on="Kode Satker",
-                                    how="left"
-                                )
+
+                            # Ambil DIPA yang sudah diproses per tahun
+                            if "data_dipa_by_year" in st.session_state:
+                                dipa_year = st.session_state.data_dipa_by_year.get(int(upload_year))
+
+                                if dipa_year is not None and not dipa_year.empty:
+
+                                    # Normalisasi Kode Satker di DIPA
+                                    dipa_year = dipa_year.copy()
+                                    dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
+
+                                    # Pastikan Jenis Satker ADA
+                                    if "Jenis Satker" not in dipa_year.columns:
+
+                                        # --- fallback: hitung ulang Jenis Satker (jaga-jaga)
+                                        pagu_candidates = [
+                                            c for c in dipa_year.columns
+                                            if "pagu" in c.lower() or "total anggaran" in c.lower() or "jumlah" in c.lower()
+                                        ]
+
+                                        if pagu_candidates:
+                                            pagu_col = pagu_candidates[0]
+                                            dipa_year["Total Pagu"] = pd.to_numeric(
+                                                dipa_year[pagu_col], errors="coerce"
+                                            ).fillna(0)
+                                        else:
+                                            dipa_year["Total Pagu"] = 0
+
+                                        # Hitung persentil hanya jika angka pagu valid
+                                        if (dipa_year["Total Pagu"] > 0).any():
+                                            q70 = dipa_year["Total Pagu"].quantile(0.70)
+                                            q40 = dipa_year["Total Pagu"].quantile(0.40)
+
+                                            def jenis_fn(x):
+                                                if x >= q70: return "Satker Besar"
+                                                elif x >= q40: return "Satker Sedang"
+                                                return "Satker Kecil"
+
+                                            dipa_year["Jenis Satker"] = dipa_year["Total Pagu"].apply(jenis_fn)
+                                        else:
+                                            dipa_year["Jenis Satker"] = "Satker Kecil"
+
+                                    # -------------- MERGE DIPA → IKPA ----------------
+                                    df_final = df_final.merge(
+                                        dipa_year[["Kode Satker", "Total Pagu", "Tanggal Posting Revisi", "Jenis Satker"]]
+                                            .rename(columns={"Total Pagu": "Total Pagu DIPA"}),
+                                        on="Kode Satker",
+                                        how="left"
+                                    )
+
+                                else:
+                                    # ---- DIPA untuk tahun upload tidak ditemukan ----
+                                    st.warning(
+                                        f"⚠️ Data DIPA untuk tahun {upload_year} tidak ditemukan — "
+                                        "Jenis Satker tidak dapat ditentukan."
+                                    )
+                                    df_final["Jenis Satker"] = pd.NA
+
                             else:
+                                # ---- Tidak ada DIPA sama sekali di session ----
+                                st.warning("⚠️ Data DIPA belum pernah di-upload — Jenis Satker tidak tersedia.")
                                 df_final["Jenis Satker"] = pd.NA
 
+                            # ========================
+                            # SIMPAN SESSION STATE
+                            # ========================
                             key = (final_month, str(upload_year))
                             st.session_state.data_storage[key] = df_final.copy()
+
+                            # ============================================
+                            # SIMPAN KE GITHUB + DOWNLOAD (HASIL BERSIH)
+                            # ============================================
 
                             KEEP_COLUMNS = [
                                 "Kode KPPN", "Kode BA", "Kode Satker",
@@ -2061,24 +2069,30 @@ def page_admin():
                                 "Capaian Output",
                                 "Nilai Total",
                                 "Nilai Akhir (Nilai Total/Konversi Bobot)",
+
+                                # kolom hasil merge
                                 "Total Pagu DIPA",
                                 "Tanggal Posting Revisi",
                                 "Jenis Satker",
+
                                 "Bulan",
                                 "Tahun"
                             ]
+
                             df_excel = df_final[[c for c in KEEP_COLUMNS if c in df_final.columns]]
 
                             excel_bytes = io.BytesIO()
                             with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
                                 df_excel.to_excel(writer, index=False, sheet_name="Data IKPA")
+
                             excel_bytes.seek(0)
                             save_file_to_github(
                                 excel_bytes.getvalue(),
                                 f"IKPA_{final_month}_{upload_year}.xlsx",
                                 folder="data"
                             )
-
+                            
+                            # Log
                             st.session_state.activity_log.append({
                                 "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "Aksi": "Upload",
@@ -2088,94 +2102,260 @@ def page_admin():
 
                             st.success(f"✅ {uploaded_file.name} → {final_month} {upload_year} berhasil disimpan.")
 
+                        # ====================================
+                        # PERBAIKAN PENTING → Tutup try agar tidak error
+                        # ====================================
                         except Exception as e:
                             st.error(f"❌ Error saat memproses data: {e}")
 
-        # --------------------------------------------------------
-        # Upload DIPA
-        # --------------------------------------------------------
+        # ============================================================
+        # SUBMENU: UPLOAD DATA DIPA 
+        # ============================================================
         st.markdown("---")
         st.subheader("📤 Upload Data DIPA")
+
         uploaded_dipa_file = st.file_uploader(
             "Pilih file Excel DIPA (mentah dari SAS/SMART/Kemenkeu)",
             type=['xlsx', 'xls'],
             key="upload_dipa"
         )
 
-        # FUNGSI PROSES DIPA (detect header, cleaning, finalize)
+        # ============================================================
+        # IMPORT MODUL
+        # ============================================================
+        import pandas as pd
+        import io
+        import streamlit as st
+
+        # ============================================================
+        # FUNGSI 1 — DETEKSI HEADER OTOMATIS
+        # ============================================================
         def detect_dipa_header(uploaded_file):
+            """
+            Membaca file Excel, mendeteksi baris header yang sesuai, 
+            dan mengembalikan DataFrame dengan header yang bersih.
+            """
             uploaded_file.seek(0)
+            
+            # Baca 10 baris pertama tanpa header untuk mencari baris header
             raw = pd.read_excel(uploaded_file, header=None, dtype=str, engine="openpyxl")
+            
             header_row = None
             for i in range(min(10, len(raw))):
                 txt = " ".join(raw.iloc[i].astype(str).str.lower().tolist())
                 if any(k in txt for k in ["satker", "pagu", "revisi", "tanggal", "dipa"]):
                     header_row = i
                     break
+
+            # Default ke baris ke-3 (index 2) jika tidak ditemukan
             if header_row is None:
                 header_row = 2
+
             uploaded_file.seek(0)
             df = pd.read_excel(uploaded_file, header=header_row, dtype=str, engine="openpyxl")
+            
+            # Bersihkan nama kolom dari spasi
             df.columns = df.columns.str.strip()
+            
             return df
 
+        # ============================================================
+        # FUNGSI 2 — CLEANING DIPA
+        # ============================================================
         def clean_dipa(df_raw):
             df = df_raw.copy()
+            
+            # Hapus kolom Unnamed
             df = df.loc[:, ~df.columns.astype(str).str.contains("unnamed", case=False, na=False)]
+            
+            # Bersihkan nama kolom
             df.columns = df.columns.astype(str).str.strip()
+            
+            # Hapus baris kosong
             df = df.dropna(how="all").reset_index(drop=True)
+            
             return df
 
+        # ============================================================
+        # FUNGSI 3 — PROCESSING FINAL
+        # ============================================================
         def process_dipa_dataframe(df):
             df = df.copy()
+            
+            # Pengecekan kolom wajib
+            required_cols = ["Satker", "Pagu Belanja", "Tanggal Revisi", "Tahun"]
+            missing = [c for c in required_cols if c not in df.columns]
+            if missing:
+                raise ValueError(f"Kolom berikut tidak ditemukan: {missing}")
+            
+            # Buat kode Satker dari angka di kolom Satker
             df["Kode Satker"] = df["Satker"].astype(str).str.extract(r"(\d{6})", expand=False).fillna("").str.zfill(6)
+            
+            # Total Pagu
             df["Total Pagu"] = pd.to_numeric(df["Pagu Belanja"], errors="coerce").fillna(0)
+            
+            # Tanggal revisi
             df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Revisi"], errors="coerce")
-            df["Tahun"] = pd.to_numeric(df.get("Tahun", df["Tanggal Posting Revisi"].dt.year), errors="coerce")
+            
+            # Tahun, isi dari tanggal jika kosong
+            df["Tahun"] = pd.to_numeric(df["Tahun"], errors="coerce")
+            df["Tahun"] = df["Tahun"].fillna(df["Tanggal Posting Revisi"].dt.year)
+            
+            # Ambil catatan terakhir per Satker per Tahun
             df = df.sort_values(["Kode Satker", "Tahun", "Tanggal Posting Revisi"])
             df_latest = df.groupby(["Kode Satker", "Tahun"], as_index=False).tail(1)
-
+            
+            # Fungsi kategori Satker berdasarkan kuantil
             def kategori(dfyr):
                 q70 = dfyr["Total Pagu"].quantile(0.70)
                 q40 = dfyr["Total Pagu"].quantile(0.40)
+                
                 def fn(x):
                     if x >= q70: return "Satker Besar"
                     if x >= q40: return "Satker Sedang"
                     return "Satker Kecil"
+                
                 return dfyr.assign(Jenis_Satker=dfyr["Total Pagu"].apply(fn))
-
+            
             df_final = df_latest.groupby("Tahun", group_keys=False).apply(kategori)
+            
             return df_final.reset_index(drop=True)
 
-        def process_uploaded_dipa(uploaded_file, save_file_to_github):
-            if uploaded_file is None:
+        # ============================================================
+        # 🚀 PROSES FILE DIPA
+        # ============================================================
+        def process_uploaded_dipa(uploaded_dipa_file, save_file_to_github):
+            """
+            Fungsi utama untuk memproses file DIPA:
+            - Detect header
+            - Clean data
+            - Proses final
+            - Simpan per tahun ke Streamlit session_state & GitHub
+            """
+            if uploaded_dipa_file is None:
                 st.warning("Silakan unggah file DIPA terlebih dahulu.")
                 return
+            
+            # Inisialisasi session_state
             if "data_dipa_by_year" not in st.session_state:
                 st.session_state.data_dipa_by_year = {}
+            
             try:
-                raw = detect_dipa_header(uploaded_file)
+                raw = detect_dipa_header(uploaded_dipa_file)
                 clean = clean_dipa(raw)
                 final = process_dipa_dataframe(clean)
+                
                 years = sorted(final["Tahun"].dropna().unique().astype(int))
+                
                 for yr in years:
                     df_year = final[final["Tahun"] == yr].copy()
                     st.session_state.data_dipa_by_year[yr] = df_year.copy()
+                    
+                    # Simpan ke Excel di memory
                     excel_bytes = io.BytesIO()
                     with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
                         df_year.to_excel(writer, index=False, sheet_name=f"DIPA_{yr}")
                     excel_bytes.seek(0)
+                    
+                    # Upload ke GitHub
                     save_file_to_github(
                         excel_bytes.getvalue(),
                         f"DIPA_{yr}.xlsx",
                         folder="data_dipa"
                     )
+                
                 st.success("✅ File DIPA berhasil diproses!")
+            
             except Exception as e:
                 st.error(f"❌ Error memproses DIPA: {e}")
 
-        if uploaded_dipa_file is not None:
-            process_uploaded_dipa(uploaded_dipa_file, save_file_to_github)
+
+
+
+        # ============================================================
+        # SUBMENU: Upload Data Referensi
+        # ============================================================
+        st.markdown("---")
+        st.subheader("📚 Upload / Perbarui Data Referensi Satker & K/L")
+        st.info("""
+        - File referensi ini berisi kolom: **Kode BA, K/L, Kode Satker, Uraian Satker-SINGKAT, Uraian Satker-LENGKAP**  
+        - Saat diupload, sistem akan **menggabungkan** dengan data lama:  
+        🔹 Jika `Kode Satker` sudah ada → baris lama akan **diganti**  
+        🔹 Jika `Kode Satker` belum ada → akan **ditambahkan baru**
+        """)
+
+        uploaded_ref = st.file_uploader(
+            "📤 Pilih File Data Referensi Satker & K/L",
+            type=['xlsx', 'xls'],
+            key="ref_upload"
+        )
+
+        if uploaded_ref is not None:
+            try:
+                new_ref = pd.read_excel(uploaded_ref)
+                new_ref.columns = [c.strip() for c in new_ref.columns]
+
+                required = ['Kode BA', 'K/L', 'Kode Satker', 'Uraian Satker-SINGKAT', 'Uraian Satker-LENGKAP']
+                if not all(col in new_ref.columns for col in required):
+                    st.error("❌ Kolom wajib tidak lengkap dalam file referensi.")
+                    st.stop()
+
+                new_ref['Kode Satker'] = new_ref['Kode Satker'].apply(normalize_kode_satker)
+
+                # Gabungkan atau buat baru
+                if 'reference_df' in st.session_state:
+                    old_ref = st.session_state.reference_df.copy()
+
+                    # 🔹 Normalize old reference too (critical!)
+                    if 'Kode Satker' in old_ref.columns:
+                        old_ref['Kode Satker'] = old_ref['Kode Satker'].apply(normalize_kode_satker)
+
+                    # 🔹 Combine and deduplicate
+                    merged = pd.concat([old_ref, new_ref], ignore_index=True)
+                    merged = merged.drop_duplicates(subset=['Kode Satker'], keep='last')
+
+                    # 🔹 Optional: enforce consistent string stripping
+                    merged['Kode Satker'] = merged['Kode Satker'].astype(str).str.strip()
+
+                    st.session_state.reference_df = merged
+                    st.success(f"✅ Data Referensi diperbarui ({len(merged)} total baris).")
+                else:
+                    st.session_state.reference_df = new_ref
+                    st.success(f"✅ Data Referensi baru dimuat ({len(new_ref)} baris).")
+
+                st.dataframe(st.session_state.reference_df.tail(10), use_container_width=True)
+
+                # ✅ Save merged reference data permanently to GitHub
+                try:
+                    excel_bytes_ref = io.BytesIO()
+                    with pd.ExcelWriter(excel_bytes_ref, engine='openpyxl') as writer:
+                        st.session_state.reference_df.to_excel(
+                            writer, index=False, sheet_name='Data Referensi',
+                            startrow=0, startcol=0  # ✅ PERBAIKAN
+                        )
+                        
+                        # Format header
+                        workbook = writer.book
+                        worksheet = writer.sheets['Data Referensi']
+                        
+                        for cell in worksheet[1]:
+                            cell.font = Font(bold=True, color="FFFFFF")
+                            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                            cell.alignment = Alignment(horizontal="center", vertical="center")
+                    
+                    excel_bytes_ref.seek(0)
+
+                    save_file_to_github(
+                        excel_bytes_ref.getvalue(),
+                        "Template_Data_Referensi.xlsx",
+                        folder="templates"
+                    )
+                    st.success("💾 Data Referensi berhasil disimpan ke GitHub (templates/Template_Data_Referensi.xlsx).")
+                except Exception as e:
+                    st.error(f"❌ Gagal menyimpan Data Referensi ke GitHub: {e}")
+
+            except Exception as e:
+                st.error(f"❌ Gagal memproses Data Referensi: {e}")
 
     # ============================================================
     # TAB 2: HAPUS DATA
