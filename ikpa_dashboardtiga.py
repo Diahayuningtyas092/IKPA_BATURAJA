@@ -239,26 +239,23 @@ def process_excel_file(uploaded_file, year):
         return None, None, None
 
 # Save any file (Excel/template) to your GitHub repo
-def save_file_to_github(file_bytes, filename, folder="data"):
-    token = st.secrets.get("GITHUB_TOKEN")
-    repo_name = st.secrets.get("GITHUB_REPO")
-
-    if not token or not repo_name:
-        st.stop()
-        st.error("❌ Gagal mengakses GitHub: GITHUB_TOKEN atau GITHUB_REPO tidak ditemukan di secrets.")
-        return
+def save_file_to_github(content_bytes, filename, folder):
+    token = st.secrets["GITHUB_TOKEN"]
+    repo_name = st.secrets["GITHUB_REPO"]
 
     g = Github(auth=Auth.Token(token))
     repo = g.get_repo(repo_name)
+
+    # 1️⃣ buat path full
     path = f"{folder}/{filename}"
 
     try:
-        contents = repo.get_contents(path)
-        repo.update_file(contents.path, f"Update {filename}", file_bytes, contents.sha)
-        st.success(f"✅ File {filename} diperbarui di GitHub.")
+        # 2️⃣ cek apakah file sudah ada
+        existing = repo.get_contents(path)
+        repo.update_file(existing.path, f"Update {filename}", content_bytes, existing.sha)
     except Exception:
-        repo.create_file(path, f"Upload {filename}", file_bytes)
-        st.success(f"✅ File {filename} diunggah ke GitHub.")
+        # 3️⃣ jika folder tidak ada → buat file pertama
+        repo.create_file(path, f"Create {filename}", content_bytes)
 
 # ============================
 #  LOAD DATA IKPA DARI GITHUB
@@ -2366,7 +2363,7 @@ def page_admin():
 
                         save_file_to_github(
                             excel_bytes.getvalue(),
-                            f"DIPA_CLEAN_{tahun_dipa}.xlsx",
+                            f"DIPA_{tahun_dipa}.xlsx",  
                             folder="DATA_DIPA"
                         )
 
