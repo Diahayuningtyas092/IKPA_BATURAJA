@@ -2151,96 +2151,88 @@ def page_admin():
 
 
         # ============================================================
-        # FUNGSI: CLEANING DIPA RAW DATA + STANDARDISASI KOLOM
+        # CLEAN DIPA FILE (khusus format Kemenkeu seperti file Anda)
         # ============================================================
         def clean_dipa(df):
             df = df.copy()
 
-            # Hapus kolom 'Unnamed'
+            # Hapus kolom Unnamed
             df = df.loc[:, ~df.columns.astype(str).str.lower().str.contains("unnamed")]
-            df = df.dropna(axis=1, how="all")
 
-            # Bersihkan nama kolom
-            df.columns = (
-                df.columns.astype(str)
-                .str.strip()
-                .str.replace(r"\s+", " ", regex=True)
-            )
+            # Cari header: baris yang mengandung "Satker" & "Nama"
+            header_row = None
+            for i in range(10):
+                row = " ".join([str(x).lower() for x in df.iloc[i].tolist()])
+                if "satker" in row and "nama" in row:
+                    header_row = i
+                    break
 
-            # Peta rename otomatis
-            rename_map = {}
-            for c in df.columns:
-                cu = c.lower()
+            if header_row is None:
+                header_row = 2  # fallback aman untuk file Anda
 
-                if "satker" in cu or "kd satker" in cu or "kdsatker" in cu:
-                    rename_map[c] = "Kode Satker"
+            # Baca ulang memakai baris header
+            df.columns = df.iloc[header_row]
+            df = df[(header_row+1):]
 
-                elif "pagu" in cu or "jumlah" in cu or "anggaran" in cu:
-                    rename_map[c] = "Total Pagu"
+            # Drop baris kosong
+            df = df.dropna(how="all")
 
-                elif "tanggal" in cu or "revisi" in cu or "posting" in cu:
-                    rename_map[c] = "Tanggal Posting Revisi"
-
-            df = df.rename(columns=rename_map)
+            # Trim kolom
+            df.columns = [str(c).strip() for c in df.columns]
 
             return df.reset_index(drop=True)
 
 
+
         # ============================================================
-        # FUNGSI: PROSES DIPA → revisi terbaru + pagu + kategori satker
+        # PROCESS DIPA → revisi terbaru + total pagu + jenis satker
         # ============================================================
         def process_dipa_dataframe(df):
             df = df.copy()
 
-            # --- Ekstrak Kode Satker (6 digit, apapun formatnya) ---
-            if "Kode Satker" in df.columns:
-                df["Kode Satker"] = (
-                    df["Kode Satker"]
-                    .astype(str)
-                    .str.extract(r"(\d+)", expand=False)
-                    .fillna("")
-                    .str.zfill(6)
-                )
+            # --- KODE SATKER ---
+            df["Kode Satker"] = df["Satker"].astype(str).str.extract(r"(\d{6})", expand=False)
+            df["Kode Satker"] = df["Kode Satker"].fillna("").str.zfill(6)
+
+            # --- PARSE TANGGAL REVISI ---
+            df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Revisi"], errors="coerce")
+
+            # --- TAHUN ---
+            df["Tahun"] = pd.to_numeric(df["Tahun"], errors="coerce")
+
+            # --- TOTAL PAGU (kolom Jumlah) ---
+            pagu_col = [c for c in df.columns if str(c).lower() == "jumlah"]
+            if pagu_col:
+                pagu_col = pagu_col[0]
             else:
-                df["Kode Satker"] = ""
+                pagu_col = df.columns[-3]  # fallback: biasanya sebelum Catatan
 
-            # --- Tanggal Posting Revisi ---
-            if "Tanggal Posting Revisi" in df.columns:
-                df["Tanggal Posting Revisi"] = pd.to_datetime(
-                    df["Tanggal Posting Revisi"], errors="coerce"
-                )
-            else:
-                df["Tanggal Posting Revisi"] = pd.NaT
+            df["Total Pagu"] = pd.to_numeric(df[pagu_col], errors="coerce").fillna(0)
 
-            # --- Tentukan Tahun ---
-            df["Tahun"] = df["Tanggal Posting Revisi"].dt.year
-            df["Tahun"] = df["Tahun"].fillna(upload_year_dipa).astype(int)
-
-            # --- Total Pagu ---
-            if "Total Pagu" in df.columns:
-                df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0)
-            else:
-                df["Total Pagu"] = 0
-
-            # --- Pilih revisi terbaru per Kode Satker per Tahun ---
+            # --- PILIH REVISI TERBARU PER SATKER PER TAHUN ---
             df = df.sort_values(["Kode Satker", "Tahun", "Tanggal Posting Revisi"])
             df_latest = df.groupby(["Kode Satker", "Tahun"], as_index=False).tail(1)
 
-            # --- Kategori Satker berdasarkan Pagu Tahunan ---
-            def assign_kategori(group):
-                q70 = group["Total Pagu"].quantile(0.70)
-                q40 = group["Total Pagu"].quantile(0.40)
+            # --- HITUNG KATEGORI SATKER ---
+            def kategori_satker(dfyr):
+                q70 = dfyr["Total Pagu"].quantile(0.70)
+                q40 = dfyr["Total Pagu"].quantile(0.40)
 
-                def kategori(x):
+                def kat(x):
                     if x >= q70: return "Satker Besar"
                     if x >= q40: return "Satker Sedang"
                     return "Satker Kecil"
 
-                return group.assign(Jenis_Satker=group["Total Pagu"].apply(kategori))
+                return dfyr.assign(Jenis_Satker=dfyr["Total Pagu"].apply(kat))
 
-            df_final = df_latest.groupby("Tahun").apply(assign_kategori).reset_index(drop=True)
+            df_final = (
+                df_latest.groupby("Tahun")
+                .apply(kategori_satker)
+                .reset_index(drop=True)
+            )
 
             return df_final
+
 
 
         # ============================================================
