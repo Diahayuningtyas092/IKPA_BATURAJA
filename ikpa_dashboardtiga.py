@@ -2462,47 +2462,127 @@ def page_admin():
     with tab3:
         # DOWNLOAD DATA IKPA
         st.subheader("📥 Download Data IKPA")
-        if "data_storage" not in st.session_state or len(st.session_state.data_storage) == 0:
-            st.info("Belum ada data IKPA")
+
+        # Jika belum ada data IKPA sama sekali
+        if "data_storage" not in st.session_state or not st.session_state.data_storage:
+            st.info("ℹ️ Belum ada data IKPA.")
         else:
-            periods = sorted(st.session_state.data_storage.keys(), reverse=True)
-            selected = st.selectbox("Pilih Periode:", periods)
+            # Tampilkan periode yang tersedia
+            available_periods = sorted(st.session_state.data_storage.keys(), reverse=True)
 
-            df = st.session_state.data_storage[selected]
-
-            st.dataframe(df.head())
-
-            out = io.BytesIO()
-            with pd.ExcelWriter(out, engine="openpyxl") as w:
-                df.to_excel(w, index=False, sheet_name=f"IKPA_{selected}")
-            out.seek(0)
-
-            st.download_button(
-                "📥 Download Excel IKPA",
-                out,
-                file_name=f"IKPA_{selected[0]}_{selected[1]}.xlsx"
+            period_to_download = st.selectbox(
+                "Pilih periode untuk download",
+                options=available_periods,
+                format_func=lambda x: f"{x[0].capitalize()} {x[1]}"
             )
-  
-        # Submenu Download Data DIPA
-        st.subheader("📥 Download Data DIPA")
-        if "data_dipa_by_year" not in st.session_state or len(st.session_state.data_dipa_by_year) == 0:
-            st.info("Belum ada data DIPA")
-        else:
-            years = sorted(st.session_state.data_dipa_by_year.keys(), reverse=True)
-            year = st.selectbox("Pilih Tahun:", years)
 
-            df = st.session_state.data_dipa_by_year[year]
-            st.dataframe(df.head())
+            df_download = st.session_state.data_storage[period_to_download].copy()
 
-            out = io.BytesIO()
-            with pd.ExcelWriter(out, engine="openpyxl") as w:
-                df.to_excel(w, index=False, sheet_name=f"DIPA_{year}")
-            out.seek(0)
+            # Siapkan file Excel untuk di-download
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df_excel = df_download.drop(
+                    ['Bobot', 'Nilai Terbobot'], axis=1, errors='ignore'
+                )
+                df_excel.to_excel(writer, index=False, sheet_name='Data IKPA')
+
+                # Format header agar cantik
+                try:
+                    workbook = writer.book
+                    worksheet = writer.sheets['Data IKPA']
+                    for cell in worksheet[1]:
+                        cell.font = Font(bold=True, color="FFFFFF")
+                        cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                except Exception:
+                    pass
+
+            output.seek(0)
 
             st.download_button(
-                "📥 Download Excel DIPA",
-                out,
-                file_name=f"DIPA_{year}.xlsx"
+                label="📥 Download Excel IKPA",
+                data=output,
+                file_name=f"IKPA_{period_to_download[0]}_{period_to_download[1]}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+ 
+        # Submenu Download Data DIPA
+        st.markdown("---")
+        st.subheader("📥 Download Data DIPA")
+
+        if not st.session_state.get("data_dipa_by_year"):
+            st.info("ℹ️ Belum ada data DIPA.")
+        else:
+            available_years_download = sorted(
+                st.session_state.data_dipa_by_year.keys(), 
+                reverse=True
+            )
+            year_to_download = st.selectbox(
+                "Pilih tahun DIPA untuk download",
+                options=available_years_download,
+                format_func=lambda x: f"Tahun {x}",
+                key="download_dipa_year"
+            )
+
+            # Ambil data DIPA yang sudah bersih dari proses upload
+            df_download_dipa = st.session_state.data_dipa_by_year[year_to_download].copy()
+
+            # =============================
+            # BERSIHKAN NAMA KOLOM (ringan)
+            # =============================
+            df_download_dipa.columns = (
+                df_download_dipa.columns.astype(str)
+                .str.strip()
+                .str.replace('\n', ' ', regex=False)
+                .str.replace('\r', ' ', regex=False)
+                .str.replace('\s+', ' ', regex=True)
+            )
+
+            # Buang kolom Unnamed jika ada
+            df_download_dipa = df_download_dipa.loc[
+                :, ~df_download_dipa.columns.str.contains('^Unnamed', case=False)
+            ]
+
+            # Buang kolom dan baris kosong total
+            df_download_dipa = df_download_dipa.dropna(axis=1, how='all')
+            df_download_dipa = df_download_dipa.dropna(axis=0, how='all')
+
+            # Preview 5 baris pertama
+            with st.expander("Preview Data (5 baris pertama)"):
+                st.dataframe(df_download_dipa.head(5))
+
+            # =============================
+            # EXPORT TO EXCEL
+            # =============================
+            output_dipa = io.BytesIO()
+            with pd.ExcelWriter(output_dipa, engine='openpyxl') as writer:
+                df_download_dipa.to_excel(
+                    writer,
+                    index=False,
+                    sheet_name=f'DIPA_{year_to_download}',
+                    startrow=0,
+                    startcol=0
+                )
+
+                # Format header excel
+                try:
+                    workbook = writer.book
+                    worksheet = writer.sheets[f'DIPA_{year_to_download}']
+
+                    for cell in worksheet[1]:
+                        cell.font = Font(bold=True, color="FFFFFF")
+                        cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                except:
+                    pass
+
+            output_dipa.seek(0)
+            st.download_button(
+                label="📥 Download Excel DIPA",
+                data=output_dipa,
+                file_name=f"DIPA_{year_to_download}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                key="btn_download_dipa"
             )
 
         # Download Data Satker Tidak Terdaftar
