@@ -2121,12 +2121,25 @@ def page_admin():
         )
 
         # ============================================================
+        # IMPORT MODUL
+        # ============================================================
+        import pandas as pd
+        import io
+        import streamlit as st
+
+        # ============================================================
         # FUNGSI 1 — DETEKSI HEADER OTOMATIS
         # ============================================================
         def detect_dipa_header(uploaded_file):
+            """
+            Membaca file Excel, mendeteksi baris header yang sesuai, 
+            dan mengembalikan DataFrame dengan header yang bersih.
+            """
             uploaded_file.seek(0)
+            
+            # Baca 10 baris pertama tanpa header untuk mencari baris header
             raw = pd.read_excel(uploaded_file, header=None, dtype=str, engine="openpyxl")
-
+            
             header_row = None
             for i in range(min(10, len(raw))):
                 txt = " ".join(raw.iloc[i].astype(str).str.lower().tolist())
@@ -2134,93 +2147,128 @@ def page_admin():
                     header_row = i
                     break
 
+            # Default ke baris ke-3 (index 2) jika tidak ditemukan
             if header_row is None:
                 header_row = 2
 
             uploaded_file.seek(0)
             df = pd.read_excel(uploaded_file, header=header_row, dtype=str, engine="openpyxl")
+            
+            # Bersihkan nama kolom dari spasi
+            df.columns = df.columns.str.strip()
+            
             return df
-
 
         # ============================================================
         # FUNGSI 2 — CLEANING DIPA
         # ============================================================
         def clean_dipa(df_raw):
             df = df_raw.copy()
-
+            
+            # Hapus kolom Unnamed
             df = df.loc[:, ~df.columns.astype(str).str.contains("unnamed", case=False, na=False)]
+            
+            # Bersihkan nama kolom
             df.columns = df.columns.astype(str).str.strip()
+            
+            # Hapus baris kosong
             df = df.dropna(how="all").reset_index(drop=True)
-
+            
             return df
-
 
         # ============================================================
         # FUNGSI 3 — PROCESSING FINAL
         # ============================================================
         def process_dipa_dataframe(df):
             df = df.copy()
-
-            df["Kode Satker"] = df["Satker"].astype(str).str.extract(r"(\d{6})", expand=False)
-            df["Kode Satker"] = df["Kode Satker"].fillna("").str.zfill(6)
-
+            
+            # Pengecekan kolom wajib
+            required_cols = ["Satker", "Pagu Belanja", "Tanggal Revisi", "Tahun"]
+            missing = [c for c in required_cols if c not in df.columns]
+            if missing:
+                raise ValueError(f"Kolom berikut tidak ditemukan: {missing}")
+            
+            # Buat kode Satker dari angka di kolom Satker
+            df["Kode Satker"] = df["Satker"].astype(str).str.extract(r"(\d{6})", expand=False).fillna("").str.zfill(6)
+            
+            # Total Pagu
             df["Total Pagu"] = pd.to_numeric(df["Pagu Belanja"], errors="coerce").fillna(0)
-
+            
+            # Tanggal revisi
             df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Revisi"], errors="coerce")
-
+            
+            # Tahun, isi dari tanggal jika kosong
             df["Tahun"] = pd.to_numeric(df["Tahun"], errors="coerce")
             df["Tahun"] = df["Tahun"].fillna(df["Tanggal Posting Revisi"].dt.year)
-
+            
+            # Ambil catatan terakhir per Satker per Tahun
             df = df.sort_values(["Kode Satker", "Tahun", "Tanggal Posting Revisi"])
             df_latest = df.groupby(["Kode Satker", "Tahun"], as_index=False).tail(1)
-
+            
+            # Fungsi kategori Satker berdasarkan kuantil
             def kategori(dfyr):
                 q70 = dfyr["Total Pagu"].quantile(0.70)
                 q40 = dfyr["Total Pagu"].quantile(0.40)
-
+                
                 def fn(x):
                     if x >= q70: return "Satker Besar"
                     if x >= q40: return "Satker Sedang"
                     return "Satker Kecil"
-
+                
                 return dfyr.assign(Jenis_Satker=dfyr["Total Pagu"].apply(fn))
-
+            
             df_final = df_latest.groupby("Tahun", group_keys=False).apply(kategori)
-
+            
             return df_final.reset_index(drop=True)
-
 
         # ============================================================
         # 🚀 PROSES FILE DIPA
         # ============================================================
-        if uploaded_dipa_file is not None:
+        def process_uploaded_dipa(uploaded_dipa_file, save_file_to_github):
+            """
+            Fungsi utama untuk memproses file DIPA:
+            - Detect header
+            - Clean data
+            - Proses final
+            - Simpan per tahun ke Streamlit session_state & GitHub
+            """
+            if uploaded_dipa_file is None:
+                st.warning("Silakan unggah file DIPA terlebih dahulu.")
+                return
+            
+            # Inisialisasi session_state
+            if "data_dipa_by_year" not in st.session_state:
+                st.session_state.data_dipa_by_year = {}
+            
             try:
                 raw = detect_dipa_header(uploaded_dipa_file)
                 clean = clean_dipa(raw)
                 final = process_dipa_dataframe(clean)
-
+                
                 years = sorted(final["Tahun"].dropna().unique().astype(int))
-
+                
                 for yr in years:
                     df_year = final[final["Tahun"] == yr].copy()
-
                     st.session_state.data_dipa_by_year[yr] = df_year.copy()
-
+                    
+                    # Simpan ke Excel di memory
                     excel_bytes = io.BytesIO()
                     with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
                         df_year.to_excel(writer, index=False, sheet_name=f"DIPA_{yr}")
-
                     excel_bytes.seek(0)
+                    
+                    # Upload ke GitHub
                     save_file_to_github(
                         excel_bytes.getvalue(),
                         f"DIPA_{yr}.xlsx",
                         folder="data_dipa"
                     )
-
+                
                 st.success("✅ File DIPA berhasil diproses!")
-
+            
             except Exception as e:
                 st.error(f"❌ Error memproses DIPA: {e}")
+
 
 
 
