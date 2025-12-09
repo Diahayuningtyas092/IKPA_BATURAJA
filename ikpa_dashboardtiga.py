@@ -2386,12 +2386,55 @@ def page_admin():
             key="upload_dipa"
         )
 
-        # Tombol proses
+        # Tombol proses DIPA
         if uploaded_dipa_file is not None:
             if st.button("🔄 Proses Data DIPA", type="primary"):
                 with st.spinner("Memproses data DIPA..."):
-                    process_uploaded_dipa(uploaded_dipa_file, save_file_to_github)
 
+                    try:
+                        # 1️⃣ Proses file raw DIPA → dibersihkan → revisi terbaru
+                        df_clean, tahun_dipa, status_msg = process_uploaded_dipa(uploaded_dipa_file, save_file_to_github)
+
+                        if df_clean is None:
+                            st.error(f"❌ Gagal memproses DIPA: {status_msg}")
+                            st.stop()
+
+                        # 2️⃣ Pastikan kolom Kode Satker distandardkan
+                        df_clean["Kode Satker"] = df_clean["Kode Satker"].astype(str).apply(normalize_kode_satker)
+
+                        # 3️⃣ Simpan ke session_state per tahun
+                        if "data_dipa_by_year" not in st.session_state:
+                            st.session_state.data_dipa_by_year = {}
+
+                        st.session_state.data_dipa_by_year[int(tahun_dipa)] = df_clean.copy()
+
+                        # 4️⃣ Simpan ke GitHub dalam folder `data_dipa`
+                        excel_bytes = io.BytesIO()
+                        with pd.ExcelWriter(excel_bytes, engine='openpyxl') as writer:
+                            df_clean.to_excel(writer, index=False, sheet_name=f"DIPA_{tahun_dipa}")
+
+                        excel_bytes.seek(0)
+
+                        save_file_to_github(
+                            excel_bytes.getvalue(),
+                            f"DIPA_CLEAN_{tahun_dipa}.xlsx",
+                            folder="data_dipa"
+                        )
+
+                        # 5️⃣ Catat log
+                        st.session_state.activity_log.append({
+                            "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "Aksi": "Upload DIPA",
+                            "Periode": f"Tahun {tahun_dipa}",
+                            "Status": "Sukses"
+                        })
+
+                        # 6️⃣ Tampilkan hasil preview
+                        st.success(f"✅ Data DIPA tahun {tahun_dipa} berhasil diproses & disimpan.")
+                        st.dataframe(df_clean.head(10), use_container_width=True)
+
+                    except Exception as e:
+                        st.error(f"❌ Terjadi error saat memproses file DIPA: {e}")
 
         # ============================================================
         # SUBMENU: Upload Data Referensi
@@ -2565,6 +2608,52 @@ def page_admin():
     # TAB 3: DOWNLOAD DATA
     # ============================================================
     with tab3:
+        # DOWNLOAD DATA IKPA
+        st.subheader("📥 Download Data IKPA")
+
+        # Jika belum ada data IKPA sama sekali
+        if "data_storage" not in st.session_state or not st.session_state.data_storage:
+            st.info("ℹ️ Belum ada data IKPA.")
+        else:
+            # Tampilkan periode yang tersedia
+            available_periods = sorted(st.session_state.data_storage.keys(), reverse=True)
+
+            period_to_download = st.selectbox(
+                "Pilih periode untuk download",
+                options=available_periods,
+                format_func=lambda x: f"{x[0].capitalize()} {x[1]}"
+            )
+
+            df_download = st.session_state.data_storage[period_to_download].copy()
+
+            # Siapkan file Excel untuk di-download
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df_excel = df_download.drop(
+                    ['Bobot', 'Nilai Terbobot'], axis=1, errors='ignore'
+                )
+                df_excel.to_excel(writer, index=False, sheet_name='Data IKPA')
+
+                # Format header agar cantik
+                try:
+                    workbook = writer.book
+                    worksheet = writer.sheets['Data IKPA']
+                    for cell in worksheet[1]:
+                        cell.font = Font(bold=True, color="FFFFFF")
+                        cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                        cell.alignment = Alignment(horizontal="center", vertical="center")
+                except Exception:
+                    pass
+
+            output.seek(0)
+
+            st.download_button(
+                label="📥 Download Excel IKPA",
+                data=output,
+                file_name=f"IKPA_{period_to_download[0]}_{period_to_download[1]}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+ 
         # Submenu Download Data DIPA
         st.markdown("---")
         st.subheader("📥 Download Data DIPA")
