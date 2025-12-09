@@ -2772,71 +2772,98 @@ def page_admin():
 # ===============================
 # MAIN APP 
 # ===============================
-# ===============================
-# 🔹 MAIN APP
-# ===============================
 def main():
     # ============================================================
-    # 🧩 Auto-load Reference Data from GitHub FIRST
+    # Load Reference Data
     # ============================================================
     if 'reference_df' not in st.session_state:
-        try:
-            token = st.secrets["GITHUB_TOKEN"]
-            repo_name = st.secrets["GITHUB_REPO"]
-            g = Github(auth=Auth.Token(token))
-            repo = g.get_repo(repo_name)
-            ref_path = "templates/Template_Data_Referensi.xlsx"
-            ref_file = repo.get_contents(ref_path)
-            ref_data = base64.b64decode(ref_file.content)
+        token = st.secrets.get("GITHUB_TOKEN")
+        repo_name = st.secrets.get("GITHUB_REPO")
 
-            ref_df = pd.read_excel(io.BytesIO(ref_data))
-            short_col = 'Uraian Satker-SINGKAT'
-            ref_df.columns = [c.strip() for c in ref_df.columns]  # normalize header whitespace
-            st.session_state.reference_df = ref_df
+        if not token or not repo_name:
+            st.info("⚠️ GitHub credentials belum tersedia. Reference Data menggunakan template kosong.")
+            st.session_state.reference_df = pd.DataFrame({
+                'Kode BA': [],
+                'K/L': [],
+                'Kode Satker': [],
+                'Uraian Satker-SINGKAT': [],
+                'Uraian Satker-LENGKAP': []
+            })
+        else:
+            try:
+                g = Github(auth=Auth.Token(token))
+                repo = g.get_repo(repo_name)
+                ref_path = "templates/Template_Data_Referensi.xlsx"
 
-            if short_col not in ref_df.columns:
-                # Build simple diagnostic workbook with reference columns + example head
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    pd.DataFrame({"Reference Columns": list(ref_df.columns)}).to_excel(writer, sheet_name='Reference_Columns', index=False)
-                    ref_df.head(200).to_excel(writer, sheet_name='Reference_Sample', index=False)
-                    # (optional) include a note sheet
-                    pd.DataFrame({"Issue": [f"Missing expected column: {short_col}"]}).to_excel(writer, sheet_name='Issue', index=False)
-                excel_data = output.getvalue()
+                try:
+                    ref_file = repo.get_contents(ref_path)
+                    ref_data = base64.b64decode(ref_file.content)
+                    ref_df = pd.read_excel(io.BytesIO(ref_data))
+                    ref_df.columns = [c.strip() for c in ref_df.columns]
 
-                st.error(f"❌ Data Referensi dimuat tetapi kolom '{short_col}' tidak ada. Lihat file diagnostik.")
-                st.download_button(
-                    label="📥 Download Diagnostic Reference File",
-                    data=excel_data,
-                    file_name=f"diagnostic_reference_columns_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
+                    st.session_state.reference_df = ref_df
+                    st.info(f"📚 Data Referensi dimuat ({len(ref_df)} baris)")
 
-            ref_df['Kode Satker'] = ref_df['Kode Satker'].astype(str)
-            st.session_state.reference_df = ref_df
-            st.info(f"📚 Data Referensi dimuat otomatis ({len(ref_df)} baris).")
-        except Exception as e:
-            pass 
+                except Exception:
+                    # Gunakan template kosong tanpa warning
+                    st.session_state.reference_df = pd.DataFrame({
+                        'Kode BA': [],
+                        'K/L': [],
+                        'Kode Satker': [],
+                        'Uraian Satker-SINGKAT': [],
+                        'Uraian Satker-LENGKAP': []
+                    })
+                    st.info("📄 Reference Data tidak ditemukan, menggunakan template kosong.")
+
+            except Exception:
+                st.session_state.reference_df = pd.DataFrame({
+                    'Kode BA': [],
+                    'K/L': [],
+                    'Kode Satker': [],
+                    'Uraian Satker-SINGKAT': [],
+                    'Uraian Satker-LENGKAP': []
+                })
+                st.info("📄 Gagal memuat reference data, menggunakan template kosong.")
 
     # ============================================================
-    # ✅ Then load data from GitHub (files can now be merged cleanly)
+    # Load main data
     # ============================================================
     if not st.session_state.get("data_storage"):
-        with st.spinner("🔄 Memuat data dari GitHub..."):
+        with st.spinner("🔄 Memuat data utama dari GitHub..."):
             try:
                 load_data_from_github()
+                st.success("✅ Data utama berhasil dimuat")
             except Exception as e:
-                st.error(f"⚠️ Gagal memuat data dari GitHub: {e}")
-    
-    
-    if 'data_dipa_by_year' not in st.session_state:
-        with st.spinner("🔄 Memuat data DIPA dari GitHub..."):
+                st.error(f"⚠️ Gagal memuat data utama: {e}")
+
+    # ============================================================
+    # Load DATA_DIPA per tahun
+    # ============================================================
+    if 'DATA_DIPA_by_year' not in st.session_state:
+        with st.spinner("🔄 Memuat DATA_DIPA dari GitHub..."):
             try:
                 load_DATA_DIPA_from_github()
-                if 'data_dipa_by_year' in st.session_state:
-                    st.info(f"📥 Data DIPA dimuat untuk tahun: {', '.join(map(str, st.session_state.DATA_DIPA_by_year.keys()))}")
             except Exception as e:
-                st.warning(f"⚠️ Gagal memuat data DIPA otomatis: {e}")
+                st.info(f"⚠️ Gagal memuat data DIPA otomatis, beberapa periode mungkin kosong.")
+
+    # ============================================================
+    # Check apakah DATA_DIPA berhasil dimuat
+    # ============================================================
+    if st.session_state.get('DATA_DIPA_by_year'):
+        tahun_loaded = list(st.session_state.DATA_DIPA_by_year.keys())
+        st.info(f"📥 Data DIPA tersedia untuk tahun: {', '.join(map(str, tahun_loaded))}")
+
+        # 🔹 Buat kolom 'Uraian Satker-RINGKAS' untuk semua tahun
+        for tahun, df in st.session_state.DATA_DIPA_by_year.items():
+            if 'Uraian Satker' in df.columns:
+                df['Uraian Satker-RINGKAS'] = df['Uraian Satker'].fillna('-').apply(lambda x: str(x)[:30])
+            else:
+                df['Uraian Satker-RINGKAS'] = '-'
+            st.session_state.DATA_DIPA_by_year[tahun] = df
+
+    else:
+        st.error("❌ Tidak ada DATA_DIPA yang berhasil dimuat")
+
 
 
     # ===============================
