@@ -51,22 +51,15 @@ if 'activity_log' not in st.session_state:
 # ------------------------------
 
 def normalize_kode_satker(k, width=6):
-    """
-    Pastikan Kode Satker sebagai string digit dengan leading zero.
-    Jika input None/empty -> return ''.
-    """
     if pd.isna(k):
         return ''
     s = str(k).strip()
-    # ambil hanya digit
     digits = re.findall(r'\d+', s)
     if not digits:
         return ''
-    # biasanya kode terletak di awal; gabungkan semua digit found
-    kod = digits[0]
-    # pad left with zeros hingga panjang width
-    kod = kod.zfill(width)
+    kod = digits[0].zfill(width)
     return kod
+
 
 def extract_kode_from_satker_field(s, width=6):
     """
@@ -87,7 +80,8 @@ def extract_kode_from_satker_field(s, width=6):
     return ''
 
 def process_dipa_dataframe(df_raw):
-    df = clean_dipa(df_raw)
+    df_clean = clean_dipa(df_raw)
+    return df_clean
 
     # Normalize kode satker (extract digit dari teks)
     if "Kode Satker" not in df.columns:
@@ -2163,18 +2157,77 @@ def page_admin():
         # FUNGSI 2 — CLEANING DIPA
         # ============================================================
         def clean_dipa(df_raw):
-            df = df_raw.copy()
+            # 1️⃣ Hapus kolom Unnamed
+            df = df_raw.loc[:, ~df_raw.columns.str.contains("^Unnamed")].copy()
+
+            # 2️⃣ Ambil header sebenarnya dari baris kedua (NO, Kementerian, Satker, dll.)
+            header_row = df.iloc[1].fillna("").tolist()
+            df.columns = header_row
             
-            # Hapus kolom Unnamed
-            df = df.loc[:, ~df.columns.astype(str).str.contains("unnamed", case=False, na=False)]
+            # Buang 2 baris teratas (judul)
+            df = df.iloc[2:].reset_index(drop=True)
+
+            # 3️⃣ Normalisasi kolom wajib
+            # Kolom “Satker” biasanya berisi teks seperti "007130 - KEJAKSAAN ..."
+            if "Satker" in df.columns:
+                df["Kode Satker"] = df["Satker"].astype(str).str.extract(r"(\d{6})", expand=False)
+            else:
+                df["Kode Satker"] = ""
+
+            df["Kode Satker"] = df["Kode Satker"].apply(normalize_kode_satker)
             
-            # Bersihkan nama kolom
-            df.columns = df.columns.astype(str).str.strip()
-            
-            # Hapus baris kosong
-            df = df.dropna(how="all").reset_index(drop=True)
-            
-            return df
+            # 4️⃣ Nama satker = teks setelah tanda hubung
+            if "Satker" in df.columns:
+                df["Satker"] = df["Satker"].astype(str).str.split(" - ").str[-1].str.strip()
+            else:
+                df["Satker"] = ""
+
+            # 5️⃣ Tanggal Posting Revisi
+            if "Tanggal Posting Revisi" in df.columns:
+                df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Posting Revisi"], errors="coerce")
+            else:
+                df["Tanggal Posting Revisi"] = None
+
+            # 6️⃣ Tahun = dari Tanggal Posting Revisi
+            df["Tahun"] = df["Tanggal Posting Revisi"].dt.year
+
+            # 7️⃣ Ambil Total Pagu (pakai kolom pertama yang mengandung 'pagu' / 'jumlah' / 'anggaran')
+            pagu_col = None
+            for c in df.columns:
+                if any(x in c.lower() for x in ["pagu", "jumlah", "anggaran"]):
+                    pagu_col = c
+                    break
+
+            if pagu_col:
+                df["Total Pagu"] = pd.to_numeric(df[pagu_col], errors="coerce").fillna(0)
+            else:
+                df["Total Pagu"] = 0
+
+            # 8️⃣ Pilih revisi terbaru per satker
+            df = df.sort_values(["Kode Satker", "Tahun", "Tanggal Posting Revisi"])
+            df_latest = df.groupby(["Kode Satker", "Tahun"], as_index=False).tail(1)
+
+            # 9️⃣ Jenis Satker berdasarkan kuantil (40–70–100)
+            def assign_jenis_satker(df_year):
+                q70 = df_year["Total Pagu"].quantile(0.70)
+                q40 = df_year["Total Pagu"].quantile(0.40)
+
+                def jenis(x):
+                    if x >= q70: return "Satker Besar"
+                    if x >= q40: return "Satker Sedang"
+                    return "Satker Kecil"
+
+                df_year["Jenis Satker"] = df_year["Total Pagu"].apply(jenis)
+                return df_year
+
+            df_final = (
+                df_latest.groupby("Tahun")
+                .apply(assign_jenis_satker)
+                .reset_index(drop=True)
+            )
+
+            return df_final
+
 
         # ============================================================
         # FUNGSI 3 — PROCESSING FINAL
