@@ -207,31 +207,6 @@ def standardize_dipa(df_raw):
             out[c] = out[c].astype(str).replace("nan", "").replace("None", "")
 
     # =============================
-    # 14. URUTKAN KOLOM 
-    # =============================
-    ordered_cols = [
-        "NO",
-        "Kode Satker",
-        "Satker",
-        "Tahun",
-        "Tanggal Posting Revisi",
-        "Total Pagu",
-        "Jenis Satker",
-        "Kementerian",
-        "Kode Status History",
-        "Jenis Revisi",
-        "Revisi ke-",
-        "No Dipa",
-        "Tanggal Dipa",
-        "Owner",
-        "Digital Stamp"
-    ]
-
-    # pastikan hanya kolom yang ada yang dipakai
-    existing_cols = [c for c in ordered_cols if c in out.columns]
-    out = out[existing_cols]
-
-    # =============================
     # 15. URUTKAN KOLOM (NO PALING KIRI)
     # =============================
     column_order = [
