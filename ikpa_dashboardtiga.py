@@ -2849,14 +2849,16 @@ def main():
             ref_path = "templates/Template_Data_Referensi.xlsx"
             ref_file = repo.get_contents(ref_path)
             ref_data = base64.b64decode(ref_file.content)
-
             ref_df = pd.read_excel(io.BytesIO(ref_data))
             ref_df.columns = [c.strip() for c in ref_df.columns]
-            ref_df['Kode Satker'] = ref_df['Kode Satker'].astype(str)
             st.session_state.reference_df = ref_df
             st.info(f"📚 Data Referensi dimuat otomatis ({len(ref_df)} baris).")
-        except Exception as e:
-            st.warning(f"⚠️ Gagal memuat Data Referensi: {e}")
+        except Exception:
+            st.warning("⚠️ File referensi belum ada di GitHub. Menggunakan template kosong.")
+            # fallback: DataFrame kosong
+            st.session_state.reference_df = pd.DataFrame(
+                columns=['Kode BA','K/L','Kode Satker','Uraian Satker-SINGKAT','Uraian Satker-LENGKAP']
+            )
 
     # ===============================
     # 🔹 Sidebar Navigation
