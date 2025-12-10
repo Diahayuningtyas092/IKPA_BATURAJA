@@ -96,6 +96,13 @@ def load_DATA_DIPA_from_github():
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
+        
+        contents = repo.get_contents("DATA_DIPA")
+        st.write("DEBUG: Isi folder DATA_DIPA:")
+        for c in contents:
+            st.write("-", c.path)
+
+        
     except Exception as e:
         st.error(f"Gagal akses GitHub: {e}")
         return
@@ -124,19 +131,19 @@ def load_DATA_DIPA_from_github():
         
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
-    try:
-        file_content = repo.get_contents(file_path)
-        data = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
-        
-        # Debug: cek shape & beberapa baris pertama
-        st.write(f"DEBUG: Data DIPA tahun {tahun} shape:", data.shape)
-        st.dataframe(data.head(3))
+        try:
+            file_content = repo.get_contents(file_path)
+            data = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
+            
+            # Debug: cek shape & beberapa baris pertama
+            st.write(f"DEBUG: Data DIPA tahun {tahun} shape:", data.shape)
+            st.dataframe(data.head(3))
 
-        st.session_state.DATA_DIPA_by_year[tahun] = data
-        tahun_berhasil.append(str(tahun))
-    except Exception as e:
-        st.write(f"DEBUG: Gagal load DIPA {tahun} - {e}")
-        tahun_gagal.append(str(tahun))
+            st.session_state.DATA_DIPA_by_year[tahun] = data
+            tahun_berhasil.append(str(tahun))
+        except Exception as e:
+            st.write(f"DEBUG: Gagal load DIPA {tahun} - {e}")
+            tahun_gagal.append(str(tahun))
 
 
 
