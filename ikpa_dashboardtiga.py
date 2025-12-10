@@ -121,12 +121,29 @@ def load_DATA_DIPA_from_github():
         st.success(f"📥 Data DIPA berhasil dimuat: {', '.join(tahun_berhasil)}")
     else:
         st.error("❌ Tidak ada DATA_DIPA yang berhasil dimuat")
+        
+    for tahun in [2022, 2023, 2024, 2025]:
+        file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
+    try:
+        file_content = repo.get_contents(file_path)
+        data = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
+        
+        # Debug: cek shape & beberapa baris pertama
+        st.write(f"DEBUG: Data DIPA tahun {tahun} shape:", data.shape)
+        st.dataframe(data.head(3))
+
+        st.session_state.DATA_DIPA_by_year[tahun] = data
+        tahun_berhasil.append(str(tahun))
+    except Exception as e:
+        st.write(f"DEBUG: Gagal load DIPA {tahun} - {e}")
+        tahun_gagal.append(str(tahun))
+
 
 
 # Fungsi untuk memproses file Excel
 def process_excel_file(uploaded_file, year):
     """
-    Memproses file Excel IKPA sesuai struktur yang telah ditentukan
+    Memproses file Excel DIPA sesuai struktur yang telah ditentukan
     """
     try:
         df_raw = pd.read_excel(uploaded_file, header=None)
@@ -2613,6 +2630,12 @@ def page_admin():
             # Ambil data DIPA yang sudah bersih
             df_download_dipa = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
 
+            # Debug: cek shape & kolom
+            st.write("DEBUG: df_download_dipa shape:", df_download_dipa.shape)
+            st.write("DEBUG: df_download_dipa columns:", df_download_dipa.columns.tolist())
+            st.dataframe(df_download_dipa.head(3))
+
+
             # ✅ Pastikan urutan kolom sesuai
             desired_columns = [
                 "Kode Satker",
@@ -2672,6 +2695,7 @@ def page_admin():
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="btn_download_dipa"
             )
+
 
         # Download Data Satker Tidak Terdaftar
         st.markdown("---")
