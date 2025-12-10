@@ -102,6 +102,18 @@ def load_DATA_DIPA_from_github():
 
     tahun_berhasil, tahun_gagal = [], []
 
+    def fix_header(df_raw):
+        """Perbaikan header: baris 0–2 = sampah, baris ke-3 = header asli"""
+        try:
+            new_header = df_raw.iloc[2].tolist()      # header asli
+            df = df_raw.iloc[3:].copy()              # data
+            df.columns = new_header                  # pasang header
+            df = df.loc[:, ~df.columns.astype(str).str.startswith("Unnamed")]
+            df = df.reset_index(drop=True)
+            return df
+        except:
+            return df_raw
+
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
 
@@ -109,27 +121,8 @@ def load_DATA_DIPA_from_github():
             file_content = repo.get_contents(file_path)
             df_raw = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
 
-            # -----------------------------------------
-            #  FIX HEADER LANGSUNG DI SINI (NO FUNCTION)
-            # -----------------------------------------
-
-            # 1️⃣ Jika semua kolom Unnamed → header di baris ke-3
-            if all(col.startswith("Unnamed") for col in df_raw.columns):
-                df = df_raw.copy()
-                df.columns = df_raw.iloc[2]
-                df = df.drop([0, 1, 2]).reset_index(drop=True)
-
-            # 2️⃣ Jika ada kolom DOWNLOAD DATA DETAIL PENGANGGARAN
-            elif "DOWNLOAD DATA DETAIL PENGANGGARAN" in df_raw.columns:
-                df = df_raw.copy()
-                df.columns = df_raw.iloc[2]
-                df = df.drop([0, 1, 2]).reset_index(drop=True)
-
-            # 3️⃣ Jika header sudah benar
-            else:
-                df = df_raw.copy()
-
-            # -----------------------------------------
+            # Fix header sekali saja di sini
+            df = fix_header(df_raw)
 
             st.session_state.DATA_DIPA_by_year[tahun] = df
             tahun_berhasil.append(str(tahun))
@@ -140,7 +133,6 @@ def load_DATA_DIPA_from_github():
 
     if tahun_berhasil:
         st.success(f"📥 Data DIPA berhasil dimuat: {', '.join(tahun_berhasil)}")
-
 
 
 # Fungsi untuk memproses file Excel
@@ -2613,7 +2605,7 @@ def page_admin():
             st.info("ℹ️ Belum ada data DIPA.")
         else:
             available_years_download = sorted(
-                st.session_state.DATA_DIPA_by_year.keys(),
+                st.session_state.DATA_DIPA_by_year.keys(), 
                 reverse=True
             )
 
@@ -2624,30 +2616,12 @@ def page_admin():
                 key="download_dipa_year"
             )
 
-            # Ambil data asli
+            # Ambil data yang SUDAH bersih dari load()
             df = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
 
-            st.write("DEBUG: SEMUA KOLOM SEBELUM PROSES:", df.columns.tolist())
+            st.write("DEBUG: KOLOM SETELAH LOAD:", df.columns.tolist())
 
-            # --- FIX HEADER LANGSUNG ---
-            if all(col.startswith("Unnamed") or col == "DOWNLOAD DATA DETAIL PENGANGGARAN" 
-                for col in df.columns):
-
-                st.warning("Header Excel tidak terbaca → memperbaiki otomatis...")
-
-                raw = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
-
-                new_header = raw.iloc[2].tolist()
-                df = raw[3:].copy()
-                df.columns = new_header
-            # ---------------------------
-
-            st.write("DEBUG: KOLOM SETELAH FIX HEADER:", df.columns.tolist())
-
-            # Hapus kolom Unnamed
-            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
-
-            # Kolom yang diinginkan
+            # Filter kolom sesuai kebutuhan
             desired_columns = [
                 "Kode Satker",
                 "Satker",
@@ -2670,20 +2644,21 @@ def page_admin():
             if available_cols:
                 df = df[available_cols]
 
-            # Ambil baris terbaru per Satker
+            # Ambil 1 baris per satker
             if 'Kode Satker' in df.columns and 'Tanggal Posting Revisi' in df.columns:
                 df['Tanggal Posting Revisi'] = pd.to_datetime(df['Tanggal Posting Revisi'], errors='coerce')
                 df = df.sort_values(by=['Kode Satker', 'Tanggal Posting Revisi'], ascending=[True, False])
                 df = df.drop_duplicates(subset='Kode Satker', keep='first')
 
             # Klasifikasi satker
-            if 'Total Pagu' in df.columns:
-                q40 = df['Total Pagu'].quantile(0.40)
-                q70 = df['Total Pagu'].quantile(0.70)
-
-                df['Jenis Satker'] = df['Total Pagu'].apply(
-                    lambda p: "Satker Besar" if p >= q70 else "Satker Sedang" if p >= q40 else "Satker Kecil"
-                )
+            if "Total Pagu" in df.columns:
+                q40 = df["Total Pagu"].quantile(0.40)
+                q70 = df["Total Pagu"].quantile(0.70)
+                def klasifikasi(x):
+                    if x >= q70: return "Satker Besar"
+                    elif x >= q40: return "Satker Sedang"
+                    else: return "Satker Kecil"
+                df["Jenis Satker"] = df["Total Pagu"].apply(klasifikasi)
 
             # Preview
             with st.expander("Preview Data (5 baris pertama)"):
@@ -2692,11 +2667,7 @@ def page_admin():
             # Export Excel
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name=f'DIPA_{year_to_download}')
-
-            # Digital Stamp sebagai string
-            if "Digital Stamp" in df.columns:
-                df["Digital Stamp"] = df["Digital Stamp"].astype(str)
+                df.to_excel(writer, index=False, sheet_name=f"DIPA_{year_to_download}")
 
             output.seek(0)
 
@@ -2705,9 +2676,7 @@ def page_admin():
                 data=output,
                 file_name=f"DIPA_{year_to_download}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                key="btn_download_dipa"
             )
-
 
 
         # Download Data Satker Tidak Terdaftar
