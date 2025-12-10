@@ -2824,30 +2824,65 @@ def page_admin():
                 st.success("🧹 Log dibersihkan.")
 
 
-# ----------------------------
-# MAIN APP
-# ----------------------------
 def main():
-    # Inisialisasi session_state
+    # ===============================
+    # 🔹 Inisialisasi Session State
+    # ===============================
     if "page" not in st.session_state:
         st.session_state["page"] = "📊 Dashboard Utama"
 
+    if "data_storage" not in st.session_state:
+        st.session_state["data_storage"] = {}
+
+    if "data_dipa_by_year" not in st.session_state:
+        st.session_state["data_dipa_by_year"] = {}
+
+    # ===============================
+    # 🔹 Load Reference Data
+    # ===============================
+    if 'reference_df' not in st.session_state:
+        try:
+            token = st.secrets["GITHUB_TOKEN"]
+            repo_name = st.secrets["GITHUB_REPO"]
+            g = Github(auth=Auth.Token(token))
+            repo = g.get_repo(repo_name)
+            ref_path = "templates/Template_Data_Referensi.xlsx"
+            ref_file = repo.get_contents(ref_path)
+            ref_data = base64.b64decode(ref_file.content)
+
+            ref_df = pd.read_excel(io.BytesIO(ref_data))
+            ref_df.columns = [c.strip() for c in ref_df.columns]
+            ref_df['Kode Satker'] = ref_df['Kode Satker'].astype(str)
+            st.session_state.reference_df = ref_df
+            st.info(f"📚 Data Referensi dimuat otomatis ({len(ref_df)} baris).")
+        except Exception as e:
+            st.warning(f"⚠️ Gagal memuat Data Referensi: {e}")
+
+    # ===============================
+    # 🔹 Sidebar Navigation
+    # ===============================
     st.sidebar.title("🧭 Navigasi")
     st.sidebar.markdown("---")
 
-    # Radio navigation
     selected_page = st.sidebar.radio(
         "Pilih Halaman",
-        options=[
-            "📊 Dashboard Utama",
-            "📈 Dashboard Internal",
-            "🔐 Admin"
-        ],
+        options=["📊 Dashboard Utama", "📈 Dashboard Internal", "🔐 Admin"],
         index=["📊 Dashboard Utama", "📈 Dashboard Internal", "🔐 Admin"].index(st.session_state["page"]),
         key="page"
     )
 
-    # Routing halaman
+    st.sidebar.markdown("---")
+    st.sidebar.info("""
+    **Dashboard IKPA**  
+    Indikator Kinerja Pelaksanaan Anggaran  
+    KPPN Baturaja
+
+    📧 Support: ameer.noor@kemenkeu.go.id
+    """)
+
+    # ===============================
+    # 🔹 Routing Halaman
+    # ===============================
     if st.session_state.page == "📊 Dashboard Utama":
         page_dashboard()
     elif st.session_state.page == "📈 Dashboard Internal":
@@ -2856,6 +2891,8 @@ def main():
         page_admin()
 
 
+# ===============================
+# 🔹 ENTRY POINT
+# ===============================
 if __name__ == "__main__":
     main()
-
