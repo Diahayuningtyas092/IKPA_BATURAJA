@@ -2698,6 +2698,11 @@ def page_admin():
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False, sheet_name=f'DIPA_{year_to_download}')
 
+            # Pastikan Digital Stamp disimpan sebagai teks/string
+            if "Digital Stamp" in df.columns:
+                df["Digital Stamp"] = df["Digital Stamp"].astype(str)
+
+
                 # Format header
                 try:
                     worksheet = writer.sheets[f'DIPA_{year_to_download}']
