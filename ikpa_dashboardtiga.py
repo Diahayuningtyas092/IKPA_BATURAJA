@@ -87,44 +87,6 @@ from github import Github, Auth
 import re
 
 # ===========================
-# Loader Reference Data
-# ===========================
-def load_reference_data():
-    if 'reference_df' not in st.session_state:
-        token = st.secrets.get("GITHUB_TOKEN")
-        repo_name = st.secrets.get("GITHUB_REPO")
-
-        template_empty = pd.DataFrame({
-            'Kode BA': [],
-            'K/L': [],
-            'Kode Satker': [],
-            'Uraian Satker-SINGKAT': [],
-            'Uraian Satker-LENGKAP': []
-        })
-
-        if not token or not repo_name:
-            st.info("⚠️ GitHub credentials belum tersedia. Reference Data menggunakan template kosong.")
-            st.session_state.reference_df = template_empty
-        else:
-            try:
-                g = Github(auth=Auth.Token(token))
-                repo = g.get_repo(repo_name)
-                ref_path = "templates/Template_Data_Referensi.xlsx"
-                try:
-                    ref_file = repo.get_contents(ref_path)
-                    ref_data = base64.b64decode(ref_file.content)
-                    ref_df = pd.read_excel(io.BytesIO(ref_data))
-                    ref_df.columns = [c.strip() for c in ref_df.columns]
-                    st.session_state.reference_df = ref_df
-                    st.info(f"📚 Data Referensi dimuat ({len(ref_df)} baris)")
-                except Exception:
-                    st.session_state.reference_df = template_empty
-                    st.info("📄 Reference Data tidak ditemukan, menggunakan template kosong.")
-            except Exception:
-                st.session_state.reference_df = template_empty
-                st.info("📄 Gagal memuat reference data, menggunakan template kosong.")
-
-# ===========================
 # Loader DIPA Auto-Detect
 # ===========================
 def load_all_DIPA_from_github():
@@ -2657,10 +2619,6 @@ def page_admin():
  
         # ===========================
         # Submenu Download Data DIPA
-        # ===========================
-
-        # ===========================
-        # Preview & Download DIPA
         # ===========================
         def preview_download_DIPA():
             st.markdown("### 📥 Download Data DIPA")
