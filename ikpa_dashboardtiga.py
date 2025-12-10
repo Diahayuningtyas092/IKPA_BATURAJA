@@ -280,28 +280,48 @@ def load_DATA_DIPA_from_github():
     tahun_berhasil = []
     tahun_gagal = []
 
-    # Loop tahun
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
 
         try:
-            # Ambil dari GitHub
             file_content = repo.get_contents(file_path)
             raw_bytes = base64.b64decode(file_content.content)
 
-            # Baca raw tanpa header → wajib header=None
-            df_raw = pd.read_excel(io.BytesIO(raw_bytes), header=None)
+            xls = pd.ExcelFile(io.BytesIO(raw_bytes))
 
-            # -------------------------------
-            # 🔥 PROSES BARU
-            # Standarisasi format semua tahun
-            # -------------------------------
+            # ===========================================================
+            # 1️⃣ DETEKSI SHEET TERBAIK → paling sedikit kolom = sheet data
+            # ===========================================================
+            best_sheet = None
+            best_col_count = 999999
+
+            for s in xls.sheet_names:
+                try:
+                    tmp = pd.read_excel(xls, sheet_name=s, header=None, nrows=5)
+                    col_count = tmp.shape[1]
+
+                    # pilih sheet dengan kolom paling sedikit
+                    if col_count < best_col_count:
+                        best_col_count = col_count
+                        best_sheet = s
+                except:
+                    pass
+
+            if best_sheet is None:
+                raise Exception("Tidak ada sheet bisa dibaca")
+
+            # ===========================================================
+            # 2️⃣ BACA ULANG SHEET TERPILIH
+            # ===========================================================
+            df_raw = pd.read_excel(xls, sheet_name=best_sheet, header=None)
+
+            # ===========================================================
+            # 3️⃣ STANDARISASI
+            # ===========================================================
             df_std = standardize_dipa(df_raw)
 
-            # Jika kolom Tahun belum terisi → isi dari nama file
             df_std["Tahun"] = df_std["Tahun"].fillna(tahun)
 
-            # Simpan ke session_state
             st.session_state.DATA_DIPA_by_year[tahun] = df_std.copy()
 
             tahun_berhasil.append(str(tahun))
@@ -310,7 +330,6 @@ def load_DATA_DIPA_from_github():
             tahun_gagal.append(str(tahun))
             st.write(f"DEBUG: Gagal load DIPA {tahun}: {e}")
 
-    # Notifikasi
     if tahun_berhasil:
         st.success("📥 Data DIPA berhasil dimuat: " + ", ".join(tahun_berhasil))
     if tahun_gagal:
