@@ -2824,30 +2824,56 @@ def page_admin():
                 st.success("🧹 Log dibersihkan.")
 
 
-# ===============================
-# MAIN APP 
-# ===============================
+import streamlit as st
+from datetime import datetime
+
+# ----------------------------
+# Placeholder untuk page functions
+# ----------------------------
+def page_dashboard():
+    st.title("📊 Dashboard Utama")
+    st.write("Konten dashboard utama...")
+
+def page_trend():
+    st.title("📈 Dashboard Internal")
+    st.write("Konten dashboard internal...")
+
+def page_admin():
+    st.title("🔐 Halaman Administrasi")
+    st.write("Konten halaman admin...")
+
+# ----------------------------
+# MAIN APP
+# ----------------------------
 def main():
     st.set_page_config(
         page_title="Dashboard IKPA",
-        layout="wide",
-        initial_sidebar_state="expanded"
+        layout="wide"
     )
 
     # ===============================
-    # 🔹 Sidebar Navigation 
+    # 🔹 Sidebar Navigation
     # ===============================
     st.sidebar.title("🧭 Navigasi")
     st.sidebar.markdown("---")
 
-    # Inisialisasi page sekali saja
+    # Inisialisasi session_state default page & log
     if "page" not in st.session_state:
         st.session_state.page = "📊 Dashboard Utama"
 
-    # Pastikan page aman (fallback jika terjadi glitch)
-    st.session_state.page = st.session_state.get("page", "📊 Dashboard Utama")
+    if "activity_log" not in st.session_state:
+        st.session_state.activity_log = []
 
-    # Radio navigation (Streamlit akan otomatis update session_state["page"])
+    if "data_storage" not in st.session_state:
+        st.session_state.data_storage = {}
+
+    if "DATA_DIPA_by_year" not in st.session_state:
+        st.session_state.DATA_DIPA_by_year = {}
+
+    if "reference_df" not in st.session_state:
+        st.session_state.reference_df = None
+
+    # Radio navigation
     selected_page = st.sidebar.radio(
         "Pilih Halaman",
         options=[
@@ -2855,68 +2881,40 @@ def main():
             "📈 Dashboard Internal",
             "🔐 Admin"
         ],
-        key="page"   # gunakan key yg sama
+        index=["📊 Dashboard Utama", "📈 Dashboard Internal", "🔐 Admin"].index(st.session_state.page),
+        key="page_radio"
     )
 
+    # Update session_state.page hanya jika berbeda
+    if selected_page != st.session_state.page:
+        st.session_state.page = selected_page
+
     st.sidebar.markdown("---")
-    st.sidebar.info("""
-    **Dashboard IKPA**  
-    Indikator Kinerja Pelaksanaan Anggaran  
-    KPPN Baturaja
+    st.sidebar.info(
+        """
+        **Dashboard IKPA**  
+        Indikator Kinerja Pelaksanaan Anggaran  
+        KPPN Baturaja
 
-    📧 Support: ameer.noor@kemenkeu.go.id
-    """)
-
-
-
-    # ===============================
-    # 🔹 Sidebar Navigation 
-    # ===============================
-    st.sidebar.title("🧭 Navigasi")
-    st.sidebar.markdown("---")
-
-    # Inisialisasi page sekali saja
-    if "page" not in st.session_state:
-        st.session_state.page = "📊 Dashboard Utama"
-
-    # Pastikan page aman (fallback jika terjadi glitch)
-    st.session_state.page = st.session_state.get("page", "📊 Dashboard Utama")
-
-    # Radio navigation (Streamlit akan otomatis update session_state["page"])
-    selected_page = st.sidebar.radio(
-        "Pilih Halaman",
-        options=[
-            "📊 Dashboard Utama",
-            "📈 Dashboard Internal",
-            "🔐 Admin"
-        ],
-        key="page"   # gunakan key yg sama
+        📧 Support: ameer.noor@kemenkeu.go.id
+        """
     )
-
-    st.sidebar.markdown("---")
-    st.sidebar.info("""
-    **Dashboard IKPA**  
-    Indikator Kinerja Pelaksanaan Anggaran  
-    KPPN Baturaja
-
-    📧 Support: ameer.noor@kemenkeu.go.id
-    """)
-
 
     # ===============================
     # 🔹 Routing Halaman
     # ===============================
     if st.session_state.page == "📊 Dashboard Utama":
         page_dashboard()
-
     elif st.session_state.page == "📈 Dashboard Internal":
         page_trend()
-
     elif st.session_state.page == "🔐 Admin":
         page_admin()
+    else:
+        st.warning("Halaman tidak ditemukan!")
 
-# ===============================
-# 🔹 ENTRY POINT
-# ===============================
+# ----------------------------
+# ENTRY POINT
+# ----------------------------
 if __name__ == "__main__":
     main()
+
