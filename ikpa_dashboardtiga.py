@@ -281,59 +281,71 @@ def load_DATA_DIPA_from_github():
     tahun_gagal = []
 
     for tahun in [2022, 2023, 2024, 2025]:
-        file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
-
         try:
+            file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
             file_content = repo.get_contents(file_path)
             raw_bytes = base64.b64decode(file_content.content)
 
+            # ================================
+            # LOAD EXCEL TANPA LANGSUNG KE DF
+            # ================================
             xls = pd.ExcelFile(io.BytesIO(raw_bytes))
 
-            # ===========================================================
-            # 1️⃣ DETEKSI SHEET TERBAIK → paling sedikit kolom = sheet data
-            # ===========================================================
+            # ================================
+            # 1️⃣ PILIH SHEET DENGAN KOLOM PALING SEDIKIT
+            # ================================
             best_sheet = None
-            best_col_count = 999999
+            best_cols = 999999
 
-            for s in xls.sheet_names:
+            for sheet in xls.sheet_names:
                 try:
-                    tmp = pd.read_excel(xls, sheet_name=s, header=None, nrows=5)
+                    tmp = pd.read_excel(
+                        xls,
+                        sheet_name=sheet,
+                        header=None,
+                        nrows=10,
+                        dtype=str
+                    )
                     col_count = tmp.shape[1]
 
-                    # pilih sheet dengan kolom paling sedikit
-                    if col_count < best_col_count:
-                        best_col_count = col_count
-                        best_sheet = s
+                    if 1 < col_count < best_cols:
+                        best_cols = col_count
+                        best_sheet = sheet
                 except:
                     pass
 
             if best_sheet is None:
-                raise Exception("Tidak ada sheet bisa dibaca")
+                raise Exception("Tidak ada sheet data valid")
 
-            # ===========================================================
-            # 2️⃣ BACA ULANG SHEET TERPILIH
-            # ===========================================================
-            df_raw = pd.read_excel(xls, sheet_name=best_sheet, header=None)
+            # ================================
+            # 2️⃣ BACA SHEET TERPILIH
+            # ================================
+            df_raw = pd.read_excel(
+                xls,
+                sheet_name=best_sheet,
+                header=None,
+                dtype=str
+            )
 
-            # ===========================================================
-            # 3️⃣ STANDARISASI
-            # ===========================================================
+            # ================================
+            # 3️⃣ STANDARDISASI
+            # ================================
             df_std = standardize_dipa(df_raw)
 
             df_std["Tahun"] = df_std["Tahun"].fillna(tahun)
 
             st.session_state.DATA_DIPA_by_year[tahun] = df_std.copy()
-
             tahun_berhasil.append(str(tahun))
 
         except Exception as e:
-            tahun_gagal.append(str(tahun))
             st.write(f"DEBUG: Gagal load DIPA {tahun}: {e}")
+            tahun_gagal.append(str(tahun))
 
     if tahun_berhasil:
         st.success("📥 Data DIPA berhasil dimuat: " + ", ".join(tahun_berhasil))
     if tahun_gagal:
         st.warning("⚠️ Data gagal dimuat: " + ", ".join(tahun_gagal))
+
 
 # Fungsi untuk memproses file Excel
 def process_excel_file(uploaded_file, year):
