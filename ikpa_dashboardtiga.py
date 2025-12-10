@@ -42,182 +42,210 @@ if 'activity_log' not in st.session_state:
     st.session_state.activity_log = []  # Each entry: dict with timestamp, action, period, status
 
 # -------------------------
-# STANDARDIZE DIPA (FINAL)
+# Helper baru: standardize_dipa
 # -------------------------
 import re
-import pandas as pd
-
 def standardize_dipa(df_raw):
+    """
+    Terima DataFrame raw (di-read langsung dari excel, header bisa berada di baris manapun).
+    Kembalikan DataFrame yang distandarkan ke kolom:
+    ['Kode Satker','Satker','Tahun','Tanggal Posting Revisi','Total Pagu','Jenis Satker',
+     'NO','Kementerian','Kode Status History','Jenis Revisi','Revisi ke-','No Dipa',
+     'Tanggal Dipa','Owner','Digital Stamp']
+    """
+    # defensive copy
     df0 = df_raw.copy().reset_index(drop=True)
 
-    # =============================
-    # 1. DETEKSI HEADER
-    # =============================
-    possible_keywords = [
-        "satker", "nama satker", "kode satker",
-        "no dipa", "dipa", "tanggal", "pagu",
-        "status", "jenis revisi", "revisi"
-    ]
-
+    # 1) cari baris header: scan 0..10 cari baris yang mengandung keyword
+    header_candidates = []
+    keywords = ['satker', 'no dipa', 'tanggal', 'pagu', 'no', 'nama satker', 'kode status', 'jenis revisi']
     header_row = None
     for i in range(min(12, len(df0))):
-        row = " ".join(df0.iloc[i].fillna("").astype(str)).lower()
-        score = sum(1 for kw in possible_keywords if kw in row)
-        if score >= 2:
+        row_text = " ".join(df0.iloc[i].fillna("").astype(str).astype(str)).lower()
+        matches = sum(1 for kw in keywords if kw in row_text)
+        header_candidates.append((i, matches, row_text))
+        if matches >= 2:
             header_row = i
             break
-
     if header_row is None:
-        header_row = 2
+        # fallback: assume header at row 2 (as in contoh Anda)
+        header_row = 2 if len(df0) > 2 else 0
 
+    # build df with header
     header = df0.iloc[header_row].astype(str).str.strip()
     df = df0.iloc[header_row+1:].copy().reset_index(drop=True)
     df.columns = header.tolist()
-    
-    # HAPUS KOLOM TANPA NAMA / KOLOM ANGKA DARI EXCEL
-    df = df.loc[:, df.columns.notna()]
-    df = df[[c for c in df.columns if str(c).strip() not in ["", "0", "1", "2", "3",
-                                                            "4", "5", "6", "7", "8", "9"]]]
-    df = df[[c for c in df.columns if not str(c).lower().startswith("unnamed")]]
 
-    # =============================
-    # 2. NORMALISASI KOLOM
-    # =============================
-    col_clean = {}
-    for c in df.columns:
-        clean = (
-            c.lower()
-            .replace(" ", "")
-            .replace(".", "")
-            .replace("-", "")
-            .replace("_", "")
-        )
-        col_clean[c] = clean
+    # normalize column names to simple keys (upper, no spaces/dots)
+    col_map = {c: re.sub(r'[^A-Z0-9]', '', c.upper()) for c in df.columns}
+    df.columns = [col_map[c] for c in df.columns]
 
-    df.columns = list(col_clean.values())
-
-    def exists(*keys):
-        for k in keys:
-            key = k.lower().replace(" ", "")
+    # convenience getter
+    def col_exists(*names):
+        for n in names:
+            key = re.sub(r'[^A-Z0-9]', '', n.upper())
             if key in df.columns:
                 return key
         return None
 
-    # =============================
-    # 3. OUTPUT
-    # =============================
+    # final column names we will produce
+    final_cols = [
+        'Kode Satker','Satker','Tahun','Tanggal Posting Revisi','Total Pagu','Jenis Satker',
+        'NO','Kementerian','Kode Status History','Jenis Revisi','Revisi ke-','No Dipa',
+        'Tanggal Dipa','Owner','Digital Stamp'
+    ]
     out = pd.DataFrame()
 
-    # =============================
-    # 4. KODE SATKER & NAMA
-    # =============================
-    kode_key = exists("kodesatker", "satker")
-    nama_key = exists("namasatker", "uraiansatker")
+    # Map possibilities (account for different raw column names)
+    # Kode Satker: maybe column "SATKER" contains code or "KODE SATKER"
+    kode_key = col_exists('KODESATKER','SATKER')  # SATKER may be either code or "007130 - name"
+    nama_satker_key = col_exists('NAMASATKER','URA IAN SATKER','SATKER')  # try Nama Satker
+    no_key = col_exists('NO')  # 'No' column
+    nodipa_key = col_exists('NODIPA','NODIPA')  # 'No. DIPA'
+    total_pagu_belanja_key = col_exists('TOTALPAGUBELANJA','TOTALPAGU','TOTALPAGUBELANJA')  # old format
+    tanggal_posting_key = col_exists('TANGGALPOSTINGREVISI','TANGGALPOSTING','TANGGAL')  # posting revisi (old)
+    revisi_terakhir_key = col_exists('NOREVISITERAKHIR','REVISIKE','REVISIKE')  # old
+    # new format keys
+    kementerian_key = col_exists('KEMENTERIAN')
+    kode_status_key = col_exists('KODESTATUSHISTORY')
+    jenis_revisi_key = col_exists('JENISREVISI')
+    revisi_ke_key = col_exists('REVISIKE-','REVISIKE')
+    tanggal_dipa_key = col_exists('TANGGALDIPA')
+    owner_key = col_exists('OWNER')
+    digital_stamp_key = col_exists('DIGITALSTAMP')
+    tahun_key = col_exists('TAHUN')
 
-    if kode_key:
-        out["Kode Satker"] = df[kode_key].astype(str).str.extract(r"(\d{3,6})")[0].fillna("").str.zfill(6)
+    # Fill out NO
+    if no_key:
+        out['NO'] = df[no_key]
     else:
-        out["Kode Satker"] = ""
+        out['NO'] = range(1, len(df)+1)
 
-    if nama_key:
-        out["Satker"] = df[nama_key].astype(str)
+    # Kode Satker and Satker
+    # Cases:
+    # - old format: SATKER column holds numeric code (e.g. '403603') and NAMASATKER holds name
+    # - new format: 'Kode Satker' and 'Satker' may exist
+    if kode_key and nama_satker_key and kode_key != nama_satker_key:
+        # if SATKER looks numeric (old format)
+        sample = df[kode_key].astype(str).iloc[0] if len(df)>0 else ''
+        if re.fullmatch(r'\d+', sample.strip()):
+            out['Kode Satker'] = df[kode_key].astype(str).str.zfill(6)
+            out['Satker'] = df[nama_satker_key].astype(str)
+        else:
+            # SATKER column might be "007130 - NAME" — extract code and name
+            satker_series = df[kode_key].astype(str)
+            # try split by ' - ' or first token
+            codes = satker_series.str.extract(r'^(\d{3,6})')[0].fillna('').astype(str).str.zfill(6)
+            names = df[kode_key].astype(str)
+            out['Kode Satker'] = codes
+            out['Satker'] = names
     else:
-        out["Satker"] = df[kode_key].astype(str) if kode_key else ""
+        # try direct keys typical of new format
+        k1 = col_exists('KODESATKER')
+        k2 = col_exists('SATKER')
+        if k1:
+            out['Kode Satker'] = df[k1].astype(str).str.zfill(6)
+        elif k2:
+            # SATKER might be "007130 - NAME"
+            codes = df[k2].astype(str).str.extract(r'^(\d{3,6})')[0].fillna('').astype(str).str.zfill(6)
+            out['Kode Satker'] = codes
+        else:
+            out['Kode Satker'] = ''
 
-    # =============================
-    # 5. TAHUN
-    # =============================
-    tahun_key = exists("tahun")
+        # Satker name:
+        name_key = col_exists('NAMASATKER','URAIANSATKER','SATKER')
+        if name_key:
+            out['Satker'] = df[name_key].astype(str)
+        else:
+            out['Satker'] = ''
+
+    # Tahun
     if tahun_key:
-        out["Tahun"] = pd.to_numeric(df[tahun_key], errors="coerce")
+        out['Tahun'] = pd.to_numeric(df[tahun_key], errors='coerce').fillna(method='ffill').astype('Int64')
     else:
-        try:
-            year_from_dipa = df[exists("nodipa")].astype(str).str.extract(r"/(\d{4})")[0]
-            out["Tahun"] = pd.to_numeric(year_from_dipa, errors="coerce")
-        except:
-            out["Tahun"] = None
+        # attempt to parse from No Dipa if present or from filename later (caller can overwrite)
+        out['Tahun'] = None
 
-    # =============================
-    # 6. TANGGAL POSTING
-    # =============================
-    tpost_key = exists("tanggalpostingrevisi", "tanggalposting", "tanggal")
-    out["Tanggal Posting Revisi"] = pd.to_datetime(df[tpost_key], errors="coerce") if tpost_key else pd.NaT
-
-    # =============================
-    # 7. TOTAL PAGU
-    # =============================
-    pagu_key = exists("totalpagubelanja", "totalpagu", "pagubelanja", "pagu")
-    if pagu_key:
-        out["Total Pagu"] = pd.to_numeric(
-            df[pagu_key].astype(str).str.replace(r"[^\d\.-]", "", regex=True),
-            errors="coerce"
-        ).fillna(0)
+    # Tanggal Posting Revisi
+    if tanggal_posting_key:
+        out['Tanggal Posting Revisi'] = pd.to_datetime(df[tanggal_posting_key], errors='coerce')
     else:
-        out["Total Pagu"] = 0
+        out['Tanggal Posting Revisi'] = pd.NaT
 
-    # =============================
-    # 8. NO (sementara)
-    # =============================
-    no_key = exists("no")
-    out["NO"] = df[no_key] if no_key else range(1, len(df)+1)
-
-    # =============================
-    # 9. NO DIPA + KEMENTERIANNYA
-    # =============================
-    dipa_key = exists("nodipa")
-    if dipa_key:
-        out["No Dipa"] = df[dipa_key].astype(str)
-        out["Kementerian"] = df[dipa_key].astype(str).str.extract(r"DIPA[-\s]*([0-9]{3})")[0]
+    # Total Pagu: prefer Total Pagu Belanja, fallback to 'Pagu Belanja' or 'Pagu'
+    if total_pagu_belanja_key and total_pagu_belanja_key in df.columns:
+        # remove thousand separators and scientific notation artifacts
+        out['Total Pagu'] = pd.to_numeric(df[total_pagu_belanja_key].astype(str).str.replace(r'[^\d\.-]', '', regex=True), errors='coerce').fillna(0)
     else:
-        out["No Dipa"] = ""
-        out["Kementerian"] = ""
+        # try other possible keys
+        p1 = col_exists('PAGUBELANJA','PAGU')
+        if p1:
+            out['Total Pagu'] = pd.to_numeric(df[p1].astype(str).str.replace(r'[^\d\.-]', '', regex=True), errors='coerce').fillna(0)
+        else:
+            out['Total Pagu'] = 0
 
-    # =============================
-    # 10. REVISI
-    # =============================
-    status_key = exists("kodestatushistory")
-    jenisrev_key = exists("jenisrevisi")
-    revisi_key = exists("revisike", "norevisiterakhir")
+    # Jenis Satker: compute by quantile per df
+    try:
+        q40 = out['Total Pagu'].quantile(0.40)
+        q70 = out['Total Pagu'].quantile(0.70)
+        def klasifikasi(x):
+            if pd.isna(x): return ''
+            if x >= q70: return "Satker Besar"
+            elif x >= q40: return "Satker Sedang"
+            else: return "Satker Kecil"
+        out['Jenis Satker'] = out['Total Pagu'].apply(klasifikasi)
+    except Exception:
+        out['Jenis Satker'] = ''
 
-    out["Kode Status History"] = df[status_key].astype(str) if status_key else ""
-    out["Jenis Revisi"] = df[jenisrev_key].astype(str) if jenisrev_key else ""
-
-    if revisi_key:
-        out["Revisi ke-"] = df[revisi_key].astype(str).str.extract(r"(\d+)")[0]
+    # Kementerian: if No Dipa exists, extract first 3 digits after "DIPA-"
+    if nodipa_key and nodipa_key in df.columns:
+        nodipa = df[nodipa_key].astype(str)
+        kem = nodipa.str.extract(r'DIPA[-\s]*([0-9]{3})')[0].fillna('')
+        out['Kementerian'] = kem
+        out['No Dipa'] = nodipa
     else:
-        out["Revisi ke-"] = None
+        # try to find No Dipa in any column
+        any_nd = col_exists('NODIPA','NODIPA')
+        if any_nd:
+            nodipa = df[any_nd].astype(str)
+            kem = nodipa.str.extract(r'DIPA[-\s]*([0-9]{3})')[0].fillna('')
+            out['Kementerian'] = kem
+            out['No Dipa'] = nodipa
+        else:
+            out['Kementerian'] = ''
+            out['No Dipa'] = ''
 
-    # =============================
-    # 11. TANGGAL DIPA
-    # =============================
-    t_dipa_key = exists("tanggaldipa")
-    out["Tanggal Dipa"] = pd.to_datetime(df[t_dipa_key], errors="coerce") if t_dipa_key else pd.NaT
+    # Kode Status History / Jenis Revisi / Revisi ke-
+    out['Kode Status History'] = df[kode_status_key].astype(str) if kode_status_key and kode_status_key in df.columns else ''
+    out['Jenis Revisi'] = df[jenis_revisi_key].astype(str) if jenis_revisi_key and jenis_revisi_key in df.columns else ''
+    if revisi_terakhir_key and revisi_terakhir_key in df.columns:
+        out['Revisi ke-'] = pd.to_numeric(df[revisi_terakhir_key].astype(str).str.extract(r'(\d+)')[0], errors='coerce').fillna(0).astype('Int64')
+    elif revisi_ke_key and revisi_ke_key in df.columns:
+        out['Revisi ke-'] = pd.to_numeric(df[revisi_ke_key].astype(str).str.extract(r'(\d+)')[0], errors='coerce').fillna(0).astype('Int64')
+    else:
+        out['Revisi ke-'] = None
 
-    # =============================
-    # 12. OWNER & DIGITAL STAMP
-    # =============================
-    out["Owner"] = df[exists("owner")] if exists("owner") else ""
-    out["Digital Stamp"] = df[exists("digitalstamp")] if exists("digitalstamp") else ""
+    # Tanggal Dipa
+    if tanggal_dipa_key and tanggal_dipa_key in df.columns:
+        out['Tanggal Dipa'] = pd.to_datetime(df[tanggal_dipa_key], errors='coerce')
+    else:
+        out['Tanggal Dipa'] = pd.NaT
 
-    # =============================
-    # 13. CLEAN STRING
-    # =============================
-    for c in out.columns:
-        if out[c].dtype == object:
-            out[c] = out[c].astype(str).replace("nan", "").replace("None", "")
+    # Owner / Digital Stamp
+    out['Owner'] = df[owner_key].astype(str) if owner_key and owner_key in df.columns else ''
+    out['Digital Stamp'] = df[digital_stamp_key].astype(str) if digital_stamp_key and digital_stamp_key in df.columns else ''
 
-    # =============================
-    # 15. URUTKAN KOLOM (NO PALING KIRI)
-    # =============================
-    column_order = [
-        "NO", "Kode Satker", "Satker", "Tahun", "Tanggal Posting Revisi",
-        "Total Pagu", "Kementerian", "Kode Status History", "Jenis Revisi",
-        "Revisi ke-", "No Dipa", "Tanggal Dipa", "Owner", "Digital Stamp"
-    ]
+    # ensure column order and return
+    out = out[[
+        'Kode Satker','Satker','Tahun','Tanggal Posting Revisi','Total Pagu','Jenis Satker',
+        'NO','Kementerian','Kode Status History','Jenis Revisi','Revisi ke-','No Dipa',
+        'Tanggal Dipa','Owner','Digital Stamp'
+    ]]
 
-    # hanya ambil kolom yang memang ada
-    column_order = [c for c in column_order if c in out.columns]
-    out = out[column_order]
+    # final cleanup: strip strings
+    for c in ['Kode Satker','Satker','Kementerian','Kode Status History','Jenis Revisi','No Dipa','Owner','Digital Stamp']:
+        if c in out.columns:
+            out[c] = out[c].astype(str).str.strip().replace({'nan':''})
 
     return out
 
@@ -280,72 +308,41 @@ def load_DATA_DIPA_from_github():
     tahun_berhasil = []
     tahun_gagal = []
 
+    # Loop tahun
     for tahun in [2022, 2023, 2024, 2025]:
+        file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
+
         try:
-            file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
+            # Ambil dari GitHub
             file_content = repo.get_contents(file_path)
             raw_bytes = base64.b64decode(file_content.content)
 
-            # ================================
-            # LOAD EXCEL TANPA LANGSUNG KE DF
-            # ================================
-            xls = pd.ExcelFile(io.BytesIO(raw_bytes))
+            # Baca raw tanpa header → wajib header=None
+            df_raw = pd.read_excel(io.BytesIO(raw_bytes), header=None)
 
-            # ================================
-            # 1️⃣ PILIH SHEET DENGAN KOLOM PALING SEDIKIT
-            # ================================
-            best_sheet = None
-            best_cols = 999999
-
-            for sheet in xls.sheet_names:
-                try:
-                    tmp = pd.read_excel(
-                        xls,
-                        sheet_name=sheet,
-                        header=None,
-                        nrows=10,
-                        dtype=str
-                    )
-                    col_count = tmp.shape[1]
-
-                    if 1 < col_count < best_cols:
-                        best_cols = col_count
-                        best_sheet = sheet
-                except:
-                    pass
-
-            if best_sheet is None:
-                raise Exception("Tidak ada sheet data valid")
-
-            # ================================
-            # 2️⃣ BACA SHEET TERPILIH
-            # ================================
-            df_raw = pd.read_excel(
-                xls,
-                sheet_name=best_sheet,
-                header=None,
-                dtype=str
-            )
-
-            # ================================
-            # 3️⃣ STANDARDISASI
-            # ================================
+            # -------------------------------
+            # 🔥 PROSES BARU
+            # Standarisasi format semua tahun
+            # -------------------------------
             df_std = standardize_dipa(df_raw)
 
+            # Jika kolom Tahun belum terisi → isi dari nama file
             df_std["Tahun"] = df_std["Tahun"].fillna(tahun)
 
+            # Simpan ke session_state
             st.session_state.DATA_DIPA_by_year[tahun] = df_std.copy()
+
             tahun_berhasil.append(str(tahun))
 
         except Exception as e:
-            st.write(f"DEBUG: Gagal load DIPA {tahun}: {e}")
             tahun_gagal.append(str(tahun))
+            st.write(f"DEBUG: Gagal load DIPA {tahun}: {e}")
 
+    # Notifikasi
     if tahun_berhasil:
         st.success("📥 Data DIPA berhasil dimuat: " + ", ".join(tahun_berhasil))
     if tahun_gagal:
         st.warning("⚠️ Data gagal dimuat: " + ", ".join(tahun_gagal))
-
 
 # Fungsi untuk memproses file Excel
 def process_excel_file(uploaded_file, year):
