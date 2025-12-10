@@ -102,38 +102,35 @@ def load_DATA_DIPA_from_github():
 
     tahun_berhasil, tahun_gagal = [], []
 
-    def fix_header(df):
-        """
-        Perbaiki header untuk semua file DIPA (2022–2025)
-        """
-        # Jika kolom hanya Unnamed → header ada di baris ke-3
-        if all(col.startswith("Unnamed") for col in df.columns):
-            df2 = df.copy()
-            df2.columns = df2.iloc[2]      # header sebenarnya
-            df2 = df2.drop([0, 1, 2])      # buang header palsu
-            df2 = df2.reset_index(drop=True)
-            return df2
-
-        # Jika ada kolom "DOWNLOAD DATA DETAIL PENGANGGARAN"
-        if "DOWNLOAD DATA DETAIL PENGANGGARAN" in df.columns:
-            df2 = df.copy()
-            df2.columns = df2.iloc[2]
-            df2 = df2.drop([0, 1, 2]).reset_index(drop=True)
-            return df2
-
-        # Jika sudah benar
-        return df
-
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
+
         try:
             file_content = repo.get_contents(file_path)
-            df = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
+            df_raw = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
 
-            # Fix header otomatis
-            df = fix_header(df)
+            # -----------------------------------------
+            #  FIX HEADER LANGSUNG DI SINI (NO FUNCTION)
+            # -----------------------------------------
 
-            # Simpan
+            # 1️⃣ Jika semua kolom Unnamed → header di baris ke-3
+            if all(col.startswith("Unnamed") for col in df_raw.columns):
+                df = df_raw.copy()
+                df.columns = df_raw.iloc[2]
+                df = df.drop([0, 1, 2]).reset_index(drop=True)
+
+            # 2️⃣ Jika ada kolom DOWNLOAD DATA DETAIL PENGANGGARAN
+            elif "DOWNLOAD DATA DETAIL PENGANGGARAN" in df_raw.columns:
+                df = df_raw.copy()
+                df.columns = df_raw.iloc[2]
+                df = df.drop([0, 1, 2]).reset_index(drop=True)
+
+            # 3️⃣ Jika header sudah benar
+            else:
+                df = df_raw.copy()
+
+            # -----------------------------------------
+
             st.session_state.DATA_DIPA_by_year[tahun] = df
             tahun_berhasil.append(str(tahun))
 
@@ -143,6 +140,7 @@ def load_DATA_DIPA_from_github():
 
     if tahun_berhasil:
         st.success(f"📥 Data DIPA berhasil dimuat: {', '.join(tahun_berhasil)}")
+
 
 
 # Fungsi untuk memproses file Excel
@@ -2615,7 +2613,7 @@ def page_admin():
             st.info("ℹ️ Belum ada data DIPA.")
         else:
             available_years_download = sorted(
-                st.session_state.DATA_DIPA_by_year.keys(), 
+                st.session_state.DATA_DIPA_by_year.keys(),
                 reverse=True
             )
 
@@ -2626,32 +2624,30 @@ def page_admin():
                 key="download_dipa_year"
             )
 
-            # 1️⃣ Ambil data asli
+            # Ambil data asli
             df = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
 
             st.write("DEBUG: SEMUA KOLOM SEBELUM PROSES:", df.columns.tolist())
 
-            # 2️⃣ Cek apakah header rusak → semua kolom Unnamed
-            if all(col.startswith("Unnamed") or col == "DOWNLOAD DATA DETAIL PENGANGGARAN" for col in df.columns):
+            # --- FIX HEADER LANGSUNG ---
+            if all(col.startswith("Unnamed") or col == "DOWNLOAD DATA DETAIL PENGANGGARAN" 
+                for col in df.columns):
 
                 st.warning("Header Excel tidak terbaca → memperbaiki otomatis...")
 
-                # Ambil kembali file mentahnya
                 raw = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
 
-                # Gunakan baris ke-3 sebagai header
                 new_header = raw.iloc[2].tolist()
-
                 df = raw[3:].copy()
                 df.columns = new_header
+            # ---------------------------
 
             st.write("DEBUG: KOLOM SETELAH FIX HEADER:", df.columns.tolist())
 
-
-            # 2️⃣ Hapus kolom Unnamed
+            # Hapus kolom Unnamed
             df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 
-            # 3️⃣ Daftar kolom yang kamu inginkan
+            # Kolom yang diinginkan
             desired_columns = [
                 "Kode Satker",
                 "Satker",
@@ -2670,33 +2666,26 @@ def page_admin():
                 "Digital Stamp"
             ]
 
-            # 4️⃣ Filter kolom dengan aman (hanya kolom yang ada)
             available_cols = [col for col in desired_columns if col in df.columns]
             if available_cols:
                 df = df[available_cols]
 
-            # 5️⃣ Ambil 1 baris per Kode Satker (Tanggal Posting Revisi terbaru)
+            # Ambil baris terbaru per Satker
             if 'Kode Satker' in df.columns and 'Tanggal Posting Revisi' in df.columns:
                 df['Tanggal Posting Revisi'] = pd.to_datetime(df['Tanggal Posting Revisi'], errors='coerce')
                 df = df.sort_values(by=['Kode Satker', 'Tanggal Posting Revisi'], ascending=[True, False])
                 df = df.drop_duplicates(subset='Kode Satker', keep='first')
 
-            # 6️⃣ Tambahkan Klasifikasi Satker
+            # Klasifikasi satker
             if 'Total Pagu' in df.columns:
                 q40 = df['Total Pagu'].quantile(0.40)
                 q70 = df['Total Pagu'].quantile(0.70)
 
-                def klasifikasi(pagu):
-                    if pagu >= q70:
-                        return "Satker Besar"
-                    elif pagu >= q40:
-                        return "Satker Sedang"
-                    else:
-                        return "Satker Kecil"
+                df['Jenis Satker'] = df['Total Pagu'].apply(
+                    lambda p: "Satker Besar" if p >= q70 else "Satker Sedang" if p >= q40 else "Satker Kecil"
+                )
 
-                df['Jenis Satker'] = df['Total Pagu'].apply(klasifikasi)
-
-            # Preview hasil
+            # Preview
             with st.expander("Preview Data (5 baris pertama)"):
                 st.dataframe(df.head(5), use_container_width=True)
 
@@ -2705,20 +2694,9 @@ def page_admin():
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False, sheet_name=f'DIPA_{year_to_download}')
 
-            # Pastikan Digital Stamp disimpan sebagai teks/string
+            # Digital Stamp sebagai string
             if "Digital Stamp" in df.columns:
                 df["Digital Stamp"] = df["Digital Stamp"].astype(str)
-
-
-                # Format header
-                try:
-                    worksheet = writer.sheets[f'DIPA_{year_to_download}']
-                    for cell in worksheet[1]:
-                        cell.font = Font(bold=True, color="FFFFFF")
-                        cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                        cell.alignment = Alignment(horizontal="center", vertical="center")
-                except:
-                    pass
 
             output.seek(0)
 
