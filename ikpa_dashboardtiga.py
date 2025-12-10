@@ -82,11 +82,14 @@ def extract_kode_from_satker_field(s, width=6):
 # ============================================================
 # 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
+import streamlit as st
 import pandas as pd
 import io
 from github import Github, Auth
-import streamlit as st
 
+# ===========================
+# Fungsi loader DIPA
+# ===========================
 def load_DATA_DIPA_from_github():
     if "DATA_DIPA_by_year" not in st.session_state:
         st.session_state.DATA_DIPA_by_year = {}
@@ -108,23 +111,19 @@ def load_DATA_DIPA_from_github():
     tahun_berhasil = []
     tahun_gagal = []
 
-    # ------------------------------
-    # Fungsi untuk bersihkan header
-    # ------------------------------
+    # --------------------------
+    # Bersihkan header & hapus Unnamed
+    # --------------------------
     def bersihkan_header(df_raw):
-        """
-        Mendeteksi header asli berdasarkan kolom utama 'Kode Satker'.
-        Jika tidak ditemukan, tetap kembalikan df_raw.
-        """
         header_row_idx = None
-        for i in range(min(20, len(df_raw))):  # cek 20 baris pertama
+        for i in range(min(50, len(df_raw))):  # cek 50 baris pertama
             row_values = df_raw.iloc[i].astype(str).str.strip().tolist()
             if any("Kode Satker" in v for v in row_values):
                 header_row_idx = i
                 break
 
         if header_row_idx is None:
-            return df_raw  # gagal deteksi header
+            return df_raw
 
         df = df_raw.iloc[header_row_idx + 1:].copy()
         df.columns = df_raw.iloc[header_row_idx].tolist()
@@ -132,16 +131,14 @@ def load_DATA_DIPA_from_github():
         df = df.reset_index(drop=True)
         return df
 
-    # ------------------------------
-    # Load semua tahun
-    # ------------------------------
+    # --------------------------
+    # Loop tahun 2022–2025
+    # --------------------------
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
         try:
             file_content = repo.get_contents(file_path)
             df_raw = pd.read_excel(io.BytesIO(file_content.decoded_content))
-
-            # Perbaiki header
             df = bersihkan_header(df_raw)
 
             st.session_state.DATA_DIPA_by_year[tahun] = df
@@ -157,6 +154,7 @@ def load_DATA_DIPA_from_github():
         st.success("📥 Data sukses dimuat: " + ", ".join(tahun_berhasil))
     if tahun_gagal:
         st.warning("⚠️ Gagal memuat data DIPA tahun: " + ", ".join(tahun_gagal))
+
 
 
 # Fungsi untuk memproses file Excel
@@ -2623,7 +2621,7 @@ def page_admin():
             )
  
         # ===========================
-        # Submenu Download Data DIPA
+        # Submenu preview & download
         # ===========================
         def preview_download_DIPA():
             st.markdown("### 📥 Download Data DIPA")
@@ -2641,7 +2639,6 @@ def page_admin():
                 key="download_dipa_year"
             )
 
-            # Ambil data yang sudah bersih dari load()
             df = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
 
             # Kolom yang ingin ditampilkan
@@ -2701,6 +2698,7 @@ def page_admin():
                 file_name=f"DIPA_{year_to_download}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
+
 
         # Download Data Satker Tidak Terdaftar
         st.markdown("---")
