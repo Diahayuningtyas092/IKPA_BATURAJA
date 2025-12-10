@@ -2824,54 +2824,16 @@ def page_admin():
                 st.success("🧹 Log dibersihkan.")
 
 
-import streamlit as st
-from datetime import datetime
-
-# ----------------------------
-# Placeholder untuk page functions
-# ----------------------------
-def page_dashboard():
-    st.title("📊 Dashboard Utama")
-    st.write("Konten dashboard utama...")
-
-def page_trend():
-    st.title("📈 Dashboard Internal")
-    st.write("Konten dashboard internal...")
-
-def page_admin():
-    st.title("🔐 Halaman Administrasi")
-    st.write("Konten halaman admin...")
-
 # ----------------------------
 # MAIN APP
 # ----------------------------
 def main():
-    st.set_page_config(
-        page_title="Dashboard IKPA",
-        layout="wide"
-    )
+    # Inisialisasi session_state
+    if "page" not in st.session_state:
+        st.session_state["page"] = "📊 Dashboard Utama"
 
-    # ===============================
-    # 🔹 Sidebar Navigation
-    # ===============================
     st.sidebar.title("🧭 Navigasi")
     st.sidebar.markdown("---")
-
-    # Inisialisasi session_state default page & log
-    if "page" not in st.session_state:
-        st.session_state.page = "📊 Dashboard Utama"
-
-    if "activity_log" not in st.session_state:
-        st.session_state.activity_log = []
-
-    if "data_storage" not in st.session_state:
-        st.session_state.data_storage = {}
-
-    if "DATA_DIPA_by_year" not in st.session_state:
-        st.session_state.DATA_DIPA_by_year = {}
-
-    if "reference_df" not in st.session_state:
-        st.session_state.reference_df = None
 
     # Radio navigation
     selected_page = st.sidebar.radio(
@@ -2881,40 +2843,19 @@ def main():
             "📈 Dashboard Internal",
             "🔐 Admin"
         ],
-        index=["📊 Dashboard Utama", "📈 Dashboard Internal", "🔐 Admin"].index(st.session_state.page),
-        key="page_radio"
+        index=["📊 Dashboard Utama", "📈 Dashboard Internal", "🔐 Admin"].index(st.session_state["page"]),
+        key="page"
     )
 
-    # Update session_state.page hanya jika berbeda
-    if selected_page != st.session_state.page:
-        st.session_state.page = selected_page
-
-    st.sidebar.markdown("---")
-    st.sidebar.info(
-        """
-        **Dashboard IKPA**  
-        Indikator Kinerja Pelaksanaan Anggaran  
-        KPPN Baturaja
-
-        📧 Support: ameer.noor@kemenkeu.go.id
-        """
-    )
-
-    # ===============================
-    # 🔹 Routing Halaman
-    # ===============================
+    # Routing halaman
     if st.session_state.page == "📊 Dashboard Utama":
         page_dashboard()
     elif st.session_state.page == "📈 Dashboard Internal":
         page_trend()
     elif st.session_state.page == "🔐 Admin":
         page_admin()
-    else:
-        st.warning("Halaman tidak ditemukan!")
 
-# ----------------------------
-# ENTRY POINT
-# ----------------------------
+
 if __name__ == "__main__":
     main()
 
