@@ -44,43 +44,37 @@ if 'activity_log' not in st.session_state:
 # -------------------------
 # Helper baru: standardize_dipa
 # -------------------------
-import re
 def standardize_dipa(df_raw):
     """
     Terima DataFrame raw (di-read langsung dari excel, header bisa berada di baris manapun).
-    Kembalikan DataFrame yang distandarkan ke kolom:
-    ['Kode Satker','Satker','Tahun','Tanggal Posting Revisi','Total Pagu','Jenis Satker',
-     'NO','Kementerian','Kode Status History','Jenis Revisi','Revisi ke-','No Dipa',
-     'Tanggal Dipa','Owner','Digital Stamp']
+    Kembalikan DataFrame yang distandarkan dengan validasi ketat.
     """
-    # defensive copy
     df0 = df_raw.copy().reset_index(drop=True)
 
-    # 1) cari baris header: scan 0..10 cari baris yang mengandung keyword
+    # 1) Cari baris header
     header_candidates = []
     keywords = ['satker', 'no dipa', 'tanggal', 'pagu', 'no', 'nama satker', 'kode status', 'jenis revisi']
     header_row = None
     for i in range(min(12, len(df0))):
-        row_text = " ".join(df0.iloc[i].fillna("").astype(str).astype(str)).lower()
+        row_text = " ".join(df0.iloc[i].fillna("").astype(str)).lower()
         matches = sum(1 for kw in keywords if kw in row_text)
-        header_candidates.append((i, matches, row_text))
         if matches >= 2:
             header_row = i
             break
+    
     if header_row is None:
-        # fallback: assume header at row 2 (as in contoh Anda)
         header_row = 2 if len(df0) > 2 else 0
 
-    # build df with header
+    # Build df with header
     header = df0.iloc[header_row].astype(str).str.strip()
     df = df0.iloc[header_row+1:].copy().reset_index(drop=True)
     df.columns = header.tolist()
 
-    # normalize column names to simple keys (upper, no spaces/dots)
+    # Normalize column names
     col_map = {c: re.sub(r'[^A-Z0-9]', '', c.upper()) for c in df.columns}
     df.columns = [col_map[c] for c in df.columns]
 
-    # convenience getter
+    # Helper function
     def col_exists(*names):
         for n in names:
             key = re.sub(r'[^A-Z0-9]', '', n.upper())
@@ -88,7 +82,7 @@ def standardize_dipa(df_raw):
                 return key
         return None
 
-    # final column names we will produce
+    # Final columns
     final_cols = [
         'Kode Satker','Satker','Tahun','Tanggal Posting Revisi','Total Pagu','Jenis Satker',
         'NO','Kementerian','Kode Status History','Jenis Revisi','Revisi ke-','No Dipa',
@@ -96,156 +90,141 @@ def standardize_dipa(df_raw):
     ]
     out = pd.DataFrame()
 
-    # Map possibilities (account for different raw column names)
-    # Kode Satker: maybe column "SATKER" contains code or "KODE SATKER"
-    kode_key = col_exists('KODESATKER','SATKER')  # SATKER may be either code or "007130 - name"
-    nama_satker_key = col_exists('NAMASATKER','URA IAN SATKER','SATKER')  # try Nama Satker
-    no_key = col_exists('NO')  # 'No' column
-    nodipa_key = col_exists('NODIPA','NODIPA')  # 'No. DIPA'
-    total_pagu_belanja_key = col_exists('TOTALPAGUBELANJA','TOTALPAGU','TOTALPAGUBELANJA')  # old format
-    tanggal_posting_key = col_exists('TANGGALPOSTINGREVISI','TANGGALPOSTING','TANGGAL')  # posting revisi (old)
-    revisi_terakhir_key = col_exists('NOREVISITERAKHIR','REVISIKE','REVISIKE')  # old
-    # new format keys
-    kementerian_key = col_exists('KEMENTERIAN')
-    kode_status_key = col_exists('KODESTATUSHISTORY')
-    jenis_revisi_key = col_exists('JENISREVISI')
-    revisi_ke_key = col_exists('REVISIKE-','REVISIKE')
-    tanggal_dipa_key = col_exists('TANGGALDIPA')
-    owner_key = col_exists('OWNER')
-    digital_stamp_key = col_exists('DIGITALSTAMP')
-    tahun_key = col_exists('TAHUN')
+    # ===== PERBAIKAN UTAMA: KODE SATKER & SATKER =====
+    kode_key = col_exists('KODESATKER','SATKER','KDSATKER')
+    nama_satker_key = col_exists('NAMASATKER','URAIANSATKER','SATKER','URAIANSATKER')
 
-    # Fill out NO
-    if no_key:
-        out['NO'] = df[no_key]
+    # Extract Kode Satker (6 digit)
+    if kode_key:
+        # Coba extract 6 digit dari kolom
+        kode_series = df[kode_key].astype(str).str.extract(r'(\d{6})')[0]
+        out['Kode Satker'] = kode_series.fillna('').str.zfill(6)
+        
+        # Jika gagal, coba ambil angka pertama
+        mask_empty = (out['Kode Satker'] == '') | (out['Kode Satker'] == '000000')
+        if mask_empty.any():
+            first_digits = df[kode_key].astype(str).str.extract(r'(\d+)')[0]
+            out.loc[mask_empty, 'Kode Satker'] = first_digits[mask_empty].fillna('').str.zfill(6)
     else:
-        out['NO'] = range(1, len(df)+1)
+        out['Kode Satker'] = ''
 
-    # Kode Satker and Satker
-    # Cases:
-    # - old format: SATKER column holds numeric code (e.g. '403603') and NAMASATKER holds name
-    # - new format: 'Kode Satker' and 'Satker' may exist
-    if kode_key and nama_satker_key and kode_key != nama_satker_key:
-        # if SATKER looks numeric (old format)
-        sample = df[kode_key].astype(str).iloc[0] if len(df)>0 else ''
-        if re.fullmatch(r'\d+', sample.strip()):
-            out['Kode Satker'] = df[kode_key].astype(str).str.zfill(6)
-            out['Satker'] = df[nama_satker_key].astype(str)
-        else:
-            # SATKER column might be "007130 - NAME" — extract code and name
-            satker_series = df[kode_key].astype(str)
-            # try split by ' - ' or first token
-            codes = satker_series.str.extract(r'^(\d{3,6})')[0].fillna('').astype(str).str.zfill(6)
-            names = df[kode_key].astype(str)
-            out['Kode Satker'] = codes
-            out['Satker'] = names
+    # Extract Nama Satker
+    if nama_satker_key:
+        # Remove kode di depan jika ada format "007130 - NAMA"
+        nama_series = df[nama_satker_key].astype(str).str.replace(r'^\d{6}\s*-?\s*', '', regex=True).str.strip()
+        out['Satker'] = nama_series.replace({'nan': '', 'None': '', '': 'SATKER'})
+    elif kode_key:
+        # Fallback: gunakan kolom kode satker tapi buang angkanya
+        nama_series = df[kode_key].astype(str).str.replace(r'^\d{6}\s*-?\s*', '', regex=True).str.strip()
+        out['Satker'] = nama_series.replace({'nan': '', 'None': '', '': 'SATKER'})
     else:
-        # try direct keys typical of new format
-        k1 = col_exists('KODESATKER')
-        k2 = col_exists('SATKER')
-        if k1:
-            out['Kode Satker'] = df[k1].astype(str).str.zfill(6)
-        elif k2:
-            # SATKER might be "007130 - NAME"
-            codes = df[k2].astype(str).str.extract(r'^(\d{3,6})')[0].fillna('').astype(str).str.zfill(6)
-            out['Kode Satker'] = codes
-        else:
-            out['Kode Satker'] = ''
+        out['Satker'] = 'SATKER'
 
-        # Satker name:
-        name_key = col_exists('NAMASATKER','URAIANSATKER','SATKER')
-        if name_key:
-            out['Satker'] = df[name_key].astype(str)
-        else:
-            out['Satker'] = ''
+    # Pastikan Satker tidak kosong
+    mask_empty = (out['Satker'] == '') | (out['Satker'].isna()) | (out['Satker'] == 'nan')
+    out.loc[mask_empty, 'Satker'] = out.loc[mask_empty, 'Kode Satker'] + ' - SATKER'
 
-    # Tahun
+    # ===== TAHUN =====
+    tahun_key = col_exists('TAHUN','YEAR','THN')
     if tahun_key:
-        out['Tahun'] = pd.to_numeric(df[tahun_key], errors='coerce').fillna(method='ffill').astype('Int64')
+        out['Tahun'] = pd.to_numeric(df[tahun_key], errors='coerce').fillna(datetime.now().year).astype('Int64')
     else:
-        # attempt to parse from No Dipa if present or from filename later (caller can overwrite)
-        out['Tahun'] = None
+        # Coba extract dari No Dipa atau Tanggal
+        out['Tahun'] = datetime.now().year
 
-    # Tanggal Posting Revisi
+    # ===== TANGGAL POSTING REVISI =====
+    tanggal_posting_key = col_exists('TANGGALPOSTINGREVISI','TANGGALPOSTING','TANGGAL','TGLPOSTING')
     if tanggal_posting_key:
         out['Tanggal Posting Revisi'] = pd.to_datetime(df[tanggal_posting_key], errors='coerce')
+        # Fill tahun dari tanggal jika tahun masih kosong
+        mask_no_year = out['Tahun'].isna() | (out['Tahun'] == 0)
+        out.loc[mask_no_year, 'Tahun'] = out.loc[mask_no_year, 'Tanggal Posting Revisi'].dt.year
     else:
         out['Tanggal Posting Revisi'] = pd.NaT
 
-    # Total Pagu: prefer Total Pagu Belanja, fallback to 'Pagu Belanja' or 'Pagu'
-    if total_pagu_belanja_key and total_pagu_belanja_key in df.columns:
-        # remove thousand separators and scientific notation artifacts
-        out['Total Pagu'] = pd.to_numeric(df[total_pagu_belanja_key].astype(str).str.replace(r'[^\d\.-]', '', regex=True), errors='coerce').fillna(0)
+    # ===== TOTAL PAGU =====
+    pagu_key = col_exists('TOTALPAGUBELANJA','TOTALPAGU','PAGUBELANJA','PAGU','JUMLAH')
+    if pagu_key:
+        pagu_series = df[pagu_key].astype(str).str.replace(r'[^\d\.-]', '', regex=True)
+        out['Total Pagu'] = pd.to_numeric(pagu_series, errors='coerce').fillna(0).astype(int)
     else:
-        # try other possible keys
-        p1 = col_exists('PAGUBELANJA','PAGU')
-        if p1:
-            out['Total Pagu'] = pd.to_numeric(df[p1].astype(str).str.replace(r'[^\d\.-]', '', regex=True), errors='coerce').fillna(0)
-        else:
-            out['Total Pagu'] = 0
+        out['Total Pagu'] = 0
 
-    # Jenis Satker: compute by quantile per df
-    try:
-        q40 = out['Total Pagu'].quantile(0.40)
-        q70 = out['Total Pagu'].quantile(0.70)
-        def klasifikasi(x):
-            if pd.isna(x): return ''
-            if x >= q70: return "Satker Besar"
-            elif x >= q40: return "Satker Sedang"
-            else: return "Satker Kecil"
-        out['Jenis Satker'] = out['Total Pagu'].apply(klasifikasi)
-    except Exception:
-        out['Jenis Satker'] = ''
+    # ===== JENIS SATKER (hitung belakangan) =====
+    out['Jenis Satker'] = ''
 
-    # Kementerian: if No Dipa exists, extract first 3 digits after "DIPA-"
-    if nodipa_key and nodipa_key in df.columns:
+    # ===== NO =====
+    no_key = col_exists('NO','NOMOR','NO')
+    out['NO'] = df[no_key].astype(str).str.strip() if no_key else range(1, len(df)+1)
+
+    # ===== KEMENTERIAN =====
+    kementerian_key = col_exists('KEMENTERIAN','KEMENTRIAN','KL','BA')
+    nodipa_key = col_exists('NODIPA','NOMORADIPA','NOMORDIPA')
+    
+    if kementerian_key:
+        out['Kementerian'] = df[kementerian_key].astype(str).str.strip()
+    elif nodipa_key:
+        # Extract dari No DIPA (3 digit setelah "DIPA-")
         nodipa = df[nodipa_key].astype(str)
         kem = nodipa.str.extract(r'DIPA[-\s]*([0-9]{3})')[0].fillna('')
         out['Kementerian'] = kem
-        out['No Dipa'] = nodipa
     else:
-        # try to find No Dipa in any column
-        any_nd = col_exists('NODIPA','NODIPA')
-        if any_nd:
-            nodipa = df[any_nd].astype(str)
-            kem = nodipa.str.extract(r'DIPA[-\s]*([0-9]{3})')[0].fillna('')
-            out['Kementerian'] = kem
-            out['No Dipa'] = nodipa
-        else:
-            out['Kementerian'] = ''
-            out['No Dipa'] = ''
+        out['Kementerian'] = ''
 
-    # Kode Status History / Jenis Revisi / Revisi ke-
-    out['Kode Status History'] = df[kode_status_key].astype(str) if kode_status_key and kode_status_key in df.columns else ''
-    out['Jenis Revisi'] = df[jenis_revisi_key].astype(str) if jenis_revisi_key and jenis_revisi_key in df.columns else ''
-    if revisi_terakhir_key and revisi_terakhir_key in df.columns:
-        out['Revisi ke-'] = pd.to_numeric(df[revisi_terakhir_key].astype(str).str.extract(r'(\d+)')[0], errors='coerce').fillna(0).astype('Int64')
-    elif revisi_ke_key and revisi_ke_key in df.columns:
-        out['Revisi ke-'] = pd.to_numeric(df[revisi_ke_key].astype(str).str.extract(r'(\d+)')[0], errors='coerce').fillna(0).astype('Int64')
+    # ===== KODE STATUS HISTORY =====
+    status_key = col_exists('KODESTATUSHISTORY','KODESTATUS','STATUSHISTORY')
+    out['Kode Status History'] = df[status_key].astype(str).str.strip() if status_key else ''
+
+    # ===== JENIS REVISI =====
+    jenis_key = col_exists('JENISREVISI','JENISREV','TIPEREVISI')
+    out['Jenis Revisi'] = df[jenis_key].astype(str).str.strip() if jenis_key else ''
+
+    # ===== REVISI KE- =====
+    revisi_key = col_exists('REVISIKE','REVISIKE-','NOREVISITERAKHIR','REVISI')
+    if revisi_key:
+        revisi_series = df[revisi_key].astype(str).str.extract(r'(\d+)')[0]
+        out['Revisi ke-'] = pd.to_numeric(revisi_series, errors='coerce').fillna(0).astype('Int64')
     else:
-        out['Revisi ke-'] = None
+        out['Revisi ke-'] = 0
 
-    # Tanggal Dipa
-    if tanggal_dipa_key and tanggal_dipa_key in df.columns:
-        out['Tanggal Dipa'] = pd.to_datetime(df[tanggal_dipa_key], errors='coerce')
+    # ===== NO DIPA =====
+    if nodipa_key:
+        out['No Dipa'] = df[nodipa_key].astype(str).str.strip()
+    else:
+        out['No Dipa'] = ''
+
+    # ===== TANGGAL DIPA =====
+    tgldipa_key = col_exists('TANGGALDIPA','TGLDIPA','TANGGALDIPATANGGALDIPA')
+    if tgldipa_key:
+        out['Tanggal Dipa'] = pd.to_datetime(df[tgldipa_key], errors='coerce')
     else:
         out['Tanggal Dipa'] = pd.NaT
 
-    # Owner / Digital Stamp
-    out['Owner'] = df[owner_key].astype(str) if owner_key and owner_key in df.columns else ''
-    out['Digital Stamp'] = df[digital_stamp_key].astype(str) if digital_stamp_key and digital_stamp_key in df.columns else ''
+    # ===== OWNER =====
+    owner_key = col_exists('OWNER','PEMILIK')
+    out['Owner'] = df[owner_key].astype(str).str.strip() if owner_key else ''
 
-    # ensure column order and return
-    out = out[[
-        'Kode Satker','Satker','Tahun','Tanggal Posting Revisi','Total Pagu','Jenis Satker',
-        'NO','Kementerian','Kode Status History','Jenis Revisi','Revisi ke-','No Dipa',
-        'Tanggal Dipa','Owner','Digital Stamp'
-    ]]
+    # ===== DIGITAL STAMP =====
+    stamp_key = col_exists('DIGITALSTAMP','STAMP','TTDDIGITAL')
+    out['Digital Stamp'] = df[stamp_key].astype(str).str.strip() if stamp_key else ''
 
-    # final cleanup: strip strings
+    # Ensure column order
+    out = out[final_cols]
+
+    # ===== CLEANUP: Remove invalid rows =====
+    # Filter: Kode Satker harus 6 digit valid
+    out = out[out['Kode Satker'].str.match(r'^\d{6}$', na=False)]
+    
+    # Filter: Total Pagu harus > 0
+    out = out[out['Total Pagu'] > 0]
+    
+    # Filter: Tahun harus valid (2020-2030)
+    out = out[(out['Tahun'] >= 2020) & (out['Tahun'] <= 2030)]
+
+    # Clean string columns
     for c in ['Kode Satker','Satker','Kementerian','Kode Status History','Jenis Revisi','No Dipa','Owner','Digital Stamp']:
         if c in out.columns:
-            out[c] = out[c].astype(str).str.strip().replace({'nan':''})
+            out[c] = out[c].astype(str).str.strip().replace({'nan':'', 'None':'', 'NaT':''})
 
     return out
 
@@ -288,6 +267,8 @@ def extract_kode_from_satker_field(s, width=6):
 # 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
 def load_DATA_DIPA_from_github():
+    """Load semua DIPA dari GitHub dengan validasi ketat"""
+    
     if "DATA_DIPA_by_year" not in st.session_state:
         st.session_state.DATA_DIPA_by_year = {}
 
@@ -308,7 +289,6 @@ def load_DATA_DIPA_from_github():
     tahun_berhasil = []
     tahun_gagal = []
 
-    # Loop tahun
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
 
@@ -317,21 +297,30 @@ def load_DATA_DIPA_from_github():
             file_content = repo.get_contents(file_path)
             raw_bytes = base64.b64decode(file_content.content)
 
-            # Baca raw tanpa header → wajib header=None
-            df_raw = pd.read_excel(io.BytesIO(raw_bytes), header=None)
+            # Baca raw
+            df_raw = pd.read_excel(io.BytesIO(raw_bytes), header=None, dtype=str)
 
-            # -------------------------------
-            # 🔥 PROSES BARU
-            # Standarisasi format semua tahun
-            # -------------------------------
+            # Standarisasi
             df_std = standardize_dipa(df_raw)
 
-            # Jika kolom Tahun belum terisi → isi dari nama file
-            df_std["Tahun"] = df_std["Tahun"].fillna(tahun)
+            if df_std.empty:
+                st.warning(f"⚠️ DIPA {tahun} kosong setelah standardisasi")
+                tahun_gagal.append(str(tahun))
+                continue
 
-            # Simpan ke session_state
+            # Pastikan tahun terisi
+            df_std["Tahun"] = df_std["Tahun"].fillna(tahun).astype(int)
+
+            # Filter hanya tahun yang sesuai
+            df_std = df_std[df_std["Tahun"] == tahun]
+
+            if df_std.empty:
+                st.warning(f"⚠️ DIPA {tahun} tidak ada data untuk tahun tersebut")
+                tahun_gagal.append(str(tahun))
+                continue
+
+            # Simpan
             st.session_state.DATA_DIPA_by_year[tahun] = df_std.copy()
-
             tahun_berhasil.append(str(tahun))
 
         except Exception as e:
@@ -2226,42 +2215,43 @@ def assign_jenis_satker(df):
 # PROCESS UPLOADED DIPA (MAIN FUNCTION)
 # ======================================================================================
 def process_uploaded_dipa(uploaded_file, save_file_to_github):
-    """Process file DIPA upload user — versi baru pakai standardize_dipa"""
+    """Process file DIPA upload user dengan validasi ketat"""
     
     try:
-        st.info("🔄 Memulai proses upload DIPA...")
+        st.info("📄 Memulai proses upload DIPA...")
 
-        # 1️⃣ Baca raw excel (header acak) → wajib header=None
+        # 1️⃣ Baca raw excel
         with st.spinner("Membaca file..."):
-            raw = pd.read_excel(uploaded_file, header=None)
+            raw = pd.read_excel(uploaded_file, header=None, dtype=str)
 
         if raw.empty:
             return None, None, "❌ File kosong"
 
-        # 2️⃣ Standarisasi format (inti utama)
+        # 2️⃣ Standarisasi format
         with st.spinner("Menstandarisasi format DIPA..."):
             df_std = standardize_dipa(raw)
 
         if df_std.empty:
-            return None, None, "❌ Data tidak berhasil distandarisasi"
+            return None, None, "❌ Data tidak berhasil distandarisasi atau tidak ada data valid"
 
-        # 3️⃣ Tambahkan Tahun jika belum ada
-        tahun_dipa = None
-        if "Tahun" in df_std.columns:
-            # ambil mode (paling sering)
-            try:
-                tahun_dipa = int(df_std["Tahun"].dropna().mode()[0])
-            except:
-                tahun_dipa = datetime.now().year
-        else:
+        # 3️⃣ Validasi Tahun
+        if "Tahun" not in df_std.columns or df_std["Tahun"].isna().all():
+            st.warning("⚠️ Tahun tidak terdeteksi, menggunakan tahun sekarang")
             tahun_dipa = datetime.now().year
-        
-        df_std["Tahun"] = df_std["Tahun"].fillna(tahun_dipa)
+            df_std["Tahun"] = tahun_dipa
+        else:
+            tahun_dipa = int(df_std["Tahun"].mode()[0])
+            df_std["Tahun"] = df_std["Tahun"].fillna(tahun_dipa)
 
-        # 4️⃣ Normalisasi kode satker
+        # 4️⃣ Validasi data
+        st.write(f"**Validasi:** {len(df_std)} baris data valid terdeteksi")
+        st.write(f"**Tahun:** {tahun_dipa}")
+        st.write(f"**Rentang Pagu:** Rp {df_std['Total Pagu'].min():,.0f} - Rp {df_std['Total Pagu'].max():,.0f}")
+
+        # 5️⃣ Normalisasi kode satker
         df_std["Kode Satker"] = df_std["Kode Satker"].apply(normalize_kode_satker)
 
-        # 5️⃣ Merge KL Referensi (opsional)
+        # 6️⃣ Merge dengan referensi (jika ada)
         if "reference_df" in st.session_state and not st.session_state.reference_df.empty:
             with st.spinner("Menggabungkan dengan data referensi..."):
                 ref = st.session_state.reference_df.copy()
@@ -2273,27 +2263,30 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
                     how="left"
                 )
 
-                # isi kementerian jika kosong
-                if "Kementerian" in df_std.columns:
+                if "Kementerian" in df_std.columns and "K/L" in df_std.columns:
                     df_std["Kementerian"] = df_std["Kementerian"].fillna(df_std["K/L"])
 
-        # 6️⃣ Klasifikasi Satker
+        # 7️⃣ Klasifikasi Satker
         with st.spinner("Mengklasifikasi jenis satker..."):
-            df_std["Jenis Satker"] = assign_jenis_satker(df_std)["Jenis Satker"]
+            df_std = assign_jenis_satker(df_std)
 
-        # 7️⃣ Simpan ke session_state per tahun
+        # 8️⃣ Ambil revisi terakhir per satker
+        df_std = df_std.sort_values(["Kode Satker", "Tanggal Posting Revisi"], ascending=[True, False])
+        df_std = df_std.drop_duplicates(subset="Kode Satker", keep="first")
+
+        # 9️⃣ Simpan ke session_state
         if "DATA_DIPA_by_year" not in st.session_state:
             st.session_state.DATA_DIPA_by_year = {}
 
-        st.session_state.DATA_DIPA_by_year[tahun_dipa] = df_std.copy()
+        st.session_state.DATA_DIPA_by_year[int(tahun_dipa)] = df_std.copy()
 
-        # 8️⃣ Upload ke GitHub
+        # 🔟 Upload ke GitHub
         with st.spinner("Mengunggah ke GitHub..."):
             out = io.BytesIO()
             with pd.ExcelWriter(out, engine="openpyxl") as writer:
                 df_std.to_excel(writer, index=False, sheet_name=f"DIPA_{tahun_dipa}")
 
-                # header styling
+                # Header styling
                 ws = writer.sheets[f"DIPA_{tahun_dipa}"]
                 for cell in ws[1]:
                     cell.font = Font(bold=True, color="FFFFFF")
@@ -2303,7 +2296,11 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
             out.seek(0)
             save_file_to_github(out.getvalue(), f"DIPA_{tahun_dipa}.xlsx", "DATA_DIPA")
 
-        return df_std, tahun_dipa, "✅ Sukses diproses"
+        # Preview
+        st.write("**Preview 5 baris pertama:**")
+        st.dataframe(df_std.head(5))
+
+        return df_std, int(tahun_dipa), "✅ Sukses diproses"
 
     except Exception as e:
         st.error(f"❌ Error: {str(e)}")
@@ -2337,6 +2334,18 @@ def page_admin():
         return
 
     st.success("✔ Anda login sebagai Admin")
+
+with st.sidebar:
+    st.markdown("### 🔍 Debug DIPA")
+    if st.button("Cek Status DIPA"):
+        if "DATA_DIPA_by_year" in st.session_state:
+            for tahun, df in st.session_state.DATA_DIPA_by_year.items():
+                st.write(f"**{tahun}:** {len(df)} baris")
+                st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
+                st.write(f"- Satker kosong: {df['Satker'].eq('').sum()}")
+                st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
+        else:
+            st.warning("DATA_DIPA_by_year belum dimuat")
 
     st.markdown("---")
 
