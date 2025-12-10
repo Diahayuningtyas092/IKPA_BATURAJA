@@ -83,6 +83,11 @@ def extract_kode_from_satker_field(s, width=6):
 # 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
 def load_DATA_DIPA_from_github():
+    import pandas as pd
+    import io
+    from github import Github, Auth
+    import streamlit as st
+
     if "DATA_DIPA_by_year" not in st.session_state:
         st.session_state.DATA_DIPA_by_year = {}
 
@@ -105,29 +110,30 @@ def load_DATA_DIPA_from_github():
 
     def bersihkan_header(df_raw):
         """
-        Semua file DIPA 2022–2025:
-        Baris 0–2  = header palsu
-        Baris ke-3 = header asli
+        Mendeteksi baris header dengan fleksibel:
+        - Mencari baris pertama yang memiliki kolom 'Kode Satker' atau kolom unik lain
+        - Mengatur baris berikutnya sebagai data
         """
-        try:
-            header_asli = df_raw.iloc[2].tolist()
-            df = df_raw.iloc[3:].copy()
-            df.columns = header_asli
+        header_row_idx = None
+        for i in range(min(5, len(df_raw))):  # cek 5 baris pertama
+            if "Kode Satker" in df_raw.iloc[i].values:
+                header_row_idx = i
+                break
+        if header_row_idx is None:
+            return df_raw  # gagal deteksi header, return apa adanya
 
-            # hapus kolom Unnamed
-            df = df.loc[:, ~df.columns.astype(str).str.startswith("Unnamed")]
-
-            df = df.reset_index(drop=True)
-            return df
-        except:
-            return df_raw
+        df = df_raw.iloc[header_row_idx + 1:].copy()
+        df.columns = df_raw.iloc[header_row_idx].tolist()
+        df = df.loc[:, ~df.columns.astype(str).str.startswith("Unnamed")]
+        df = df.reset_index(drop=True)
+        return df
 
     # Loop tahun
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
         try:
             file_content = repo.get_contents(file_path)
-            df_raw = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
+            df_raw = pd.read_excel(io.BytesIO(file_content.decoded_content))
 
             # Perbaiki header
             df = bersihkan_header(df_raw)
@@ -135,12 +141,17 @@ def load_DATA_DIPA_from_github():
             st.session_state.DATA_DIPA_by_year[tahun] = df
             tahun_berhasil.append(str(tahun))
 
+            # Debug info
+            st.write(f"DEBUG: DIPA {tahun} berhasil dimuat, kolom: {df.columns.tolist()}")
+
         except Exception as e:
             tahun_gagal.append(str(tahun))
             st.write(f"DEBUG: Gagal load DIPA {tahun}: {e}")
 
     if tahun_berhasil:
         st.success("📥 Data sukses dimuat: " + ", ".join(tahun_berhasil))
+    if tahun_gagal:
+        st.warning("⚠️ Gagal memuat data DIPA tahun: " + ", ".join(tahun_gagal))
 
 
 # Fungsi untuk memproses file Excel
