@@ -96,13 +96,13 @@ def load_DATA_DIPA_from_github():
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
-        
+
+        # Debug: list isi folder
         contents = repo.get_contents("DATA_DIPA")
         st.write("DEBUG: Isi folder DATA_DIPA:")
         for c in contents:
             st.write("-", c.path)
 
-        
     except Exception as e:
         st.error(f"Gagal akses GitHub: {e}")
         return
@@ -112,39 +112,25 @@ def load_DATA_DIPA_from_github():
 
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
-
         try:
             file_content = repo.get_contents(file_path)
             data = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
 
-            # → Samakan key menjadi integer
+            # Simpan
             st.session_state.DATA_DIPA_by_year[tahun] = data
 
-            tahun_berhasil.append(str(tahun))
-        except Exception:
-            tahun_gagal.append(str(tahun))
-
-    if tahun_berhasil:
-        st.success(f"📥 Data DIPA berhasil dimuat: {', '.join(tahun_berhasil)}")
-    else:
-        st.error("❌ Tidak ada DATA_DIPA yang berhasil dimuat")
-        
-    for tahun in [2022, 2023, 2024, 2025]:
-        file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
-        try:
-            file_content = repo.get_contents(file_path)
-            data = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
-            
-            # Debug: cek shape & beberapa baris pertama
+            # Debug
             st.write(f"DEBUG: Data DIPA tahun {tahun} shape:", data.shape)
             st.dataframe(data.head(3))
 
-            st.session_state.DATA_DIPA_by_year[tahun] = data
             tahun_berhasil.append(str(tahun))
-        except Exception as e:
-            st.write(f"DEBUG: Gagal load DIPA {tahun} - {e}")
-            tahun_gagal.append(str(tahun))
 
+        except Exception as e:
+            tahun_gagal.append(str(tahun))
+            st.write(f"DEBUG: Gagal load DIPA {tahun} - {e}")
+
+    if tahun_berhasil:
+        st.success(f"📥 Data DIPA berhasil dimuat: {', '.join(tahun_berhasil)}")
 
 
 # Fungsi untuk memproses file Excel
@@ -2662,9 +2648,8 @@ def page_admin():
                 "Digital Stamp"
             ]
             
-            # Ambil hanya kolom yang ada
-            available_cols = [col for col in desired_columns if col in df_download_dipa.columns]
-            df_download_dipa = df_download_dipa[available_cols]
+            # Jangan filter kolom → biarkan semua kolom muncul
+            df_download_dipa = df_download_dipa.copy()
 
             # Preview
             with st.expander("Preview Data (5 baris pertama)"):
