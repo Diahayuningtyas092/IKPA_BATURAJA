@@ -102,28 +102,28 @@ def load_DATA_DIPA_from_github():
 
     tahun_berhasil, tahun_gagal = [], []
 
-    def fix_header(df_raw):
-        """Perbaikan header: baris 0–2 = sampah, baris ke-3 = header asli"""
-        try:
-            new_header = df_raw.iloc[2].tolist()      # header asli
-            df = df_raw.iloc[3:].copy()              # data
-            df.columns = new_header                  # pasang header
-            df = df.loc[:, ~df.columns.astype(str).str.startswith("Unnamed")]
-            df = df.reset_index(drop=True)
-            return df
-        except:
-            return df_raw
-
     for tahun in [2022, 2023, 2024, 2025]:
+
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
 
         try:
             file_content = repo.get_contents(file_path)
             df_raw = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
 
-            # Fix header sekali saja di sini
-            df = fix_header(df_raw)
+            # ====================================================
+            # FIX HEADER FINAL — BERLAKU UNTUK SEMUA TAHUN
+            # HEADER ASLI SELALU ADA DI BARIS KE-3
+            # ====================================================
+            new_header = df_raw.iloc[2].tolist()
+            df = df_raw.iloc[3:].copy()
+            df.columns = new_header
 
+            # Hapus kolom Unnamed
+            df = df.loc[:, ~df.columns.astype(str).str.startswith("Unnamed")]
+
+            df = df.reset_index(drop=True)
+
+            # Simpan
             st.session_state.DATA_DIPA_by_year[tahun] = df
             tahun_berhasil.append(str(tahun))
 
@@ -133,7 +133,6 @@ def load_DATA_DIPA_from_github():
 
     if tahun_berhasil:
         st.success(f"📥 Data DIPA berhasil dimuat: {', '.join(tahun_berhasil)}")
-
 
 # Fungsi untuk memproses file Excel
 def process_excel_file(uploaded_file, year):
@@ -2616,12 +2615,12 @@ def page_admin():
                 key="download_dipa_year"
             )
 
-            # Ambil data yang SUDAH bersih dari load()
+            # 1️⃣ Ambil data dari LOAD (sudah fix)
             df = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
 
             st.write("DEBUG: KOLOM SETELAH LOAD:", df.columns.tolist())
 
-            # Filter kolom sesuai kebutuhan
+            # 2️⃣ Filter kolom
             desired_columns = [
                 "Kode Satker",
                 "Satker",
@@ -2640,24 +2639,25 @@ def page_admin():
                 "Digital Stamp"
             ]
 
-            available_cols = [col for col in desired_columns if col in df.columns]
-            if available_cols:
-                df = df[available_cols]
+            available_cols = [c for c in desired_columns if c in df.columns]
+            df = df[available_cols]
 
-            # Ambil 1 baris per satker
+            # 3️⃣ Ambil revisi terbaru
             if 'Kode Satker' in df.columns and 'Tanggal Posting Revisi' in df.columns:
                 df['Tanggal Posting Revisi'] = pd.to_datetime(df['Tanggal Posting Revisi'], errors='coerce')
                 df = df.sort_values(by=['Kode Satker', 'Tanggal Posting Revisi'], ascending=[True, False])
                 df = df.drop_duplicates(subset='Kode Satker', keep='first')
 
-            # Klasifikasi satker
+            # 4️⃣ Tambahkan klasifikasi
             if "Total Pagu" in df.columns:
                 q40 = df["Total Pagu"].quantile(0.40)
                 q70 = df["Total Pagu"].quantile(0.70)
+
                 def klasifikasi(x):
                     if x >= q70: return "Satker Besar"
                     elif x >= q40: return "Satker Sedang"
                     else: return "Satker Kecil"
+
                 df["Jenis Satker"] = df["Total Pagu"].apply(klasifikasi)
 
             # Preview
@@ -2668,7 +2668,6 @@ def page_admin():
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
                 df.to_excel(writer, index=False, sheet_name=f"DIPA_{year_to_download}")
-
             output.seek(0)
 
             st.download_button(
