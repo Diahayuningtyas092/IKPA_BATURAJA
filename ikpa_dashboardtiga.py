@@ -83,7 +83,7 @@ def extract_kode_from_satker_field(s, width=6):
 # 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
 def load_DATA_DIPA_from_github():
-    if "DATA_DIPA_by_year" not in st.session_state:
+    if 'DATA_DIPA_by_year' not in st.session_state:
         st.session_state.DATA_DIPA_by_year = {}
 
     token = st.secrets.get("GITHUB_TOKEN")
@@ -100,42 +100,49 @@ def load_DATA_DIPA_from_github():
         st.error(f"Gagal akses GitHub: {e}")
         return
 
-    tahun_berhasil = []
-    tahun_gagal = []
+    tahun_berhasil, tahun_gagal = [], []
+
+    def fix_header(df):
+        """
+        Perbaiki header untuk semua file DIPA (2022–2025)
+        """
+        # Jika kolom hanya Unnamed → header ada di baris ke-3
+        if all(col.startswith("Unnamed") for col in df.columns):
+            df2 = df.copy()
+            df2.columns = df2.iloc[2]      # header sebenarnya
+            df2 = df2.drop([0, 1, 2])      # buang header palsu
+            df2 = df2.reset_index(drop=True)
+            return df2
+
+        # Jika ada kolom "DOWNLOAD DATA DETAIL PENGANGGARAN"
+        if "DOWNLOAD DATA DETAIL PENGANGGARAN" in df.columns:
+            df2 = df.copy()
+            df2.columns = df2.iloc[2]
+            df2 = df2.drop([0, 1, 2]).reset_index(drop=True)
+            return df2
+
+        # Jika sudah benar
+        return df
 
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
-
         try:
             file_content = repo.get_contents(file_path)
+            df = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
 
-            # === FIX UTAMA: BACA ULANG HEADER DARI BARIS KE-2 ===
-            data = pd.read_excel(
-                io.BytesIO(base64.b64decode(file_content.content)),
-                header=2  # <-- header asli dimulai dari baris ke-3
-            )
-
-            # Buang baris header duplikasi / baris kosong
-            data = data.dropna(how='all').reset_index(drop=True)
-
-            # FIX kolom "NO" jika tipe datanya aneh
-            if "NO" in data.columns:
-                data["NO"] = data["NO"].astype(str).str.replace(".0", "", regex=False)
+            # Fix header otomatis
+            df = fix_header(df)
 
             # Simpan
-            st.session_state.DATA_DIPA_by_year[tahun] = data
+            st.session_state.DATA_DIPA_by_year[tahun] = df
             tahun_berhasil.append(str(tahun))
 
         except Exception as e:
             tahun_gagal.append(str(tahun))
             st.write(f"DEBUG: Gagal load DIPA {tahun} - {e}")
 
-    # Notifikasi
     if tahun_berhasil:
         st.success(f"📥 Data DIPA berhasil dimuat: {', '.join(tahun_berhasil)}")
-
-    if tahun_gagal:
-        st.warning(f"⚠️ Data DIPA gagal dimuat: {', '.join(tahun_gagal)}")
 
 
 # Fungsi untuk memproses file Excel
