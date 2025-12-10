@@ -2613,6 +2613,7 @@ def page_admin():
                 st.session_state.DATA_DIPA_by_year.keys(), 
                 reverse=True
             )
+
             year_to_download = st.selectbox(
                 "Pilih tahun DIPA untuk download",
                 options=available_years_download,
@@ -2620,16 +2621,13 @@ def page_admin():
                 key="download_dipa_year"
             )
 
-            # Ambil data DIPA yang sudah bersih
-            df_download_dipa = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
+            # 1️⃣ Ambil data asli
+            df = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
 
-            # Debug: cek shape & kolom
-            st.write("DEBUG: df_download_dipa shape:", df_download_dipa.shape)
-            st.write("DEBUG: df_download_dipa columns:", df_download_dipa.columns.tolist())
-            st.dataframe(df_download_dipa.head(3))
+            # 2️⃣ Hapus kolom Unnamed
+            df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 
-
-            # ✅ Pastikan urutan kolom sesuai
+            # 3️⃣ Daftar kolom yang kamu inginkan
             desired_columns = [
                 "Kode Satker",
                 "Satker",
@@ -2647,30 +2645,45 @@ def page_admin():
                 "Owner",
                 "Digital Stamp"
             ]
-            
-            # Jangan filter kolom → biarkan semua kolom muncul
-            df_download_dipa = df_download_dipa.copy()
 
-            # Preview
+            # 4️⃣ Filter kolom dengan aman (hanya kolom yang ada)
+            available_cols = [col for col in desired_columns if col in df.columns]
+            if available_cols:
+                df = df[available_cols]
+
+            # 5️⃣ Ambil 1 baris per Kode Satker (Tanggal Posting Revisi terbaru)
+            if 'Kode Satker' in df.columns and 'Tanggal Posting Revisi' in df.columns:
+                df['Tanggal Posting Revisi'] = pd.to_datetime(df['Tanggal Posting Revisi'], errors='coerce')
+                df = df.sort_values(by=['Kode Satker', 'Tanggal Posting Revisi'], ascending=[True, False])
+                df = df.drop_duplicates(subset='Kode Satker', keep='first')
+
+            # 6️⃣ Tambahkan Klasifikasi Satker
+            if 'Total Pagu' in df.columns:
+                q40 = df['Total Pagu'].quantile(0.40)
+                q70 = df['Total Pagu'].quantile(0.70)
+
+                def klasifikasi(pagu):
+                    if pagu >= q70:
+                        return "Satker Besar"
+                    elif pagu >= q40:
+                        return "Satker Sedang"
+                    else:
+                        return "Satker Kecil"
+
+                df['Jenis Satker'] = df['Total Pagu'].apply(klasifikasi)
+
+            # Preview hasil
             with st.expander("Preview Data (5 baris pertama)"):
-                st.dataframe(df_download_dipa.head(5), use_container_width=True)
+                st.dataframe(df.head(5), use_container_width=True)
 
-            # Export to Excel
-            output_dipa = io.BytesIO()
-            with pd.ExcelWriter(output_dipa, engine='openpyxl') as writer:
-                df_download_dipa.to_excel(
-                    writer,
-                    index=False,
-                    sheet_name=f'DIPA_{year_to_download}',
-                    startrow=0,
-                    startcol=0
-                )
+            # Export Excel
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name=f'DIPA_{year_to_download}')
 
                 # Format header
                 try:
-                    workbook = writer.book
                     worksheet = writer.sheets[f'DIPA_{year_to_download}']
-
                     for cell in worksheet[1]:
                         cell.font = Font(bold=True, color="FFFFFF")
                         cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
@@ -2678,15 +2691,16 @@ def page_admin():
                 except:
                     pass
 
-            output_dipa.seek(0)
-            
+            output.seek(0)
+
             st.download_button(
                 label="📥 Download Excel DIPA",
-                data=output_dipa,
+                data=output,
                 file_name=f"DIPA_{year_to_download}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 key="btn_download_dipa"
             )
+
 
 
         # Download Data Satker Tidak Terdaftar
