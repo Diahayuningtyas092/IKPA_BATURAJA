@@ -97,11 +97,6 @@ def load_DATA_DIPA_from_github():
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
 
-        # Debug: list isi folder
-        contents = repo.get_contents("DATA_DIPA")
-        st.write("DEBUG: Isi folder DATA_DIPA:")
-        for c in contents:
-            st.write("-", c.path)
 
     except Exception as e:
         st.error(f"Gagal akses GitHub: {e}")
@@ -118,10 +113,6 @@ def load_DATA_DIPA_from_github():
 
             # Simpan
             st.session_state.DATA_DIPA_by_year[tahun] = data
-
-            # Debug
-            st.write(f"DEBUG: Data DIPA tahun {tahun} shape:", data.shape)
-            st.dataframe(data.head(3))
 
             tahun_berhasil.append(str(tahun))
 
@@ -241,13 +232,6 @@ def save_file_to_github(content_bytes, filename, folder):
     g = Github(auth=Auth.Token(token))
     repo = g.get_repo(repo_name)
     
-    # DEBUG LIST FOLDER
-    try:
-        folder_list = repo.get_contents("DATA_DIPA")
-        st.write("📂 Isi folder DATA_DIPA:", [f.name for f in folder_list])
-    except Exception as e:
-        st.error(f"Folder DATA_DIPA tidak ditemukan: {e}")
-
 
     # 1️⃣ buat path full
     path = f"{folder}/{filename}"
@@ -2623,6 +2607,9 @@ def page_admin():
 
             # 1️⃣ Ambil data asli
             df = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
+            
+            # 🔍 DEBUG — lihat semua kolom SEBELUM diproses
+            st.write("DEBUG: SEMUA KOLOM SEBELUM PROSES:", df.columns.tolist())
 
             # 2️⃣ Hapus kolom Unnamed
             df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
