@@ -82,12 +82,12 @@ def extract_kode_from_satker_field(s, width=6):
 # ============================================================
 # 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
-def load_DATA_DIPA_from_github():
-    import pandas as pd
-    import io
-    from github import Github, Auth
-    import streamlit as st
+import pandas as pd
+import io
+from github import Github, Auth
+import streamlit as st
 
+def load_DATA_DIPA_from_github():
     if "DATA_DIPA_by_year" not in st.session_state:
         st.session_state.DATA_DIPA_by_year = {}
 
@@ -108,19 +108,23 @@ def load_DATA_DIPA_from_github():
     tahun_berhasil = []
     tahun_gagal = []
 
+    # ------------------------------
+    # Fungsi untuk bersihkan header
+    # ------------------------------
     def bersihkan_header(df_raw):
         """
-        Mendeteksi baris header dengan fleksibel:
-        - Mencari baris pertama yang memiliki kolom 'Kode Satker' atau kolom unik lain
-        - Mengatur baris berikutnya sebagai data
+        Mendeteksi header asli berdasarkan kolom utama 'Kode Satker'.
+        Jika tidak ditemukan, tetap kembalikan df_raw.
         """
         header_row_idx = None
-        for i in range(min(5, len(df_raw))):  # cek 5 baris pertama
-            if "Kode Satker" in df_raw.iloc[i].values:
+        for i in range(min(20, len(df_raw))):  # cek 20 baris pertama
+            row_values = df_raw.iloc[i].astype(str).str.strip().tolist()
+            if any("Kode Satker" in v for v in row_values):
                 header_row_idx = i
                 break
+
         if header_row_idx is None:
-            return df_raw  # gagal deteksi header, return apa adanya
+            return df_raw  # gagal deteksi header
 
         df = df_raw.iloc[header_row_idx + 1:].copy()
         df.columns = df_raw.iloc[header_row_idx].tolist()
@@ -128,7 +132,9 @@ def load_DATA_DIPA_from_github():
         df = df.reset_index(drop=True)
         return df
 
-    # Loop tahun
+    # ------------------------------
+    # Load semua tahun
+    # ------------------------------
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
         try:
@@ -141,7 +147,6 @@ def load_DATA_DIPA_from_github():
             st.session_state.DATA_DIPA_by_year[tahun] = df
             tahun_berhasil.append(str(tahun))
 
-            # Debug info
             st.write(f"DEBUG: DIPA {tahun} berhasil dimuat, kolom: {df.columns.tolist()}")
 
         except Exception as e:
@@ -2620,12 +2625,13 @@ def page_admin():
         # ===========================
         # Submenu Download Data DIPA
         # ===========================
+        def preview_download_DIPA():
+            st.markdown("### 📥 Download Data DIPA")
 
-        st.markdown("### 📥 Download Data DIPA")
+            if not st.session_state.get("DATA_DIPA_by_year"):
+                st.info("ℹ️ Belum ada data DIPA.")
+                return
 
-        if not st.session_state.get("DATA_DIPA_by_year"):
-            st.info("ℹ️ Belum ada data DIPA.")
-        else:
             available_years = sorted(st.session_state.DATA_DIPA_by_year.keys(), reverse=True)
 
             year_to_download = st.selectbox(
@@ -2657,10 +2663,9 @@ def page_admin():
                 "Digital Stamp"
             ]
 
-            # Filter kolom yang ada
             df = df[[c for c in desired_columns if c in df.columns]]
 
-            # Ambil revisi terbaru
+            # Ambil revisi terbaru per Satker
             if "Kode Satker" in df.columns and "Tanggal Posting Revisi" in df.columns:
                 df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Posting Revisi"], errors="coerce")
                 df = df.sort_values(
@@ -2688,7 +2693,6 @@ def page_admin():
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine="openpyxl") as writer:
                 df.to_excel(writer, index=False, sheet_name=f"DIPA_{year_to_download}")
-
             output.seek(0)
 
             st.download_button(
@@ -2697,8 +2701,6 @@ def page_admin():
                 file_name=f"DIPA_{year_to_download}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
-
-
 
         # Download Data Satker Tidak Terdaftar
         st.markdown("---")
