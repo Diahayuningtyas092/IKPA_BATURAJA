@@ -2607,9 +2607,23 @@ def page_admin():
 
             # 1️⃣ Ambil data asli
             df = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
-            
-            # 🔍 DEBUG — lihat semua kolom SEBELUM diproses
+
             st.write("DEBUG: SEMUA KOLOM SEBELUM PROSES:", df.columns.tolist())
+
+            # 2️⃣ FIX: Jika semua kolom Unnamed → header salah
+            if all(col.startswith("Unnamed") or col == "DOWNLOAD DATA DETAIL PENGANGGARAN" for col in df.columns):
+                st.warning("Header Excel rusak → memperbaiki otomatis...")
+
+                # baca ulang raw data tanpa header
+                df_raw = st.session_state.DATA_DIPA_by_year[year_to_download]
+
+                # Jika baris ke-2 adalah header
+                df_raw.columns = df_raw.iloc[2]
+                df_raw = df_raw.drop([0,1,2]).reset_index(drop=True)
+
+                df = df_raw.copy()
+
+            st.write("DEBUG: KOLOM SETELAH FIX HEADER:", df.columns.tolist())
 
             # 2️⃣ Hapus kolom Unnamed
             df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
