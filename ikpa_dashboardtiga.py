@@ -83,7 +83,7 @@ def extract_kode_from_satker_field(s, width=6):
 # 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
 def load_DATA_DIPA_from_github():
-    if 'DATA_DIPA_by_year' not in st.session_state:
+    if "DATA_DIPA_by_year" not in st.session_state:
         st.session_state.DATA_DIPA_by_year = {}
 
     token = st.secrets.get("GITHUB_TOKEN")
@@ -96,8 +96,6 @@ def load_DATA_DIPA_from_github():
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
-
-
     except Exception as e:
         st.error(f"Gagal akses GitHub: {e}")
         return
@@ -107,21 +105,37 @@ def load_DATA_DIPA_from_github():
 
     for tahun in [2022, 2023, 2024, 2025]:
         file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
+
         try:
             file_content = repo.get_contents(file_path)
-            data = pd.read_excel(io.BytesIO(base64.b64decode(file_content.content)))
+
+            # === FIX UTAMA: BACA ULANG HEADER DARI BARIS KE-2 ===
+            data = pd.read_excel(
+                io.BytesIO(base64.b64decode(file_content.content)),
+                header=2  # <-- header asli dimulai dari baris ke-3
+            )
+
+            # Buang baris header duplikasi / baris kosong
+            data = data.dropna(how='all').reset_index(drop=True)
+
+            # FIX kolom "NO" jika tipe datanya aneh
+            if "NO" in data.columns:
+                data["NO"] = data["NO"].astype(str).str.replace(".0", "", regex=False)
 
             # Simpan
             st.session_state.DATA_DIPA_by_year[tahun] = data
-
             tahun_berhasil.append(str(tahun))
 
         except Exception as e:
             tahun_gagal.append(str(tahun))
             st.write(f"DEBUG: Gagal load DIPA {tahun} - {e}")
 
+    # Notifikasi
     if tahun_berhasil:
         st.success(f"📥 Data DIPA berhasil dimuat: {', '.join(tahun_berhasil)}")
+
+    if tahun_gagal:
+        st.warning(f"⚠️ Data DIPA gagal dimuat: {', '.join(tahun_gagal)}")
 
 
 # Fungsi untuk memproses file Excel
@@ -2610,20 +2624,22 @@ def page_admin():
 
             st.write("DEBUG: SEMUA KOLOM SEBELUM PROSES:", df.columns.tolist())
 
-            # 2️⃣ FIX: Jika semua kolom Unnamed → header salah
+            # 2️⃣ Cek apakah header rusak → semua kolom Unnamed
             if all(col.startswith("Unnamed") or col == "DOWNLOAD DATA DETAIL PENGANGGARAN" for col in df.columns):
-                st.warning("Header Excel rusak → memperbaiki otomatis...")
 
-                # baca ulang raw data tanpa header
-                df_raw = st.session_state.DATA_DIPA_by_year[year_to_download]
+                st.warning("Header Excel tidak terbaca → memperbaiki otomatis...")
 
-                # Jika baris ke-2 adalah header
-                df_raw.columns = df_raw.iloc[2]
-                df_raw = df_raw.drop([0,1,2]).reset_index(drop=True)
+                # Ambil kembali file mentahnya
+                raw = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
 
-                df = df_raw.copy()
+                # Gunakan baris ke-3 sebagai header
+                new_header = raw.iloc[2].tolist()
+
+                df = raw[3:].copy()
+                df.columns = new_header
 
             st.write("DEBUG: KOLOM SETELAH FIX HEADER:", df.columns.tolist())
+
 
             # 2️⃣ Hapus kolom Unnamed
             df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
