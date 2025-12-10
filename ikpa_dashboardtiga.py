@@ -42,21 +42,12 @@ if 'activity_log' not in st.session_state:
     st.session_state.activity_log = []  # Each entry: dict with timestamp, action, period, status
 
 # -------------------------
-# STANDARDIZE DIPA
+# STANDARDIZE DIPA (FINAL)
 # -------------------------
 import re
 import pandas as pd
 
 def standardize_dipa(df_raw):
-    """
-    Membersihkan & menyeragamkan struktur DIPA 2022-2025.
-    Memperbaiki masalah:
-    - header di baris acak
-    - kolom terpotong (e.g. 'ementeria')
-    - kode satker gabung dengan nama
-    - tanggal tidak terbaca
-    - No DIPA parsing
-    """
     df0 = df_raw.copy().reset_index(drop=True)
 
     # =============================
@@ -77,14 +68,20 @@ def standardize_dipa(df_raw):
             break
 
     if header_row is None:
-        header_row = 2  # fallback aman
+        header_row = 2
 
     header = df0.iloc[header_row].astype(str).str.strip()
     df = df0.iloc[header_row+1:].copy().reset_index(drop=True)
     df.columns = header.tolist()
+    
+    # HAPUS KOLOM TANPA NAMA / KOLOM ANGKA DARI EXCEL
+    df = df.loc[:, df.columns.notna()]
+    df = df[[c for c in df.columns if str(c).strip() not in ["", "0", "1", "2", "3",
+                                                            "4", "5", "6", "7", "8", "9"]]]
+    df = df[[c for c in df.columns if not str(c).lower().startswith("unnamed")]]
 
     # =============================
-    # 2. NORMALISASI NAMA KOLOM
+    # 2. NORMALISASI KOLOM
     # =============================
     col_clean = {}
     for c in df.columns:
@@ -95,41 +92,36 @@ def standardize_dipa(df_raw):
             .replace("-", "")
             .replace("_", "")
         )
-
         col_clean[c] = clean
 
     df.columns = list(col_clean.values())
 
     def exists(*keys):
         for k in keys:
-            k2 = k.lower().replace(" ", "")
-            if k2 in df.columns:
-                return k2
+            key = k.lower().replace(" ", "")
+            if key in df.columns:
+                return key
         return None
 
     # =============================
-    # 3. OUTPUT KOSONG (DIBANGUN PER KOLOM)
+    # 3. OUTPUT
     # =============================
     out = pd.DataFrame()
 
     # =============================
-    # 4. KODE SATKER & NAMA SATKER
+    # 4. KODE SATKER & NAMA
     # =============================
     kode_key = exists("kodesatker", "satker")
     nama_key = exists("namasatker", "uraiansatker")
 
     if kode_key:
-        # kalau bentuknya "007130 - KEJAKSAAN ..."
-        codes = df[kode_key].astype(str).str.extract(r"(\d{3,6})")[0].fillna("").str.zfill(6)
-        out["Kode Satker"] = codes
+        out["Kode Satker"] = df[kode_key].astype(str).str.extract(r"(\d{3,6})")[0].fillna("").str.zfill(6)
     else:
         out["Kode Satker"] = ""
 
-    # Nama Satker
     if nama_key:
         out["Satker"] = df[nama_key].astype(str)
     else:
-        # fallback dari kode satker kolom gabungan
         out["Satker"] = df[kode_key].astype(str) if kode_key else ""
 
     # =============================
@@ -139,7 +131,6 @@ def standardize_dipa(df_raw):
     if tahun_key:
         out["Tahun"] = pd.to_numeric(df[tahun_key], errors="coerce")
     else:
-        # coba dari No DIPA
         try:
             year_from_dipa = df[exists("nodipa")].astype(str).str.extract(r"/(\d{4})")[0]
             out["Tahun"] = pd.to_numeric(year_from_dipa, errors="coerce")
@@ -147,34 +138,31 @@ def standardize_dipa(df_raw):
             out["Tahun"] = None
 
     # =============================
-    # 6. TANGGAL POSTING REVISI
+    # 6. TANGGAL POSTING
     # =============================
     tpost_key = exists("tanggalpostingrevisi", "tanggalposting", "tanggal")
-    if tpost_key:
-        out["Tanggal Posting Revisi"] = pd.to_datetime(df[tpost_key], errors="coerce")
-    else:
-        out["Tanggal Posting Revisi"] = pd.NaT
+    out["Tanggal Posting Revisi"] = pd.to_datetime(df[tpost_key], errors="coerce") if tpost_key else pd.NaT
 
     # =============================
     # 7. TOTAL PAGU
     # =============================
     pagu_key = exists("totalpagubelanja", "totalpagu", "pagubelanja", "pagu")
     if pagu_key:
-        out["Total Pagu"] = (
-            df[pagu_key].astype(str).str.replace(r"[^\d\.-]", "", regex=True)
-        )
-        out["Total Pagu"] = pd.to_numeric(out["Total Pagu"], errors="coerce").fillna(0)
+        out["Total Pagu"] = pd.to_numeric(
+            df[pagu_key].astype(str).str.replace(r"[^\d\.-]", "", regex=True),
+            errors="coerce"
+        ).fillna(0)
     else:
         out["Total Pagu"] = 0
 
     # =============================
-    # 8. NO (URUTAN)
+    # 8. NO (sementara)
     # =============================
     no_key = exists("no")
     out["NO"] = df[no_key] if no_key else range(1, len(df)+1)
 
     # =============================
-    # 9. NO DIPA & KEMENTERIAN
+    # 9. NO DIPA + KEMENTERIANNYA
     # =============================
     dipa_key = exists("nodipa")
     if dipa_key:
@@ -185,7 +173,7 @@ def standardize_dipa(df_raw):
         out["Kementerian"] = ""
 
     # =============================
-    # 10. REVISI & STATUS
+    # 10. REVISI
     # =============================
     status_key = exists("kodestatushistory")
     jenisrev_key = exists("jenisrevisi")
@@ -195,9 +183,7 @@ def standardize_dipa(df_raw):
     out["Jenis Revisi"] = df[jenisrev_key].astype(str) if jenisrev_key else ""
 
     if revisi_key:
-        out["Revisi ke-"] = (
-            df[revisi_key].astype(str).str.extract(r"(\d+)")[0].astype(float)
-        )
+        out["Revisi ke-"] = df[revisi_key].astype(str).str.extract(r"(\d+)")[0]
     else:
         out["Revisi ke-"] = None
 
@@ -214,14 +200,51 @@ def standardize_dipa(df_raw):
     out["Digital Stamp"] = df[exists("digitalstamp")] if exists("digitalstamp") else ""
 
     # =============================
-    # 13. BERSIHKAN STRING
+    # 13. CLEAN STRING
     # =============================
     for c in out.columns:
         if out[c].dtype == object:
             out[c] = out[c].astype(str).replace("nan", "").replace("None", "")
 
-    return out
+    # =============================
+    # 14. URUTKAN KOLOM 
+    # =============================
+    ordered_cols = [
+        "NO",
+        "Kode Satker",
+        "Satker",
+        "Tahun",
+        "Tanggal Posting Revisi",
+        "Total Pagu",
+        "Jenis Satker",
+        "Kementerian",
+        "Kode Status History",
+        "Jenis Revisi",
+        "Revisi ke-",
+        "No Dipa",
+        "Tanggal Dipa",
+        "Owner",
+        "Digital Stamp"
+    ]
 
+    # pastikan hanya kolom yang ada yang dipakai
+    existing_cols = [c for c in ordered_cols if c in out.columns]
+    out = out[existing_cols]
+
+    # =============================
+    # 15. URUTKAN KOLOM (NO PALING KIRI)
+    # =============================
+    column_order = [
+        "NO", "Kode Satker", "Satker", "Tahun", "Tanggal Posting Revisi",
+        "Total Pagu", "Kementerian", "Kode Status History", "Jenis Revisi",
+        "Revisi ke-", "No Dipa", "Tanggal Dipa", "Owner", "Digital Stamp"
+    ]
+
+    # hanya ambil kolom yang memang ada
+    column_order = [c for c in column_order if c in out.columns]
+    out = out[column_order]
+
+    return out
 
 def normalize_kode_satker(k, width=6):
     if pd.isna(k):
