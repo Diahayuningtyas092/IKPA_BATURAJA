@@ -336,98 +336,79 @@ def load_DATA_DIPA_from_github():
 # Fungsi untuk memproses file Excel
 def process_excel_file(uploaded_file, year):
     """
-    Memproses file Excel DIPA sesuai struktur yang telah ditentukan
+    Memproses file Excel DIPA (1 baris = 1 satker)
+    Versi ini cocok dengan struktur file INFORMASI REVISI DIPA yang Anda kirim.
     """
     try:
+        # Baca excel tanpa header karena file mentah tidak punya header yang jelas
         df_raw = pd.read_excel(uploaded_file, header=None)
-        df_raw = df_raw.loc[:, ~df_raw.columns.str.contains('^Unnamed')]
 
-        
-        month = None   # tidak ambil bulan dari isi file karena tidak konsisten
-        
-        # 2️⃣ Ekstrak data (baris ke-5 dst)
-        df_data = df_raw.iloc[4:].reset_index(drop=True)
-        df_data.columns = range(len(df_data.columns))
-        
+        # Buang kolom Unnamed
+        df_raw = df_raw.loc[:, ~df_raw.columns.astype(str).str.contains('^Unnamed', na=False)]
+
+        # Ambil data mulai baris ke-4 (sesuai file Anda: judul ada 3 baris pertama)
+        df_data = df_raw.iloc[3:].reset_index(drop=True)
+        df_data.columns = [
+            "No",
+            "Kode Satker",
+            "Nama Satker",
+            "Kode KPPN",
+            "No DIPA",
+            "Total Pagu Belanja",
+            "Total Pagu Pendapatan",
+            "Tanggal Posting Revisi",
+            "No Revisi Terakhir"
+        ]
+
         processed_rows = []
-        i = 0
-        while i < len(df_data):
-            if i + 3 >= len(df_data):
-                break
-            
-            nilai_row = df_data.iloc[i]
-            bobot_row = df_data.iloc[i + 1]
-            nilai_akhir_row = df_data.iloc[i + 2]
-            nilai_aspek_row = df_data.iloc[i + 3]
-            
-            # Ekstrak kolom
-            no = nilai_row[0]
-            kode_kppn = str(nilai_row[1]).strip("'") if pd.notna(nilai_row[1]) else ""
-            kode_ba = str(nilai_row[2]).strip("'") if pd.notna(nilai_row[2]) else ""
-            kode_satker = str(nilai_row[3]).strip("'") if pd.notna(nilai_row[3]) else ""
-            uraian_satker = nilai_row[4] if pd.notna(nilai_row[4]) else ""
-            
-            aspek_perencanaan = nilai_aspek_row[6] if pd.notna(nilai_aspek_row[6]) else 0
-            aspek_pelaksanaan = nilai_aspek_row[8] if pd.notna(nilai_aspek_row[8]) else 0
-            aspek_hasil = nilai_aspek_row[12] if pd.notna(nilai_aspek_row[12]) else 0
-            
-            revisi_dipa = nilai_row[6] if pd.notna(nilai_row[6]) else 0
-            deviasi_hal3 = nilai_row[7] if pd.notna(nilai_row[7]) else 0
-            penyerapan = nilai_row[8] if pd.notna(nilai_row[8]) else 0
-            belanja_kontraktual = nilai_row[9] if pd.notna(nilai_row[9]) else 0
-            penyelesaian_tagihan = nilai_row[10] if pd.notna(nilai_row[10]) else 0
-            pengelolaan_up = nilai_row[11] if pd.notna(nilai_row[11]) else 0
-            capaian_output = nilai_row[12] if pd.notna(nilai_row[12]) else 0
-            
-            nilai_total = nilai_row[13] if pd.notna(nilai_row[13]) else 0
-            konversi_bobot = nilai_row[14] if pd.notna(nilai_row[14]) else 0
-            dispensasi_spm = nilai_row[15] if pd.notna(nilai_row[15]) else 0
-            nilai_akhir = nilai_row[16] if pd.notna(nilai_row[16]) else 0
 
-            # Simpan bobot & nilai terbobot
-            bobot_dict = {
-                'Revisi DIPA': bobot_row[6], 'Deviasi Halaman III DIPA': bobot_row[7],
-                'Penyerapan Anggaran': bobot_row[8], 'Belanja Kontraktual': bobot_row[9],
-                'Penyelesaian Tagihan': bobot_row[10], 'Pengelolaan UP dan TUP': bobot_row[11],
-                'Capaian Output': bobot_row[12]
-            }
-            nilai_terbobot_dict = {
-                'Revisi DIPA': nilai_akhir_row[6], 'Deviasi Halaman III DIPA': nilai_akhir_row[7],
-                'Penyerapan Anggaran': nilai_akhir_row[8], 'Belanja Kontraktual': nilai_akhir_row[9],
-                'Penyelesaian Tagihan': nilai_akhir_row[10], 'Pengelolaan UP dan TUP': nilai_akhir_row[11],
-                'Capaian Output': nilai_akhir_row[12]
-            }
+        for _, row in df_data.iterrows():
+            processed_rows.append({
+                "No": row["No"],
+                "Kode Satker": row["Kode Satker"],
+                "Uraian Satker": row["Nama Satker"],
+                "Kode KPPN": row["Kode KPPN"],
+                "No. DIPA": row["No DIPA"],
+                "Total Pagu Belanja": row["Total Pagu Belanja"],
+                "Total Pagu Pendapatan": row["Total Pagu Pendapatan"],
+                "Tanggal Posting Revisi": row["Tanggal Posting Revisi"],
+                "No Revisi Terakhir": row["No Revisi Terakhir"],
 
-            row_data = {
-                'No': no, 'Kode KPPN': kode_kppn, 'Kode BA': kode_ba, 'Kode Satker': kode_satker,
-                'Uraian Satker': uraian_satker,
-                'Kualitas Perencanaan Anggaran': aspek_perencanaan,
-                'Kualitas Pelaksanaan Anggaran': aspek_pelaksanaan,
-                'Kualitas Hasil Pelaksanaan Anggaran': aspek_hasil,
-                'Revisi DIPA': revisi_dipa, 'Deviasi Halaman III DIPA': deviasi_hal3,
-                'Penyerapan Anggaran': penyerapan, 'Belanja Kontraktual': belanja_kontraktual,
-                'Penyelesaian Tagihan': penyelesaian_tagihan, 'Pengelolaan UP dan TUP': pengelolaan_up,
-                'Capaian Output': capaian_output,
-                'Nilai Total': nilai_total, 'Konversi Bobot': konversi_bobot,
-                'Dispensasi SPM (Pengurang)': dispensasi_spm,
-                'Nilai Akhir (Nilai Total/Konversi Bobot)': nilai_akhir,
-                'Bulan': None,  
-                'Tahun': year,
-                'Bobot': bobot_dict, 'Nilai Terbobot': nilai_terbobot_dict
-            }
-            processed_rows.append(row_data)
-            i += 4
+                # Kolom standar dashboard
+                "Kualitas Perencanaan Anggaran": "",
+                "Kualitas Pelaksanaan Anggaran": "",
+                "Kualitas Hasil Pelaksanaan Anggaran": "",
+                "Revisi DIPA": "",
+                "Deviasi Halaman III DIPA": "",
+                "Penyerapan Anggaran": "",
+                "Belanja Kontraktual": "",
+                "Penyelesaian Tagihan": "",
+                "Pengelolaan UP dan TUP": "",
+                "Capaian Output": "",
+                "Nilai Total": "",
+                "Konversi Bobot": "",
+                "Dispensasi SPM (Pengurang)": "",
+                "Nilai Akhir (Nilai Total/Konversi Bobot)": "",
+
+                "Bobot": "",
+                "Nilai Terbobot": "",
+
+                "Bulan": "",
+                "Tahun": year
+            })
 
         df_processed = pd.DataFrame(processed_rows)
-        df_processed = df_processed.sort_values('Nilai Akhir (Nilai Total/Konversi Bobot)', ascending=False)
-        df_processed['Peringkat'] = range(1, len(df_processed) + 1)
 
-        # Apply reference short names (if available)
+        # Peringkat (boleh urut sesuai No atau satker)
+        df_processed["Peringkat"] = range(1, len(df_processed) + 1)
+
+        # Apply reference mapping jika ada
         df_processed = apply_reference_short_names(df_processed)
-        df_processed = create_satker_column(df_processed)  # Use helper function
-        df_processed['Source'] = 'Upload'
+        df_processed = create_satker_column(df_processed)
 
-        return df_processed, month, year
+        df_processed["Source"] = "Upload"
+
+        return df_processed, None, year
 
     except Exception as e:
         st.error(f"Error memproses file: {str(e)}")
