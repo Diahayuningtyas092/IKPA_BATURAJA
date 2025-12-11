@@ -42,120 +42,178 @@ if 'activity_log' not in st.session_state:
     st.session_state.activity_log = []  # Each entry: dict with timestamp, action, period, status
 
 # -------------------------
-# Helper baru: standardize_dipa
+# standardize_dipa
 # -------------------------
-def standardize_dipa(df_raw):
-    
-    df0 = df_raw.copy().reset_index(drop=True)
+import re
+import pandas as pd
+from datetime import datetime
 
-    # 1️⃣ Deteksi header: cari baris yang mengandung "Satker" & "Pagu"
+# ============================================================
+# AUTO-DETECT FORMAT
+# ============================================================
+def detect_dipa_format(df_raw):
+    """Deteksi apakah file DIPA format lama (2022–2024) atau format baru (2025)."""
+
+    text_sample = " ".join(df_raw.head(6).fillna("").astype(str).values.flatten()).lower()
+
+    if "informasi revisi dipa" in text_sample:
+        return "old"
+    if "kode satke" in text_sample or "digital stamp" in text_sample:
+        return "new"
+    if "total pagu" in text_sample and "satker" in text_sample:
+        return "new"
+
+    return "old"
+
+
+# ============================================================
+# PARSER FORMAT LAMA (2022–2024)
+# ============================================================
+def parse_dipa_old(df_raw):
+    # Cari baris header
     header_row = None
     for i in range(10):
-        row = " ".join(df0.iloc[i].astype(str)).lower()
-        if "satker" in row and "pagu" in row:
+        row_text = " ".join(df_raw.iloc[i].astype(str)).lower()
+        if "nama satker" in row_text and "kppn" in row_text:
             header_row = i
             break
+    
     if header_row is None:
         header_row = 0
 
-    df = df0.iloc[header_row + 1:].copy().reset_index(drop=True)
-    df.columns = df0.iloc[header_row].astype(str).str.strip()
+    df = df_raw.copy()
+    df.columns = df.iloc[header_row].astype(str).str.strip()
+    df = df.iloc[header_row + 1:].reset_index(drop=True)
 
-    # 2️⃣ Rename kolom standar
-    rename_map = {
+    # Rename agar konsisten
+    df = df.rename(columns={
         "No": "NO",
         "Satker": "Kode Satker",
         "Nama Satker": "Satker",
         "KPPN": "KPPN",
         "No. DIPA": "No Dipa",
         "Total Pagu Belanja": "Total Pagu",
-        "Total Pagu Pendapatan": "Total Pendapatan",
         "Tanggal Posting Revisi": "Tanggal Posting Revisi",
         "No. Revisi Terakhir": "Revisi ke-"
-    }
-    df = df.rename(columns=rename_map)
+    })
 
-    # 3️⃣ Kode Satker → ambil 6 digit
-    df["Kode Satker"] = (
-        df["Kode Satker"]
-        .astype(str)
-        .str.extract(r"(\d{6})", expand=False)
-        .fillna("")
-    )
+    # Kode Satker
+    df["Kode Satker"] = df["Kode Satker"].astype(str).str.extract(r"(\d{6})")[0]
 
-    # 4️⃣ Nama Satker → buang kode di depan
+    # Nama Satker
     df["Satker"] = (
-        df["Satker"]
-        .astype(str)
+        df["Satker"].astype(str)
         .str.replace(r"^\d{6}\s*-?\s*", "", regex=True)
         .str.strip()
     )
 
-    # 5️⃣ Total Pagu (scientific → normal)
+    # Total Pagu
     df["Total Pagu"] = (
-        df["Total Pagu"]
-        .astype(str)
+        df["Total Pagu"].astype(str)
         .str.replace(",", ".", regex=False)
-        .apply(lambda x: float(x) if re.match(r"^\d+(\.\d+)?(e\+\d+)?$", x.lower()) else x)
     )
     df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0).astype(int)
 
-    # 6️⃣ Revisi ke-
-    df["Revisi ke-"] = (
-        df["Revisi ke-"]
-        .astype(str)
-        .str.extract(r"(\d+)", expand=False)
-        .fillna(0)
-        .astype(int)
-    )
-
-    # 7️⃣ Tanggal Posting
+    # Tanggal Posting
     df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Posting Revisi"], errors="coerce")
 
-    # 8️⃣ Ekstrak tahun dari No Dipa
-    df["Tahun"] = (
-        df["No Dipa"]
-        .astype(str)
-        .str.extract(r"/(\d{4})", expand=False)
-        .fillna(datetime.now().year)
-        .astype(int)
-    )
+    # Revisi ke
+    df["Revisi ke-"] = df["Revisi ke-"].astype(str).str.extract(r"(\d+)").fillna(0).astype(int)
 
-    # 9️⃣ Kementerian → ambil 3 digit setelah "DIPA-"
-    df["Kementerian"] = (
-        df["No Dipa"]
-        .astype(str)
-        .str.extract(r"DIPA[-\. ]*([0-9]{3})")[0]
-        .fillna("")
-    )
+    # Tahun ambil dari No DIPA
+    df["Tahun"] = df["No Dipa"].astype(str).str.extract(r"/(\d{4})")[0].fillna(0).astype(int)
 
-    # 1️⃣0️⃣ Jenis Satker → auto kategorisasi
-    def classify_satker(pagu):
-        if pagu >= 10_000_000_000:
-            return "Satker Besar"
-        if pagu >= 1_000_000_000:
-            return "Satker Sedang"
-        return "Satker Kecil"
-
-    df["Jenis Satker"] = df["Total Pagu"].apply(classify_satker)
-
-    # 1️⃣1️⃣ Jenis Revisi
-    df["Jenis Revisi"] = df["Revisi ke-"].apply(lambda x: "DIPA_REVISI" if x > 0 else "ANGKA_DASAR")
-
-    # 1️⃣2️⃣ Kolom tambahan default
+    # Tambahkan kolom tambahan agar seragam dengan format baru
+    df["Jenis Satker"] = ""
+    df["Kementerian"] = ""
     df["Kode Status History"] = ""
+    df["Jenis Revisi"] = "DIPA_REVISI"
     df["Tanggal Dipa"] = ""
-    df["Owner"] = "SPAN"
+    df["Owner"] = ""
     df["Digital Stamp"] = ""
 
-    return df[
-        [
-            "Kode Satker","Satker","Tahun","Tanggal Posting Revisi","Total Pagu","Jenis Satker",
-            "NO","Kementerian","Kode Status History","Jenis Revisi","Revisi ke-",
-            "No Dipa","Tanggal Dipa","Owner","Digital Stamp"
-        ]
+    # Urutkan kolom
+    final_cols = [
+        "Kode Satker", "Satker", "Tahun", "Tanggal Posting Revisi", "Total Pagu",
+        "Jenis Satker", "NO", "Kementerian", "Kode Status History", "Jenis Revisi",
+        "Revisi ke-", "No Dipa", "Tanggal Dipa", "Owner", "Digital Stamp"
     ]
 
+    df = df[final_cols].fillna("")
+    return df
+
+
+# ============================================================
+# PARSER FORMAT BARU (2025)
+# ============================================================
+def parse_dipa_new(df_raw):
+    df = df_raw.copy()
+    df.columns = df.iloc[0].astype(str).str.strip()
+    df = df.iloc[1:].reset_index(drop=True)
+
+    rename_cols = {
+        "Kode Satke": "Kode Satker",
+        "Kode Satker": "Kode Satker",
+        "Satker": "Satker",
+        "Total Pagu": "Total Pagu",
+        "Tanggal Posting Revisi": "Tanggal Posting Revisi",
+        "Jenis Revisi": "Jenis Revisi",
+        "Revisi ke": "Revisi ke-",
+        "Revisi Terakhir": "Revisi ke-",
+        "No Dipa": "No Dipa",
+        "Tanggal Dipa": "Tanggal Dipa",
+        "Digital Stamp": "Digital Stamp",
+    }
+    df = df.rename(columns=rename_cols)
+
+    # Kode Satker
+    df["Kode Satker"] = df["Kode Satker"].astype(str).str.extract(r"(\d{6})")[0]
+
+    # Total Pagu (termasuk format 7.42993E+11)
+    def fix_num(x):
+        try:
+            return float(x)
+        except:
+            return None
+
+    df["Total Pagu"] = df["Total Pagu"].astype(str).apply(fix_num)
+    df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0).astype(int)
+
+    # Tanggal Posting Revisi
+    df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Posting Revisi"], errors="coerce")
+
+    # Revisi ke
+    df["Revisi ke-"] = df["Revisi ke-"].astype(str).str.extract(r"(\d+)").fillna(0).astype(int)
+
+    # Tahun dari No DIPA
+    df["Tahun"] = df["No Dipa"].astype(str).str.extract(r"/(\d{4})")[0].fillna(2025).astype(int)
+
+    # Kolom wajib
+    for col in ["Jenis Satker", "Kementerian", "Kode Status History", "Tanggal Dipa", "Owner", "Digital Stamp", "NO", "Jenis Revisi"]:
+        if col not in df.columns:
+            df[col] = ""
+
+    final_cols = [
+        "Kode Satker","Satker","Tahun","Tanggal Posting Revisi","Total Pagu",
+        "Jenis Satker","NO","Kementerian","Kode Status History","Jenis Revisi",
+        "Revisi ke-","No Dipa","Tanggal Dipa","Owner","Digital Stamp"
+    ]
+
+    df = df.reindex(columns=final_cols).fillna("")
+    return df
+
+
+# ============================================================
+# STANDARDIZE UTAMA
+# ============================================================
+def standardize_dipa(df_raw):
+    """Pilih parser yang benar berdasarkan format otomatis."""
+    fmt = detect_dipa_format(df_raw)
+
+    if fmt == "old":
+        return parse_dipa_old(df_raw)
+    else:
+        return parse_dipa_new(df_raw)
 
 # Normalize kode satker
 def normalize_kode_satker(k, width=6):
