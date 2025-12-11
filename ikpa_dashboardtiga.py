@@ -49,176 +49,116 @@ def standardize_dipa(df_raw):
     import re
     from datetime import datetime
 
-    # =========================================
-    # ALWAYS convert ALL headers → string first
-    # =========================================
-    df_raw = df_raw.copy()
-    df_raw.columns = df_raw.columns.map(lambda x: str(x).strip())
+    df = df_raw.copy()
 
-    df = df_raw.copy().reset_index(drop=True)
+    # --- Paksa semua header menjadi lowercase tanpa spasi ---
+    df.columns = [str(c).strip().lower().replace(" ", "").replace(".", "") for c in df.columns]
 
-    # Normalize columns for detection
-    raw_cols_clean = [str(c).strip().lower().replace(" ", "") for c in df.columns]
+    # --- Paksa semua isi menjadi string dulu ---
+    df = df.astype(str)
 
-    # =========================================
-    # DETEKSI FORMAT 2025
-    # =========================================
-    cols_2025 = [
-        "no","kementerian","satker","kodestatushistory","jenisrevisi",
-        "revisike-","pagubelanja","nodipa","tanggaldipa","tanggalrevisi",
-        "owner","digitalstamp","tahun"
-    ]
-    is_2025 = all(c in raw_cols_clean for c in cols_2025)
-
-    # =========================================
-    # ====== FORMAT 2025 ======================
-    # =========================================
-    if is_2025:
-
-        # rename clean
-        df.columns = raw_cols_clean
+    # ===============================
+    # FORMAT 2025 (kolom berbeda)
+    # ===============================
+    if "tanggaldipa" in df.columns and "tanggalrevisi" in df.columns:
 
         out = pd.DataFrame()
 
-        # Kode Satker + Nama Satker
-        sat = df["satker"].astype(str)
-
-        out["Kode Satker"] = sat.str.extract(r"^(\d{6})")[0].fillna("")
-        out["Satker"] = sat.str.replace(r"^\d{6}\s*-\s*", "", regex=True).str.strip()
+        # Extract kode satker dari kolom satker "123456 - Nama"
+        if "satker" in df.columns:
+            out["Kode Satker"] = df["satker"].str.extract(r"(\d{6})")[0].fillna("")
+            out["Satker"] = df["satker"].str.replace(r"^\d{6}\s*-\s*", "", regex=True)
+        else:
+            out["Kode Satker"] = ""
+            out["Satker"] = ""
 
         # Tahun
-        out["Tahun"] = pd.to_numeric(df["tahun"], errors="coerce").fillna(2025).astype("Int64")
+        if "tahun" in df.columns:
+            out["Tahun"] = pd.to_numeric(df["tahun"], errors="coerce").fillna(2025).astype("Int64")
+        else:
+            out["Tahun"] = 2025
 
-        # Tanggal Posting Revisi
         out["Tanggal Posting Revisi"] = pd.to_datetime(df["tanggalrevisi"], errors="coerce")
 
-        # Total Pagu
-        pg = df["pagubelanja"].astype(str).str.replace(r"[^\d\.-]", "", regex=True)
-        out["Total Pagu"] = pd.to_numeric(pg, errors="coerce").fillna(0).astype(int)
+        # Pagu belanja
+        if "pagubelanja" in df.columns:
+            pg = df["pagubelanja"].str.replace(r"[^\d]", "", regex=True)
+            out["Total Pagu"] = pd.to_numeric(pg, errors="coerce").fillna(0).astype(int)
+        else:
+            out["Total Pagu"] = 0
 
-        # Kolom lain
         out["Jenis Satker"] = ""
-        out["NO"] = df["no"].astype(str)
-        out["Kementerian"] = df["kementerian"].astype(str)
-        out["Kode Status History"] = df["kodestatushistory"].astype(str)
-        out["Jenis Revisi"] = df["jenisrevisi"].astype(str)
-        out["Revisi ke-"] = pd.to_numeric(df["revisike-"], errors="coerce").fillna(0).astype("Int64")
-        out["No Dipa"] = df["nodipa"].astype(str)
-        out["Tanggal Dipa"] = pd.to_datetime(df["tanggaldipa"], errors="coerce")
-        out["Owner"] = df["owner"].astype(str)
-        out["Digital Stamp"] = df["digitalstamp"].astype(str)
+        out["NO"] = df["no"] if "no" in df.columns else ""
+        out["Kementerian"] = df["kementerian"] if "kementerian" in df.columns else ""
+        out["Kode Status History"] = df["kodestatushistory"] if "kodestatushistory" in df.columns else ""
+        out["Jenis Revisi"] = df["jenisrevisi"] if "jenisrevisi" in df.columns else ""
+        out["Revisi ke-"] = pd.to_numeric(df["revisike"], errors="coerce").fillna(0).astype("Int64") if "revisike" in df.columns else 0
+        out["No Dipa"] = df["nodipa"] if "nodipa" in df.columns else ""
+        out["Tanggal Dipa"] = pd.to_datetime(df["tanggaldipa"], errors="coerce") if "tanggaldipa" in df.columns else pd.NaT
+        out["Owner"] = df["owner"] if "owner" in df.columns else ""
+        out["Digital Stamp"] = df["digitalstamp"] if "digitalstamp" in df.columns else ""
 
-        # FILTER
-        out = out[out["Kode Satker"].str.match(r"^\d{6}$", na=False)]
-        out = out[out["Total Pagu"] > 0]
-
-        return out
-
-    # =========================================
-    # ====== FORMAT LAMA (2022–2024) ==========
-    # =========================================
-
-    df0 = df_raw.copy().reset_index(drop=True)
-
-    # DETEKSI HEADER BARIS
-    keywords = ['satker', 'pagu', 'tanggal', 'revisi', 'dipa', 'no']
-    header_row = None
-
-    for i in range(min(10, len(df0))):
-        row_text = " ".join(df0.iloc[i].fillna("").astype(str)).lower()
-        if sum(kw in row_text for kw in keywords) >= 2:
-            header_row = i
-            break
-
-    if header_row is None:
-        header_row = 0
-
-    # PICK HEADER, always string
-    header = df0.iloc[header_row].astype(str).str.strip()
-    df = df0.iloc[header_row + 1:].copy().reset_index(drop=True)
-    df.columns = header
-
-    # NORMALIZE NAMA KOL
-    df.columns = [re.sub(r"[^A-Z0-9]", "", str(c).upper()) for c in df.columns]
-
-    def col(*names):
-        for n in names:
-            key = re.sub(r"[^A-Z0-9]", "", str(n).upper())
-            if key in df.columns:
-                return key
-        return None
-
-    out = pd.DataFrame()
-
-    # ======================
-    # Kode Satker
-    # ======================
-    kode_key = col("KODESATKER", "SATKER", "KDSATKER")
-    if kode_key:
-        out["Kode Satker"] = df[kode_key].astype(str).str.extract(r"(\d{6})")[0].fillna("")
+    # ===============================
+    # FORMAT 2022–2024
+    # ===============================
     else:
-        out["Kode Satker"] = ""
+        out = pd.DataFrame()
 
-    # ======================
-    # Nama Satker
-    # ======================
-    nama_key = col("NAMASATKER", "URAIANSATKER", "SATKER")
-    if nama_key:
-        out["Satker"] = (
-            df[nama_key].astype(str)
-            .str.replace(r"^\d{6}\s*-\s*", "", regex=True)
-            .str.strip()
-        )
-    else:
-        out["Satker"] = out["Kode Satker"] + " - SATKER"
+        # Kode Satker
+        if "kodesatker" in df.columns:
+            out["Kode Satker"] = df["kodesatker"].str.extract(r"(\d{6})")[0].fillna("")
+        elif "satker" in df.columns:
+            out["Kode Satker"] = df["satker"].str.extract(r"(\d{6})")[0].fillna("")
+        else:
+            out["Kode Satker"] = ""
 
-    # ======================
-    # Tahun
-    # ======================
-    th_key = col("TAHUN")
-    if th_key:
-        out["Tahun"] = pd.to_numeric(df[th_key], errors="coerce").fillna(datetime.now().year)
-    else:
-        out["Tahun"] = datetime.now().year
+        # Satker name
+        if "namasatker" in df.columns:
+            out["Satker"] = df["namasatker"]
+        elif "satker" in df.columns:
+            out["Satker"] = df["satker"].str.replace(r"^\d{6}\s*-\s*", "", regex=True)
+        else:
+            out["Satker"] = ""
 
-    out["Tahun"] = out["Tahun"].astype("Int64")
+        # Tahun
+        if "tahun" in df.columns:
+            out["Tahun"] = pd.to_numeric(df["tahun"], errors="coerce").fillna(2024).astype("Int64")
+        else:
+            out["Tahun"] = 2024
 
-    # ======================
-    # Tanggal Posting Revisi
-    # ======================
-    tgl_key = col("TANGGALPOSTINGREVISI", "TANGGAL")
-    out["Tanggal Posting Revisi"] = (
-        pd.to_datetime(df[tgl_key], errors="coerce") if tgl_key else pd.NaT
-    )
+        # Tanggal revisi
+        if "tanggalpostingrevisi" in df.columns:
+            out["Tanggal Posting Revisi"] = pd.to_datetime(df["tanggalpostingrevisi"], errors="coerce")
+        else:
+            out["Tanggal Posting Revisi"] = pd.NaT
 
-    # ======================
-    # Total Pagu
-    # ======================
-    pagu_key = col("TOTALPAGU", "TOTALPAGUBELANJA", "PAGU")
-    if pagu_key:
-        pg = df[pagu_key].astype(str).str.replace(r"[^\d\.-]", "", regex=True)
-        out["Total Pagu"] = pd.to_numeric(pg, errors="coerce").fillna(0).astype(int)
-    else:
-        out["Total Pagu"] = 0
+        # Pagu
+        possible_pagu = ["totalpagubelanja", "totalpagu", "pagu"]
+        pagu_col = next((c for c in possible_pagu if c in df.columns), None)
+        if pagu_col:
+            pg = df[pagu_col].str.replace(r"[^\d]", "", regex=True)
+            out["Total Pagu"] = pd.to_numeric(pg, errors="coerce").fillna(0).astype(int)
+        else:
+            out["Total Pagu"] = 0
 
-    # ======================
-    out["Jenis Satker"] = ""
-    out["NO"] = df[col("NO", "NOMOR")].astype(str) if col("NO", "NOMOR") else range(1, len(df)+1)
-    out["Kementerian"] = df[col("KEMENTERIAN", "BA", "KL")].astype(str) if col("KEMENTERIAN", "BA", "KL") else ""
-    out["Kode Status History"] = df[col("KODESTATUSHISTORY")].astype(str) if col("KODESTATUSHISTORY") else ""
-    out["Jenis Revisi"] = df[col("JENISREVISI")].astype(str) if col("JENISREVISI") else ""
-    out["Revisi ke-"] = 0
-    out["No Dipa"] = df[col("NODIPA")].astype(str) if col("NODIPA") else ""
-    out["Tanggal Dipa"] = pd.NaT
-    out["Owner"] = ""
-    out["Digital Stamp"] = ""
+        out["Jenis Satker"] = ""
+        out["NO"] = df["no"] if "no" in df.columns else ""
+        out["Kementerian"] = df["kementerian"] if "kementerian" in df.columns else ""
+        out["Kode Status History"] = df["kodestatushistory"] if "kodestatushistory" in df.columns else ""
+        out["Jenis Revisi"] = df["jenisrevisi"] if "jenisrevisi" in df.columns else ""
+        out["Revisi ke-"] = 0
+        out["No Dipa"] = df["nodipa"] if "nodipa" in df.columns else ""
+        out["Tanggal Dipa"] = pd.NaT
+        out["Owner"] = ""
+        out["Digital Stamp"] = ""
 
-    # FILTER
+    # ===============================
+    # FILTER VALID ONLY
+    # ===============================
     out = out[out["Kode Satker"].str.match(r"^\d{6}$", na=False)]
     out = out[out["Total Pagu"] > 0]
 
     return out
-
 
 # Normalize kode satker
 def normalize_kode_satker(k, width=6):
