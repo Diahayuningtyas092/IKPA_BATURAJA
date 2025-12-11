@@ -44,8 +44,11 @@ if 'activity_log' not in st.session_state:
 # -------------------------
 # standardize_dipa
 # -------------------------
+# -------------------------
+# standardize_dipa (VERSI FINAL)
+# -------------------------
 def standardize_dipa(df_raw):
-    
+
     df = df_raw.copy()
     df.columns = [str(c).strip() for c in df.columns]
 
@@ -62,7 +65,7 @@ def standardize_dipa(df_raw):
         return None
 
     # Cari kolom penting
-    col_kode = find_col(["Satker", "Kode Satker"])
+    col_kode = find_col(["Kode Satker", "Satker"])
     col_nama = find_col(["Nama Satker", "Uraian Satker", "Satker"])
     col_pagu = find_col(["Total Pagu", "Pagu Belanja", "Jumlah"])
     col_tanggal_revisi = find_col(["Tanggal Posting Revisi", "Tanggal Revisi"])
@@ -73,6 +76,8 @@ def standardize_dipa(df_raw):
     col_tanggal_dipa = find_col(["Tanggal Dipa"])
     col_owner = find_col(["Owner"])
     col_stamp = find_col(["Digital Stamp"])
+    col_status_history = find_col(["Kode Status History"])
+    col_jenis_revisi = find_col(["Jenis Revisi"])
 
     # =============
     # 2) BUILD OUTPUT
@@ -87,7 +92,6 @@ def standardize_dipa(df_raw):
 
     # NAMA
     if col_nama:
-        # Buang kode satker jika format "007130 - NAMA"
         out["Satker"] = df[col_nama].astype(str).str.replace(r"^\d{6}\s*-?\s*", "", regex=True)
     else:
         out["Satker"] = ""
@@ -124,15 +128,20 @@ def standardize_dipa(df_raw):
     if col_kementerian:
         out["Kementerian"] = df[col_kementerian].astype(str)
     else:
-        # Extract dari No DIPA jika ada
         if col_dipa:
             out["Kementerian"] = df[col_dipa].astype(str).str.extract(r"DIPA-(\d{3})")[0]
         else:
             out["Kementerian"] = ""
 
-    # JENIS REVISI
+    # REVISI KE
     if col_revisi_ke:
-        out["Revisi ke-"] = pd.to_numeric(df[col_revisi_ke].astype(str).str.extract(r"(\d+)")[0], errors="coerce").fillna(0).astype(int)
+        out["Revisi ke-"] = (
+            df[col_revisi_ke]
+            .astype(str)
+            .str.extract(r"(\d+)")
+            .fillna(0)
+            .astype(int)
+        )
     else:
         out["Revisi ke-"] = 0
 
@@ -148,8 +157,20 @@ def standardize_dipa(df_raw):
     # DIGITAL STAMP
     out["Digital Stamp"] = df[col_stamp].astype(str) if col_stamp else ""
 
-    # Jenis satker → dihitung di luar
+    # Jenis Satker (nanti dihitung di luar)
     out["Jenis Satker"] = ""
+
+    # KODE STATUS HISTORY
+    if col_status_history:
+        out["Kode Status History"] = df[col_status_history].astype(str)
+    else:
+        out["Kode Status History"] = ""
+
+    # JENIS REVISI
+    if col_jenis_revisi:
+        out["Jenis Revisi"] = df[col_jenis_revisi].astype(str)
+    else:
+        out["Jenis Revisi"] = ""
 
     # =============
     # 3) FINAL CLEANUP
@@ -157,7 +178,29 @@ def standardize_dipa(df_raw):
     out = out.dropna(subset=["Kode Satker"])
     out["Kode Satker"] = out["Kode Satker"].astype(str).str.zfill(6)
 
+    # =============
+    # 4) SUSUN URUTAN KOLOM
+    # =============
+    final_order = [
+        "Tanggal Posting Revisi",
+        "Total Pagu",
+        "Jenis Satker",
+        "NO",
+        "Kementerian",
+        "Kode Status History",
+        "Jenis Revisi",
+        "Revisi ke-",
+        "No Dipa",
+        "Tanggal Dipa",
+        "Owner",
+        "Digital Stamp",
+    ]
+
+    existing_cols = [c for c in final_order if c in out.columns]
+    out = out[existing_cols]
+
     return out
+
 
 # Normalize kode satker
 def normalize_kode_satker(k, width=6):
