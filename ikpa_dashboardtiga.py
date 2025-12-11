@@ -220,7 +220,6 @@ def load_DATA_DIPA_from_github():
         st.error("❌ Folder DATA_DIPA tidak ditemukan.")
         return False
 
-    # Regex nama file DIPA
     pattern = re.compile(r"^DIPA[_-]?(\d{4})\.xlsx$", re.IGNORECASE)
 
     st.session_state.DATA_DIPA_by_year = {}
@@ -232,16 +231,24 @@ def load_DATA_DIPA_from_github():
             continue
 
         tahun = int(match.group(1))
-        file_path = f"{f.path}"   # path lengkap
+        file_path = f"{f.path}"
 
         try:
-            # BACA FILE ASLI
             file_obj = repo.get_contents(file_path)
             raw_bytes = base64.b64decode(file_obj.content)
 
             df_raw = pd.read_excel(io.BytesIO(raw_bytes), header=None)
 
-            # Standardisasi DIPA
+            # ======================
+            # 🔥 DEBUG RAW EXCEL
+            # ======================
+            st.write(f"🔍 PREVIEW RAW DIPA {tahun}")
+            st.dataframe(df_raw.head(30), use_container_width=True)
+            st.write("SHAPE:", df_raw.shape)
+
+            # ======================
+            # LANJUT STANDARDISASI
+            # ======================
             df_std = standardize_dipa(df_raw)
             df_std["Tahun"] = tahun
 
