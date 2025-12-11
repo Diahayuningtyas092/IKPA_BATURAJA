@@ -238,160 +238,135 @@ def extract_kode_from_satker_field(s, width=6):
 # ============================================================
 # PARSER DIPA 
 # ============================================================
+#Parser Perbaikan DIPA
 def parse_dipa(df_raw):
     import pandas as pd
     import re
     from datetime import datetime
 
-    # Bersihkan sampah
+    # ====== 1. Hapus baris kosong ======
     df = df_raw.dropna(how="all").reset_index(drop=True)
 
-    # ============================
-    # 1. DETEKSI HEADER (2022–2025)
-    # ============================
+    # ====== 2. Cari baris header yang BENAR ======
     header_row = None
     for i in range(min(10, len(df))):
         row_str = " ".join(df.iloc[i].astype(str).str.upper().tolist())
         if (
-            ("SATKER" in row_str and "DIPA" in row_str)
-            or ("NAMA SATKER" in row_str)
-            or ("PAGU" in row_str)
+            "NO" in row_str
+            and "SATKER" in row_str
+            and "DIPA" in row_str
         ):
             header_row = i
             break
 
+    # Jika tidak ketemu → fallback (baris 2 biasanya)
     if header_row is None:
-        st.error("❌ Header DIPA tidak dikenali.")
-        return pd.DataFrame()
+        header_row = 2
 
+    # ====== 3. Set header ======
     df.columns = df.iloc[header_row]
-    df = df.iloc[header_row+1:].reset_index(drop=True)
+    df = df.iloc[header_row + 1:].reset_index(drop=True)
 
-    # ============================
-    # 2. Normalisasi nama kolom
-    # ============================
-    def get(colnames):
+    # ====== 4. Normalisasi kolom ======
+    def get(names):
         for c in df.columns:
-            cn = str(c).upper().replace(".", "").strip()
-            for n in colnames:
-                if n in cn:
+            cc = str(c).upper().replace(".", "").strip()
+            for n in names:
+                if n in cc:
                     return c
         return None
 
     col_no     = get(["NO"])
     col_satker = get(["SATKER"])
     col_nama   = get(["NAMA SATKER"])
-    col_pagu   = get(["PAGU BELANJA", "TOTAL PAGU"])
-    col_no_dipa = get(["NO DIPA"])
-    col_tgl_post = get(["TANGGAL POSTING", "TANGGAL REVISI"])
-    col_revisi = get(["REVISI TERAKHIR", "REVISI KE"])
+    col_dipa   = get(["NO DIPA"])
+    col_pagu   = get(["PAGU", "TOTAL PAGU"])
+    col_tgl    = get(["TANGGAL POSTING", "TANGGAL REVISI"])
+    col_rev    = get(["REVISI TERAKHIR", "REVISI KE"])
     col_tgl_dipa = get(["TANGGAL DIPA"])
-    col_owner = get(["OWNER"])
-    col_stamp = get(["STAMP"])
+    col_owner  = get(["OWNER"])
+    col_stamp  = get(["STAMP"])
     col_status = get(["STATUS", "HISTORY"])
 
-    # ============================
-    # 3. Build output
-    # ============================
     out = pd.DataFrame()
 
     # NO
     out["NO"] = df[col_no] if col_no else range(1, len(df)+1)
 
     # Kode Satker
-    if col_satker:
-        out["Kode Satker"] = df[col_satker].astype(str).str.extract(r"(\d{6})")[0]
-    else:
-        out["Kode Satker"] = ""
+    out["Kode Satker"] = df[col_satker].astype(str).str.extract(r"(\d{6})")[0]
 
     # Nama Satker
     if col_nama:
         out["Satker"] = df[col_nama].astype(str)
     else:
-        # Format "007130 - KEJARI ..."
-        out["Satker"] = df[col_satker].astype(str).str.replace(r"^\d{6}\s*-\s*", "", regex=True)
+        out["Satker"] = df[col_satker].astype(str).str.replace(r"^\d{6}\s*-?\s*", "", regex=True)
 
     # Total Pagu
-    if col_pagu:
-        out["Total Pagu"] = (
-            df[col_pagu].astype(str)
-            .str.replace(r"[^\d\-\.]", "", regex=True)
-            .replace("", "0")
-            .astype(float)
-        )
-    else:
-        out["Total Pagu"] = 0
+    out["Total Pagu"] = (
+        df[col_pagu].astype(str)
+        .str.replace(r"[^\d\-\.]", "", regex=True)
+        .replace("", "0")
+        .astype(float)
+    ) if col_pagu else 0
 
     # No DIPA
-    out["No Dipa"] = df[col_no_dipa].astype(str) if col_no_dipa else ""
+    out["No Dipa"] = df[col_dipa].astype(str)
 
-    # Kementerian → BA
-    out["Kementerian"] = (
-        out["No Dipa"].str.extract(r"DIPA-(\d{3})")[0]
-        .fillna("")
-        .astype(str)
-    )
+    # Kementerian (BA)
+    out["Kementerian"] = out["No Dipa"].str.extract(r"DIPA-(\d{3})")[0].fillna("")
 
-    # Kode Status History (BXX)
+    # Kode Status History -> BXX
     out["Kode Status History"] = (
-        out["No Dipa"].str.extract(r"DIPA-\d{3}\.(\d{2})")[0]
+        "B" + out["No Dipa"].str.extract(r"DIPA-\d{3}\.(\d{2})")[0].fillna("00")
     )
-    out["Kode Status History"] = "B" + out["Kode Status History"].fillna("00")
 
-    # Jenis Revisi
-    if col_revisi:
-        revisi = (
-            df[col_revisi].astype(str).str.extract(r"(\d+)")[0]
-            .fillna(0).astype(int)
-        )
-        out["Revisi ke-"] = revisi
-        out["Jenis Revisi"] = revisi.apply(lambda x: "DIPA_REVISI" if x > 0 else "ANGKA_DASAR")
+    # Revisi ke
+    if col_rev:
+        r = df[col_rev].astype(str).str.extract(r"(\d+)")[0].fillna(0).astype(int)
+        out["Revisi ke-"] = r
+        out["Jenis Revisi"] = r.apply(lambda x: "DIPA_REVISI" if x > 0 else "ANGKA_DASAR")
     else:
         out["Revisi ke-"] = 0
         out["Jenis Revisi"] = "ANGKA_DASAR"
 
     # Tanggal DIPA
-    if col_tgl_dipa:
-        out["Tanggal Dipa"] = pd.to_datetime(df[col_tgl_dipa], errors="coerce")
-    else:
-        out["Tanggal Dipa"] = pd.NaT
+    out["Tanggal Dipa"] = (
+        pd.to_datetime(df[col_tgl_dipa], errors="coerce")
+        if col_tgl_dipa else pd.NaT
+    )
 
-    # Tanggal Posting Revisi
-    if col_tgl_post:
-        out["Tanggal Posting Revisi"] = pd.to_datetime(
-            df[col_tgl_post],
-            format="%d-%m-%Y",
-            errors="coerce"
-        )
-    else:
-        out["Tanggal Posting Revisi"] = pd.NaT
+    # Tanggal Posting Revisi -> format dd-mm-yyyy
+    out["Tanggal Posting Revisi"] = (
+        pd.to_datetime(df[col_tgl], format="%d-%m-%Y", errors="coerce")
+        if col_tgl else pd.NaT
+    )
 
     # Tahun
     out["Tahun"] = (
         out["Tanggal Posting Revisi"].dt.year
-        .fillna(datetime.now().year)
-        .astype(int)
+            .fillna(datetime.now().year)
+            .astype(int)
     )
 
-    # Owner
-    if col_owner:
-        out["Owner"] = df[col_owner].astype(str)
-    else:
-        out["Owner"] = "UNIT"
+    # Owner (default untuk 2022–2024)
+    out["Owner"] = (
+        df[col_owner].astype(str)
+        if col_owner else "UNIT"
+    )
 
-    # Digital Stamp
-    if col_stamp:
-        out["Digital Stamp"] = df[col_stamp].astype(str)
-    else:
-        out["Digital Stamp"] = "0000000000000000"
+    # Digital Stamp (default untuk 2022–2024)
+    out["Digital Stamp"] = (
+        df[col_stamp].astype(str)
+        if col_stamp else "0000000000000000"
+    )
 
-    # Jenis Satker → berdasarkan pagu
+    # Jenis Satker (auto berdasarkan pagu)
     out["Jenis Satker"] = out["Total Pagu"].apply(
         lambda x: "Satker Besar" if x >= 10_000_000_000 
         else ("Satker Sedang" if x >= 1_000_000_000 else "Satker Kecil")
     )
 
-    # Final
     out = out.dropna(subset=["Kode Satker"])
     out["Kode Satker"] = out["Kode Satker"].astype(str).str.zfill(6)
 
