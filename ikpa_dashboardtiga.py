@@ -370,7 +370,6 @@ def parse_dipa(df_raw):
 
     return out
 
-
 # ============================================================
 # FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
@@ -416,7 +415,7 @@ def load_DATA_DIPA_from_github():
             st.dataframe(df_raw.head(20))
 
             # GUNAKAN PARSER BARU
-            df_parsed = parse_dipa_full(df_raw)
+            df_parsed = parse_dipa(df_raw)
 
             # Set tahun
             df_parsed["Tahun"] = tahun
