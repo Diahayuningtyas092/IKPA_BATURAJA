@@ -472,9 +472,13 @@ def load_DATA_DIPA_from_github():
             st.write(f"📄 RAW {tahun}")
             st.dataframe(df_raw.head(20))
 
-            df_parsed = parse_dipa(df_raw)
+            # GUNAKAN PARSER BARU
+            df_parsed = parse_dipa_full(df_raw)
+
+            # Set tahun
             df_parsed["Tahun"] = tahun
 
+            # Simpan
             st.session_state.DATA_DIPA_by_year[tahun] = df_parsed
             loaded_years.append(str(tahun))
 
@@ -487,6 +491,7 @@ def load_DATA_DIPA_from_github():
         st.error("❌ Tidak ada data DIPA yang dapat diproses.")
 
     return True
+
 
 # Save any file (Excel/template) to your GitHub repo
 def save_file_to_github(content_bytes, filename, folder):
