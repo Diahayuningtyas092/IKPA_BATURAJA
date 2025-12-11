@@ -266,224 +266,68 @@ def extract_kode_from_satker_field(s, width=6):
 # ============================================================
 # 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
+# ============================================================
+# 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub (Auto Detect)
+# ============================================================
 def load_DATA_DIPA_from_github():
-    """Load semua DIPA dari GitHub dengan validasi ketat"""
-    
-    if "DATA_DIPA_by_year" not in st.session_state:
-        st.session_state.DATA_DIPA_by_year = {}
+    """
+    Auto-detect file DIPA dari folder 'DATA_DIPA'
+    Format file: DIPA_2022.xlsx, DIPA_2023.xlsx, dst.
+    """
+    import re
 
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
     if not token or not repo_name:
-        st.warning("Token GitHub belum ada")
-        return
+        st.error("❌ GitHub token / repo tidak ditemukan di secrets.")
+        return False
 
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
-    except Exception as e:
-        st.error(f"Gagal akses GitHub: {e}")
-        return
 
-    tahun_berhasil = []
-    tahun_gagal = []
-
-    for tahun in [2022, 2023, 2024, 2025]:
-        file_path = f"DATA_DIPA/DIPA_{tahun}.xlsx"
-
+        # Ambil semua file dalam folder DATA_DIPA
         try:
-            # Ambil dari GitHub
-            file_content = repo.get_contents(file_path)
-            raw_bytes = base64.b64decode(file_content.content)
+            files = repo.get_contents("DATA_DIPA")
+        except Exception:
+            st.error("❌ Folder DATA_DIPA tidak ditemukan di GitHub.")
+            return False
 
-            # Baca raw
-            df_raw = pd.read_excel(io.BytesIO(raw_bytes), header=None, dtype=str)
+        st.session_state.DATA_DIPA_by_year = {}
+        loaded_years = []
 
-            # Standarisasi
-            df_std = standardize_dipa(df_raw)
+        # Pola regex: DIPA_2022.xlsx → ambil 2022
+        pattern = re.compile(r"^dipa[_\- ]?(\d{4})\.xlsx$", re.IGNORECASE)
 
-            if df_std.empty:
-                st.warning(f"⚠️ DIPA {tahun} kosong setelah standardisasi")
-                tahun_gagal.append(str(tahun))
+        for f in files:
+            fname = f.name
+
+            match = pattern.match(fname)
+            if not match:
                 continue
 
-            # Pastikan tahun terisi
-            df_std["Tahun"] = df_std["Tahun"].fillna(tahun).astype(int)
+            year = int(match.group(1))
 
-            # Filter hanya tahun yang sesuai
-            df_std = df_std[df_std["Tahun"] == tahun]
+            # Decode file dan baca Excel
+            file_binary = base64.b64decode(f.content)
+            df = pd.read_excel(io.BytesIO(file_binary))
 
-            if df_std.empty:
-                st.warning(f"⚠️ DIPA {tahun} tidak ada data untuk tahun tersebut")
-                tahun_gagal.append(str(tahun))
-                continue
+            st.session_state.DATA_DIPA_by_year[year] = df
+            loaded_years.append(year)
 
-            # Simpan
-            st.session_state.DATA_DIPA_by_year[tahun] = df_std.copy()
-            tahun_berhasil.append(str(tahun))
-
-        except Exception as e:
-            tahun_gagal.append(str(tahun))
-            st.write(f"DEBUG: Gagal load DIPA {tahun}: {e}")
-
-    # Notifikasi
-    if tahun_berhasil:
-        st.success("📥 Data DIPA berhasil dimuat: " + ", ".join(tahun_berhasil))
-    if tahun_gagal:
-        st.warning("⚠️ Data gagal dimuat: " + ", ".join(tahun_gagal))
-
-# Fungsi untuk memproses file Excel
-def process_excel_file(uploaded_file, year):
-    """
-    Auto-detect format file:
-    - MODE A: 1 baris = 1 satker (format Revisi DIPA 2025)
-    - MODE B: 4 baris = 1 satker (format IKPA / DIPA lama)
-    """
-
-    try:
-        df_raw = pd.read_excel(uploaded_file, header=None)
-        df_raw = df_raw.loc[:, ~df_raw.columns.astype(str).str.contains('^Unnamed', na=False)]
-
-        # =============================
-        # 🔍 1. AUTO-DETECT FORMAT
-        # =============================
-        first_data_row = df_raw.iloc[3].dropna().tolist()
-
-        if any("DIPA" in str(x) for x in first_data_row):
-            file_mode = "FORMAT_1BARIS"
+        # Output hasil
+        if loaded_years:
+            loaded_years = sorted(loaded_years)
+            st.success(f"📥 Data DIPA berhasil dimuat: {', '.join(map(str, loaded_years))}")
         else:
-            file_mode = "FORMAT_4BARIS"
+            st.warning("⚠️ Tidak ada file DIPA dengan format DIPA_YYYY.xlsx ditemukan.")
 
-        # ================================================================
-        # ====================== MODE A — FORMAT 1 BARIS ==================
-        # ================================================================
-        if file_mode == "FORMAT_1BARIS":
-
-            df_data = df_raw.iloc[3:].reset_index(drop=True)
-
-            # Kolom disesuaikan dengan struktur "Informasi Revisi DIPA"
-            df_data.columns = [
-                "No","Kode Satker","Nama Satker","Kode KPPN","No DIPA",
-                "Total Pagu Belanja","Total Pagu Pendapatan",
-                "Tanggal Posting Revisi","No Revisi Terakhir"
-            ]
-
-            processed_rows = []
-
-            for _, row in df_data.iterrows():
-
-                processed_rows.append({
-                    "No": row["No"],
-                    "Kode Satker": row["Kode Satker"],
-                    "Uraian Satker": row["Nama Satker"],
-                    "Kode KPPN": row["Kode KPPN"],
-                    "No. DIPA": row["No DIPA"],
-                    "Total Pagu Belanja": row["Total Pagu Belanja"],
-                    "Total Pagu Pendapatan": row["Total Pagu Pendapatan"],
-                    "Tanggal Posting Revisi": row["Tanggal Posting Revisi"],
-                    "No Revisi Terakhir": row["No Revisi Terakhir"],
-
-                    # Kolom standar IKPA — dikosongkan
-                    "Kualitas Perencanaan Anggaran": "",
-                    "Kualitas Pelaksanaan Anggaran": "",
-                    "Kualitas Hasil Pelaksanaan Anggaran": "",
-                    "Revisi DIPA": "",
-                    "Deviasi Halaman III DIPA": "",
-                    "Penyerapan Anggaran": "",
-                    "Belanja Kontraktual": "",
-                    "Penyelesaian Tagihan": "",
-                    "Pengelolaan UP dan TUP": "",
-                    "Capaian Output": "",
-                    "Nilai Total": "",
-                    "Konversi Bobot": "",
-                    "Dispensasi SPM (Pengurang)": "",
-                    "Nilai Akhir (Nilai Total/Konversi Bobot)": "",
-                    "Bobot": "",
-                    "Nilai Terbobot": "",
-
-                    "Bulan": "",
-                    "Tahun": year
-                })
-
-            df_processed = pd.DataFrame(processed_rows)
-            df_processed["Peringkat"] = range(1, len(df_processed) + 1)
-
-            df_processed = apply_reference_short_names(df_processed)
-            df_processed = create_satker_column(df_processed)
-            df_processed["Source"] = f"Upload-{file_mode}"
-
-            return df_processed, None, year
-
-        # ================================================================
-        # ====================== MODE B — FORMAT 4 BARIS ==================
-        # ================================================================
-        if file_mode == "FORMAT_4BARIS":
-
-            df_data = df_raw.iloc[4:].reset_index(drop=True)
-            df_data.columns = range(len(df_data.columns))
-
-            processed_rows = []
-            i = 0
-
-            while i < len(df_data):
-
-                if i + 3 >= len(df_data):
-                    break
-
-                nilai_row = df_data.iloc[i]
-                bobot_row = df_data.iloc[i+1]
-                nilai_akhir_row = df_data.iloc[i+2]
-                nilai_aspek_row = df_data.iloc[i+3]
-
-                # Sama seperti fungsi IKPA lama Anda (tanpa perubahan)
-                row_data = {
-                    "No": nilai_row[0],
-                    "Kode KPPN": nilai_row[1],
-                    "Kode BA": nilai_row[2],
-                    "Kode Satker": nilai_row[3],
-                    "Uraian Satker": nilai_row[4],
-
-                    "Kualitas Perencanaan Anggaran": nilai_aspek_row[6],
-                    "Kualitas Pelaksanaan Anggaran": nilai_aspek_row[8],
-                    "Kualitas Hasil Pelaksanaan Anggaran": nilai_aspek_row[12],
-
-                    "Revisi DIPA": nilai_row[6],
-                    "Deviasi Halaman III DIPA": nilai_row[7],
-                    "Penyerapan Anggaran": nilai_row[8],
-                    "Belanja Kontraktual": nilai_row[9],
-                    "Penyelesaian Tagihan": nilai_row[10],
-                    "Pengelolaan UP dan TUP": nilai_row[11],
-                    "Capaian Output": nilai_row[12],
-
-                    "Nilai Total": nilai_row[13],
-                    "Konversi Bobot": nilai_row[14],
-                    "Dispensasi SPM (Pengurang)": nilai_row[15],
-                    "Nilai Akhir (Nilai Total/Konversi Bobot)": nilai_row[16],
-
-                    "Bobot": bobot_row.to_dict(),
-                    "Nilai Terbobot": nilai_akhir_row.to_dict(),
-
-                    "Bulan": "",
-                    "Tahun": year
-                }
-
-                processed_rows.append(row_data)
-                i += 4
-
-            df_processed = pd.DataFrame(processed_rows)
-            df_processed["Peringkat"] = range(1, len(df_processed)+1)
-
-            df_processed = apply_reference_short_names(df_processed)
-            df_processed = create_satker_column(df_processed)
-            df_processed["Source"] = f"Upload-{file_mode}"
-
-            return df_processed, None, year
+        return True
 
     except Exception as e:
-        st.error(f"Error memproses file: {str(e)}")
-        return None, None, None
-
+        st.error(f"❌ Error memuat DATA_DIPA: {e}")
+        return False
 
 # Save any file (Excel/template) to your GitHub repo
 def save_file_to_github(content_bytes, filename, folder):
@@ -3066,11 +2910,8 @@ def main():
         if not token or not repo_name:
             st.info("⚠️ GitHub credentials belum tersedia. Reference Data menggunakan template kosong.")
             st.session_state.reference_df = pd.DataFrame({
-                'Kode BA': [],
-                'K/L': [],
-                'Kode Satker': [],
-                'Uraian Satker-SINGKAT': [],
-                'Uraian Satker-LENGKAP': []
+                'Kode BA': [], 'K/L': [], 'Kode Satker': [],
+                'Uraian Satker-SINGKAT': [], 'Uraian Satker-LENGKAP': []
             })
         else:
             try:
@@ -3083,33 +2924,23 @@ def main():
                     ref_data = base64.b64decode(ref_file.content)
                     ref_df = pd.read_excel(io.BytesIO(ref_data))
                     ref_df.columns = [c.strip() for c in ref_df.columns]
-
                     st.session_state.reference_df = ref_df
                     st.info(f"📚 Data Referensi dimuat ({len(ref_df)} baris)")
-
                 except Exception:
-                    # Gunakan template kosong tanpa warning
                     st.session_state.reference_df = pd.DataFrame({
-                        'Kode BA': [],
-                        'K/L': [],
-                        'Kode Satker': [],
-                        'Uraian Satker-SINGKAT': [],
-                        'Uraian Satker-LENGKAP': []
+                        'Kode BA': [], 'K/L': [], 'Kode Satker': [],
+                        'Uraian Satker-SINGKAT': [], 'Uraian Satker-LENGKAP': []
                     })
                     st.info("📄 Reference Data tidak ditemukan, menggunakan template kosong.")
-
             except Exception:
                 st.session_state.reference_df = pd.DataFrame({
-                    'Kode BA': [],
-                    'K/L': [],
-                    'Kode Satker': [],
-                    'Uraian Satker-SINGKAT': [],
-                    'Uraian Satker-LENGKAP': []
+                    'Kode BA': [], 'K/L': [], 'Kode Satker': [],
+                    'Uraian Satker-SINGKAT': [], 'Uraian Satker-LENGKAP': []
                 })
                 st.info("📄 Gagal memuat reference data, menggunakan template kosong.")
 
     # ============================================================
-    # Load main data
+    # Load main data IKPA
     # ============================================================
     if not st.session_state.get("data_storage"):
         with st.spinner("🔄 Memuat data utama dari GitHub..."):
@@ -3120,68 +2951,56 @@ def main():
                 st.error(f"⚠️ Gagal memuat data utama: {e}")
 
     # ============================================================
-    # Load DATA_DIPA per tahun
+    # Load DATA_DIPA per tahun (Auto-detect)
     # ============================================================
     if 'DATA_DIPA_by_year' not in st.session_state:
         with st.spinner("🔄 Memuat DATA_DIPA dari GitHub..."):
             try:
                 load_DATA_DIPA_from_github()
-            except Exception as e:
-                st.info(f"⚠️ Gagal memuat data DIPA otomatis, beberapa periode mungkin kosong.")
+            except Exception:
+                st.info("⚠️ Gagal memuat data DIPA otomatis.")
 
     # ============================================================
-    # Check apakah DATA_DIPA berhasil dimuat
+    # Jika DATA_DIPA berhasil dimuat
     # ============================================================
     if st.session_state.get('DATA_DIPA_by_year'):
-        tahun_loaded = list(st.session_state.DATA_DIPA_by_year.keys())
+        tahun_loaded = sorted(st.session_state.DATA_DIPA_by_year.keys())
         st.info(f"📥 Data DIPA tersedia untuk tahun: {', '.join(map(str, tahun_loaded))}")
 
-        # 🔹 Buat kolom 'Uraian Satker-RINGKAS' untuk semua tahun
+        # Tambahkan kolom ringkas
         for tahun, df in st.session_state.DATA_DIPA_by_year.items():
-            if 'Uraian Satker' in df.columns:
-                df['Uraian Satker-RINGKAS'] = df['Uraian Satker'].fillna('-').apply(lambda x: str(x)[:30])
-            else:
-                df['Uraian Satker-RINGKAS'] = '-'
+            df = df.copy()
+            df['Uraian Satker-RINGKAS'] = (
+                df['Uraian Satker'].fillna('-').apply(lambda x: str(x)[:30])
+                if 'Uraian Satker' in df.columns else '-'
+            )
             st.session_state.DATA_DIPA_by_year[tahun] = df
-
     else:
         st.error("❌ Tidak ada DATA_DIPA yang berhasil dimuat")
 
-
-
-    # ===============================
-    # 🔹 Sidebar Navigation 
-    # ===============================
+    # ============================================================
+    # Sidebar + Routing halaman
+    # ============================================================
     st.sidebar.title("🧭 Navigasi")
     st.sidebar.markdown("---")
 
-    # Inisialisasi page sekali saja
     if "page" not in st.session_state:
         st.session_state.page = "📊 Dashboard Utama"
 
-    # Pastikan page aman (fallback jika terjadi glitch)
-    st.session_state.page = st.session_state.get("page", "📊 Dashboard Utama")
-
-    # Radio navigation (Streamlit akan otomatis update session_state["page"])
     selected_page = st.sidebar.radio(
         "Pilih Halaman",
-        options=[
-            "📊 Dashboard Utama",
-            "📈 Dashboard Internal",
-            "🔐 Admin"
-        ],
-        key="page"   # gunakan key yg sama
+        options=["📊 Dashboard Utama", "📈 Dashboard Internal", "🔐 Admin"],
+        key="page"
     )
 
     st.sidebar.markdown("---")
     st.sidebar.info("""
     **Dashboard IKPA**  
     Indikator Kinerja Pelaksanaan Anggaran  
-    KPPN Baturaja
+    KPPN Baturaja  
 
     📧 Support: ameer.noor@kemenkeu.go.id
     """)
-
 
     # ===============================
     # 🔹 Routing Halaman
