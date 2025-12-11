@@ -270,64 +270,64 @@ def extract_kode_from_satker_field(s, width=6):
 # 🔧 FUNGSI HELPER: Load Data DIPA dari GitHub (Auto Detect)
 # ============================================================
 def load_DATA_DIPA_from_github():
-    """
-    Auto-detect file DIPA dari folder 'DATA_DIPA'
-    Format file: DIPA_2022.xlsx, DIPA_2023.xlsx, dst.
-    """
-    import re
-
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
     if not token or not repo_name:
-        st.error("❌ GitHub token / repo tidak ditemukan di secrets.")
+        st.error("❌ GitHub token / repo tidak ditemukan.")
         return False
 
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
-
-        # Ambil semua file dalam folder DATA_DIPA
-        try:
-            files = repo.get_contents("DATA_DIPA")
-        except Exception:
-            st.error("❌ Folder DATA_DIPA tidak ditemukan di GitHub.")
-            return False
-
-        st.session_state.DATA_DIPA_by_year = {}
-        loaded_years = []
-
-        # Pola regex: DIPA_2022.xlsx → ambil 2022
-        pattern = re.compile(r"^dipa[_\- ]?(\d{4})\.xlsx$", re.IGNORECASE)
-
-        for f in files:
-            fname = f.name
-
-            match = pattern.match(fname)
-            if not match:
-                continue
-
-            year = int(match.group(1))
-
-            # Decode file dan baca Excel
-            file_binary = base64.b64decode(f.content)
-            df = pd.read_excel(io.BytesIO(file_binary))
-
-            st.session_state.DATA_DIPA_by_year[year] = df
-            loaded_years.append(year)
-
-        # Output hasil
-        if loaded_years:
-            loaded_years = sorted(loaded_years)
-            st.success(f"📥 Data DIPA berhasil dimuat: {', '.join(map(str, loaded_years))}")
-        else:
-            st.warning("⚠️ Tidak ada file DIPA dengan format DIPA_YYYY.xlsx ditemukan.")
-
-        return True
-
     except Exception as e:
-        st.error(f"❌ Error memuat DATA_DIPA: {e}")
+        st.error(f"❌ Gagal akses GitHub: {e}")
         return False
+
+    # Ambil list file di folder DATA_DIPA
+    try:
+        files = repo.get_contents("DATA_DIPA")
+    except Exception:
+        st.error("❌ Folder DATA_DIPA tidak ditemukan.")
+        return False
+
+    # Regex nama file DIPA
+    pattern = re.compile(r"^DIPA[_-]?(\d{4})\.xlsx$", re.IGNORECASE)
+
+    st.session_state.DATA_DIPA_by_year = {}
+    loaded_years = []
+
+    for f in files:
+        match = pattern.match(f.name)
+        if not match:
+            continue
+
+        tahun = int(match.group(1))
+        file_path = f"{f.path}"   # path lengkap
+
+        try:
+            # BACA FILE ASLI
+            file_obj = repo.get_contents(file_path)
+            raw_bytes = base64.b64decode(file_obj.content)
+
+            df_raw = pd.read_excel(io.BytesIO(raw_bytes), header=None)
+
+            # Standardisasi DIPA
+            df_std = standardize_dipa(df_raw)
+            df_std["Tahun"] = tahun
+
+            st.session_state.DATA_DIPA_by_year[tahun] = df_std
+            loaded_years.append(tahun)
+
+        except Exception as e:
+            st.write(f"DEBUG DIPA {tahun} gagal: {e}")
+
+    if loaded_years:
+        st.success("📥 Data DIPA berhasil dimuat: " + ", ".join(map(str, sorted(loaded_years))))
+    else:
+        st.warning("⚠️ Tidak ada file DIPA yang berhasil dimuat.")
+
+    return True
 
 # Save any file (Excel/template) to your GitHub repo
 def save_file_to_github(content_bytes, filename, folder):
