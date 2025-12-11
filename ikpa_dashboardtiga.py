@@ -196,6 +196,128 @@ def extract_kode_from_satker_field(s, width=6):
     return ''
 
 # ============================================================
+# PARSER DIPA TERBARU (2022–2025 AUTO DETECT)
+# ============================================================
+import pandas as pd
+import re
+from datetime import datetime
+
+def parse_dipa(df_raw):
+    """
+    Parse semua format DIPA 2022–2025 dengan auto-detect header.
+    """
+
+    # Buang baris kosong / sampah
+    df = df_raw.dropna(how="all").reset_index(drop=True)
+
+    # Cari baris header yang valid
+    possible_headers = [
+        ["NO","KEMENTERIAN","SATKER","KODE STATUS HISTORY","JENIS REVISI","REVISI KE-",
+         "PAGU BELANJA","NO DIPA","TANGGAL DIPA","TANGGAL REVISI","OWNER","DIGITAL STAMP","TAHUN"],
+        ["NO","SATKER","NAMA SATKER","KPPN","NO. DIPA","TOTAL PAGU BELANJA","TOTAL PAGU PENDAPATAN",
+         "TANGGAL POSTING REVISI","NO. REVISI TERAKHIR"],
+    ]
+
+    header_row = None
+    for i in range(min(10, len(df))):
+        row_values = df.iloc[i].astype(str).str.upper().tolist()
+        combined = " ".join(row_values)
+
+        # jika kolom satker, no dipa, revisi, pagu muncul → header valid
+        if ("SATKER" in combined and "DIPA" in combined and "PAGU" in combined):
+            header_row = i
+            break
+
+    if header_row is None:
+        raise Exception("Format DIPA tidak dikenali (header tidak ditemukan).")
+
+    # Set header
+    df.columns = df.iloc[header_row]
+    df = df.iloc[header_row + 1:].reset_index(drop=True)
+
+    # Standarisasi kolom
+    def get(colnames):
+        for c in df.columns:
+            cn = str(c).upper().replace(".", "").replace("  ", " ").strip()
+            for target in colnames:
+                if target in cn:
+                    return c
+        return None
+
+    col_satker = get(["KODE SATKER", "SATKER"])
+    col_nama = get(["NAMA SATKER"])
+    col_pagu = get(["PAGU", "TOTAL PAGU", "BELANJA"])
+    col_revisi = get(["REVISI"])
+    col_no_dipa = get(["NO DIPA"])
+    col_tgl_dipa = get(["TANGGAL DIPA"])
+    col_tgl_rev = get(["TANGGAL POSTING", "TANGGAL REVISI"])
+    col_owner = get(["OWNER"])
+    col_stamp = get(["STAMP"])
+
+    out = pd.DataFrame()
+
+    # KODE SATKER
+    out["Kode Satker"] = df[col_satker].astype(str).str.extract(r"(\d{6})")[0] if col_satker else ""
+
+    # Nama
+    if col_nama:
+        out["Satker"] = df[col_nama].astype(str)
+    else:
+        out["Satker"] = df[col_satker].astype(str)
+
+    # Pagu
+    if col_pagu:
+        out["Total Pagu"] = (
+            df[col_pagu].astype(str)
+            .str.replace(r"[^\d\.-]", "", regex=True)
+            .replace("", "0")
+            .astype(float)
+            .fillna(0)
+        )
+    else:
+        out["Total Pagu"] = 0
+
+    # Revisi ke
+    if col_revisi:
+        out["Revisi ke-"] = (
+            df[col_revisi]
+            .astype(str)
+            .str.extract(r"(\d+)")
+            .fillna(0)
+            .astype(int)
+        )
+    else:
+        out["Revisi ke-"] = 0
+
+    # No DIPA
+    out["No Dipa"] = df[col_no_dipa].astype(str) if col_no_dipa else ""
+
+    # Tanggal DIPA
+    out["Tanggal Dipa"] = (
+        pd.to_datetime(df[col_tgl_dipa], errors="coerce") if col_tgl_dipa else pd.NaT
+    )
+
+    # Tanggal Posting Revisi
+    out["Tanggal Posting Revisi"] = (
+        pd.to_datetime(df[col_tgl_rev], errors="coerce") if col_tgl_rev else pd.NaT
+    )
+
+    # Tahun
+    out["Tahun"] = (
+        out["Tanggal Posting Revisi"].dt.year.fillna(datetime.now().year).astype(int)
+    )
+
+    out["Owner"] = df[col_owner].astype(str) if col_owner else ""
+    out["Digital Stamp"] = df[col_stamp].astype(str) if col_stamp else ""
+    out["Jenis Satker"] = ""
+
+    out = out.dropna(subset=["Kode Satker"])
+    out["Kode Satker"] = out["Kode Satker"].astype(str).str.zfill(6)
+
+    return out
+
+
+# ============================================================
 # FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
 def load_DATA_DIPA_from_github():
@@ -209,15 +331,14 @@ def load_DATA_DIPA_from_github():
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
-    except Exception as e:
-        st.error(f"❌ Gagal akses GitHub: {e}")
+    except:
+        st.error("❌ Gagal koneksi GitHub.")
         return False
 
-    # Ambil list file di folder DATA_DIPA
     try:
         files = repo.get_contents("DATA_DIPA")
-    except Exception:
-        st.error("❌ Folder DATA_DIPA tidak ditemukan.")
+    except:
+        st.error("❌ Folder DATA_DIPA tidak ditemukan di GitHub.")
         return False
 
     pattern = re.compile(r"^DIPA[_-]?(\d{4})\.xlsx$", re.IGNORECASE)
@@ -231,37 +352,28 @@ def load_DATA_DIPA_from_github():
             continue
 
         tahun = int(match.group(1))
-        file_path = f"{f.path}"
 
         try:
-            file_obj = repo.get_contents(file_path)
-            raw_bytes = base64.b64decode(file_obj.content)
+            raw = base64.b64decode(f.content)
+            df_raw = pd.read_excel(io.BytesIO(raw), header=None)
 
-            df_raw = pd.read_excel(io.BytesIO(raw_bytes), header=None)
+            # DEBUG
+            st.write(f"📄 RAW {tahun}")
+            st.dataframe(df_raw.head(20))
 
-            # ======================
-            # 🔥 DEBUG RAW EXCEL
-            # ======================
-            st.write(f"🔍 PREVIEW RAW DIPA {tahun}")
-            st.dataframe(df_raw.head(30), use_container_width=True)
-            st.write("SHAPE:", df_raw.shape)
+            df_parsed = parse_dipa(df_raw)
+            df_parsed["Tahun"] = tahun
 
-            # ======================
-            # LANJUT STANDARDISASI
-            # ======================
-            df_std = standardize_dipa(df_raw)
-            df_std["Tahun"] = tahun
-
-            st.session_state.DATA_DIPA_by_year[tahun] = df_std
-            loaded_years.append(tahun)
+            st.session_state.DATA_DIPA_by_year[tahun] = df_parsed
+            loaded_years.append(str(tahun))
 
         except Exception as e:
-            st.write(f"DEBUG DIPA {tahun} gagal: {e}")
+            st.warning(f"⚠️ DIPA {tahun} gagal diproses: {e}")
 
     if loaded_years:
-        st.success("📥 Data DIPA berhasil dimuat: " + ", ".join(map(str, sorted(loaded_years))))
+        st.success("✅ DIPA berhasil dimuat: " + ", ".join(loaded_years))
     else:
-        st.warning("⚠️ Tidak ada file DIPA yang berhasil dimuat.")
+        st.error("❌ Tidak ada data DIPA yang dapat diproses.")
 
     return True
 
