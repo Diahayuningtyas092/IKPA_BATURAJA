@@ -2387,19 +2387,19 @@ def page_admin():
 
     st.success("✔ Anda login sebagai Admin")
 
-with st.sidebar:
-    st.markdown("### 🔍 Debug DIPA")
-    if st.button("Cek Status DIPA"):
-        if "DATA_DIPA_by_year" in st.session_state:
-            for tahun, df in st.session_state.DATA_DIPA_by_year.items():
-                st.write(f"**{tahun}:** {len(df)} baris")
-                st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
-                st.write(f"- Satker kosong: {df['Satker'].eq('').sum()}")
-                st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
-        else:
-            st.warning("DATA_DIPA_by_year belum dimuat")
+    with st.sidebar:
+        st.markdown("### 🔍 Debug DIPA")
+        if st.button("Cek Status DIPA"):
+            if "DATA_DIPA_by_year" in st.session_state:
+                for tahun, df in st.session_state.DATA_DIPA_by_year.items():
+                    st.write(f"**{tahun}:** {len(df)} baris")
+                    st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
+                    st.write(f"- Satker kosong: {df['Satker'].eq('').sum()}")
+                    st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
+            else:
+                st.warning("DATA_DIPA_by_year belum dimuat")
 
-    st.markdown("---")
+        st.markdown("---")
 
     # ============================================================
     # 📌 TAB MENU
