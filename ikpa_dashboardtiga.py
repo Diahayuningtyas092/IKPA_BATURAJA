@@ -1234,14 +1234,13 @@ def page_dashboard():
             # Monthly / Quarterly
             # -------------------------
             if period_type in ['monthly', 'quarterly']:
-    
+
                 # Gabungkan data berdasarkan tahun
                 df_list = []
                 for (mon, yr), df_period in st.session_state.data_storage.items():
                     if str(yr).strip() == str(selected_year).strip():
                         temp = df_period.copy()
                         temp["Bulan_raw"] = mon.upper()
-                        temp["Bulan_upper"] = mon.upper()
                         df_list.append(temp)
 
                 if not df_list:
@@ -1249,8 +1248,10 @@ def page_dashboard():
                     st.stop()
 
                 df_year = pd.concat(df_list, ignore_index=True)
-                
-                # NORMALISASI NAMA BULAN
+
+                # ======================================
+                # NORMALISASI BULAN (BULAN_RAW → BULAN)
+                # ======================================
                 MONTH_FIX = {
                     "JAN": "JANUARI", "JANUARY": "JANUARI",
                     "FEB": "FEBRUARI",
@@ -1259,41 +1260,51 @@ def page_dashboard():
                     "AGT": "AGUSTUS", "AUG": "AGUSTUS",
                     "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER",
                     "OKT": "OKTOBER", "OCT": "OKTOBER",
-                    "DES": "DESEMBER", "DEC": "DESEMBER"
+                    "DES": "DESEMBER", "DEC": "DESEMBER",
                 }
 
                 import re
-                def normalize_month(b):
-                    b = re.sub(r'[^A-Z]', '', str(b).upper())
-                    return MONTH_FIX.get(b, b)
+                def normalize_month(x):
+                    x = re.sub(r'[^A-Z]', '', str(x).upper())
+                    return MONTH_FIX.get(x, x)
 
-                df_year["Bulan_upper"] = df_year["Bulan_raw"].apply(normalize_month)
+                df_year["Bulan"] = df_year["Bulan_raw"].apply(normalize_month)
 
-                months_available = sorted(
-                    [m for m in df_year['Bulan_upper'].unique() if m],
-                    key=lambda m: MONTH_ORDER.get(m, 999)
-                )
+                # ======================================
+                # PILIH PERIOD (BULAN / TRIWULAN)
+                # ======================================
+                if period_type == "monthly":
+                    # Gunakan angka supaya pivot stabil
+                    df_year["Period_Column"] = df_year["Bulan"].map(MONTH_ORDER)
+                    df_year = df_year[df_year["Period_Column"].notna()]
 
-                # =============================
-                # Pivot berdasarkan Kode Satker
-                # =============================
+                else:  # quarterly
+                    def map_to_quarter(m):
+                        if m in ["JANUARI", "FEBRUARI", "MARET"]:
+                            return "Tw I"
+                        elif m in ["APRIL", "MEI", "JUNI"]:
+                            return "Tw II"
+                        elif m in ["JULI", "AGUSTUS", "SEPTEMBER"]:
+                            return "Tw III"
+                        elif m in ["OKTOBER", "NOVEMBER", "DESEMBER"]:
+                            return "Tw IV"
+                        return None
 
-                # 1. Buat kolom periode menggunakan angka (lebih aman)
-                df_year['Period_Column'] = df_year['Bulan'].map(MONTH_ORDER)
-                df_year = df_year[df_year['Period_Column'].notna()]
+                    df_year["Period_Column"] = df_year["Bulan"].apply(map_to_quarter)
+                    df_year = df_year[df_year["Period_Column"].notna()]
 
-                # 2. Ambil kolom yang diperlukan
+                # ======================================
+                # PIVOT
+                # ======================================
                 base_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS', 'Period_Column']
                 df_pivot = df_year[base_cols + [selected_indicator]].copy()
 
-                # 3. Groupby
-                df_pivot = df_pivot.sort_values('Period_Column')
+                df_pivot = df_pivot.sort_values("Period_Column")
                 df_pivot = df_pivot.groupby(
                     ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS', 'Period_Column'],
                     as_index=False
                 ).last()
 
-                # 4. Pivot tabel
                 df_wide = df_pivot.pivot_table(
                     index=['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'],
                     columns='Period_Column',
@@ -1301,20 +1312,32 @@ def page_dashboard():
                     aggfunc='last'
                 ).reset_index()
 
-                # 5. Ubah kolom periode angka → nama bulan
-                df_wide.columns = [
-                    MONTH_NAME[col] if isinstance(col, int) else col
-                    for col in df_wide.columns
-                ]
+                # ======================================
+                # URUTAN PERIODE UNTUK DISPLAY
+                # ======================================
+                if period_type == "monthly":
+                    # Ubah angka → nama bulan
+                    df_wide.columns = [
+                        MONTH_NAME[col] if isinstance(col, int) else col
+                        for col in df_wide.columns
+                    ]
 
-                # 6. Urutkan kolom
-                ordered_periods = list(MONTH_NAME.values())
-                ordered_periods = [m for m in ordered_periods if m in df_wide.columns]
+                    ordered_periods = list(MONTH_NAME.values())
+                    ordered_periods = [m for m in ordered_periods if m in df_wide.columns]
 
+                else:
+                    ordered_periods = ["Tw I", "Tw II", "Tw III", "Tw IV"]
+                    ordered_periods = [tw for tw in ordered_periods if tw in df_wide.columns]
+
+                # ======================================
+                # SUSUN KOLOM PIVOT FINAL
+                # ======================================
                 final_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'] + ordered_periods
                 df_wide = df_wide[final_cols]
 
-                # 7. Hitung peringkat berdasarkan periode terakhir
+                # ======================================
+                # PERINGKAT
+                # ======================================
                 if ordered_periods:
                     last_period = ordered_periods[-1]
                     df_wide['Latest_Value'] = df_wide[last_period]
@@ -1326,24 +1349,14 @@ def page_dashboard():
                 else:
                     df_wide['Peringkat'] = None
 
-                df_wide = df_wide.sort_values('Peringkat', ascending=True)
+                df_wide = df_wide.sort_values("Peringkat", ascending=True)
 
-                display_cols = ['Peringkat', 'Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'] + ordered_periods
-                df_display = df_wide[display_cols]
-
-
-                # 8. Urutkan berdasarkan peringkat
-                df_wide = df_wide.sort_values('Peringkat', ascending=True)
-
-                # 9. Susun kolom final untuk display
                 display_cols = ['Peringkat', 'Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'] + ordered_periods
                 df_display = df_wide[display_cols].copy()
 
-                # 10. Rename kolom periode untuk display yang lebih baik
-                if period_type == 'monthly':
-                    rename_dict = {m: m.capitalize() for m in ordered_periods}
-                    df_display = df_display.rename(columns=rename_dict)
-                    display_period_cols = [m.capitalize() for m in ordered_periods]
+                # Nama kolom untuk styling
+                if period_type == "monthly":
+                    display_period_cols = ordered_periods
                 else:
                     display_period_cols = ordered_periods
 
