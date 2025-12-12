@@ -413,10 +413,6 @@ def load_DATA_DIPA_from_github():
             raw = base64.b64decode(f.content)
             df_raw = pd.read_excel(io.BytesIO(raw), header=None)
 
-            # DEBUG
-            st.write(f"📄 RAW {tahun}")
-            st.dataframe(df_raw.head(20))
-
             # GUNAKAN PARSER BARU
             df_parsed = parse_dipa(df_raw)
 
@@ -1267,8 +1263,9 @@ def page_dashboard():
                 def normalize_month(b):
                     b = re.sub(r'[^A-Z]', '', str(b).upper())
                     return MONTH_FIX.get(b, b)
-
+                
                 df_year["Bulan_upper"] = df_year["Bulan_raw"].apply(normalize_month)
+                df_year["Bulan"] = df_year["Bulan_upper"]
 
                 months_available = sorted(
                     [m for m in df_year['Bulan_upper'].unique() if m],
@@ -1276,7 +1273,7 @@ def page_dashboard():
                 )
 
                 # =============================
-                # 🔧 PERBAIKAN UTAMA: Pivot berdasarkan Kode Satker
+                # Pivot berdasarkan Kode Satker
                 # =============================
 
                 # 1. Buat kolom periode yang sesuai
