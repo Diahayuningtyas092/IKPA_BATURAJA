@@ -1315,19 +1315,22 @@ def page_dashboard():
                 # ======================================
                 # URUTAN PERIODE UNTUK DISPLAY
                 # ======================================
+               # ======================================
+                # 5. Ubah kolom periode (khusus monthly)
+                # ======================================
                 if period_type == "monthly":
-                    # Ubah angka → nama bulan
                     df_wide.columns = [
                         MONTH_NAME[col] if isinstance(col, int) else col
                         for col in df_wide.columns
                     ]
-
                     ordered_periods = list(MONTH_NAME.values())
                     ordered_periods = [m for m in ordered_periods if m in df_wide.columns]
 
-                else:
+                else:  # quarterly
+                    # kolom sudah berupa: Tw I, Tw II, Tw III, Tw IV
                     ordered_periods = ["Tw I", "Tw II", "Tw III", "Tw IV"]
                     ordered_periods = [tw for tw in ordered_periods if tw in df_wide.columns]
+
 
                 # ======================================
                 # SUSUN KOLOM PIVOT FINAL
