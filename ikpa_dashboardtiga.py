@@ -1231,23 +1231,10 @@ def page_dashboard():
             # Monthly / Quarterly
             # -------------------------
             if period_type in ['monthly', 'quarterly']:
-    
-                # Gabungkan data berdasarkan tahun
-                df_list = []
-                for (mon, yr), df_period in st.session_state.data_storage.items():
-                    if str(yr).strip() == str(selected_year).strip():
-                        temp = df_period.copy()
-                        temp["Bulan_raw"] = mon.upper()
-                        temp["Bulan_upper"] = mon.upper()
-                        df_list.append(temp)
 
-                if not df_list:
-                    st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
-                    st.stop()
-
-                df_year = pd.concat(df_list, ignore_index=True)
-                
-                # NORMALISASI NAMA BULAN
+                # ============================
+                # NORMALISASI NAMA BULAN (harus didefinisikan sekali di atas)
+                # ============================
                 MONTH_FIX = {
                     "JAN": "JANUARI", "JANUARY": "JANUARI",
                     "FEB": "FEBRUARI",
@@ -1263,14 +1250,50 @@ def page_dashboard():
                 def normalize_month(b):
                     b = re.sub(r'[^A-Z]', '', str(b).upper())
                     return MONTH_FIX.get(b, b)
-                
-                df_year["Bulan_upper"] = df_year["Bulan_raw"].apply(normalize_month)
+
+                # ============================
+                # Gabungkan data berdasarkan tahun
+                # ============================
+                df_list = []
+                for (mon, yr), df_period in st.session_state.data_storage.items():
+                    if str(yr).strip() == str(selected_year).strip():
+
+                        temp = df_period.copy()
+
+                        # 🔥 Ambil bulan dari file
+                        temp["Bulan_raw"] = temp["Bulan"].astype(str).str.upper()
+
+                        # 🔥 Normalisasi bulan sekali saja
+                        temp["Bulan_upper"] = temp["Bulan_raw"].apply(normalize_month)
+
+                        df_list.append(temp)
+
+                if not df_list:
+                    st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
+                    st.stop()
+
+                df_year = pd.concat(df_list, ignore_index=True)
+                # ============================
+                # DEBUG CEPAT
+                # ============================
+                st.write("DEBUG SAMPLE df_year:", df_year.head(15))
+
+                st.write("Unique Bulan dari file:", df_year["Bulan"].unique())
+                st.write("Unique Bulan_raw:", df_year["Bulan_raw"].unique() if "Bulan_raw" in df_year else "Bulan_raw TIDAK ADA")
+                st.write("Unique Bulan_upper:", df_year["Bulan_upper"].unique() if "Bulan_upper" in df_year else "Bulan_upper TIDAK ADA")
+
+
+                # 🔥 Bulan final = hasil normalisasi
                 df_year["Bulan"] = df_year["Bulan_upper"]
 
+                # ============================
+                # Daftar bulan tersedia
+                # ============================
                 months_available = sorted(
-                    [m for m in df_year['Bulan_upper'].unique() if m],
+                    [m for m in df_year['Bulan'].unique() if m],
                     key=lambda m: MONTH_ORDER.get(m, 999)
                 )
+
 
                 # =============================
                 # Pivot berdasarkan Kode Satker
