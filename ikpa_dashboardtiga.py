@@ -413,10 +413,6 @@ def load_DATA_DIPA_from_github():
             raw = base64.b64decode(f.content)
             df_raw = pd.read_excel(io.BytesIO(raw), header=None)
 
-            # DEBUG
-            st.write(f"📄 RAW {tahun}")
-            st.dataframe(df_raw.head(20))
-
             # GUNAKAN PARSER BARU
             df_parsed = parse_dipa(df_raw)
 
