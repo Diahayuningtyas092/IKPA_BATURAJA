@@ -631,69 +631,81 @@ def get_template_file():
 # Fungsi visualisasi podium/bintang
 def create_ranking_chart(df, title, top=True, limit=10):
     """
-    Membuat visualisasi ranking dengan bar chart horizontal yang menarik
-    (Sekarang menggunakan kolom 'Satker' untuk label agar unik)
+    Membuat visualisasi ranking dengan bar chart horizontal
+    dengan label Satker dimiringkan 45 derajat
     """
-    if top:
-        df_sorted = df.nlargest(limit, 'Nilai Akhir (Nilai Total/Konversi Bobot)')
-        color_scale = 'Greens'
-        emoji = '🏆'
-    else:
-        df_sorted = df.nsmallest(limit, 'Nilai Akhir (Nilai Total/Konversi Bobot)')
-        color_scale = 'Reds'
-        emoji = '⚠️'
-    
+
+    score_col = 'Nilai Akhir (Nilai Total/Konversi Bobot)'
+
+    # 🔒 Proteksi wajib
+    if (
+        df is None or df.empty
+        or score_col not in df.columns
+        or 'Satker' not in df.columns
+    ):
+        return None
+
+    # 🔽 Sort data
+    df_filtered = (
+        df.nlargest(limit, score_col)
+        if top else df.nsmallest(limit, score_col)
+    ).reset_index(drop=True)
+
+    emoji = '🏆' if top else '⚠️'
+    colorscale = 'Greens' if top else 'Reds'
+
+    min_val = df_filtered[score_col].min()
+    max_val = df_filtered[score_col].max()
+
     fig = go.Figure()
-    
-    colors = px.colors.sequential.Greens if top else px.colors.sequential.Reds
-    
-    # use 'Satker' for y labels to keep them unique
-    fig.add_trace(go.Bar(
-    y=df_filtered['Satker'],
-    x=df_filtered[column],
-    orientation='h',
-    marker=dict(
-        color=df_filtered[column],
-        colorscale='OrRd_r',
-        showscale=True,
-        cmin=min_val,
-        cmax=max_val,
-    ),
-    text=df_filtered[column].round(2),
-    textposition='outside',
-    hovertemplate='<b>%{y}</b><br>Nilai: %{x:.2f}<extra></extra>'
-))
-    
+
+    # =========================
+    # Bar chart utama
+    # =========================
+    fig.add_bar(
+        y=list(range(len(df_filtered))),
+        x=df_filtered[score_col],
+        orientation='h',
+        marker=dict(
+            color=df_filtered[score_col],
+            colorscale=colorscale,
+            cmin=min_val,
+            cmax=max_val,
+            showscale=False
+        ),
+        text=df_filtered[score_col].round(2),
+        textposition='outside',
+        hovertemplate='<b>%{customdata}</b><br>Nilai: %{x:.2f}<extra></extra>',
+        customdata=df_filtered['Satker']
+    )
+
+    # =========================
+    # Label Satker 45°
+    # =========================
+    annotations = []
+    for i, satker in enumerate(df_filtered['Satker']):
+        annotations.append(dict(
+            x=min_val - (max_val - min_val) * 0.05,
+            y=i,
+            text=satker,
+            xanchor="right",
+            yanchor="middle",
+            showarrow=False,
+            textangle=45,
+            font=dict(size=11)
+        ))
+
     fig.update_layout(
         title=f"{emoji} {title}",
         xaxis_title="Nilai Akhir",
-        yaxis_title="",
-        height=max(400, limit * 40),
-        yaxis={'categoryorder': 'total ascending' if not top else 'total descending'},
+        yaxis=dict(
+            showticklabels=False,
+            range=[-1, len(df_filtered)]
+        ),
+        height=max(420, limit * 45),
+        annotations=annotations,
         showlegend=False
     )
-    # ============================
-    # Rotated labels 45° di bawah
-    # ============================
-    annotations = []
-    y_positions = list(range(len(df_filtered)))
-
-    for i, satker in enumerate(df_filtered['Satker']):
-        annotations.append(dict(
-        x=df_filtered[column].min() - 3,
-        y=i,
-        text=satker,
-        xanchor="right",
-        yanchor="middle",
-        showarrow=False,
-        textangle=45,
-        font=dict(size=10),
-    ))
-
-    fig.update_layout(annotations=annotations)
-
-    # Sembunyikan label Y-axis
-    fig.update_yaxes(showticklabels=False)
 
     return fig
 
@@ -1752,7 +1764,6 @@ def page_trend():
     warnings = []
 
     st.markdown("---")
-# Analisis Tren
     st.subheader("📈 Analisis Tren")
     
     col1, col2, col3 = st.columns(3)
