@@ -2846,35 +2846,20 @@ def page_admin():
     # TAB 3: DOWNLOAD DATA
     # ============================================================
     with tab3:
-        st.subheader("📥 Download & Update GitHub")
-        if "merged_data" not in st.session_state or not st.session_state.merged_data:
+        if "data_storage" not in st.session_state or not st.session_state.data_storage:
             st.info("🔹 Data belum tersedia untuk diunduh")
         else:
-            github_token = st.secrets.get("GITHUB_TOKEN")
-            github_repo = st.secrets.get("GITHUB_REPO")
-
-            for (bulan, tahun), df in st.session_state.merged_data.items():
-                filename = f"IKPA_DIPA_{bulan}_{tahun}.xlsx"
-                excel_bytes = to_excel_bytes(df)
-
-                # Tombol download lokal
-                st.download_button(
-                    label=f"Download {filename}",
-                    data=excel_bytes,
-                    file_name=filename,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
-                # Push otomatis ke GitHub
-                if github_token and github_repo:
-                    repo_path = f"merged/{filename}"  # path di repo
-                    push_to_github(
-                        file_bytes=excel_bytes,
-                        repo_path=repo_path,
-                        repo_name=github_repo,
-                        token=github_token,
-                        commit_message=f"Update merged IKPA+DIPA {bulan} {tahun}"
-                    )
+            # selectbox tahun & bulan
+            available_periods = sorted(st.session_state.data_storage.keys(), reverse=True)
+            period_to_download = st.selectbox(
+                "Pilih periode untuk download",
+                options=available_periods,
+                format_func=lambda x: f"{x[0]} {x[1]}"
+            )
+            df_selected = st.session_state.data_storage.get(period_to_download)
+            filename = f"IKPA_{period_to_download[0]}_{period_to_download[1]}.xlsx"
+            excel_bytes = to_excel_bytes(df_selected)
+            st.download_button("Download", data=excel_bytes, file_name=filename)
                     
         # ===========================
         # Submenu Download Data DIPA
