@@ -2358,7 +2358,6 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
         st.code(traceback.format_exc())
         return None, None, f"❌ Error: {str(e)}"
 
-    
 # ------------------------------------------------------------
 # HALAMAN ADMIN
 # ------------------------------------------------------------
@@ -2383,13 +2382,12 @@ def page_admin():
                 st.error("❌ Password salah")
         return
 
+    # ============================
+    # ADMIN CONTENT
+    # ============================
     st.success("✔ Anda login sebagai Admin")
-
     st.markdown("---")
 
-    # ============================================================
-    # 📌 TAB MENU
-    # ============================================================
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📤 Upload Data",
         "🗑️ Hapus Data",
@@ -2397,7 +2395,7 @@ def page_admin():
         "📋 Download Template",
         "🕓 Riwayat Aktivitas"
     ])
-
+    
     # ============================================================
     # TAB 1: UPLOAD DATA (IKPA, DIPA, Referensi)
     # ============================================================
