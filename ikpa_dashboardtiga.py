@@ -2386,17 +2386,15 @@ def page_admin():
 
     st.success("✔ Anda login sebagai Admin")
 
-    with st.sidebar:
-        st.markdown("### 🔍 Debug DIPA")
-        if st.button("Cek Status DIPA"):
-            if "DATA_DIPA_by_year" in st.session_state:
-                for tahun, df in st.session_state.DATA_DIPA_by_year.items():
-                    st.write(f"**{tahun}:** {len(df)} baris")
-                    st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
-                    st.write(f"- Satker kosong: {df['Satker'].eq('').sum()}")
-                    st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
-            else:
-                st.warning("DATA_DIPA_by_year belum dimuat")
+    # ==========================
+    # ♻️ RESET SESSION (DEBUG)
+    # ==========================
+    with st.expander("🛠️ Debug / Maintenance"):
+        if st.button("♻️ RESET DATA (DEBUG)"):
+            st.session_state.data_storage = {}
+            st.session_state.DATA_DIPA_by_year = {}
+            st.success("Session state di-reset, silakan upload ulang")
+            st.stop()
 
         st.markdown("---")
 
