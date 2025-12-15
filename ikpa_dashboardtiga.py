@@ -612,51 +612,6 @@ def load_data_from_github():
 
     st.success(f"✅ {len(st.session_state.data_storage)} file berhasil dimuat dari GitHub.")
 
-#MERGE DIPA DAN IKPA
-def merge_ikpa_dipa_after_load():
-    if "DATA_DIPA_by_year" not in st.session_state:
-        return
-
-    for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
-
-        try:
-            tahun_int = int(tahun)
-        except:
-            continue
-
-        dipa_year = st.session_state.DATA_DIPA_by_year.get(tahun_int)
-
-        if dipa_year is None or dipa_year.empty:
-            continue
-
-        df_final = df_ikpa.copy()
-
-        df_final["Kode Satker"] = df_final["Kode Satker"].astype(str).apply(normalize_kode_satker)
-        dipa_year = dipa_year.copy()
-        dipa_year["Kode Satker"] = dipa_year["Kode Satker"].astype(str).apply(normalize_kode_satker)
-
-        dipa_cols = [
-            "Kode Satker",
-            "Total Pagu",
-            "Revisi ke-",
-            "Jenis Revisi",
-            "Tanggal Dipa",
-            "Tanggal Posting Revisi",
-            "Jenis Satker"
-        ]
-
-        dipa_use = dipa_year[[c for c in dipa_cols if c in dipa_year.columns]]
-
-        df_final = df_final.merge(
-            dipa_use,
-            on="Kode Satker",
-            how="left"
-        )
-
-        st.write("DEBUG FINAL COLUMNS:", df_final.columns.tolist())
-
-        st.session_state.data_storage[(bulan, tahun)] = df_final
-
 # ============================
 #  BACA TEMPLATE FILE
 # ============================
@@ -3129,6 +3084,56 @@ def main():
                 load_DATA_DIPA_from_github()
             except Exception:
                 st.info("⚠️ Gagal memuat data DIPA otomatis.")
+
+    # ============================================================
+    # MERGE IKPA + DIPA
+    # ============================================================
+    if (
+        "DATA_DIPA_by_year" in st.session_state
+        and "data_storage" in st.session_state
+        and st.session_state.DATA_DIPA_by_year
+        and st.session_state.data_storage
+    ):
+        for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
+
+            dipa_year = st.session_state.DATA_DIPA_by_year.get(int(tahun))
+            if dipa_year is None or dipa_year.empty:
+                continue
+
+            df_final = df_ikpa.copy()
+
+            # Normalisasi kunci
+            df_final["Kode Satker"] = df_final["Kode Satker"].astype(str).apply(normalize_kode_satker)
+            dipa_year = dipa_year.copy()
+            dipa_year["Kode Satker"] = dipa_year["Kode Satker"].astype(str).apply(normalize_kode_satker)
+
+            dipa_cols = [
+                "Kode Satker",
+                "Total Pagu",
+                "Revisi ke-",
+                "Jenis Revisi",
+                "Tanggal Dipa",
+                "Tanggal Posting Revisi",
+                "Jenis Satker"
+            ]
+
+            dipa_use = dipa_year[[c for c in dipa_cols if c in dipa_year.columns]]
+
+            df_final = df_final.merge(
+                dipa_use,
+                on="Kode Satker",
+                how="left"
+            )
+
+            # 🔎 DEBUG (harus muncul sekali)
+            st.write(
+                f"DEBUG MERGE {bulan} {tahun}",
+                df_final[["Kode Satker", "Total Pagu"]].head(5)
+            )
+
+            # overwrite hasil IKPA
+            st.session_state.data_storage[(bulan, tahun)] = df_final
+
 
     # ============================================================
     # Jika DATA_DIPA berhasil dimuat
