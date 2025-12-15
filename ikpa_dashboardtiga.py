@@ -2316,7 +2316,9 @@ import io
 from github import Github, Auth
 import base64
 
-# Fungsi bantu
+# ============================================================
+# Fungsi bantu: ambil DIPA terbaru per Satker
+# ============================================================
 def get_latest_dipa(dipa_df):
     if 'Tanggal Posting Revisi' in dipa_df.columns:
         dipa_df['Tanggal Posting Revisi'] = pd.to_datetime(dipa_df['Tanggal Posting Revisi'], errors='coerce')
@@ -2329,23 +2331,36 @@ def get_latest_dipa(dipa_df):
         latest_dipa = dipa_df.drop_duplicates(subset='Kode Satker', keep='first')
     return latest_dipa
 
-def merge_ikpa_dipa_auto():
+# ============================================================
+# Merge otomatis IKPA + DIPA terbaru
+# ============================================================
+def merge_ikpa_with_latest_dipa():
+    if "data_storage" not in st.session_state or "DATA_DIPA_by_year" not in st.session_state:
+        st.warning("⚠️ Data IKPA atau DIPA belum dimuat")
+        return
+
     for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
         df_final = df_ikpa.copy()
         dipa = st.session_state.DATA_DIPA_by_year.get(int(tahun))
         if dipa is not None:
             dipa_latest = get_latest_dipa(dipa)
             dipa_selected = dipa_latest[['Kode Satker', 'Total Pagu', 'Jenis Satker']]
+
+            # Hapus dulu kolom lama jika ada supaya tidak duplikat
+            df_final = df_final.drop(columns=['Total Pagu', 'Jenis Satker'], errors='ignore')
+
+            # Merge langsung → update IKPA lama
             df_merged = pd.merge(
                 df_final,
                 dipa_selected,
-                on="Kode Satker",
-                how="left",
-                suffixes=("_IKPA", "_DIPA")
+                on='Kode Satker',
+                how='left'
             )
-            # Update IKPA lama
+
+            # Update data_storage → IKPA lama sekarang berisi gabungan terbaru
             st.session_state.data_storage[(bulan, tahun)] = df_merged
 
+    st.success("✅ Semua IKPA telah diperbarui dengan data DIPA terbaru")
 # ============================================================
 # 🔹 Fungsi convert DataFrame ke Excel bytes
 # ============================================================
@@ -2846,21 +2861,28 @@ def page_admin():
     # TAB 3: DOWNLOAD DATA
     # ============================================================
     with tab3:
-        st.markdown("### 📥 Download Data IKPA")
+        st.subheader("📥 Download IKPA + DIPA Terbaru")
+
         if "data_storage" not in st.session_state or not st.session_state.data_storage:
             st.info("🔹 Data belum tersedia untuk diunduh")
         else:
-            # selectbox tahun & bulan
             available_periods = sorted(st.session_state.data_storage.keys(), reverse=True)
             period_to_download = st.selectbox(
                 "Pilih periode untuk download",
                 options=available_periods,
                 format_func=lambda x: f"{x[0]} {x[1]}"
             )
+
             df_selected = st.session_state.data_storage.get(period_to_download)
-            filename = f"IKPA_{period_to_download[0]}_{period_to_download[1]}.xlsx"
-            excel_bytes = to_excel_bytes(df_selected)
-            st.download_button("Download", data=excel_bytes, file_name=filename)
+            if df_selected is not None:
+                filename = f"IKPA_{period_to_download[0]}_{period_to_download[1]}.xlsx"
+                excel_bytes = to_excel_bytes(df_selected)  # pastikan fungsi ini sudah ada
+                st.download_button(
+                    label=f"Download {filename}",
+                    data=excel_bytes,
+                    file_name=filename,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
                     
         # ===========================
         # Submenu Download Data DIPA
