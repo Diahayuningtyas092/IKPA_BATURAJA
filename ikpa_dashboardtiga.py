@@ -1,4 +1,5 @@
 import streamlit as st
+st.write("App mulai dijalankan")
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -1676,7 +1677,8 @@ def page_trend():
             else:
                 st.error("❌ Password salah!")
         return
-    
+    st.write("✅ Login OK, masuk page_trend")
+
     if not st.session_state.data_storage:
         st.warning("⚠️ Belum ada data yang diunggah. Silakan unggah data melalui halaman Admin.")
         return
@@ -1695,6 +1697,9 @@ def page_trend():
         return
     
     df_all = pd.concat(all_data, ignore_index=True)
+    st.write("✅ df_all dibuat:", df_all.shape)
+    st.stop()
+
       
     # Analisis tren dan Early Warning System
     # Gunakan data periode terkini
