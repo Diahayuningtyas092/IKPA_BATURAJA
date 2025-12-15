@@ -2377,56 +2377,45 @@ def push_to_github(file_bytes, repo_path, repo_name, token, commit_message):
 # 🔹 Menu Admin
 # ============================================================
 def page_admin():
+    st.title("🔐 Halaman Administrasi")
+
     # ============================================================
-    # 🔑 Login Admin 1 klik
+    # 🔑 LOGIN ADMIN
     # ============================================================
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
-    if "password_input" not in st.session_state:
-        st.session_state.password_input = ""
-
-    # Input password
-    st.session_state.password_input = st.text_input(
-        "Masukkan Password Admin",
-        type="password",
-        key="password_input"
-    )
-
-    # Tombol login
-    login_success = False
-    if st.button("Login"):
-        if st.session_state.password_input == "109KPPN":
-            st.session_state.authenticated = True
-            login_success = True
-            st.success("✔ Login berhasil")
-        else:
-            st.error("❌ Password salah")
 
     if not st.session_state.authenticated:
-        st.stop()  # hentikan eksekusi sampai login berhasil
+        st.warning("🔒 Halaman ini memerlukan autentikasi Admin")
+        password = st.text_input("Masukkan Password Admin", type="password")
+        if st.button("Login"):
+            if password == "109KPPN":
+                st.session_state.authenticated = True
+                st.success("✔ Login berhasil")
+                st.rerun()
+            else:
+                st.error("❌ Password salah")
+        return
 
+    st.success("✔ Anda login sebagai Admin")
+    
     # ============================================================
     # 🔹 Merge otomatis setelah login
     # ============================================================
     merge_ikpa_dipa_auto()
 
-    # ============================================================
-    # 🔹 Sidebar Admin
-    # ============================================================
     with st.sidebar:
         st.markdown("### 🔍 Debug DIPA")
         if st.button("Cek Status DIPA"):
             if "DATA_DIPA_by_year" in st.session_state:
                 for tahun, df in st.session_state.DATA_DIPA_by_year.items():
                     st.write(f"**{tahun}:** {len(df)} baris")
-                    if 'Kode Satker' in df.columns:
-                        st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
-                    if 'Satker' in df.columns:
-                        st.write(f"- Satker kosong: {df['Satker'].eq('').sum()}")
-                    if 'Total Pagu' in df.columns:
-                        st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
+                    st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
+                    st.write(f"- Satker kosong: {df['Satker'].eq('').sum()}")
+                    st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
             else:
                 st.warning("DATA_DIPA_by_year belum dimuat")
+
         st.markdown("---")
 
     # ============================================================
