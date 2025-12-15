@@ -2796,14 +2796,12 @@ def page_admin():
     # TAB 3: DOWNLOAD DATA
     # ============================================================
     with tab3:
-        # DOWNLOAD DATA IKPA
         st.subheader("📥 Download Data IKPA")
 
-        # Jika belum ada data IKPA sama sekali
         if "data_storage" not in st.session_state or not st.session_state.data_storage:
             st.info("ℹ️ Belum ada data IKPA.")
         else:
-            # Tampilkan periode yang tersedia
+            # Periode tersedia
             available_periods = sorted(st.session_state.data_storage.keys(), reverse=True)
 
             period_to_download = st.selectbox(
@@ -2814,21 +2812,69 @@ def page_admin():
 
             df_download = st.session_state.data_storage[period_to_download].copy()
 
-            # Siapkan file Excel untuk di-download
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_excel = df_download.drop(
-                    ['Bobot', 'Nilai Terbobot'], axis=1, errors='ignore'
-                )
-                df_excel.to_excel(writer, index=False, sheet_name='Data IKPA')
+            # ==========================
+            # KOLOM YANG DIEKSPOR
+            # ==========================
+            EXPORT_COLUMNS = [
+                # Identitas
+                "No",
+                "Kode KPPN",
+                "Kode BA",
+                "Kode Satker",
+                "Uraian Satker",
+                "Satker",
 
-                # Format header agar cantik
+                # Nilai IKPA
+                "Kualitas Perencanaan Anggaran",
+                "Kualitas Pelaksanaan Anggaran",
+                "Kualitas Hasil Pelaksanaan Anggaran",
+                "Revisi DIPA",
+                "Deviasi Halaman III DIPA",
+                "Penyerapan Anggaran",
+                "Belanja Kontraktual",
+                "Penyelesaian Tagihan",
+                "Pengelolaan UP dan TUP",
+                "Capaian Output",
+                "Nilai Total",
+                "Konversi Bobot",
+                "Nilai Akhir (Nilai Total/Konversi Bobot)",
+
+                # HASIL MERGE DIPA
+                "Total Pagu",
+                "Jenis Satker",
+                "Revisi ke-",
+                "Jenis Revisi",
+                "Tanggal Dipa",
+                "Tanggal Posting Revisi",
+
+                # Periode
+                "Bulan",
+                "Tahun",
+                "Peringkat",
+                "Period",
+                "Period_Sort",
+                "Source"
+            ]
+
+            df_excel = df_download[[c for c in EXPORT_COLUMNS if c in df_download.columns]]
+
+            # ==========================
+            # EXPORT KE EXCEL
+            # ==========================
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df_excel.to_excel(writer, index=False, sheet_name="Data IKPA")
+
+                # Format header
                 try:
-                    workbook = writer.book
-                    worksheet = writer.sheets['Data IKPA']
+                    worksheet = writer.sheets["Data IKPA"]
                     for cell in worksheet[1]:
                         cell.font = Font(bold=True, color="FFFFFF")
-                        cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                        cell.fill = PatternFill(
+                            start_color="366092",
+                            end_color="366092",
+                            fill_type="solid"
+                        )
                         cell.alignment = Alignment(horizontal="center", vertical="center")
                 except Exception:
                     pass
@@ -2841,6 +2887,7 @@ def page_admin():
                 file_name=f"IKPA_{period_to_download[0]}_{period_to_download[1]}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+
  
         # ===========================
         # Submenu Download Data DIPA
@@ -3123,12 +3170,6 @@ def main():
                 dipa_use,
                 on="Kode Satker",
                 how="left"
-            )
-
-            # 🔎 DEBUG (harus muncul sekali)
-            st.write(
-                f"DEBUG MERGE {bulan} {tahun}",
-                df_final[["Kode Satker", "Total Pagu"]].head(5)
             )
 
             # overwrite hasil IKPA
