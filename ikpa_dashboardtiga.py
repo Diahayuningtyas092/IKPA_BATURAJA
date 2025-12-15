@@ -653,6 +653,8 @@ def merge_ikpa_dipa_after_load():
             how="left"
         )
 
+        st.write("DEBUG FINAL COLUMNS:", df_final.columns.tolist())
+
         st.session_state.data_storage[(bulan, tahun)] = df_final
 
 # ============================
