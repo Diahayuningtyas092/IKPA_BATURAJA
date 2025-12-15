@@ -1,5 +1,4 @@
 import streamlit as st
-st.write("App mulai dijalankan")
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -1469,13 +1468,14 @@ def page_dashboard():
             elif period_type == "compare":
                 st.markdown("### Perbandingan Antara Dua Tahun")
 
-               # Gabungkan seluruh data
+                # Gabungkan seluruh data
                 all_data = []
                 for (mon, yr), df in st.session_state.data_storage.items():
                     df2 = df.copy()
                     df2["Bulan_upper"] = df2["Bulan"].astype(str).str.upper().str.strip()
                     df2["Tahun"] = df2["Tahun"].astype(int)
                     all_data.append(df2)
+
 
                 if not all_data:
                     st.warning("Belum ada data yang di-upload.")
@@ -1706,9 +1706,7 @@ def page_trend():
         return
     
     df_all = pd.concat(all_data, ignore_index=True)
-    st.write("✅ df_all dibuat:", df_all.shape)
-    st.stop()
-
+    st.write("df_all dibuat:", df_all.shape)
       
     # Analisis tren dan Early Warning System
     # Gunakan data periode terkini
