@@ -2316,30 +2316,26 @@ import io
 from github import Github, Auth
 import base64
 
-# ============================================================
-# 🔹 Fungsi merge IKPA + DIPA otomatis
-# ============================================================
-def merge_ikpa_with_latest_dipa():
-    if "data_storage" not in st.session_state or "DATA_DIPA_by_year" not in st.session_state:
-        st.warning("⚠️ Data IKPA atau DIPA belum dimuat")
-        return
+# Fungsi bantu
+def get_latest_dipa(dipa_df):
+    if 'Tanggal Posting Revisi' in dipa_df.columns:
+        dipa_df['Tanggal Posting Revisi'] = pd.to_datetime(dipa_df['Tanggal Posting Revisi'], errors='coerce')
+        latest_dipa = dipa_df.sort_values('Tanggal Posting Revisi', ascending=False) \
+                              .drop_duplicates(subset='Kode Satker', keep='first')
+    elif 'No Revisi Terakhir' in dipa_df.columns:
+        latest_dipa = dipa_df.sort_values('No Revisi Terakhir', ascending=False) \
+                              .drop_duplicates(subset='Kode Satker', keep='first')
+    else:
+        latest_dipa = dipa_df.drop_duplicates(subset='Kode Satker', keep='first')
+    return latest_dipa
 
+def merge_ikpa_dipa_auto():
     for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
         df_final = df_ikpa.copy()
         dipa = st.session_state.DATA_DIPA_by_year.get(int(tahun))
         if dipa is not None:
-            # Ambil baris terbaru per satker
-            if 'Tanggal Posting Revisi' in dipa.columns:
-                dipa['Tanggal Posting Revisi'] = pd.to_datetime(dipa['Tanggal Posting Revisi'], errors='coerce')
-                dipa_latest = dipa.sort_values('Tanggal Posting Revisi', ascending=False) \
-                                  .drop_duplicates(subset='Kode Satker', keep='first')
-            else:
-                dipa_latest = dipa.drop_duplicates(subset='Kode Satker', keep='first')
-
-            # Pilih kolom penting
+            dipa_latest = get_latest_dipa(dipa)
             dipa_selected = dipa_latest[['Kode Satker', 'Total Pagu', 'Jenis Satker']]
-
-            # Merge dengan IKPA asli
             df_merged = pd.merge(
                 df_final,
                 dipa_selected,
@@ -2347,11 +2343,8 @@ def merge_ikpa_with_latest_dipa():
                 how="left",
                 suffixes=("_IKPA", "_DIPA")
             )
-
-            # Update session_state.data_storage → IKPA lama sekarang menjadi gabungan
+            # Update IKPA lama
             st.session_state.data_storage[(bulan, tahun)] = df_merged
-
-    st.success("✅ Semua IKPA telah diperbarui dengan data DIPA terbaru")
 
 # ============================================================
 # 🔹 Fungsi convert DataFrame ke Excel bytes
