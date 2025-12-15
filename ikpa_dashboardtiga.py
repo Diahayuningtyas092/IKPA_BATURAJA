@@ -2316,9 +2316,7 @@ import io
 from github import Github, Auth
 import base64
 
-# ============================================================
-# Fungsi bantu: ambil DIPA terbaru per Satker
-# ============================================================
+# Fungsi bantu
 def get_latest_dipa(dipa_df):
     if 'Tanggal Posting Revisi' in dipa_df.columns:
         dipa_df['Tanggal Posting Revisi'] = pd.to_datetime(dipa_df['Tanggal Posting Revisi'], errors='coerce')
@@ -2331,14 +2329,7 @@ def get_latest_dipa(dipa_df):
         latest_dipa = dipa_df.drop_duplicates(subset='Kode Satker', keep='first')
     return latest_dipa
 
-# ============================================================
-# Merge otomatis IKPA + DIPA terbaru
-# ============================================================
-def merge_ikpa_with_latest_dipa():
-    if "data_storage" not in st.session_state or "DATA_DIPA_by_year" not in st.session_state:
-        st.warning("⚠️ Data IKPA atau DIPA belum dimuat")
-        return
-
+def merge_ikpa_dipa_auto():
     for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
         df_final = df_ikpa.copy()
         dipa = st.session_state.DATA_DIPA_by_year.get(int(tahun))
@@ -2346,7 +2337,7 @@ def merge_ikpa_with_latest_dipa():
             dipa_latest = get_latest_dipa(dipa)
             dipa_selected = dipa_latest[['Kode Satker', 'Total Pagu', 'Jenis Satker']]
 
-            # Hapus dulu kolom lama jika ada supaya tidak duplikat
+            # Hapus kolom lama jika ada supaya tidak duplikat
             df_final = df_final.drop(columns=['Total Pagu', 'Jenis Satker'], errors='ignore')
 
             # Merge langsung → update IKPA lama
@@ -2360,7 +2351,6 @@ def merge_ikpa_with_latest_dipa():
             # Update data_storage → IKPA lama sekarang berisi gabungan terbaru
             st.session_state.data_storage[(bulan, tahun)] = df_merged
 
-    st.success("✅ Semua IKPA telah diperbarui dengan data DIPA terbaru")
 # ============================================================
 # 🔹 Fungsi convert DataFrame ke Excel bytes
 # ============================================================
