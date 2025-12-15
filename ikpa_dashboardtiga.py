@@ -2319,30 +2319,39 @@ import base64
 # ============================================================
 # 🔹 Fungsi merge IKPA + DIPA otomatis
 # ============================================================
-def merge_ikpa_dipa_auto():
+def merge_ikpa_with_latest_dipa():
     if "data_storage" not in st.session_state or "DATA_DIPA_by_year" not in st.session_state:
         st.warning("⚠️ Data IKPA atau DIPA belum dimuat")
         return
 
-    merged_result = {}
     for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
         df_final = df_ikpa.copy()
         dipa = st.session_state.DATA_DIPA_by_year.get(int(tahun))
         if dipa is not None:
-            # Pilih kolom penting dari DIPA
-            dipa_selected = dipa[['Kode Satker', 'Total Pagu', 'Jenis Satker']].copy()
-            # Merge dengan IKPA
-            df_final = pd.merge(
+            # Ambil baris terbaru per satker
+            if 'Tanggal Posting Revisi' in dipa.columns:
+                dipa['Tanggal Posting Revisi'] = pd.to_datetime(dipa['Tanggal Posting Revisi'], errors='coerce')
+                dipa_latest = dipa.sort_values('Tanggal Posting Revisi', ascending=False) \
+                                  .drop_duplicates(subset='Kode Satker', keep='first')
+            else:
+                dipa_latest = dipa.drop_duplicates(subset='Kode Satker', keep='first')
+
+            # Pilih kolom penting
+            dipa_selected = dipa_latest[['Kode Satker', 'Total Pagu', 'Jenis Satker']]
+
+            # Merge dengan IKPA asli
+            df_merged = pd.merge(
                 df_final,
                 dipa_selected,
                 on="Kode Satker",
                 how="left",
                 suffixes=("_IKPA", "_DIPA")
             )
-        merged_result[(bulan, tahun)] = df_final
 
-    st.session_state.merged_data = merged_result
-    st.success("✅ Semua IKPA dan kolom penting dari DIPA berhasil digabung otomatis")
+            # Update session_state.data_storage → IKPA lama sekarang menjadi gabungan
+            st.session_state.data_storage[(bulan, tahun)] = df_merged
+
+    st.success("✅ Semua IKPA telah diperbarui dengan data DIPA terbaru")
 
 # ============================================================
 # 🔹 Fungsi convert DataFrame ke Excel bytes
