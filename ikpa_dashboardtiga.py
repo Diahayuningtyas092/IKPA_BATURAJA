@@ -1660,23 +1660,32 @@ def page_dashboard():
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)
 def page_trend():
-    st.title("🏛️ Early Warning System Kinerja Keuangan Satker")
+    st.title("📊 Dashboard Internal")
 
-    # 🔒 Access restriction (same password as Admin page)
-    if 'authenticated' not in st.session_state:
+    if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
     if not st.session_state.authenticated:
-        st.warning("🔒 Halaman ini memerlukan autentikasi Admin untuk diakses.")
-        password = st.text_input("Masukkan Password", type="password")
-        if st.button("Login"):
+        st.warning("🔒 Dashboard Internal memerlukan login")
+
+        password = st.text_input(
+            "Masukkan Password",
+            type="password",
+            key="trend_password"
+        )
+
+        if st.button("Login", key="trend_login_btn"):
             if password == "109KPPN":
                 st.session_state.authenticated = True
-                st.success("✅ Login berhasil! Silakan akses halaman ini.")
-                st.rerun()
+                st.success("✔ Login berhasil")
             else:
-                st.error("❌ Password salah!")
-        return
+                st.error("❌ Password salah")
+
+        st.stop()
+
+    # ============================
+    # DASHBOARD CONTENT
+    # ============================
     st.write("✅ Login OK, masuk page_trend")
 
     if not st.session_state.data_storage:
@@ -2380,23 +2389,30 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 def page_admin():
     st.title("🔐 Halaman Administrasi")
 
-    # ============================================================
-    # 🔑 LOGIN ADMIN
-    # ============================================================
+    # init state
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
+    # ============================
+    # LOGIN FORM
+    # ============================
     if not st.session_state.authenticated:
         st.warning("🔒 Halaman ini memerlukan autentikasi Admin")
-        password = st.text_input("Masukkan Password Admin", type="password")
-        if st.button("Login"):
+
+        password = st.text_input(
+            "Masukkan Password Admin",
+            type="password",
+            key="admin_password"
+        )
+
+        if st.button("Login", key="admin_login_btn"):
             if password == "109KPPN":
                 st.session_state.authenticated = True
                 st.success("✔ Login berhasil")
-                st.rerun()
             else:
                 st.error("❌ Password salah")
-        return
+
+        st.stop()   
 
     # ============================
     # ADMIN CONTENT
