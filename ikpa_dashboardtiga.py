@@ -3136,10 +3136,10 @@ def main():
     # MERGE IKPA + DIPA
     # ============================================================
     if (
-        "DATA_DIPA_by_year" in st.session_state
-        and "data_storage" in st.session_state
-        and st.session_state.DATA_DIPA_by_year
-        and st.session_state.data_storage
+    "DATA_DIPA_by_year" in st.session_state
+    and "data_storage" in st.session_state
+    and st.session_state.DATA_DIPA_by_year
+    and st.session_state.data_storage
     ):
         for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
 
@@ -3149,11 +3149,32 @@ def main():
 
             df_final = df_ikpa.copy()
 
-            # Normalisasi kunci
+            # ==========================
+            # 🔥 DROP KOLOM DIPA LAMA
+            # ==========================
+            DIPA_COLUMNS = [
+                "Total Pagu",
+                "Revisi ke-",
+                "Jenis Revisi",
+                "Tanggal Dipa",
+                "Tanggal Posting Revisi",
+                "Jenis Satker"
+            ]
+
+            cols_to_drop = [c for c in DIPA_COLUMNS if c in df_final.columns]
+            if cols_to_drop:
+                df_final = df_final.drop(columns=cols_to_drop)
+
+            # ==========================
+            # NORMALISASI KUNCI
+            # ==========================
             df_final["Kode Satker"] = df_final["Kode Satker"].astype(str).apply(normalize_kode_satker)
             dipa_year = dipa_year.copy()
             dipa_year["Kode Satker"] = dipa_year["Kode Satker"].astype(str).apply(normalize_kode_satker)
 
+            # ==========================
+            # AMBIL KOLOM DIPA
+            # ==========================
             dipa_cols = [
                 "Kode Satker",
                 "Total Pagu",
@@ -3166,15 +3187,17 @@ def main():
 
             dipa_use = dipa_year[[c for c in dipa_cols if c in dipa_year.columns]]
 
+            # ==========================
+            # MERGE AMAN
+            # ==========================
             df_final = df_final.merge(
                 dipa_use,
                 on="Kode Satker",
                 how="left"
             )
 
-            # overwrite hasil IKPA
+            # 🔁 overwrite hasil IKPA
             st.session_state.data_storage[(bulan, tahun)] = df_final
-
 
     # ============================================================
     # Jika DATA_DIPA berhasil dimuat
