@@ -2320,7 +2320,6 @@ import base64
 # 🔹 Fungsi merge IKPA + DIPA otomatis
 # ============================================================
 def merge_ikpa_dipa_auto():
-    """Gabungkan semua data IKPA + DIPA otomatis tanpa tombol"""
     if "data_storage" not in st.session_state or "DATA_DIPA_by_year" not in st.session_state:
         st.warning("⚠️ Data IKPA atau DIPA belum dimuat")
         return
@@ -2330,9 +2329,12 @@ def merge_ikpa_dipa_auto():
         df_final = df_ikpa.copy()
         dipa = st.session_state.DATA_DIPA_by_year.get(int(tahun))
         if dipa is not None:
-            # Merge berdasarkan Kode Satker
+            # Pilih kolom penting dari DIPA
+            dipa_selected = dipa[['Kode Satker', 'Total Pagu', 'Jenis Satker']].copy()
+            # Merge dengan IKPA
             df_final = pd.merge(
-                df_final, dipa,
+                df_final,
+                dipa_selected,
                 on="Kode Satker",
                 how="left",
                 suffixes=("_IKPA", "_DIPA")
@@ -2340,7 +2342,7 @@ def merge_ikpa_dipa_auto():
         merged_result[(bulan, tahun)] = df_final
 
     st.session_state.merged_data = merged_result
-    st.success("✅ Semua IKPA dan DIPA berhasil digabung otomatis")
+    st.success("✅ Semua IKPA dan kolom penting dari DIPA berhasil digabung otomatis")
 
 # ============================================================
 # 🔹 Fungsi convert DataFrame ke Excel bytes
@@ -2359,41 +2361,49 @@ def push_to_github(file_bytes, repo_path, repo_name, token, commit_message):
     repo = g.get_repo(repo_name)
 
     try:
-        contents = repo.get_contents(repo_path)
-        repo.update_file(contents.path, commit_message, file_bytes, contents.sha)
-        st.success(f"✅ File {repo_path} berhasil diupdate di GitHub")
-    except Exception:
-        repo.create_file(repo_path, commit_message, file_bytes)
-        st.success(f"✅ File {repo_path} berhasil dibuat di GitHub")
+        # Cek apakah file sudah ada
+        try:
+            contents = repo.get_contents(repo_path)
+            repo.update_file(contents.path, commit_message, file_bytes, contents.sha)
+            st.success(f"✅ File {repo_path} berhasil diupdate di GitHub")
+        except Exception as e_inner:
+            # Jika file belum ada atau path salah, buat baru
+            repo.create_file(repo_path, commit_message, file_bytes)
+            st.success(f"✅ File {repo_path} berhasil dibuat di GitHub")
+    except Exception as e:
+        st.error(f"❌ Gagal push ke GitHub: {e}")
 
 # ============================================================
 # 🔹 Menu Admin
 # ============================================================
 def page_admin():
     # ============================================================
-    # 🔑 Login Admin
+    # 🔑 Login Admin 1 klik
     # ============================================================
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
     if "password_input" not in st.session_state:
         st.session_state.password_input = ""
 
-    if not st.session_state.authenticated:
-        password = st.text_input(
-            "Masukkan Password Admin",
-            type="password",
-            key="password_input"
-        )
-        if st.button("Login"):
-            if st.session_state.password_input == "109KPPN":
-                st.session_state.authenticated = True
-                st.success("✔ Login berhasil")
-                st.experimental_rerun()
-            else:
-                st.error("❌ Password salah")
-        st.stop()  # Hentikan eksekusi sampai login berhasil
+    # Input password
+    st.session_state.password_input = st.text_input(
+        "Masukkan Password Admin",
+        type="password",
+        key="password_input"
+    )
 
-    st.success("✔ Anda login sebagai Admin")
+    # Tombol login
+    login_success = False
+    if st.button("Login"):
+        if st.session_state.password_input == "109KPPN":
+            st.session_state.authenticated = True
+            login_success = True
+            st.success("✔ Login berhasil")
+        else:
+            st.error("❌ Password salah")
+
+    if not st.session_state.authenticated:
+        st.stop()  # hentikan eksekusi sampai login berhasil
 
     # ============================================================
     # 🔹 Merge otomatis setelah login
