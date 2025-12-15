@@ -2492,12 +2492,11 @@ def page_admin():
                             else:
                                 df_processed["Kode Satker"] = ""
 
-
                             # ==========================
                             # 5️⃣ SIMPAN SESSION STATE
                             # ==========================
                             key = (detected_month, str(upload_year))
-                            st.session_state.data_storage[key] = df_final.copy()
+                            st.session_state.data_storage[key] = df_processed.copy()
 
                             # ==========================
                             # 6️⃣ EXPORT KE GITHUB
@@ -2524,8 +2523,7 @@ def page_admin():
                                 "Tahun"
                             ]
 
-                            df_export = df_final[[c for c in KEEP_COLUMNS if c in df_final.columns]]
-
+                            df_export = df_processed[[c for c in KEEP_COLUMNS if c in df_processed.columns]]
                             excel_bytes = io.BytesIO()
                             with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
                                 df_export.to_excel(writer, index=False, sheet_name="Data IKPA")
