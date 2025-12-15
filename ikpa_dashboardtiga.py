@@ -179,6 +179,7 @@ def standardize_dipa(df_raw):
     # 4) SUSUN URUTAN KOLOM
     # =============
     final_order = [
+        "Kode Satker",                 
         "Tanggal Posting Revisi",
         "Total Pagu",
         "Jenis Satker",
@@ -192,6 +193,7 @@ def standardize_dipa(df_raw):
         "Owner",
         "Digital Stamp",
     ]
+
 
     existing_cols = [c for c in final_order if c in out.columns]
     out = out[existing_cols]
@@ -372,7 +374,6 @@ def parse_dipa(df_raw):
 
     return out
 
-
 # ============================================================
 # FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
@@ -540,8 +541,13 @@ def load_data_from_github():
         df["Bulan"] = df.get("Bulan", month)
         df["Tahun"] = df.get("Tahun", year)
 
-        df["Bulan"] = df["Bulan"].astype(str).str.upper()
-        df["Tahun"] = df["Tahun"].astype(str)
+        # Fallback jika kolom Bulan kosong / NaN / spasi
+        if df["Bulan"].isna().any() or (df["Bulan"].astype(str).str.strip() == "").any():
+            df.loc[df["Bulan"].isna() | (df["Bulan"].astype(str).str.strip() == ""), "Bulan"] = month
+
+        # Final normalisasi format Bulan & Tahun
+        df["Bulan"] = df["Bulan"].astype(str).str.upper().str.strip()
+        df["Tahun"] = df["Tahun"].astype(str).str.strip()
 
         # ---------------------------
         # Normalisasi Kode Satker
@@ -597,8 +603,8 @@ def load_data_from_github():
         # ---------------------------
         if "Peringkat" not in df.columns and "Nilai Akhir (Nilai Total/Konversi Bobot)" in df.columns:
             df = df.sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)", ascending=False)
-            df["Peringkat"] = range(1, len(df) + 1)
-
+            df["Peringkat"] = range(1, len(df) + 1)        
+    
         # ---------------------------
         # Simpan ke session_state
         # ---------------------------
@@ -1231,66 +1237,86 @@ def page_dashboard():
             # Monthly / Quarterly
             # -------------------------
             if period_type in ['monthly', 'quarterly']:
-
+    
                 # ============================
-                # NORMALISASI NAMA BULAN (harus didefinisikan sekali di atas)
+                # NORMALISASI NAMA BULAN (FINAL FIX ANTI-NONE)
                 # ============================
-                MONTH_FIX = {
-                    "JAN": "JANUARI", "JANUARY": "JANUARI",
-                    "FEB": "FEBRUARI",
-                    "MAR": "MARET", "MRT": "MARET",
-                    "APR": "APRIL",
-                    "AGT": "AGUSTUS", "AUG": "AGUSTUS",
-                    "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER",
-                    "OKT": "OKTOBER", "OCT": "OKTOBER",
-                    "DES": "DESEMBER", "DEC": "DESEMBER"
-                }
 
                 import re
-                def normalize_month(b):
-                    b = re.sub(r'[^A-Z]', '', str(b).upper())
-                    return MONTH_FIX.get(b, b)
+
+                MONTH_ALIASES = {
+                    'JAN': 'JANUARI', 'JANUARY': 'JANUARI',
+                    'FEB': 'FEBRUARI', 'PEB': 'FEBRUARI', 'PEBRUARI': 'FEBRUARI',
+                    'MAR': 'MARET', 'MRT': 'MARET',
+                    'APR': 'APRIL',
+                    'MEI': 'MEI',
+                    'JUN': 'JUNI',
+                    'JUL': 'JULI',
+                    'AGU': 'AGUSTUS', 'AGUST': 'AGUSTUS',
+                    'SEP': 'SEPTEMBER', 'SEPT': 'SEPTEMBER',
+                    'OKT': 'OKTOBER', 'OCT': 'OKTOBER',
+                    'NOV': 'NOVEMBER', 'NOPEMBER': 'NOVEMBER',
+                    'DES': 'DESEMBER', 'DEC': 'DESEMBER'
+                }
+
+                def normalize_month_fix(x):
+                    raw = str(x).strip().upper()
+                    raw_clean = re.sub(r'[^A-Z]', '', raw)
+
+                    if raw_clean in MONTH_ALIASES:
+                        return MONTH_ALIASES[raw_clean]
+                    if raw_clean in MONTH_ORDER:
+                        return raw_clean
+
+                    for mm in MONTH_ORDER:
+                        if raw_clean.startswith(mm[:3]):
+                            return mm
+
+                    return None
 
                 # ============================
                 # Gabungkan data berdasarkan tahun
                 # ============================
+
                 df_list = []
+                raw_months_found = []     # <--- untuk debug: kita lihat bulan mentahnya apa saja
+
                 for (mon, yr), df_period in st.session_state.data_storage.items():
+
                     if str(yr).strip() == str(selected_year).strip():
 
                         temp = df_period.copy()
 
-                        # 🔥 Ambil bulan dari file
-                        temp["Bulan_raw"] = temp["Bulan"].astype(str).str.upper()
+                        # Ambil bulan asli dari file
+                        temp["Bulan_raw"] = temp["Bulan"].astype(str)
 
-                        # 🔥 Normalisasi bulan sekali saja
-                        temp["Bulan_upper"] = temp["Bulan_raw"].apply(normalize_month)
+                        # Collect raw months (debug)
+                        raw_months_found.extend(temp["Bulan_raw"].unique().tolist())
+
+                        # Normalisasi (ANTI–NONE)
+                        temp["Bulan"] = temp["Bulan_raw"].apply(normalize_month_fix)
+
+                        # Buang row dengan bulan None (tidak mungkin terjadi setelah fix)
+                        temp = temp[temp["Bulan"].notna()]
 
                         df_list.append(temp)
 
                 if not df_list:
-                    st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
+                    st.warning("Tidak ada data pada tahun ini.")
                     st.stop()
 
                 df_year = pd.concat(df_list, ignore_index=True)
-                # ============================
-                # DEBUG CEPAT
-                # ============================
-                st.write("DEBUG SAMPLE df_year:", df_year.head(15))
 
-                st.write("Unique Bulan dari file:", df_year["Bulan"].unique())
-                st.write("Unique Bulan_raw:", df_year["Bulan_raw"].unique() if "Bulan_raw" in df_year else "Bulan_raw TIDAK ADA")
-                st.write("Unique Bulan_upper:", df_year["Bulan_upper"].unique() if "Bulan_upper" in df_year else "Bulan_upper TIDAK ADA")
-
-
-                # 🔥 Bulan final = hasil normalisasi
-                df_year["Bulan"] = df_year["Bulan_upper"]
+                # DEBUG — tampilkan semua bulan asli yang masuk
+                st.write("Bulan mentah terbaca:", sorted(set(raw_months_found)))
+                st.write("Bulan setelah normalisasi:", df_year["Bulan"].unique().tolist())
 
                 # ============================
-                # Daftar bulan tersedia
+                # Daftar bulan yang valid
                 # ============================
+
                 months_available = sorted(
-                    [m for m in df_year['Bulan'].unique() if m],
+                    [m for m in df_year['Bulan'].unique() if m in MONTH_ORDER],
                     key=lambda m: MONTH_ORDER.get(m, 999)
                 )
 
@@ -2325,7 +2351,7 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
         st.write("**Preview 5 baris pertama:**")
         st.dataframe(df_std.head(5))
 
-        return df_std, int(tahun_dipa), "✅ Sukses diproses"
+        return df_std, int(tahun_dipa), 
 
     except Exception as e:
         st.error(f"❌ Error: {str(e)}")
@@ -2335,7 +2361,7 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
     
 # ------------------------------------------------------------
-# PAGE ADMIN
+# HALAMAN ADMIN
 # ------------------------------------------------------------
 def page_admin():
     st.title("🔐 Halaman Administrasi")
@@ -2481,33 +2507,52 @@ def page_admin():
                             else:
                                 df_processed["Kode Satker"] = ""
 
-                            # ==========================
-                            # 4️⃣ MERGE IKPA + DIPA
-                            # ==========================
+                            st.write("DEBUG DIPA YEAR:", st.session_state.get("DATA_DIPA_by_year", {}).keys())
+
                             df_final = df_processed.copy()
 
-                            dipa_year = None
+                            # ==========================
+                            # 🔥 MERGE IKPA + DIPA
+                            # ==========================
                             if "DATA_DIPA_by_year" in st.session_state:
                                 dipa_year = st.session_state.DATA_DIPA_by_year.get(int(upload_year))
 
-                            if dipa_year is not None and not dipa_year.empty:
+                                if dipa_year is not None and not dipa_year.empty:
+                                    dipa_year = dipa_year.copy()
 
-                                dipa_year = dipa_year.copy()
-                                dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
+                                    dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
+                                    df_final["Kode Satker"] = df_final["Kode Satker"].apply(normalize_kode_satker)
 
-                                required_cols = ["Kode Satker", "Total Pagu", "Tanggal Posting Revisi", "Jenis Satker"]
-                                dipa_year = dipa_year[[c for c in required_cols if c in dipa_year.columns]]
+                                    dipa_cols = [
+                                        "Kode Satker",
+                                        "Total Pagu",
+                                        "Revisi ke-",
+                                        "Jenis Revisi",
+                                        "Tanggal Dipa",
+                                        "Tanggal Posting Revisi",
+                                        "Jenis Satker"
+                                    ]
 
-                                df_final = df_final.merge(
-                                    dipa_year.rename(columns={"Total Pagu": "Total Pagu DIPA"}),
-                                    on="Kode Satker",
-                                    how="left"
-                                )
+                                    dipa_use = dipa_year[[c for c in dipa_cols if c in dipa_year.columns]]
 
-                            else:
-                                df_final["Jenis Satker"] = pd.NA
-                                df_final["Total Pagu DIPA"] = pd.NA
-                                df_final["Tanggal Posting Revisi"] = pd.NA
+                                    df_final = df_final.merge(
+                                        dipa_use,
+                                        on="Kode Satker",
+                                        how="left"
+                                    )
+                                else:
+                                    df_final["Total Pagu"] = pd.NA
+                                    df_final["Revisi ke-"] = pd.NA
+                                    df_final["Jenis Revisi"] = pd.NA
+                                    df_final["Tanggal Dipa"] = pd.NA
+                                    df_final["Tanggal Posting Revisi"] = pd.NA
+                                    df_final["Jenis Satker"] = pd.NA
+
+                            st.write(
+                                "DEBUG merge result:",
+                                df_final[["Kode Satker", "Total Pagu"]].head(10)
+)
+
 
                             # ==========================
                             # 5️⃣ SIMPAN SESSION STATE
