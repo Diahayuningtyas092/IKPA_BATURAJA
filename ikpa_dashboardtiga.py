@@ -3141,7 +3141,7 @@ def main():
     and st.session_state.DATA_DIPA_by_year
     and st.session_state.data_storage
     ):
-        for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
+        for (bulan, tahun), df_ikpa in list(st.session_state.data_storage.items()):
 
             dipa_year = st.session_state.DATA_DIPA_by_year.get(int(tahun))
             if dipa_year is None or dipa_year.empty:
@@ -3150,7 +3150,7 @@ def main():
             df_final = df_ikpa.copy()
 
             # ==========================
-            # 🔥 DROP KOLOM DIPA LAMA
+            # DROP KOLOM DIPA LAMA
             # ==========================
             DIPA_COLUMNS = [
                 "Total Pagu",
@@ -3196,7 +3196,7 @@ def main():
                 how="left"
             )
 
-            # 🔁 overwrite hasil IKPA
+            # OVERWRITE HASIL
             st.session_state.data_storage[(bulan, tahun)] = df_final
 
     # ============================================================
