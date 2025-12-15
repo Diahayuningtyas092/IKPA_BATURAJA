@@ -1659,378 +1659,205 @@ def page_dashboard():
 
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)
+# ============================================================
+# HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected) - FIXED
+# ============================================================
 def page_trend():
     st.title("📊 Dashboard Internal")
 
+    # ============================
+    # AUTH
+    # ============================
     if "trend_auth" not in st.session_state:
         st.session_state.trend_auth = False
 
     if not st.session_state.trend_auth:
         st.warning("🔒 Dashboard Internal memerlukan login")
-
-        password = st.text_input(
-            "Masukkan Password",
-            type="password",
-            key="trend_password"
-        )
-
+        password = st.text_input("Masukkan Password", type="password", key="trend_password")
         if st.button("Login", key="trend_login_btn"):
             if password == "109KPPN":
                 st.session_state.trend_auth = True
                 st.success("✔ Login berhasil")
+                st.rerun()
             else:
                 st.error("❌ Password salah")
-
         st.stop()
 
     # ============================
-    # DASHBOARD CONTENT
+    # DATA AVAILABILITY CHECK
     # ============================
-    st.write("✅ Login OK, masuk page_trend")
-
-    if not st.session_state.data_storage:
+    if "data_storage" not in st.session_state or not st.session_state.data_storage:
         st.warning("⚠️ Belum ada data yang diunggah.")
         return
-    
-    # Gabungkan semua data
+
+    # ============================
+    # BUILD df_all (AMAN)
+    # ============================
     all_data = []
-    for period, df in st.session_state.data_storage.items():
-        df_copy = df.copy()
-        # ensure Period & Period_Sort exist
-        df_copy['Period'] = f"{period[0]} {period[1]}"
-        df_copy['Period_Sort'] = f"{period[1]}-{period[0]}"
-        all_data.append(df_copy)
-    
+    for (bulan, tahun), df in st.session_state.data_storage.items():
+        temp = df.copy()
+        temp["Bulan"] = str(bulan).upper().strip()
+        temp["Tahun"] = pd.to_numeric(tahun, errors="coerce")
+        temp["Period"] = f"{bulan} {tahun}"
+        all_data.append(temp)
+
     if not all_data:
-        st.warning("⚠️ Belum ada data historis yang tersedia.")
+        st.warning("⚠️ Data historis kosong.")
         return
-    
+
     df_all = pd.concat(all_data, ignore_index=True)
-    st.write("df_all dibuat:", df_all.shape)
-      
-    # Analisis tren dan Early Warning System
-    # Gunakan data periode terkini
-    latest_period = sorted(st.session_state.data_storage.keys(), key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)), reverse=True)[0]
-    df_latest = st.session_state.data_storage[latest_period]
 
-    st.markdown("---")
-    st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
+    # ============================
+    # VALIDASI KOLOM WAJIB
+    # ============================
+    required_cols = [
+        "Bulan", "Tahun",
+        "Kode Satker", "Uraian Satker-RINGKAS",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    ]
+    missing = [c for c in required_cols if c not in df_all.columns]
+    if missing:
+        st.error(f"❌ Kolom wajib hilang: {missing}")
+        st.stop()
 
-    # 🎚️ Pengaturan Sumbu Y
-    st.markdown("###### Atur Skala Nilai (Sumbu Y)")
-    col_min, col_max = st.columns(2)
-    with col_min:
-        y_min_int = st.slider(
-            "Nilai Minimum (Y-Axis)",
-            min_value=0,
-            max_value=50,
-            value=50,
-            step=1,
-            key="ymin_internal"
-        )
-    with col_max:
-        y_max_int = st.slider(
-            "Nilai Maksimum (Y-Axis)",
-            min_value=51,
-            max_value=110,
-            value=110,
-            step=1,
-            key="ymax_internal"
-        )
+    # ============================
+    # BUAT KOLOM SATKER (INI KUNCI)
+    # ============================
+    df_all["Kode Satker"] = df_all["Kode Satker"].astype(str)
+    df_all["Satker"] = (
+        df_all["Kode Satker"] + " - " +
+        df_all["Uraian Satker-RINGKAS"].astype(str)
+    )
 
-    # 📊 Highlights Kinerja Satker yang Perlu Perhatian Khusus
-    col1, col2 = st.columns(2)
+    # ============================
+    # NORMALISASI BULAN
+    # ============================
+    df_all["Month_Num"] = (
+        df_all["Bulan"]
+        .astype(str)
+        .str.upper()
+        .str.strip()
+        .map(MONTH_ORDER)
+    )
 
-    with col1:
-        fig_up = create_problem_chart(
-            df_latest,
-            'Pengelolaan UP dan TUP',
-            100,
-            "Pengelolaan UP dan TUP Belum Optimal (< 100)",
-            'less',
-            y_min=y_min_int,
-            y_max=y_max_int,
-            show_yaxis=True  # Left chart shows Y-axis
-        )
-        if fig_up:
-            st.plotly_chart(fig_up, use_container_width=True)
-        else:
-            st.success("✅ Semua satker sudah optimal untuk Pengelolaan UP dan TUP")
+    invalid_months = df_all[df_all["Month_Num"].isna()]
+    if not invalid_months.empty:
+        st.error("❌ Ditemukan nama bulan tidak valid:")
+        st.dataframe(invalid_months[["Bulan", "Tahun"]].drop_duplicates())
+        st.stop()
 
-    with col2:
-        fig_output = create_problem_chart(
-            df_latest,
-            'Capaian Output',
-            100,
-            "Capaian Output Belum Optimal (< 100)",
-            'less',
-            y_min=y_min_int,
-            y_max=y_max_int,
-            show_yaxis=False  # Right chart hides Y-axis
-        )
-        if fig_output:
-            st.plotly_chart(fig_output, use_container_width=True)
-        else:
-            st.success("✅ Semua satker sudah optimal untuk Capaian Output")
-    
-    warnings = []
+    # ============================
+    # PERIOD SORT
+    # ============================
+    df_all["Tahun"] = df_all["Tahun"].astype(int)
+    df_all["Period_Sort"] = (
+        df_all["Tahun"].astype(str) + "-" +
+        df_all["Month_Num"].astype(int).astype(str).str.zfill(2)
+    )
 
+    # ============================
+    # PILIH PERIODE & METRIK
+    # ============================
     st.markdown("---")
     st.subheader("📈 Analisis Tren")
-    
+
     col1, col2, col3 = st.columns(3)
-    
+
     with col1:
-        # 🔍 DETAILED ERROR CHECKING
-        # Map month names to numbers
-        df_all['Month_Num'] = df_all['Bulan'].str.strip().str.upper().map(MONTH_ORDER)
-        
-        # Check for unmapped months
-        missing_months = df_all[df_all['Month_Num'].isna()]
-        if len(missing_months) > 0:
-            st.error("❌ **DITEMUKAN BULAN YANG TIDAK VALID:**")
-            
-            # Group by period to show which files have issues
-            problem_periods = missing_months.groupby(['Bulan', 'Tahun']).size().reset_index(name='Count')
-            
-            for _, row in problem_periods.iterrows():
-                st.warning(f"⚠️ Periode **{row['Bulan']} {row['Tahun']}** - Nama bulan '{row['Bulan']}' tidak dikenali (ditemukan di {row['Count']} baris)")
-            
-            st.info("""
-            **Solusi:**
-            1. Periksa file Excel untuk periode yang bermasalah
-            2. Pastikan nama bulan sesuai format: JANUARI, FEBRUARI, MARET, dst (huruf besar)
-            3. Upload ulang file yang bermasalah dari halaman Admin
-            """)
-            
-            # Show expected month names
-            with st.expander("📋 Lihat format bulan yang valid"):
-                st.write("Format yang diterima:")
-                st.code(", ".join(MONTH_ORDER.keys()))
-            
-            # Option to proceed with cleaned data
-            if st.checkbox("⚠️ Abaikan data bermasalah dan lanjutkan"):
-                df_all = df_all.dropna(subset=['Month_Num'])
-                st.info(f"✅ Data dibersihkan. Sisa {len(df_all)} baris.")
-            else:
-                st.stop()
-        
-        # Check for invalid years
-        invalid_years = df_all[df_all['Tahun'].isna()]
-        if len(invalid_years) > 0:
-            st.error("❌ **DITEMUKAN TAHUN YANG TIDAK VALID:**")
-            
-            problem_periods = invalid_years.groupby(['Bulan']).size().reset_index(name='Count')
-            for _, row in problem_periods.iterrows():
-                st.warning(f"⚠️ Bulan **{row['Bulan']}** - Tahun tidak valid (ditemukan di {row['Count']} baris)")
-            
-            st.stop()
-        
-        # Try to create Period_Sort with detailed error handling
-        try:
-            # Convert to int safely
-            df_all['Tahun_Int'] = df_all['Tahun'].astype(int)
-            df_all['Month_Num_Int'] = df_all['Month_Num'].astype(int)
-            
-            # Create Period_Sort
-            df_all['Period_Sort'] = df_all.apply(
-                lambda x: f"{x['Tahun_Int']:04d}-{x['Month_Num_Int']:02d}", 
-                axis=1
-            )
-                        
-        except Exception as e:
-            st.error(f"❌ **ERROR saat membuat Period_Sort:** {str(e)}")
-            
-            # Show problematic rows
-            st.write("**Baris yang bermasalah:**")
-            problem_cols = ['Bulan', 'Tahun', 'Month_Num', 'Kode Satker', 'Uraian Satker']
-            st.dataframe(df_all[problem_cols].head(20))
-            
-            st.stop()
-        
-        # Now create the selectbox
-        available_periods = sorted(df_all['Period_Sort'].unique())
-        start_period = st.selectbox(
-            "Periode Awal",
-            options=available_periods,
-            index=0
-        )
-    
+        periods = sorted(df_all["Period_Sort"].unique())
+        start_period = st.selectbox("Periode Awal", periods, index=0)
+
     with col2:
-        end_period = st.selectbox(
-            "Periode Akhir",
-            options=available_periods,
-            index=len(available_periods) - 1
-        )
-    
-    # Filter berdasarkan periode
-    df_filtered = df_all[
-        (df_all['Period_Sort'] >= start_period) & 
-        (df_all['Period_Sort'] <= end_period)
-    ]
-    
+        end_period = st.selectbox("Periode Akhir", periods, index=len(periods)-1)
+
     with col3:
-        # Pilihan metrik
-        metric_options = {
-            'Nilai Akhir (Nilai Total/Konversi Bobot)': 'Nilai Akhir (Nilai Total/Konversi Bobot)',
-            'Kualitas Perencanaan Anggaran': 'Kualitas Perencanaan Anggaran',
-            'Kualitas Pelaksanaan Anggaran': 'Kualitas Pelaksanaan Anggaran',
-            'Kualitas Hasil Pelaksanaan Anggaran': 'Kualitas Hasil Pelaksanaan Anggaran',
-            'Revisi DIPA': 'Revisi DIPA',
-            'Deviasi Halaman III DIPA': 'Deviasi Halaman III DIPA',
-            'Penyerapan Anggaran': 'Penyerapan Anggaran',
-            'Belanja Kontraktual': 'Belanja Kontraktual',
-            'Penyelesaian Tagihan': 'Penyelesaian Tagihan',
-            'Pengelolaan UP dan TUP': 'Pengelolaan UP dan TUP',
-            'Capaian Output': 'Capaian Output'
-        }
-        
-        selected_metric = st.selectbox(
-            "Metrik yang Ditampilkan",
-            options=list(metric_options.keys()),
-            index=0
-        )
-    
-    # Pilih satker
-    # All keys are (month_str, year_str). To sort by year then month, create sortable key:
-    def period_sort_key(k):
-        mon, yr = k
-        # convert year to int if possible, month remain string but sorting will be stable for same year
-        try:
-            y = int(yr)
-        except Exception as e:
-            st.warning(f"⚠️ Tidak bisa convert tahun '{yr}' untuk periode {mon}: {e}")
-            y = 0
-        return (y, mon)
+        metric_options = [
+            "Nilai Akhir (Nilai Total/Konversi Bobot)",
+            "Kualitas Perencanaan Anggaran",
+            "Kualitas Pelaksanaan Anggaran",
+            "Kualitas Hasil Pelaksanaan Anggaran",
+            "Revisi DIPA",
+            "Deviasi Halaman III DIPA",
+            "Penyerapan Anggaran",
+            "Belanja Kontraktual",
+            "Penyelesaian Tagihan",
+            "Pengelolaan UP dan TUP",
+            "Capaian Output"
+        ]
+        selected_metric = st.selectbox("Metrik", metric_options)
 
-    try:
-        latest_period = sorted(st.session_state.data_storage.keys(), key=period_sort_key, reverse=True)[0]
-        latest_df = st.session_state.data_storage[latest_period].copy()
-    except Exception as e:
-        st.error(f"❌ Error mendapatkan periode terbaru: {e}")
-        st.write("**Periode yang tersedia:**")
-        st.write(list(st.session_state.data_storage.keys()))
-        st.stop()
-    
-    # Make sure 'Kode Satker' exists and is a string
-    if 'Kode Satker' in latest_df.columns:
-        latest_df['Kode Satker'] = latest_df['Kode Satker'].astype(str)
-    else:
-        latest_df['Kode Satker'] = latest_df.index.astype(str)
+    # ============================
+    # FILTER DATA
+    # ============================
+    df_plot = df_all[
+        (df_all["Period_Sort"] >= start_period) &
+        (df_all["Period_Sort"] <= end_period)
+    ]
 
-    bottom_10_default = latest_df.nsmallest(10, 'Nilai Akhir (Nilai Total/Konversi Bobot)')['Kode Satker'].astype(str).tolist()
-    
-    # use the new 'Satker' column for selection (unique)
-    all_satker = sorted(df_all['Satker'].unique())
+    if df_plot.empty:
+        st.warning("Tidak ada data pada rentang periode ini.")
+        return
+
+    # ============================
+    # PILIH SATKER
+    # ============================
+    all_satker = sorted(df_plot["Satker"].unique())
     selected_satker = st.multiselect(
         "Pilih Satker",
         options=all_satker,
-        default=[s for s in all_satker if any(str(code) in s for code in bottom_10_default)][:10]
+        default=all_satker[:5]
     )
-    
-    if not selected_satker:
-        st.warning("Silakan pilih minimal satu satker untuk melihat tren.")
-        return
-    
-    # Filter berdasarkan satker (use 'Satker' to avoid duplicate names)
-    df_plot = df_filtered[df_filtered['Satker'].isin(selected_satker)]
-    
-    # Buat line chart
-    fig = go.Figure()
-    
-    try:
-        for satker in selected_satker:
-            df_satker = df_plot[df_plot['Satker'] == satker].sort_values('Period_Sort')
 
-            # Ensure x-axis uses correct chronological month order
-            categories = [f"{m} {y}" for y, m in sorted(
-                {(int(x['Tahun']), x['Bulan'].upper()) for _, x in df_all.iterrows()},
-                key=lambda t: (t[0], MONTH_ORDER.get(t[1], 0))
-            )]
-            
-            fig.add_trace(go.Scatter(
-                x=pd.Categorical(
-                    df_satker['Period'],
-                    categories=categories,
-                    ordered=True
-                ),
-                y=df_satker[selected_metric],
-                mode='lines+markers',
-                name=satker,
-                hovertemplate='<b>%{fullData.name}</b><br>Periode: %{x}<br>Nilai: %{y:.2f}<extra></extra>'
-            ))
-    except Exception as e:
-        st.error(f"❌ Error membuat chart: {str(e)}")
-        st.write("**Debug Info:**")
-        st.write(f"Selected satker: {selected_satker}")
-        st.write(f"df_plot shape: {df_plot.shape}")
-        st.write(f"Unique periods in df_plot: {df_plot['Period'].unique()}")
-        st.stop()
-    
+    if not selected_satker:
+        st.warning("Pilih minimal satu satker.")
+        return
+
+    # ============================
+    # LINE CHART
+    # ============================
+    fig = go.Figure()
+
+    for satker in selected_satker:
+        df_s = df_plot[df_plot["Satker"] == satker].sort_values("Period_Sort")
+        fig.add_trace(go.Scatter(
+            x=df_s["Period"],
+            y=df_s[selected_metric],
+            mode="lines+markers",
+            name=satker
+        ))
+
     fig.update_layout(
         title=f"Tren {selected_metric}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
         height=600,
-        hovermode='x unified',
-        legend=dict(
-            orientation="v",
-            yanchor="top",
-            y=1,
-            xanchor="left",
-            x=1.02
-        )
+        hovermode="x unified"
     )
-    
+
     st.plotly_chart(fig, use_container_width=True)
 
-    # Early Warning Satker Tren Menurun
-    warnings = []  # Initialize warnings list
-    
+    # ============================
+    # EARLY WARNING
+    # ============================
+    warnings = []
     for satker in selected_satker:
-        df_satker = df_plot[df_plot['Satker'] == satker].sort_values('Period_Sort')
-        
-        if len(df_satker) >= 2:
-            values = df_satker[selected_metric].values
-            
-            # Cek tren menurun (2 periode terakhir)
-            if len(values) >= 2:
-                last_value = values[-1]
-                prev_value = values[-2]
-                
-                if last_value < prev_value:
-                    decrease = prev_value - last_value
-                    warnings.append({
-                        'Satker': satker,
-                        'Metrik': selected_metric,
-                        'Nilai Sebelumnya': prev_value,
-                        'Nilai Terkini': last_value,
-                        'Penurunan': decrease
-                    })
-    
+        vals = df_plot[df_plot["Satker"] == satker].sort_values("Period_Sort")[selected_metric].dropna()
+        if len(vals) >= 2 and vals.iloc[-1] < vals.iloc[-2]:
+            warnings.append((satker, vals.iloc[-2], vals.iloc[-1]))
+
     if warnings:
-        st.warning(f"⚠️ Ditemukan {len(warnings)} satker dengan tren menurun!")
-        
-        for w in warnings:
-            st.markdown(f"""
-            **{w['Satker']}**  
-            - Metrik: {w['Metrik']}
-            - Nilai sebelumnya: {w['Nilai Sebelumnya']:.2f}
-            - Nilai terkini: {w['Nilai Terkini']:.2f}
-            - Penurunan: {w['Penurunan']:.2f} poin
-            """)
-            st.markdown("---")
+        st.warning("⚠️ Satker dengan tren menurun:")
+        for s, prev, curr in warnings:
+            st.markdown(f"**{s}**: {prev:.2f} → {curr:.2f}")
     else:
-        st.success("✅ Tidak ada satker dengan tren menurun pada periode yang dipilih!")
+        st.success("✅ Tidak ada tren menurun.")
+
         
 # ============================================================
 # 🔐 HALAMAN 3: ADMIN 
 # ============================================================
 # ======================================================================================
-# PROCESS IKPA
-# ======================================================================================
-# ======================================================================================
-# DETECT DIPA HEADER (ROBUST VERSION)
+# DETECT DIPA HEADER
 # ======================================================================================
 def detect_dipa_header(uploaded_file):
     """
