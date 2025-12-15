@@ -654,6 +654,11 @@ def merge_ikpa_dipa_safe():
     st.session_state.data_merged = merged
     st.session_state.merged_done = True
 
+def merge_ikpa_dipa_safe():
+    # Contoh implementasi dummy, ganti dengan fungsi asli
+    st.session_state.merged_data = "Data IKPA + DIPA digabung"
+    st.info("Fungsi merge_ikpa_dipa_safe() dipanggil.")
+
 
 # ============================
 #  BACA TEMPLATE FILE
@@ -2361,19 +2366,9 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 # ------------------------------------------------------------
 # PAGE ADMIN
 # ------------------------------------------------------------
-import streamlit as st
-import pandas as pd
-
-# ============================================================
-# 🔹 Pastikan fungsi merge_ikpa_dipa_safe sudah ada
-# ============================================================
-def merge_ikpa_dipa_safe():
-    # Contoh implementasi dummy, ganti dengan fungsi asli
-    st.session_state.merged_data = "Data IKPA + DIPA digabung"
-    st.info("Fungsi merge_ikpa_dipa_safe() dipanggil.")
-
+def page_admin():
     # ============================================================
-    # 🔑 LOGIN ADMIN
+    # 🔑 Login Admin
     # ============================================================
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
@@ -2408,7 +2403,6 @@ def merge_ikpa_dipa_safe():
             if "DATA_DIPA_by_year" in st.session_state:
                 for tahun, df in st.session_state.DATA_DIPA_by_year.items():
                     st.write(f"**{tahun}:** {len(df)} baris")
-                    # Pastikan kolom ada sebelum dicek
                     if 'Kode Satker' in df.columns:
                         st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
                     if 'Satker' in df.columns:
@@ -2417,10 +2411,7 @@ def merge_ikpa_dipa_safe():
                         st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
             else:
                 st.warning("DATA_DIPA_by_year belum dimuat")
-        
         st.markdown("---")
-
-
 
     # ============================================================
     # 📌 TAB MENU
@@ -2432,6 +2423,7 @@ def merge_ikpa_dipa_safe():
         "📋 Download Template",
         "🕓 Riwayat Aktivitas"
     ])
+
 
     # ============================================================
     # TAB 1: UPLOAD DATA (IKPA, DIPA, Referensi)
@@ -3057,7 +3049,6 @@ def merge_ikpa_dipa_safe():
             file_name="Template_Data_Referensi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
-
 
 # ===============================
 # MAIN APP 
