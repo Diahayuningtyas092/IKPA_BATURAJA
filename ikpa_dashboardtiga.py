@@ -2361,8 +2361,16 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 # ------------------------------------------------------------
 # PAGE ADMIN
 # ------------------------------------------------------------
-def page_admin():
-    st.title("🔐 Halaman Administrasi")
+import streamlit as st
+import pandas as pd
+
+# ============================================================
+# 🔹 Pastikan fungsi merge_ikpa_dipa_safe sudah ada
+# ============================================================
+def merge_ikpa_dipa_safe():
+    # Contoh implementasi dummy, ganti dengan fungsi asli
+    st.session_state.merged_data = "Data IKPA + DIPA digabung"
+    st.info("Fungsi merge_ikpa_dipa_safe() dipanggil.")
 
     # ============================================================
     # 🔑 LOGIN ADMIN
@@ -2377,32 +2385,41 @@ def page_admin():
             if password == "109KPPN":
                 st.session_state.authenticated = True
                 st.success("✔ Login berhasil")
-                st.rerun()
+                st.experimental_rerun()
             else:
                 st.error("❌ Password salah")
-        return
+        st.stop()  # Hentikan eksekusi sampai login berhasil
 
     st.success("✔ Anda login sebagai Admin")
 
-    # ===== Tombol Gabungkan IKPA + DIPA =====
+    # ============================================================
+    # 🔹 Tombol Gabungkan IKPA + DIPA
+    # ============================================================
     if st.button("🔗 Gabungkan IKPA + DIPA"):
         merge_ikpa_dipa_safe()
         st.success("✅ IKPA dan DIPA berhasil digabung!")
 
-    # Sidebar Admin
+    # ============================================================
+    # 🔹 Sidebar Admin
+    # ============================================================
     with st.sidebar:
         st.markdown("### 🔍 Debug DIPA")
         if st.button("Cek Status DIPA"):
             if "DATA_DIPA_by_year" in st.session_state:
                 for tahun, df in st.session_state.DATA_DIPA_by_year.items():
                     st.write(f"**{tahun}:** {len(df)} baris")
-                    st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
-                    st.write(f"- Satker kosong: {df['Satker'].eq('').sum()}")
-                    st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
+                    # Pastikan kolom ada sebelum dicek
+                    if 'Kode Satker' in df.columns:
+                        st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
+                    if 'Satker' in df.columns:
+                        st.write(f"- Satker kosong: {df['Satker'].eq('').sum()}")
+                    if 'Total Pagu' in df.columns:
+                        st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
             else:
                 st.warning("DATA_DIPA_by_year belum dimuat")
         
         st.markdown("---")
+
 
 
     # ============================================================
