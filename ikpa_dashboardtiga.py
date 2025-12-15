@@ -2385,17 +2385,7 @@ def page_admin():
 
     st.success("✔ Anda login sebagai Admin")
 
-    # ==========================
-    # ♻️ RESET SESSION (DEBUG)
-    # ==========================
-    with st.expander("🛠️ Debug / Maintenance"):
-        if st.button("♻️ RESET DATA (DEBUG)"):
-            st.session_state.data_storage = {}
-            st.session_state.DATA_DIPA_by_year = {}
-            st.success("Session state di-reset, silakan upload ulang")
-            st.stop()
-
-        st.markdown("---")
+    st.markdown("---")
 
     # ============================================================
     # 📌 TAB MENU
