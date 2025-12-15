@@ -2851,7 +2851,7 @@ def page_admin():
     # TAB 3: DOWNLOAD DATA
     # ============================================================
     with tab3:
-        st.subheader("📥 Download IKPA + DIPA Terbaru")
+        st.subheader("📥 Download IKPA")
 
         if "data_storage" not in st.session_state or not st.session_state.data_storage:
             st.info("🔹 Data belum tersedia untuk diunduh")
