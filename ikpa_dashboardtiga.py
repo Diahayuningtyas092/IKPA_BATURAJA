@@ -606,59 +606,6 @@ def load_data_from_github():
 
     st.success(f"✅ {len(st.session_state.data_storage)} file berhasil dimuat dari GitHub.")
 
-#MERGE DIPA IKPA
-def merge_ikpa_dipa_safe():
-    merged = {}
-
-    for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
-        df_final = df_ikpa.copy()
-
-        dipa = st.session_state.DATA_DIPA_by_year.get(int(tahun))
-        if dipa is None or dipa.empty:
-            merged[(bulan, tahun)] = df_final
-            continue
-
-        # drop kolom lama
-        df_final = df_final.drop(
-            columns=[
-                "Total Pagu",
-                "Revisi ke-",
-                "Jenis Revisi",
-                "Tanggal Dipa",
-                "Tanggal Posting Revisi",
-                "Jenis Satker",
-            ],
-            errors="ignore"
-        )
-
-        # normalisasi
-        df_final["Kode Satker"] = df_final["Kode Satker"].astype(str).apply(normalize_kode_satker)
-        dipa = dipa.copy()
-        dipa["Kode Satker"] = dipa["Kode Satker"].astype(str).apply(normalize_kode_satker)
-
-        dipa_use = dipa[
-            [c for c in [
-                "Kode Satker",
-                "Total Pagu",
-                "Revisi ke-",
-                "Jenis Revisi",
-                "Tanggal Dipa",
-                "Tanggal Posting Revisi",
-                "Jenis Satker"
-            ] if c in dipa.columns]
-        ]
-
-        df_final = df_final.merge(dipa_use, on="Kode Satker", how="left")
-        merged[(bulan, tahun)] = df_final
-
-    st.session_state.data_merged = merged
-    st.session_state.merged_done = True
-
-def merge_ikpa_dipa_safe():
-    # Contoh implementasi dummy, ganti dengan fungsi asli
-    st.session_state.merged_data = "Data IKPA + DIPA digabung"
-    st.info("Fungsi merge_ikpa_dipa_safe() dipanggil.")
-
 
 # ============================
 #  BACA TEMPLATE FILE
@@ -2363,21 +2310,82 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
         return None, None, f"❌ Error: {str(e)}"
 
     
-# ------------------------------------------------------------
-# PAGE ADMIN
-# ------------------------------------------------------------
+import streamlit as st
+import pandas as pd
+import io
+from github import Github, Auth
+import base64
+
+# ============================================================
+# 🔹 Fungsi merge IKPA + DIPA otomatis
+# ============================================================
+def merge_ikpa_dipa_auto():
+    """Gabungkan semua data IKPA + DIPA otomatis tanpa tombol"""
+    if "data_storage" not in st.session_state or "DATA_DIPA_by_year" not in st.session_state:
+        st.warning("⚠️ Data IKPA atau DIPA belum dimuat")
+        return
+
+    merged_result = {}
+    for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
+        df_final = df_ikpa.copy()
+        dipa = st.session_state.DATA_DIPA_by_year.get(int(tahun))
+        if dipa is not None:
+            # Merge berdasarkan Kode Satker
+            df_final = pd.merge(
+                df_final, dipa,
+                on="Kode Satker",
+                how="left",
+                suffixes=("_IKPA", "_DIPA")
+            )
+        merged_result[(bulan, tahun)] = df_final
+
+    st.session_state.merged_data = merged_result
+    st.success("✅ Semua IKPA dan DIPA berhasil digabung otomatis")
+
+# ============================================================
+# 🔹 Fungsi convert DataFrame ke Excel bytes
+# ============================================================
+def to_excel_bytes(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False)
+    return output.getvalue()
+
+# ============================================================
+# 🔹 Fungsi push file ke GitHub
+# ============================================================
+def push_to_github(file_bytes, repo_path, repo_name, token, commit_message):
+    g = Github(auth=Auth.Token(token))
+    repo = g.get_repo(repo_name)
+
+    try:
+        contents = repo.get_contents(repo_path)
+        repo.update_file(contents.path, commit_message, file_bytes, contents.sha)
+        st.success(f"✅ File {repo_path} berhasil diupdate di GitHub")
+    except Exception:
+        repo.create_file(repo_path, commit_message, file_bytes)
+        st.success(f"✅ File {repo_path} berhasil dibuat di GitHub")
+
+# ============================================================
+# 🔹 Menu Admin
+# ============================================================
 def page_admin():
     # ============================================================
     # 🔑 Login Admin
     # ============================================================
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
+    if "password_input" not in st.session_state:
+        st.session_state.password_input = ""
 
     if not st.session_state.authenticated:
-        st.warning("🔒 Halaman ini memerlukan autentikasi Admin")
-        password = st.text_input("Masukkan Password Admin", type="password")
+        password = st.text_input(
+            "Masukkan Password Admin",
+            type="password",
+            key="password_input"
+        )
         if st.button("Login"):
-            if password == "109KPPN":
+            if st.session_state.password_input == "109KPPN":
                 st.session_state.authenticated = True
                 st.success("✔ Login berhasil")
                 st.experimental_rerun()
@@ -2388,11 +2396,9 @@ def page_admin():
     st.success("✔ Anda login sebagai Admin")
 
     # ============================================================
-    # 🔹 Tombol Gabungkan IKPA + DIPA
+    # 🔹 Merge otomatis setelah login
     # ============================================================
-    if st.button("🔗 Gabungkan IKPA + DIPA"):
-        merge_ikpa_dipa_safe()
-        st.success("✅ IKPA dan DIPA berhasil digabung!")
+    merge_ikpa_dipa_auto()
 
     # ============================================================
     # 🔹 Sidebar Admin
@@ -2423,7 +2429,6 @@ def page_admin():
         "📋 Download Template",
         "🕓 Riwayat Aktivitas"
     ])
-
 
     # ============================================================
     # TAB 1: UPLOAD DATA (IKPA, DIPA, Referensi)
@@ -2840,52 +2845,36 @@ def page_admin():
     # TAB 3: DOWNLOAD DATA
     # ============================================================
     with tab3:
-        # DOWNLOAD DATA IKPA
-        st.subheader("📥 Download Data IKPA")
-
-        # Jika belum ada data IKPA sama sekali
-        if "data_storage" not in st.session_state or not st.session_state.data_storage:
-            st.info("ℹ️ Belum ada data IKPA.")
+        st.subheader("📥 Download & Update GitHub")
+        if "merged_data" not in st.session_state or not st.session_state.merged_data:
+            st.info("🔹 Data belum tersedia untuk diunduh")
         else:
-            # Tampilkan periode yang tersedia
-            available_periods = sorted(st.session_state.data_storage.keys(), reverse=True)
+            github_token = st.secrets.get("GITHUB_TOKEN")
+            github_repo = st.secrets.get("GITHUB_REPO")
 
-            period_to_download = st.selectbox(
-                "Pilih periode untuk download",
-                options=available_periods,
-                format_func=lambda x: f"{x[0].capitalize()} {x[1]}"
-            )
+            for (bulan, tahun), df in st.session_state.merged_data.items():
+                filename = f"IKPA_DIPA_{bulan}_{tahun}.xlsx"
+                excel_bytes = to_excel_bytes(df)
 
-            df_download = st.session_state.data_storage[period_to_download].copy()
-
-            # Siapkan file Excel untuk di-download
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df_excel = df_download.drop(
-                    ['Bobot', 'Nilai Terbobot'], axis=1, errors='ignore'
+                # Tombol download lokal
+                st.download_button(
+                    label=f"Download {filename}",
+                    data=excel_bytes,
+                    file_name=filename,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
-                df_excel.to_excel(writer, index=False, sheet_name='Data IKPA')
 
-                # Format header agar cantik
-                try:
-                    workbook = writer.book
-                    worksheet = writer.sheets['Data IKPA']
-                    for cell in worksheet[1]:
-                        cell.font = Font(bold=True, color="FFFFFF")
-                        cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                        cell.alignment = Alignment(horizontal="center", vertical="center")
-                except Exception:
-                    pass
-
-            output.seek(0)
-
-            st.download_button(
-                label="📥 Download Excel IKPA",
-                data=output,
-                file_name=f"IKPA_{period_to_download[0]}_{period_to_download[1]}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
- 
+                # Push otomatis ke GitHub
+                if github_token and github_repo:
+                    repo_path = f"merged/{filename}"  # path di repo
+                    push_to_github(
+                        file_bytes=excel_bytes,
+                        repo_path=repo_path,
+                        repo_name=github_repo,
+                        token=github_token,
+                        commit_message=f"Update merged IKPA+DIPA {bulan} {tahun}"
+                    )
+                    
         # ===========================
         # Submenu Download Data DIPA
         # ===========================
