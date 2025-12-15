@@ -1662,10 +1662,10 @@ def page_dashboard():
 def page_trend():
     st.title("📊 Dashboard Internal")
 
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
+    if "trend_auth" not in st.session_state:
+        st.session_state.trend_auth = False
 
-    if not st.session_state.authenticated:
+    if not st.session_state.trend_auth:
         st.warning("🔒 Dashboard Internal memerlukan login")
 
         password = st.text_input(
@@ -1676,7 +1676,7 @@ def page_trend():
 
         if st.button("Login", key="trend_login_btn"):
             if password == "109KPPN":
-                st.session_state.authenticated = True
+                st.session_state.trend_auth = True
                 st.success("✔ Login berhasil")
             else:
                 st.error("❌ Password salah")
@@ -1689,7 +1689,7 @@ def page_trend():
     st.write("✅ Login OK, masuk page_trend")
 
     if not st.session_state.data_storage:
-        st.warning("⚠️ Belum ada data yang diunggah. Silakan unggah data melalui halaman Admin.")
+        st.warning("⚠️ Belum ada data yang diunggah.")
         return
     
     # Gabungkan semua data
@@ -2389,14 +2389,10 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 def page_admin():
     st.title("🔐 Halaman Administrasi")
 
-    # init state
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
+    if "admin_auth" not in st.session_state:
+        st.session_state.admin_auth = False
 
-    # ============================
-    # LOGIN FORM
-    # ============================
-    if not st.session_state.authenticated:
+    if not st.session_state.admin_auth:
         st.warning("🔒 Halaman ini memerlukan autentikasi Admin")
 
         password = st.text_input(
@@ -2407,12 +2403,12 @@ def page_admin():
 
         if st.button("Login", key="admin_login_btn"):
             if password == "109KPPN":
-                st.session_state.authenticated = True
+                st.session_state.admin_auth = True
                 st.success("✔ Login berhasil")
             else:
                 st.error("❌ Password salah")
 
-        st.stop()   
+        st.stop()
 
     # ============================
     # ADMIN CONTENT
@@ -3258,6 +3254,17 @@ def main():
 
     📧 Support: ameer.noor@kemenkeu.go.id
     """)
+
+    # Reset password field saat pindah halaman
+    if "last_page" not in st.session_state:
+        st.session_state.last_page = st.session_state.page
+
+    if st.session_state.page != st.session_state.last_page:
+        for k in ["admin_password", "trend_password"]:
+            if k in st.session_state:
+                del st.session_state[k]
+        st.session_state.last_page = st.session_state.page
+
 
     # ===============================
     # 🔹 Routing Halaman
