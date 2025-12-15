@@ -612,6 +612,48 @@ def load_data_from_github():
 
     st.success(f"✅ {len(st.session_state.data_storage)} file berhasil dimuat dari GitHub.")
 
+#MERGE DIPA DAN IKPA
+def merge_ikpa_dipa_after_load():
+    if "DATA_DIPA_by_year" not in st.session_state:
+        return
+
+    for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
+
+        try:
+            tahun_int = int(tahun)
+        except:
+            continue
+
+        dipa_year = st.session_state.DATA_DIPA_by_year.get(tahun_int)
+
+        if dipa_year is None or dipa_year.empty:
+            continue
+
+        df_final = df_ikpa.copy()
+
+        df_final["Kode Satker"] = df_final["Kode Satker"].astype(str).apply(normalize_kode_satker)
+        dipa_year = dipa_year.copy()
+        dipa_year["Kode Satker"] = dipa_year["Kode Satker"].astype(str).apply(normalize_kode_satker)
+
+        dipa_cols = [
+            "Kode Satker",
+            "Total Pagu",
+            "Revisi ke-",
+            "Jenis Revisi",
+            "Tanggal Dipa",
+            "Tanggal Posting Revisi",
+            "Jenis Satker"
+        ]
+
+        dipa_use = dipa_year[[c for c in dipa_cols if c in dipa_year.columns]]
+
+        df_final = df_final.merge(
+            dipa_use,
+            on="Kode Satker",
+            how="left"
+        )
+
+        st.session_state.data_storage[(bulan, tahun)] = df_final
 
 # ============================
 #  BACA TEMPLATE FILE
@@ -2504,52 +2546,6 @@ def page_admin():
                                 df_processed["Kode Satker"] = df_processed["Kode Satker"].astype(str).apply(normalize_kode_satker)
                             else:
                                 df_processed["Kode Satker"] = ""
-
-                            st.write("DEBUG DIPA YEAR:", st.session_state.get("DATA_DIPA_by_year", {}).keys())
-
-                            df_final = df_processed.copy()
-
-                            # ==========================
-                            # 🔥 MERGE IKPA + DIPA
-                            # ==========================
-                            if "DATA_DIPA_by_year" in st.session_state:
-                                dipa_year = st.session_state.DATA_DIPA_by_year.get(int(upload_year))
-
-                                if dipa_year is not None and not dipa_year.empty:
-                                    dipa_year = dipa_year.copy()
-
-                                    dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
-                                    df_final["Kode Satker"] = df_final["Kode Satker"].apply(normalize_kode_satker)
-
-                                    dipa_cols = [
-                                        "Kode Satker",
-                                        "Total Pagu",
-                                        "Revisi ke-",
-                                        "Jenis Revisi",
-                                        "Tanggal Dipa",
-                                        "Tanggal Posting Revisi",
-                                        "Jenis Satker"
-                                    ]
-
-                                    dipa_use = dipa_year[[c for c in dipa_cols if c in dipa_year.columns]]
-
-                                    df_final = df_final.merge(
-                                        dipa_use,
-                                        on="Kode Satker",
-                                        how="left"
-                                    )
-                                else:
-                                    df_final["Total Pagu"] = pd.NA
-                                    df_final["Revisi ke-"] = pd.NA
-                                    df_final["Jenis Revisi"] = pd.NA
-                                    df_final["Tanggal Dipa"] = pd.NA
-                                    df_final["Tanggal Posting Revisi"] = pd.NA
-                                    df_final["Jenis Satker"] = pd.NA
-
-                            st.write(
-                                "DEBUG merge result:",
-                                df_final[["Kode Satker", "Total Pagu"]].head(10)
-)
 
 
                             # ==========================
