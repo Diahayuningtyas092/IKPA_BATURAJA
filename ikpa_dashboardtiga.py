@@ -41,6 +41,9 @@ if 'data_storage' not in st.session_state:
 if 'activity_log' not in st.session_state:
     st.session_state.activity_log = []  # Each entry: dict with timestamp, action, period, status
 
+if "ikpa_dipa_merged" not in st.session_state:
+    st.session_state.ikpa_dipa_merged = False
+
 # -------------------------
 # standardize_dipa
 # -------------------------
@@ -2330,26 +2333,44 @@ def get_latest_dipa(dipa_df):
     return latest_dipa
 
 def merge_ikpa_dipa_auto():
+    
+    if st.session_state.get("ikpa_dipa_merged", False):
+        return
+
+    if "data_storage" not in st.session_state:
+        return
+
+    if "DATA_DIPA_by_year" not in st.session_state:
+        return
+
     for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
-        df_final = df_ikpa.copy()
+
         dipa = st.session_state.DATA_DIPA_by_year.get(int(tahun))
-        if dipa is not None:
-            dipa_latest = get_latest_dipa(dipa)
-            dipa_selected = dipa_latest[['Kode Satker', 'Total Pagu', 'Jenis Satker']]
+        if dipa is None:
+            continue
 
-            # Hapus kolom lama jika ada supaya tidak duplikat
-            df_final = df_final.drop(columns=['Total Pagu', 'Jenis Satker'], errors='ignore')
+        df_final = df_ikpa.copy()
+        dipa_latest = get_latest_dipa(dipa)
 
-            # Merge langsung → update IKPA lama
-            df_merged = pd.merge(
-                df_final,
-                dipa_selected,
-                on='Kode Satker',
-                how='left'
-            )
+        # NORMALISASI KUNCI (WAJIB)
+        df_final["Kode Satker"] = df_final["Kode Satker"].astype(str).str.zfill(6)
+        dipa_latest["Kode Satker"] = dipa_latest["Kode Satker"].astype(str).str.zfill(6)
 
-            # Update data_storage → IKPA lama sekarang berisi gabungan terbaru
-            st.session_state.data_storage[(bulan, tahun)] = df_merged
+        dipa_selected = dipa_latest[['Kode Satker', 'Total Pagu', 'Jenis Satker']]
+
+        df_final = df_final.drop(columns=['Total Pagu', 'Jenis Satker'], errors='ignore')
+
+        df_merged = pd.merge(
+            df_final,
+            dipa_selected,
+            on='Kode Satker',
+            how='left'
+        )
+
+        st.session_state.data_storage[(bulan, tahun)] = df_merged
+
+    st.session_state.ikpa_dipa_merged = True
+
 
 # ============================================================
 # 🔹 Fungsi convert DataFrame ke Excel bytes
@@ -2386,9 +2407,9 @@ def push_to_github(file_bytes, repo_path, repo_name, token, commit_message):
 def page_admin():
     st.title("🔐 Halaman Administrasi")
 
-    # ============================================================
+    # ===============================
     # 🔑 LOGIN ADMIN
-    # ============================================================
+    # ===============================
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
@@ -2405,12 +2426,36 @@ def page_admin():
         return
 
     st.success("✔ Anda login sebagai Admin")
-    
-    # ============================================================
-    # 🔹 Merge otomatis setelah login
-    # ============================================================
-    merge_ikpa_dipa_auto()
 
+    # ===============================
+    # 🔄 KONTROL DATA (INI INTINYA)
+    # ===============================
+    st.subheader("🔄 Manajemen Data")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("🔄 Load & Olah Data"):
+            with st.spinner("Memuat & mengolah data..."):
+                # RESET FLAG WAJIB
+                st.session_state.ikpa_dipa_merged = False
+
+                load_DATA_DIPA_from_github()   # DIPA → parse
+                load_data_from_github()        # IKPA
+                merge_ikpa_dipa_auto()         # GABUNG
+
+            st.success("✅ Data berhasil diproses & digabung")
+
+    with col2:
+        if st.button("🧹 Reset Status Merge"):
+            st.session_state.ikpa_dipa_merged = False
+            st.info("Status merge di-reset. Data siap diproses ulang.")
+
+    st.divider()
+
+    # ===============================
+    # 🔍 SIDEBAR DEBUG (AMAN)
+    # ===============================
     with st.sidebar:
         st.markdown("### 🔍 Debug DIPA")
         if st.button("Cek Status DIPA"):
@@ -2418,16 +2463,13 @@ def page_admin():
                 for tahun, df in st.session_state.DATA_DIPA_by_year.items():
                     st.write(f"**{tahun}:** {len(df)} baris")
                     st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
-                    st.write(f"- Satker kosong: {df['Satker'].eq('').sum()}")
                     st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
             else:
                 st.warning("DATA_DIPA_by_year belum dimuat")
 
-        st.markdown("---")
-
-    # ============================================================
+    # ===============================
     # 📌 TAB MENU
-    # ============================================================
+    # ===============================
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📤 Upload Data",
         "🗑️ Hapus Data",
