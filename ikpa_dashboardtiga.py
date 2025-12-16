@@ -2437,25 +2437,38 @@ def page_admin():
     # ===============================
     st.subheader("Manajemen Data")
 
-    if not st.session_state.get("ikpa_dipa_merged", False):
+    # ============================================================
+    # JIKA DATA SUDAH SIAP (MERGE BERHASIL)
+    # ============================================================
+    if st.session_state.get("ikpa_dipa_merged", False):
 
-        if st.button("Load & Olah Data"):
-            with st.spinner(" Memuat & mengolah data..."):
+        st.success(" Data IKPA & DIPA sudah siap digunakan dan merge berhasil")
+        st.caption("Tidak diperlukan proses atau tindakan Admin")
+
+    # ============================================================
+    #  JIKA DATA BELUM SIAP (BELUM MERGE / GAGAL)
+    # ============================================================
+    else:
+
+        st.warning("⚠️ Data belum siap atau perlu diproses")
+
+        # Tombol proses awal
+        if st.button("🔄 Load & Olah Data"):
+            with st.spinner(" Memuat & menggabungkan data..."):
                 st.session_state.ikpa_dipa_merged = False
                 load_DATA_DIPA_from_github()
                 load_data_from_github()
                 merge_ikpa_dipa_auto()
-            st.success("✅ Data berhasil dimuat & digabung")
+            st.success("✅ Proses selesai")
             st.rerun()
 
-    else:
-        st.success("✅ Data sudah siap, tidak perlu proses ulang")
-
-    with st.expander("⚠️ Admin Lanjutan (Opsional)"):
-        if st.button("Reset Status Merge"):
-            st.session_state.ikpa_dipa_merged = False
-            st.warning("🔄 Status merge direset. Data akan diproses ulang.")
-            st.rerun()
+        # Reset hanya muncul kalau data ada tapi merge gagal
+        if st.session_state.get("data_storage") or st.session_state.get("DATA_DIPA_by_year"):
+            with st.expander(" Admin Lanjutan (Opsional)"):
+                if st.button(" Reset Status Merge"):
+                    st.session_state.ikpa_dipa_merged = False
+                    st.warning(" Status merge direset. Data akan diproses ulang.")
+                    st.rerun()
 
 
     # ===============================
