@@ -703,10 +703,22 @@ def create_ranking_chart(df, title, top=True, limit=10):
 # ============================================================
 # Improved Problem Chart (with sorting, sliders, and filters)
 # ============================================================
-def make_column_chart(data, title, color_scale, y_min, y_max, limit=10, show_yaxis=False):
-    df_top = data.nlargest(limit, "Nilai Akhir (Nilai Total/Konversi Bobot)")
+def get_top_bottom(df, n=10, top=True):
+    if df.empty:
+        return df
+    return (
+        df.nlargest(n, 'Nilai Akhir (Nilai Total/Konversi Bobot)')
+        if top else
+        df.nsmallest(n, 'Nilai Akhir (Nilai Total/Konversi Bobot)')
+    )
+
+
+def make_column_chart(data, title, color_scale, y_min, y_max):
+    if data.empty:
+        return None
+
     fig = px.bar(
-        df_top,
+        data.sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)"),
         x="Nilai Akhir (Nilai Total/Konversi Bobot)",
         y="Satker",
         orientation="h",
@@ -717,21 +729,35 @@ def make_column_chart(data, title, color_scale, y_min, y_max, limit=10, show_yax
 
     fig.update_layout(
         xaxis_range=[y_min, y_max],
-        yaxis_title="",
         xaxis_title="Nilai IKPA",
-        height=500,
+        yaxis_title="",
+        height=450,
         margin=dict(l=10, r=10, t=40, b=20),
         coloraxis_showscale=False,
         showlegend=False
     )
 
     fig.update_traces(
-        texttemplate="%{x:.2f}",  
+        texttemplate="%{x:.2f}",
         textposition="outside",
         hovertemplate="<b>%{y}</b><br>Nilai: %{x:.2f}<extra></extra>"
     )
 
     return fig
+
+def safe_chart(df, title, top=True, color="Greens", y_min=0, y_max=110):
+    if df is None or df.empty:
+        st.info("Tidak ada data.")
+        return
+
+    chart_df = get_top_bottom(df, 10, top)
+    if chart_df is None or chart_df.empty:
+        st.info("Tidak ada data.")
+        return
+
+    fig = make_column_chart(chart_df, "", color, y_min, y_max)
+    if fig:
+        st.plotly_chart(fig, use_container_width=True)
 
 # ============================================================
 # Problem Chart untuk Dashboard Internal
@@ -999,7 +1025,6 @@ def page_dashboard():
         col_period, col1, col2, col3, col4 = st.columns([1, 1, 1, 1, 1])
 
         with col_period:
-            # update selected_period in session_state when changed here
             st.session_state.selected_period = st.selectbox(
                 "Pilih Periode",
                 options=all_periods,
@@ -1007,28 +1032,57 @@ def page_dashboard():
                 format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
                 key="select_period_main"
             )
-            # refresh df variable to reflect selection immediately (keeps consistency)
-            selected_period_key = st.session_state.selected_period
-            df = st.session_state.data_storage.get(selected_period_key, df)
 
-        # now df is guaranteed to be set (we checked earlier)
-        avg_score = df['Nilai Akhir (Nilai Total/Konversi Bobot)'].mean()
-        perfect_df = df[df['Nilai Akhir (Nilai Total/Konversi Bobot)'] == 100]
-        below89_df = df[df['Nilai Akhir (Nilai Total/Konversi Bobot)'] < 89]
-        
+            selected_period_key = st.session_state.selected_period
+            df = st.session_state.data_storage.get(selected_period_key)
+
+        # ===============================
+        # VALIDASI DF
+        # ===============================
+        if df is None or df.empty:
+            st.warning("Data IKPA belum tersedia.")
+            st.stop()
+
+        # ===============================
+        # PASTIKAN KOLOM JENIS SATKER ADA
+        # ===============================
+        if 'Jenis Satker' not in df.columns:
+            df['Jenis Satker'] = 'TIDAK TERKLASIFIKASI'
+        else:
+            df['Jenis Satker'] = df['Jenis Satker'].fillna('TIDAK TERKLASIFIKASI')
+
+        # ===============================
+        # NORMALISASI JENIS SATKER
+        # ===============================
+        df['Jenis Satker'] = (
+            df['Jenis Satker']
+            .str.upper()
+            .str.replace('SATKER ', '', regex=False)
+            .str.strip()
+        )
+
+        # ===============================
+        # METRIK UTAMA
+        # ===============================
+        nilai_col = 'Nilai Akhir (Nilai Total/Konversi Bobot)'
+
+        avg_score = df[nilai_col].mean()
+        perfect_df = df[df[nilai_col] == 100]
+        below89_df = df[df[nilai_col] < 89]
+
         # Pastikan kolom Satker tersedia
         def make_satker_col(dd):
             if 'Satker' in dd.columns:
                 return dd
             uraian = dd.get('Uraian Satker-RINGKAS', dd.index.astype(str))
             kode = dd.get('Kode Satker', '')
+            dd = dd.copy()
             dd['Satker'] = uraian.astype(str) + " (" + kode.astype(str) + ")"
             return dd
 
         perfect_df = make_satker_col(perfect_df)
         below89_df = make_satker_col(below89_df)
 
-        # Hitung jumlah
         jumlah_100 = len(perfect_df)
         jumlah_below = len(below89_df)
 
@@ -1036,7 +1090,7 @@ def page_dashboard():
             st.metric("📋 Total Satker", len(df))
         with col2:
             st.metric("📈 Rata-rata Nilai", f"{avg_score:.2f}")
-        
+
         with col3:
             st.metric("⭐ Nilai 100", jumlah_100)
             with st.popover("Lihat daftar satker"):
@@ -1045,7 +1099,13 @@ def page_dashboard():
                 else:
                     display_df = perfect_df[['Satker']].reset_index(drop=True)
                     display_df.insert(0, 'No', range(1, len(display_df) + 1))
-                    st.dataframe(display_df, use_container_width=True, hide_index=True, height=min(400, len(display_df) * 35 + 38))
+                    st.dataframe(
+                        display_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        height=min(400, len(display_df) * 35 + 38)
+                    )
+
         with col4:
             st.metric("⚠️ Nilai < 89 (Predikat Belum Baik)", jumlah_below)
             with st.popover("Lihat daftar satker"):
@@ -1054,11 +1114,19 @@ def page_dashboard():
                 else:
                     display_df = below89_df[['Satker']].reset_index(drop=True)
                     display_df.insert(0, 'No', range(1, len(display_df) + 1))
-                    st.dataframe(display_df, use_container_width=True, hide_index=True, height=min(400, len(display_df) * 35 + 38))
+                    st.dataframe(
+                        display_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        height=min(400, len(display_df) * 35 + 38)
+                    )
 
-        # Chart controls
+        # ===============================
+        # KONTROL SKALA CHART
+        # ===============================
         st.markdown("###### Atur Skala Nilai (Sumbu Y)")
         col_min, col_max = st.columns(2)
+
         with col_min:
             y_min = st.slider(
                 "Nilai Minimum (Y-Axis)",
@@ -1068,6 +1136,7 @@ def page_dashboard():
                 step=1,
                 key="high_ymin"
             )
+
         with col_max:
             y_max = st.slider(
                 "Nilai Maksimum (Y-Axis)",
@@ -1078,50 +1147,54 @@ def page_dashboard():
                 key="high_ymax"
             )
 
-        # Data preparation for charts
-        df_with_kontrak = df[df['Belanja Kontraktual'] != 0]
-        df_without_kontrak = df[df['Belanja Kontraktual'] == 0]
+        VALID_JENIS = ['KECIL', 'SEDANG', 'BESAR']
+        df = df[df['Jenis Satker'].isin(VALID_JENIS)]
 
-        # 4 charts side-by-side
-        col1, col2, col3, col4 = st.columns(4)
+        # ===============================
+        # FILTER JENIS SATKER
+        # ===============================
+        df_kecil  = df[df['Jenis Satker'] == 'KECIL']
+        df_sedang = df[df['Jenis Satker'] == 'SEDANG']
+        df_besar  = df[df['Jenis Satker'] == 'BESAR']
 
-        with col1:
-            st.markdown("##### 🏆 10 Satker Terbaik (Dengan Kontraktual)")
-            if len(df_with_kontrak) > 0:
-                top_with = df_with_kontrak.nlargest(10, 'Nilai Akhir (Nilai Total/Konversi Bobot)')
-                fig1 = make_column_chart(top_with, "", "greens", y_min, y_max, show_yaxis=True)
-                st.plotly_chart(fig1, use_container_width=True)
-            else:
-                st.info("Tidak ada data.")
 
-        with col2:
-            st.markdown("##### 🏆 10 Satker Terbaik (Tanpa Kontraktual)")
-            if len(df_without_kontrak) > 0:
-                top_without = df_without_kontrak.nlargest(10, 'Nilai Akhir (Nilai Total/Konversi Bobot)')
-                fig2 = make_column_chart(top_without, "", "greens", y_min, y_max, show_yaxis=False)
-                st.plotly_chart(fig2, use_container_width=True)
-            else:
-                st.info("Tidak ada data.")
+        # ===============================
+        # CHART TERBAIK
+        # ===============================
+        st.markdown("### 🏆 Satker Terbaik")
+        c1, c2, c3 = st.columns(3)
 
-        with col3:
-            st.markdown("##### 📉 10 Satker Terendah (Dengan Kontraktual)")
-            if len(df_with_kontrak) > 0:
-                bottom_with = df_with_kontrak.nsmallest(10, 'Nilai Akhir (Nilai Total/Konversi Bobot)')
-                fig3 = make_column_chart(bottom_with, "", "orrd_r", y_min, y_max, show_yaxis=False)
-                st.plotly_chart(fig3, use_container_width=True)
-            else:
-                st.info("Tidak ada data.")
+        with c1:
+            st.markdown("##### 10 Satker KECIL Terbaik")
+            safe_chart(df_kecil, "KECIL", top=True, color="Greens", y_min=y_min, y_max=y_max)
 
-        with col4:
-            st.markdown("##### 📉 10 Satker Terendah (Tanpa Kontraktual)")
-            if len(df_without_kontrak) > 0:
-                bottom_without = df_without_kontrak.nsmallest(10, 'Nilai Akhir (Nilai Total/Konversi Bobot)')
-                fig4 = make_column_chart(bottom_without, "", "orrd_r", y_min, y_max, show_yaxis=False)
-                st.plotly_chart(fig4, use_container_width=True)
-            else:
-                st.info("Tidak ada data.")
+        with c2:
+            st.markdown("##### 10 Satker SEDANG Terbaik")
+            safe_chart(df_sedang, "SEDANG", top=True, color="Greens", y_min=y_min, y_max=y_max)
 
-        st.markdown("---")
+        with c3:
+            st.markdown("##### 10 Satker BESAR Terbaik")
+            safe_chart(df_besar, "BESAR", top=True, color="Greens", y_min=y_min, y_max=y_max)
+
+        # ===============================
+        # CHART TERENDAH
+        # ===============================
+        st.markdown("### 📉 Satker Terendah")
+        c4, c5, c6 = st.columns(3)
+
+        with c4:
+            st.markdown("##### 10 Satker KECIL Terendah")
+            safe_chart(df_kecil, "KECIL", top=False, color="Reds", y_min=y_min, y_max=y_max)
+
+        with c5:
+            st.markdown("##### 10 Satker SEDANG Terendah")
+            safe_chart(df_sedang, "SEDANG", top=False, color="Reds", y_min=y_min, y_max=y_max)
+
+        with c6:
+            st.markdown("##### 10 Satker BESAR Terendah")
+            safe_chart(df_besar, "BESAR", top=False, color="Reds", y_min=y_min, y_max=y_max)
+
+
 
         # Satker dengan masalah (Deviasi Hal 3 DIPA)
         st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
@@ -2600,38 +2673,23 @@ def page_admin():
                                 df_processed["Kode Satker"] = ""
 
                             # ==========================
-                            # 4️⃣ MERGE IKPA + DIPA
+                            # 4️⃣ TANPA MERGE DIPA
+                            # (akan digabung otomatis oleh merge_ikpa_dipa_auto)
                             # ==========================
                             df_final = df_processed.copy()
 
-                            dipa_year = None
-                            if "DATA_DIPA_by_year" in st.session_state:
-                                dipa_year = st.session_state.DATA_DIPA_by_year.get(int(upload_year))
+                            # kolom placeholder (AMAN)
+                            df_final["Jenis Satker"] = pd.NA
+                            df_final["Total Pagu"] = pd.NA
+                            df_final["Tanggal Posting Revisi"] = pd.NA
 
-                            if dipa_year is not None and not dipa_year.empty:
-
-                                dipa_year = dipa_year.copy()
-                                dipa_year["Kode Satker"] = dipa_year["Kode Satker"].apply(normalize_kode_satker)
-
-                                required_cols = ["Kode Satker", "Total Pagu", "Tanggal Posting Revisi", "Jenis Satker"]
-                                dipa_year = dipa_year[[c for c in required_cols if c in dipa_year.columns]]
-
-                                df_final = df_final.merge(
-                                    dipa_year.rename(columns={"Total Pagu": "Total Pagu DIPA"}),
-                                    on="Kode Satker",
-                                    how="left"
-                                )
-
-                            else:
-                                df_final["Jenis Satker"] = pd.NA
-                                df_final["Total Pagu DIPA"] = pd.NA
-                                df_final["Tanggal Posting Revisi"] = pd.NA
 
                             # ==========================
                             # 5️⃣ SIMPAN SESSION STATE
                             # ==========================
                             key = (detected_month, str(upload_year))
                             st.session_state.data_storage[key] = df_final.copy()
+                            st.session_state.ikpa_dipa_merged = False
 
                             # ==========================
                             # 6️⃣ EXPORT KE GITHUB
