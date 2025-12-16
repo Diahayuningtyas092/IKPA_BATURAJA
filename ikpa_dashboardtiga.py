@@ -3139,14 +3139,14 @@ def main():
                 st.error(f"⚠️ Gagal memuat data utama: {e}")
 
     # ============================================================
-    # Load DATA_DIPA per tahun (Auto-detect)
+    # Load DATA_DIPA per tahun 
     # ============================================================
-    if 'DATA_DIPA_by_year' not in st.session_state:
+    if not st.session_state.get("DATA_DIPA_by_year"):
         with st.spinner("🔄 Memuat DATA_DIPA dari GitHub..."):
             try:
                 load_DATA_DIPA_from_github()
-            except Exception:
-                st.info("⚠️ Gagal memuat data DIPA otomatis.")
+            except Exception as e:
+                st.error(f"⚠️ Gagal memuat DATA_DIPA: {e}")
 
 
     # ============================================================
