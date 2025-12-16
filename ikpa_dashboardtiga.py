@@ -2435,27 +2435,28 @@ def page_admin():
     # ===============================
     # 🔄 KONTROL DATA (MANUAL OVERRIDE)
     # ===============================
-    st.subheader("🔄 Manajemen Data")
+    st.subheader("Manajemen Data")
 
-    col1, col2 = st.columns(2)
+    if not st.session_state.get("ikpa_dipa_merged", False):
 
-    with col1:
-        if st.button("🔄 Load & Olah Data"):
-            with st.spinner("Memuat & mengolah data..."):
+        if st.button("Load & Olah Data"):
+            with st.spinner(" Memuat & mengolah data..."):
                 st.session_state.ikpa_dipa_merged = False
+                load_DATA_DIPA_from_github()
+                load_data_from_github()
+                merge_ikpa_dipa_auto()
+            st.success("✅ Data berhasil dimuat & digabung")
+            st.rerun()
 
-                load_DATA_DIPA_from_github()   # DIPA → parse
-                load_data_from_github()        # IKPA
-                merge_ikpa_dipa_auto()         # MERGE
+    else:
+        st.success("✅ Data sudah siap, tidak perlu proses ulang")
 
-            st.success("✅ Data berhasil diproses & digabung")
-
-    with col2:
-        if st.button("🧹 Reset Status Merge"):
+    with st.expander("⚠️ Admin Lanjutan (Opsional)"):
+        if st.button("Reset Status Merge"):
             st.session_state.ikpa_dipa_merged = False
-            st.info("Status merge di-reset. Siap diproses ulang.")
+            st.warning("🔄 Status merge direset. Data akan diproses ulang.")
+            st.rerun()
 
-    st.divider()
 
     # ===============================
     # 🔍 SIDEBAR DEBUG
@@ -3163,6 +3164,12 @@ def main():
     ):
         with st.spinner("🔄 Menggabungkan data IKPA & DIPA..."):
             merge_ikpa_dipa_auto()
+            
+    # ============================================================
+    # NOTIF GLOBAL STATUS DATA (MUNCUL SAAT APP DIBUKA)
+    # ============================================================
+    if st.session_state.get("ikpa_dipa_merged", False):
+        st.success("✅ Data IKPA & DIPA berhasil dimuat dan siap digunakan")
 
 
     # ============================================================
