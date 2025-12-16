@@ -34,15 +34,20 @@ MONTH_ORDER = {
 # Path ke file template (akan diatur di session state)
 TEMPLATE_PATH = r"C:\Users\KEMENKEU\Desktop\INDIKATOR PELAKSANAAN ANGGARAN.xlsx"
 
-# Inisialisasi session state untuk menyimpan data dan aktivitas
-if 'data_storage' not in st.session_state:
+# ================================
+# INIT SESSION STATE 
+# ================================
+if "data_storage" not in st.session_state:
     st.session_state.data_storage = {}
 
-if 'activity_log' not in st.session_state:
-    st.session_state.activity_log = []  # Each entry: dict with timestamp, action, period, status
+if "DATA_DIPA_by_year" not in st.session_state:
+    st.session_state.DATA_DIPA_by_year = {}
 
 if "ikpa_dipa_merged" not in st.session_state:
     st.session_state.ikpa_dipa_merged = False
+
+if 'activity_log' not in st.session_state:
+    st.session_state.activity_log = []  # Each entry: dict with timestamp, action, period, status
 
 # -------------------------
 # standardize_dipa
@@ -2402,7 +2407,7 @@ def push_to_github(file_bytes, repo_path, repo_name, token, commit_message):
         st.error(f"❌ Gagal push ke GitHub: {e}")
 
 # ============================================================
-# 🔹 Menu Admin
+#  Menu Admin
 # ============================================================
 def page_admin():
     st.title("🔐 Halaman Administrasi")
@@ -2428,7 +2433,7 @@ def page_admin():
     st.success("✔ Anda login sebagai Admin")
 
     # ===============================
-    # 🔄 KONTROL DATA (INI INTINYA)
+    # 🔄 KONTROL DATA (MANUAL OVERRIDE)
     # ===============================
     st.subheader("🔄 Manajemen Data")
 
@@ -2437,24 +2442,23 @@ def page_admin():
     with col1:
         if st.button("🔄 Load & Olah Data"):
             with st.spinner("Memuat & mengolah data..."):
-                # RESET FLAG WAJIB
                 st.session_state.ikpa_dipa_merged = False
 
                 load_DATA_DIPA_from_github()   # DIPA → parse
                 load_data_from_github()        # IKPA
-                merge_ikpa_dipa_auto()         # GABUNG
+                merge_ikpa_dipa_auto()         # MERGE
 
             st.success("✅ Data berhasil diproses & digabung")
 
     with col2:
         if st.button("🧹 Reset Status Merge"):
             st.session_state.ikpa_dipa_merged = False
-            st.info("Status merge di-reset. Data siap diproses ulang.")
+            st.info("Status merge di-reset. Siap diproses ulang.")
 
     st.divider()
 
     # ===============================
-    # 🔍 SIDEBAR DEBUG (AMAN)
+    # 🔍 SIDEBAR DEBUG
     # ===============================
     with st.sidebar:
         st.markdown("### 🔍 Debug DIPA")
@@ -3163,6 +3167,17 @@ def main():
     else:
         st.error("❌ Tidak ada DATA_DIPA yang berhasil dimuat")
 
+    # ============================================================
+    # 🔄 AUTO MERGE SAAT APLIKASI PERTAMA KALI DIBUKA  ← DI SINI
+    # ============================================================
+    if (
+        st.session_state.get("DATA_DIPA_by_year") and
+        st.session_state.get("data_storage") and
+        not st.session_state.get("ikpa_dipa_merged", False)
+    ):
+        with st.spinner("🔄 Menggabungkan data IKPA & DIPA..."):
+            merge_ikpa_dipa_auto()
+        st.info("🔗 Data IKPA & DIPA otomatis digabung saat aplikasi dibuka")
 
     # ============================================================
     # Sidebar + Routing halaman
