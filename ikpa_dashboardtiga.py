@@ -1280,13 +1280,13 @@ def page_dashboard():
                 )
 
                 # =============================
-                # 🔧 PERBAIKAN UTAMA: Pivot berdasarkan Kode Satker
+                # Pivot berdasarkan Kode Satker
                 # =============================
-
+                
                 # 1. Buat kolom periode yang sesuai
                 if period_type == 'monthly':
-                    # gunakan BUKAN Bulan_upper, tetapi Bulan dari uploader
-                    df_year['Period_Column'] = df_year['Bulan'].str.upper()
+                    df_year['Period_Column'] = df_year['Bulan_upper']
+
 
                 else:  # quarterly
                     def map_to_quarter(month):
