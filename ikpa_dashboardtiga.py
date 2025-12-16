@@ -1257,23 +1257,26 @@ def page_dashboard():
                 
                 # NORMALISASI NAMA BULAN
                 MONTH_FIX = {
-                    "JAN": "JANUARI", "JANUARY": "JANUARI",
-                    "FEB": "FEBRUARI",
-                    "MAR": "MARET", "MRT": "MARET",
-                    "APR": "APRIL",
-                    "AGT": "AGUSTUS", "AUG": "AGUSTUS",
-                    "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER",
-                    "OKT": "OKTOBER", "OCT": "OKTOBER",
-                    "DES": "DESEMBER", "DEC": "DESEMBER"
+                    "JAN": "JANUARI", "JANUARY": "JANUARI", "JANUARI": "JANUARI",
+                    "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
+                    "MAR": "MARET", "MRT": "MARET", "MARET": "MARET",
+                    "APR": "APRIL", "APRIL": "APRIL",
+                    "MEI": "MEI",
+                    "JUN": "JUNI", "JUNI": "JUNI",
+                    "JUL": "JULI", "JULI": "JULI",
+                    "AGT": "AGUSTUS", "AUG": "AGUSTUS", "AGUSTUS": "AGUSTUS",
+                    "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
+                    "OKT": "OKTOBER", "OCT": "OKTOBER", "OKTOBER": "OKTOBER",
+                    "DES": "DESEMBER", "DEC": "DESEMBER", "DESEMBER": "DESEMBER"
                 }
 
-                import re
-                def normalize_month(b):
-                    b = re.sub(r'[^A-Z]', '', str(b).upper())
-                    return MONTH_FIX.get(b, b)
+                def normalize_month(val):
+                    if pd.isna(val):
+                        return None
+                    val = str(val).upper().strip()
+                    return MONTH_FIX.get(val, val)
 
-                df_year["Bulan_upper"] = df_year["Bulan_raw"].apply(normalize_month)
-
+                df_year['Bulan_upper'] = df_year['Bulan'].apply(normalize_month)
                 months_available = sorted(
                     [m for m in df_year['Bulan_upper'].unique() if m],
                     key=lambda m: MONTH_ORDER.get(m, 999)
@@ -1286,7 +1289,6 @@ def page_dashboard():
                 # 1. Buat kolom periode yang sesuai
                 if period_type == 'monthly':
                     df_year['Period_Column'] = df_year['Bulan_upper']
-
 
                 else:  # quarterly
                     def map_to_quarter(month):
@@ -1302,6 +1304,11 @@ def page_dashboard():
                     
                     df_year['Period_Column'] = df_year['Bulan'].str.upper().apply(map_to_quarter)
                     df_year = df_year[df_year['Period_Column'].notna()]
+                    
+                # =============================
+                # DEBUG 
+                # =============================
+                st.write("DEBUG Period_Column:", df_year['Period_Column'].unique())
 
                 # 2. Ambil kolom yang diperlukan
                 base_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS', 'Period_Column']
@@ -1360,7 +1367,7 @@ def page_dashboard():
                     display_period_cols = ordered_periods
 
                 # =============================
-                # SEARCH & STYLING (sama seperti sebelumnya)
+                # SEARCH & STYLING 
                 # =============================
                 search_query = st.text_input(
                     "🔎 Cari (Periodik) – ketik untuk filter di semua kolom",
