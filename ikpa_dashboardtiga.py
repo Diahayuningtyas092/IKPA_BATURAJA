@@ -47,7 +47,7 @@ if "ikpa_dipa_merged" not in st.session_state:
     st.session_state.ikpa_dipa_merged = False
 
 if 'activity_log' not in st.session_state:
-    st.session_state.activity_log = []  # Each entry: dict with timestamp, action, period, status
+    st.session_state.activity_log = [] 
 
 # -------------------------
 # standardize_dipa
@@ -3085,18 +3085,19 @@ def page_admin():
         )
 
 # ===============================
-# MAIN APP 
+# MAIN APP
 # ===============================
 def main():
+
     # ============================================================
-    # Load Reference Data
+    # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
     # ============================================================
-    if 'reference_df' not in st.session_state:
+    if "reference_df" not in st.session_state:
+
         token = st.secrets.get("GITHUB_TOKEN")
         repo_name = st.secrets.get("GITHUB_REPO")
 
         if not token or not repo_name:
-            st.info("⚠️ GitHub credentials belum tersedia. Reference Data menggunakan template kosong.")
             st.session_state.reference_df = pd.DataFrame({
                 'Kode BA': [], 'K/L': [], 'Kode Satker': [],
                 'Uraian Satker-SINGKAT': [], 'Uraian Satker-LENGKAP': []
@@ -3107,77 +3108,62 @@ def main():
                 repo = g.get_repo(repo_name)
                 ref_path = "templates/Template_Data_Referensi.xlsx"
 
-                try:
-                    ref_file = repo.get_contents(ref_path)
-                    ref_data = base64.b64decode(ref_file.content)
-                    ref_df = pd.read_excel(io.BytesIO(ref_data))
-                    ref_df.columns = [c.strip() for c in ref_df.columns]
-                    st.session_state.reference_df = ref_df
-                    st.info(f"📚 Data Referensi dimuat ({len(ref_df)} baris)")
-                except Exception:
-                    st.session_state.reference_df = pd.DataFrame({
-                        'Kode BA': [], 'K/L': [], 'Kode Satker': [],
-                        'Uraian Satker-SINGKAT': [], 'Uraian Satker-LENGKAP': []
-                    })
-                    st.info("📄 Reference Data tidak ditemukan, menggunakan template kosong.")
+                ref_file = repo.get_contents(ref_path)
+                ref_data = base64.b64decode(ref_file.content)
+
+                ref_df = pd.read_excel(io.BytesIO(ref_data))
+                ref_df.columns = [c.strip() for c in ref_df.columns]
+
+                st.session_state.reference_df = ref_df
+
             except Exception:
                 st.session_state.reference_df = pd.DataFrame({
                     'Kode BA': [], 'K/L': [], 'Kode Satker': [],
                     'Uraian Satker-SINGKAT': [], 'Uraian Satker-LENGKAP': []
                 })
-                st.info("📄 Gagal memuat reference data, menggunakan template kosong.")
 
     # ============================================================
-    # Load main data IKPA
+    # 2️⃣ AUTO LOAD DATA IKPA
     # ============================================================
-    if not st.session_state.get("data_storage"):
-        with st.spinner("🔄 Memuat data utama dari GitHub..."):
-            try:
-                load_data_from_github()
-                st.success("✅ Data utama berhasil dimuat")
-            except Exception as e:
-                st.error(f"⚠️ Gagal memuat data utama: {e}")
+    if not st.session_state.data_storage:
+        with st.spinner("🔄 Memuat data IKPA..."):
+            load_data_from_github()
 
     # ============================================================
-    # Load DATA_DIPA per tahun 
+    # 3️⃣ AUTO LOAD DATA DIPA (HASIL PROCESSING STREAMLIT)
     # ============================================================
-    if not st.session_state.get("DATA_DIPA_by_year"):
-        with st.spinner("🔄 Memuat DATA_DIPA dari GitHub..."):
-            try:
-                load_DATA_DIPA_from_github()
-            except Exception as e:
-                st.error(f"⚠️ Gagal memuat DATA_DIPA: {e}")
-
+    if not st.session_state.DATA_DIPA_by_year:
+        with st.spinner("🔄 Memuat data DIPA..."):
+            load_DATA_DIPA_from_github()
 
     # ============================================================
-    # Jika DATA_DIPA berhasil dimuat
+    # 4️⃣ FINALISASI DATA DIPA (AMAN)
     # ============================================================
-    if st.session_state.get('DATA_DIPA_by_year'):
-        tahun_loaded = sorted(st.session_state.DATA_DIPA_by_year.keys())
-        st.info(f"📥 Data DIPA tersedia untuk tahun: {', '.join(map(str, tahun_loaded))}")
-
-        # Tambahkan kolom ringkas
+    if st.session_state.DATA_DIPA_by_year:
         for tahun, df in st.session_state.DATA_DIPA_by_year.items():
             df = df.copy()
-            df['Uraian Satker-RINGKAS'] = (
-                df['Uraian Satker'].fillna('-').apply(lambda x: str(x)[:30])
-                if 'Uraian Satker' in df.columns else '-'
-            )
+            if "Uraian Satker" in df.columns:
+                df["Uraian Satker-RINGKAS"] = (
+                    df["Uraian Satker"]
+                    .fillna("-")
+                    .astype(str)
+                    .str[:30]
+                )
+            else:
+                df["Uraian Satker-RINGKAS"] = "-"
             st.session_state.DATA_DIPA_by_year[tahun] = df
-    else:
-        st.error("❌ Tidak ada DATA_DIPA yang berhasil dimuat")
 
     # ============================================================
-    # 🔄 AUTO MERGE SAAT APLIKASI PERTAMA KALI DIBUKA  ← DI SINI
+    # 5️⃣ AUTO MERGE IKPA + DIPA 
     # ============================================================
     if (
-        st.session_state.get("DATA_DIPA_by_year") and
-        st.session_state.get("data_storage") and
-        not st.session_state.get("ikpa_dipa_merged", False)
+        st.session_state.data_storage and
+        st.session_state.DATA_DIPA_by_year and
+        not st.session_state.ikpa_dipa_merged
     ):
         with st.spinner("🔄 Menggabungkan data IKPA & DIPA..."):
             merge_ikpa_dipa_auto()
-        st.info("🔗 Data IKPA & DIPA otomatis digabung saat aplikasi dibuka")
+
 
     # ============================================================
     # Sidebar + Routing halaman
