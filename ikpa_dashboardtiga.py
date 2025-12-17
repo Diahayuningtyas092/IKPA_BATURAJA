@@ -1193,7 +1193,7 @@ def page_dashboard():
                     y_min=y_min, y_max=y_max, thin_bar=True)
 
         with c2:
-            st.markdown("10 Satker🏆 Sedang Terbaik")
+            st.markdown("10 Satker Sedang Terbaik")
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens",
                     y_min=y_min, y_max=y_max, thin_bar=True)
 
