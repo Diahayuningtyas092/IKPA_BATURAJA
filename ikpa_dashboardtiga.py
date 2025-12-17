@@ -942,8 +942,10 @@ def create_satker_column(df):
 def safe_chart(df_part, jenis, top=True, color="Greens",
                y_min=None, y_max=None, thin_bar=False):
 
+    # 🔒 Guard keras: jangan lanjut kalau kolom tidak ada
     if 'Total Pagu' not in df_part.columns:
-        return  # diam saja, jangan ganggu chart lain
+        st.warning(f"Kolom 'Total Pagu' tidak ditemukan untuk Satker {jenis}")
+        return
 
     df_sorted = (
         df_part
@@ -961,22 +963,19 @@ def safe_chart(df_part, jenis, top=True, color="Greens",
         y="Total Pagu",
         color="Total Pagu",
         color_continuous_scale=color,
-        text="Total Pagu"   # ⬅️ penting: pakai kolom, bukan text_auto
+        text="Total Pagu"
     )
 
-    # 🔹 Atur posisi teks di SAMPING KANAN
     fig.update_traces(
         textposition="outside",
-        texttemplate="%{text:,.0f}"
+        texttemplate="%{text:,.0f}",
+        width=0.45 if thin_bar else None,
+        marker_line_width=0.6
     )
 
-    # 🔹 Batang agak ramping, TAPI TIDAK TERLALU TIPIS
-    if thin_bar:
-        fig.update_traces(width=0.45, marker_line_width=0.6)
-
     fig.update_layout(
+        height=300,
         margin=dict(l=5, r=5, t=25, b=5),
-        height=300,  # tetap compact biar muat 2 baris
         yaxis=dict(range=[y_min, y_max])
     )
 
