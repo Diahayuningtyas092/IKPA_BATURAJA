@@ -984,21 +984,25 @@ def safe_chart(
     # PLOT
     # ===============================
     fig = px.bar(
-        df_sorted,
-        x=nilai_col,
-        y="Satker",
-        orientation="h",
-        color=nilai_col,
-        color_continuous_scale=color
+    df_sorted,
+    x=nilai_col,
+    y="Satker",
+    orientation="h",
+    color=nilai_col,
+    color_continuous_scale=color,
+    text=nilai_col              
     )
 
     fig.update_traces(
-        width=0.65 if thin_bar else 0.8  
+        width=0.65 if thin_bar else 0.8,
+        texttemplate="%{text:.2f}",   
+        textposition="outside",      
+        cliponaxis=False              
     )
 
     fig.update_layout(
-        height=200,                 
-        bargap=0.05,                
+        height=200,
+        bargap=0.05,
         margin=dict(l=2, r=2, t=0, b=0),
         xaxis_title=None,
         yaxis_title=None,
@@ -1008,7 +1012,7 @@ def safe_chart(
 
     st.plotly_chart(fig, use_container_width=True)
 
- 
+
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
     st.title("📊 Dashboard Utama IKPA Satker Mitra KPPN Baturaja")
