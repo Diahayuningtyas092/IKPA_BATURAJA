@@ -939,12 +939,29 @@ def create_satker_column(df):
     df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
     return df
 
-def safe_chart(df_part, jenis, top=True, color="Greens",
-               y_min=None, y_max=None, thin_bar=False):
+#4 CHART DASHBOARD UTAMA
+def safe_chart(
+    df_part,
+    jenis,
+    top=True,
+    color="Greens",
+    y_min=None,
+    y_max=None,
+    thin_bar=False
+):
+    # kolom nilai IKPA (sesuai tabel kamu)
+    nilai_col = 'Nilai Total/Konversi Bobot'
 
-    if 'Total Pagu' not in df_part.columns:
+    # guard clause (AMAN)
+    if nilai_col not in df_part.columns:
+        st.warning(f"Kolom IKPA tidak ditemukan untuk {jenis}")
         return
 
+    if 'Total Pagu' not in df_part.columns:
+        st.warning(f"Kolom Total Pagu tidak ditemukan untuk {jenis}")
+        return
+
+    # SORT BERDASARKAN TOTAL PAGU
     df_sorted = (
         df_part
         .sort_values('Total Pagu', ascending=not top)
@@ -953,31 +970,35 @@ def safe_chart(df_part, jenis, top=True, color="Greens",
 
     fig = px.bar(
         df_sorted,
-        y="Satker",              #  jadi horizontal
-        x="Total Pagu",
-        color="Total Pagu",
+        x=nilai_col,      # NILAI IKPA
+        y="Satker",
+        orientation="h",
+        color=nilai_col,
         color_continuous_scale=color,
-        text="Total Pagu",
-        orientation="h"
+        text=nilai_col
     )
 
+    # batang agak ramping tapi tidak ekstrem
     fig.update_traces(
-    textposition="outside",
-    texttemplate="%{text:,.0f}",
-    width=0.6,                 #  batang sedikit lebih tebal
-    marker_line_width=0.5,
-    cliponaxis=False           #  teks tidak kepotong
+        width=0.55 if thin_bar else 0.7,
+        textposition="outside"
     )
 
     fig.update_layout(
-    height=260,
-    bargap=0.08,
-    margin=dict(l=5, r=15, t=20, b=5),
-    xaxis=dict(range=[y_min, y_max]),
-    yaxis_title=None   
+        height=280,
+        margin=dict(l=5, r=5, t=20, b=5),
+
+        # HILANGKAN TULISAN "Satker" SAJA
+        yaxis_title=None,
+
+        # tetap tampilkan nilai IKPA
+        xaxis=dict(range=[y_min, y_max]),
+        xaxis_title="Nilai IKPA"
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+
 
  
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
