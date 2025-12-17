@@ -949,11 +949,22 @@ def safe_chart(
     y_max=None,
     thin_bar=False
 ):
-    # kolom nilai IKPA (sesuai tabel kamu)
-    nilai_col = 'Nilai Total/Konversi Bobot'
+    # ===============================
+    # DETEKSI OTOMATIS KOLOM IKPA
+    # ===============================
+    kandidat_ikpa = [
+        'Nilai Total/Konversi Bobot',
+        'Nilai Total',
+        'Nilai Akhir (Nilai Total/Konversi Bobot)'
+    ]
 
-    # guard clause (AMAN)
-    if nilai_col not in df_part.columns:
+    nilai_col = None
+    for col in kandidat_ikpa:
+        if col in df_part.columns:
+            nilai_col = col
+            break
+
+    if nilai_col is None:
         st.warning(f"Kolom IKPA tidak ditemukan untuk {jenis}")
         return
 
@@ -961,7 +972,9 @@ def safe_chart(
         st.warning(f"Kolom Total Pagu tidak ditemukan untuk {jenis}")
         return
 
+    # ===============================
     # SORT BERDASARKAN TOTAL PAGU
+    # ===============================
     df_sorted = (
         df_part
         .sort_values('Total Pagu', ascending=not top)
@@ -970,7 +983,7 @@ def safe_chart(
 
     fig = px.bar(
         df_sorted,
-        x=nilai_col,      # NILAI IKPA
+        x=nilai_col,   # ⬅️ IKPA
         y="Satker",
         orientation="h",
         color=nilai_col,
@@ -978,27 +991,20 @@ def safe_chart(
         text=nilai_col
     )
 
-    # batang agak ramping tapi tidak ekstrem
     fig.update_traces(
-        width=0.55 if thin_bar else 0.7,
+        width=0.6 if thin_bar else 0.75,
         textposition="outside"
     )
 
     fig.update_layout(
         height=280,
         margin=dict(l=5, r=5, t=20, b=5),
-
-        # HILANGKAN TULISAN "Satker" SAJA
-        yaxis_title=None,
-
-        # tetap tampilkan nilai IKPA
-        xaxis=dict(range=[y_min, y_max]),
-        xaxis_title="Nilai IKPA"
+        yaxis_title=None,        
+        xaxis_title="Nilai IKPA",
+        xaxis=dict(range=[y_min, y_max])
     )
 
     st.plotly_chart(fig, use_container_width=True)
-
-
 
  
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
