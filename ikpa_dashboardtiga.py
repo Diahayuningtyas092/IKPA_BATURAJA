@@ -942,41 +942,36 @@ def create_satker_column(df):
 def safe_chart(df_part, jenis, top=True, color="Greens",
                y_min=None, y_max=None, thin_bar=False):
 
-    # 🔒 Guard keras: jangan lanjut kalau kolom tidak ada
     if 'Total Pagu' not in df_part.columns:
-        st.warning(f"Kolom 'Total Pagu' tidak ditemukan untuk Satker {jenis}")
         return
 
     df_sorted = (
         df_part
-        .dropna(subset=['Total Pagu'])
         .sort_values('Total Pagu', ascending=not top)
         .head(10)
     )
 
-    if df_sorted.empty:
-        return
-
     fig = px.bar(
         df_sorted,
-        x="Satker",
-        y="Total Pagu",
+        y="Satker",              # ⬅️ PENTING: jadi horizontal
+        x="Total Pagu",
         color="Total Pagu",
         color_continuous_scale=color,
-        text="Total Pagu"
+        text="Total Pagu",
+        orientation="h"
     )
 
     fig.update_traces(
-        textposition="outside",
+        textposition="outside",  # ⬅️ teks di KANAN batang
         texttemplate="%{text:,.0f}",
-        width=0.45 if thin_bar else None,
+        width=0.55,              # ⬅️ TIDAK TERLALU TIPIS
         marker_line_width=0.6
     )
 
     fig.update_layout(
         height=300,
-        margin=dict(l=5, r=5, t=25, b=5),
-        yaxis=dict(range=[y_min, y_max])
+        margin=dict(l=5, r=20, t=25, b=5),
+        xaxis=dict(range=[y_min, y_max])
     )
 
     st.plotly_chart(fig, use_container_width=True)
