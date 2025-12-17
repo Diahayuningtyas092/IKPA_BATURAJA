@@ -999,7 +999,7 @@ def safe_chart(
     fig.update_layout(
         height=200,                 
         bargap=0.05,                
-        margin=dict(l=2, r=2, t=2, b=2),
+        margin=dict(l=2, r=2, t=0, b=0),
         xaxis_title=None,
         yaxis_title=None,
         xaxis=dict(range=[y_min, y_max]),
