@@ -1142,29 +1142,28 @@ def page_dashboard():
         # ===============================
         st.markdown("### 📊 Satker Terbaik & Terendah Berdasarkan Total Pagu")
 
-        # 6 chart dalam 1 baris
-        c1, c2, c3, c4, c5, c6 = st.columns(6)
-
-        # Terbaik
+        # Baris 1: Terbaik
+        c1, c2, c3 = st.columns(3)
         with c1:
-            st.markdown("🏆 Kecil Terbaik", unsafe_allow_html=True)
+            st.markdown("##### 10 Satker Kecil Terbaik")
             safe_chart(df_kecil, "KECIL", top=True, color="Greens", y_min=y_min, y_max=y_max)
         with c2:
-            st.markdown("🏆 Sedang Terbaik", unsafe_allow_html=True)
+            st.markdown("##### 10 Satker Sedang Terbaik")
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens", y_min=y_min, y_max=y_max)
         with c3:
-            st.markdown("🏆 Besar Terbaik", unsafe_allow_html=True)
+            st.markdown("##### 10 Satker Besar Terbaik")
             safe_chart(df_besar, "BESAR", top=True, color="Greens", y_min=y_min, y_max=y_max)
 
-        # Terendah
+        # Baris 2: Terendah
+        c4, c5, c6 = st.columns(3)
         with c4:
-            st.markdown("📉 Kecil Terendah", unsafe_allow_html=True)
+            st.markdown("##### 10 Satker Kecil Terendah")
             safe_chart(df_kecil, "KECIL", top=False, color="Reds", y_min=y_min, y_max=y_max)
         with c5:
-            st.markdown("📉 Sedang Terendah", unsafe_allow_html=True)
+            st.markdown("##### 10 Satker Sedang Terendah")
             safe_chart(df_sedang, "SEDANG", top=False, color="Reds", y_min=y_min, y_max=y_max)
         with c6:
-            st.markdown("📉 Besar Terendah", unsafe_allow_html=True)
+            st.markdown("##### 10 Satker Besar Terendah")
             safe_chart(df_besar, "BESAR", top=False, color="Reds", y_min=y_min, y_max=y_max)
 
 
