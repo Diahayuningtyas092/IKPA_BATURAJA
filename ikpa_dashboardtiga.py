@@ -994,18 +994,18 @@ def safe_chart(
     )
 
     fig.update_traces(
-        width=0.65 if thin_bar else 0.8  
+        width=0.6 if thin_bar else 0.7  
     )
 
     fig.update_layout(
-        height=220,                 
-        bargap=0.05,                
-        margin=dict(l=5, r=5, t=5, b=5),
-        xaxis_title=None,
-        yaxis_title=None,
-        xaxis=dict(range=[y_min, y_max]),
-        coloraxis_showscale=False
+    height=220,
+    bargap=0.05,
+    margin=dict(l=5, r=5, t=5, b=5),
+    xaxis_title=None,
+    yaxis_title=None,
+    coloraxis_showscale=False
     )
+
 
     st.plotly_chart(fig, use_container_width=True)
 
