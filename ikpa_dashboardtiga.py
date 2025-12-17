@@ -953,7 +953,7 @@ def safe_chart(df_part, jenis, top=True, color="Greens",
 
     fig = px.bar(
         df_sorted,
-        y="Satker",              # ⬅️ PENTING: jadi horizontal
+        y="Satker",              #  jadi horizontal
         x="Total Pagu",
         color="Total Pagu",
         color_continuous_scale=color,
@@ -962,15 +962,17 @@ def safe_chart(df_part, jenis, top=True, color="Greens",
     )
 
     fig.update_traces(
-        textposition="outside",  # ⬅️ teks di KANAN batang
-        texttemplate="%{text:,.0f}",
-        width=0.55,              # ⬅️ TIDAK TERLALU TIPIS
-        marker_line_width=0.6
+    textposition="outside",
+    texttemplate="%{text:,.0f}",
+    width=0.6,                 #  batang sedikit lebih tebal
+    marker_line_width=0.5,
+    cliponaxis=False           #  teks tidak kepotong
     )
 
     fig.update_layout(
-        height=300,
-        margin=dict(l=5, r=20, t=25, b=5),
+        height=260,                #  lebih rapat vertikal
+        bargap=0.08,               #  jarak antar batang
+        margin=dict(l=5, r=15, t=20, b=5),
         xaxis=dict(range=[y_min, y_max])
     )
 
@@ -1186,17 +1188,17 @@ def page_dashboard():
         c1, c2, c3 = st.columns(3)
 
         with c1:
-            st.markdown("🏆 Kecil Terbaik")
+            st.markdown("10 Satker Kecil Terbaik")
             safe_chart(df_kecil, "KECIL", top=True, color="Greens",
                     y_min=y_min, y_max=y_max, thin_bar=True)
 
         with c2:
-            st.markdown("🏆 Sedang Terbaik")
+            st.markdown("10 Satker🏆 Sedang Terbaik")
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens",
                     y_min=y_min, y_max=y_max, thin_bar=True)
 
         with c3:
-            st.markdown("🏆 Besar Terbaik")
+            st.markdown("10 Satker Besar Terbaik")
             safe_chart(df_besar, "BESAR", top=True, color="Greens",
                     y_min=y_min, y_max=y_max, thin_bar=True)
 
@@ -1206,17 +1208,17 @@ def page_dashboard():
         c4, c5, c6 = st.columns(3)
 
         with c4:
-            st.markdown("📉 Kecil Terendah")
+            st.markdown("10 Satker Kecil Terendah")
             safe_chart(df_kecil, "KECIL", top=False, color="Reds",
                     y_min=y_min, y_max=y_max, thin_bar=True)
 
         with c5:
-            st.markdown("📉 Sedang Terendah")
+            st.markdown("10 Satker Sedang Terendah")
             safe_chart(df_sedang, "SEDANG", top=False, color="Reds",
                     y_min=y_min, y_max=y_max, thin_bar=True)
 
         with c6:
-            st.markdown("📉 Besar Terendah")
+            st.markdown("10 Satker Besar Terendah")
             safe_chart(df_besar, "BESAR", top=False, color="Reds",
                     y_min=y_min, y_max=y_max, thin_bar=True)
 
