@@ -2719,28 +2719,17 @@ def page_admin():
                             # ======================
                             # DETEKSI BULAN
                             # ======================
-                            uploaded_file.seek(0)
-                            df_temp = pd.read_excel(uploaded_file, header=None, dtype=str)
-                            raw_text = " ".join(
-                                df_temp.fillna("").astype(str).values.flatten()
-                            ).upper()
+                            detected_month = "UNKNOWN"
 
-                            detected_month = None
-                            for k, v in MONTH_FIX.items():
-                                if k in raw_text:
-                                    detected_month = v
+                            filename = uploaded_file.name.upper()
+                            clean = re.sub(r"[^A-Z_]", "", filename)
+                            parts = clean.split("_")
+
+                            for p in parts:
+                                if p in MONTH_FIX:
+                                    detected_month = MONTH_FIX[p]
                                     break
 
-                            if detected_month is None:
-                                filename = uploaded_file.name.upper()
-                                clean = re.sub(r"[^A-Z_]", "", filename)
-                                for p in clean.split("_"):
-                                    if p in MONTH_FIX:
-                                        detected_month = MONTH_FIX[p]
-                                        break
-
-                            if detected_month is None:
-                                detected_month = "UNKNOWN"
 
                             # ======================
                             # PROSES IKPA
