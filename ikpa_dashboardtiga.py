@@ -225,6 +225,8 @@ st.set_page_config(
     layout="wide"
 )
 
+st.write("GitHub token loaded:", bool(st.secrets.get("GITHUB_TOKEN")))
+
 def extract_kode_from_satker_field(s, width=6):
     """
     Jika kolom 'Satker' mengandung '001234 – NAMA SATKER', ambil angka di awal.
