@@ -943,8 +943,7 @@ def safe_chart(df_part, jenis, top=True, color="Greens",
                y_min=None, y_max=None, thin_bar=False):
 
     if 'Total Pagu' not in df_part.columns:
-        st.warning(f"⚠️ Kolom 'Total Pagu' tidak tersedia untuk Satker {jenis}")
-        return
+        return  # diam saja, jangan ganggu chart lain
 
     df_sorted = (
         df_part
@@ -954,7 +953,6 @@ def safe_chart(df_part, jenis, top=True, color="Greens",
     )
 
     if df_sorted.empty:
-        st.info(f"Tidak ada data Total Pagu untuk Satker {jenis}")
         return
 
     fig = px.bar(
@@ -963,15 +961,22 @@ def safe_chart(df_part, jenis, top=True, color="Greens",
         y="Total Pagu",
         color="Total Pagu",
         color_continuous_scale=color,
-        text_auto=True
+        text="Total Pagu"   # ⬅️ penting: pakai kolom, bukan text_auto
     )
 
+    # 🔹 Atur posisi teks di SAMPING KANAN
+    fig.update_traces(
+        textposition="outside",
+        texttemplate="%{text:,.0f}"
+    )
+
+    # 🔹 Batang agak ramping, TAPI TIDAK TERLALU TIPIS
     if thin_bar:
-        fig.update_traces(width=0.3, marker_line_width=0.5)
+        fig.update_traces(width=0.45, marker_line_width=0.6)
 
     fig.update_layout(
         margin=dict(l=5, r=5, t=25, b=5),
-        height=300,
+        height=300,  # tetap compact biar muat 2 baris
         yaxis=dict(range=[y_min, y_max])
     )
 
