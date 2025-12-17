@@ -938,7 +938,46 @@ def create_satker_column(df):
     # Keep backward compatible column
     df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
     return df
-    
+
+def safe_chart(df_part, jenis, top=True, color="Greens",
+               y_min=None, y_max=None, thin_bar=False):
+
+    if 'Total Pagu' not in df_part.columns:
+        st.warning(f"⚠️ Kolom 'Total Pagu' tidak tersedia untuk Satker {jenis}")
+        return
+
+    df_sorted = (
+        df_part
+        .dropna(subset=['Total Pagu'])
+        .sort_values('Total Pagu', ascending=not top)
+        .head(10)
+    )
+
+    if df_sorted.empty:
+        st.info(f"Tidak ada data Total Pagu untuk Satker {jenis}")
+        return
+
+    fig = px.bar(
+        df_sorted,
+        x="Satker",
+        y="Total Pagu",
+        color="Total Pagu",
+        color_continuous_scale=color,
+        text_auto=True
+    )
+
+    if thin_bar:
+        fig.update_traces(width=0.3, marker_line_width=0.5)
+
+    fig.update_layout(
+        margin=dict(l=5, r=5, t=25, b=5),
+        height=300,
+        yaxis=dict(range=[y_min, y_max])
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+ 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
     st.title("📊 Dashboard Utama IKPA Satker Mitra KPPN Baturaja")
@@ -1142,29 +1181,45 @@ def page_dashboard():
         # ===============================
         st.markdown("### 📊 Satker Terbaik & Terendah Berdasarkan Total Pagu")
 
-        # Baris 1: Terbaik
+        # =========================
+        # BARIS 1 – TERBAIK
+        # =========================
         c1, c2, c3 = st.columns(3)
-        with c1:
-            st.markdown("##### 10 Satker Kecil Terbaik")
-            safe_chart(df_kecil, "KECIL", top=True, color="Greens", y_min=y_min, y_max=y_max)
-        with c2:
-            st.markdown("##### 10 Satker Sedang Terbaik")
-            safe_chart(df_sedang, "SEDANG", top=True, color="Greens", y_min=y_min, y_max=y_max)
-        with c3:
-            st.markdown("##### 10 Satker Besar Terbaik")
-            safe_chart(df_besar, "BESAR", top=True, color="Greens", y_min=y_min, y_max=y_max)
 
-        # Baris 2: Terendah
+        with c1:
+            st.markdown("🏆 Kecil Terbaik")
+            safe_chart(df_kecil, "KECIL", top=True, color="Greens",
+                    y_min=y_min, y_max=y_max, thin_bar=True)
+
+        with c2:
+            st.markdown("🏆 Sedang Terbaik")
+            safe_chart(df_sedang, "SEDANG", top=True, color="Greens",
+                    y_min=y_min, y_max=y_max, thin_bar=True)
+
+        with c3:
+            st.markdown("🏆 Besar Terbaik")
+            safe_chart(df_besar, "BESAR", top=True, color="Greens",
+                    y_min=y_min, y_max=y_max, thin_bar=True)
+
+        # =========================
+        # BARIS 2 – TERENDAH
+        # =========================
         c4, c5, c6 = st.columns(3)
+
         with c4:
-            st.markdown("##### 10 Satker Kecil Terendah")
-            safe_chart(df_kecil, "KECIL", top=False, color="Reds", y_min=y_min, y_max=y_max)
+            st.markdown("📉 Kecil Terendah")
+            safe_chart(df_kecil, "KECIL", top=False, color="Reds",
+                    y_min=y_min, y_max=y_max, thin_bar=True)
+
         with c5:
-            st.markdown("##### 10 Satker Sedang Terendah")
-            safe_chart(df_sedang, "SEDANG", top=False, color="Reds", y_min=y_min, y_max=y_max)
+            st.markdown("📉 Sedang Terendah")
+            safe_chart(df_sedang, "SEDANG", top=False, color="Reds",
+                    y_min=y_min, y_max=y_max, thin_bar=True)
+
         with c6:
-            st.markdown("##### 10 Satker Besar Terendah")
-            safe_chart(df_besar, "BESAR", top=False, color="Reds", y_min=y_min, y_max=y_max)
+            st.markdown("📉 Besar Terendah")
+            safe_chart(df_besar, "BESAR", top=False, color="Reds",
+                    y_min=y_min, y_max=y_max, thin_bar=True)
 
 
         # Satker dengan masalah (Deviasi Hal 3 DIPA)
