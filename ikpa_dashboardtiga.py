@@ -994,8 +994,8 @@ def safe_chart(
     )
 
     fig.update_layout(
-    height=240,
-    bargap=0.05,
+    height=230,
+    bargap=0.03,
     margin=dict(l=5, r=5, t=10, b=5),
     xaxis_title=None,         
     yaxis_title=None,
@@ -1208,7 +1208,7 @@ def page_dashboard():
         # ===============================
         # CHART 6 MUAT DALAM 1 TAMPILAN
         # ===============================
-        st.markdown("### 📊 Satker Terbaik & Terendah Berdasarkan Total Pagu")
+        st.markdown("### 📊 Satker Terbaik & Terendah Berdasarkan Nilai IKPA")
 
         # =========================
         # BARIS 1 – TERBAIK
