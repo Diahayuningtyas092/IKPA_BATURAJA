@@ -1242,7 +1242,7 @@ def page_dashboard():
                     y_min=y_min, y_max=y_max)
 
         # ⬇️ JARAK ANTAR BARIS (rapat tapi aman)
-        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
         # =========================
         # BARIS 2 – TERENDAH
