@@ -1140,32 +1140,32 @@ def page_dashboard():
         # ===============================
         # CHART 6 MUAT DALAM 1 TAMPILAN
         # ===============================
-        st.markdown("### 📊 Satker Terbaik & Terendah (Compact)")
+        st.markdown("### 📊 Satker Terbaik & Terendah Berdasarkan Total Pagu")
 
-        # Baris 1: Terbaik
-        c1, c2, c3 = st.columns(3)
+        # 6 chart dalam 1 baris
+        c1, c2, c3, c4, c5, c6 = st.columns(6)
+
+        # Terbaik
         with c1:
-            st.markdown("##### 10 Satker Kecil Terbaik")
+            st.markdown("🏆 Kecil Terbaik", unsafe_allow_html=True)
             safe_chart(df_kecil, "KECIL", top=True, color="Greens", y_min=y_min, y_max=y_max)
         with c2:
-            st.markdown("##### 10 Satker Sedang Terbaik")
+            st.markdown("🏆 Sedang Terbaik", unsafe_allow_html=True)
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens", y_min=y_min, y_max=y_max)
         with c3:
-            st.markdown("##### 10 Satker Besar Terbaik")
+            st.markdown("🏆 Besar Terbaik", unsafe_allow_html=True)
             safe_chart(df_besar, "BESAR", top=True, color="Greens", y_min=y_min, y_max=y_max)
 
-        # Baris 2: Terendah
-        c4, c5, c6 = st.columns(3)
+        # Terendah
         with c4:
-            st.markdown("##### 10 Satker Kecil Terendah")
+            st.markdown("📉 Kecil Terendah", unsafe_allow_html=True)
             safe_chart(df_kecil, "KECIL", top=False, color="Reds", y_min=y_min, y_max=y_max)
         with c5:
-            st.markdown("##### 10 Satker Sedang Terendah")
+            st.markdown("📉 Sedang Terendah", unsafe_allow_html=True)
             safe_chart(df_sedang, "SEDANG", top=False, color="Reds", y_min=y_min, y_max=y_max)
         with c6:
-            st.markdown("##### 10 Satker Besar Terendah")
+            st.markdown("📉 Besar Terendah", unsafe_allow_html=True)
             safe_chart(df_besar, "BESAR", top=False, color="Reds", y_min=y_min, y_max=y_max)
-
 
 
         # Satker dengan masalah (Deviasi Hal 3 DIPA)
