@@ -939,7 +939,7 @@ def create_satker_column(df):
     df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
     return df
 
-#4 CHART DASHBOARD UTAMA
+# BAGIAN 4 CHART DASHBOARD UTAMA
 def safe_chart(
     df_part,
     jenis,
@@ -994,13 +994,15 @@ def safe_chart(
     )
 
     fig.update_layout(
-        height=280,
-        margin=dict(l=5, r=5, t=20, b=5),
-        yaxis_title=None,         
-        xaxis_title="Nilai IKPA",
-        xaxis=dict(range=[y_min, y_max]),
-        coloraxis_showscale=False 
+    height=240,
+    bargap=0.05,
+    margin=dict(l=5, r=5, t=10, b=5),
+    xaxis_title=None,         
+    yaxis_title=None,
+    xaxis=dict(range=[y_min, y_max]),
+    coloraxis_showscale=False
     )
+
 
     st.plotly_chart(fig, use_container_width=True)
 
