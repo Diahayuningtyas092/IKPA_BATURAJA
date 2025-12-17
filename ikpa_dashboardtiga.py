@@ -243,6 +243,16 @@ def extract_kode_from_satker_field(s, width=6):
         return normalize_kode_satker(m2.group(1), width=width)
     return ''
 
+def process_excel_file(uploaded_file, upload_year):
+    df = pd.read_excel(uploaded_file)
+
+    month = "UNKNOWN"
+    if "Bulan" in df.columns:
+        month = str(df["Bulan"].iloc[0])
+
+    year = upload_year
+    return df, month, year
+
 # ============================================================
 # PARSER DIPA 
 # ============================================================
@@ -2687,7 +2697,6 @@ def page_admin():
 
                 with st.spinner("Memproses semua file..."):
 
-                    # Mapping bulan lengkap
                     MONTH_FIX = {
                         "JAN": "JANUARI", "JANUARY": "JANUARI", "JANUARI": "JANUARI",
                         "FEB": "FEBRUARI", "FEBRUARY": "FEBRUARI", "FEBRUARI": "FEBRUARI",
@@ -2703,16 +2712,16 @@ def page_admin():
                         "DES": "DESEMBER", "DEC": "DESEMBER", "DESEMBER": "DESEMBER"
                     }
 
-                    import re
-
                     for uploaded_file in uploaded_files:
                         try:
-                            # ==========================
-                            # 1️⃣ DETEKSI BULAN AMAN
-                            # ==========================
+                            # ======================
+                            # DETEKSI BULAN
+                            # ======================
                             uploaded_file.seek(0)
                             df_temp = pd.read_excel(uploaded_file, header=None, dtype=str)
-                            raw_text = " ".join(df_temp.fillna("").astype(str).values.flatten()).upper()
+                            raw_text = " ".join(
+                                df_temp.fillna("").astype(str).values.flatten()
+                            ).upper()
 
                             detected_month = None
                             for k, v in MONTH_FIX.items():
@@ -2720,12 +2729,10 @@ def page_admin():
                                     detected_month = v
                                     break
 
-                            # fallback → dari nama file
                             if detected_month is None:
                                 filename = uploaded_file.name.upper()
                                 clean = re.sub(r"[^A-Z_]", "", filename)
-                                parts = clean.split("_")
-                                for p in parts:
+                                for p in clean.split("_"):
                                     if p in MONTH_FIX:
                                         detected_month = MONTH_FIX[p]
                                         break
@@ -2733,76 +2740,40 @@ def page_admin():
                             if detected_month is None:
                                 detected_month = "UNKNOWN"
 
-                            # ==========================
-                            # 2️⃣ PROSES FILE IKPA
-                            # ==========================
+                            # ======================
+                            # PROSES IKPA
+                            # ======================
                             uploaded_file.seek(0)
                             df_processed, _, _ = process_excel_file(uploaded_file, upload_year)
 
                             if df_processed is None:
-                                st.warning(f"⚠️ Gagal memproses file: {uploaded_file.name}")
+                                st.warning(f"⚠️ Gagal memproses {uploaded_file.name}")
                                 continue
 
                             df_processed["Bulan"] = detected_month
                             df_processed["Tahun"] = int(upload_year)
 
-                            # ==========================
-                            # 3️⃣ NORMALISASI KODE SATKER
-                            # ==========================
                             if "Kode Satker" in df_processed.columns:
-                                df_processed["Kode Satker"] = df_processed["Kode Satker"].astype(str).apply(normalize_kode_satker)
+                                df_processed["Kode Satker"] = (
+                                    df_processed["Kode Satker"]
+                                    .astype(str)
+                                    .apply(normalize_kode_satker)
+                                )
                             else:
                                 df_processed["Kode Satker"] = ""
 
-                            # ==========================
-                            # 4️⃣ TANPA MERGE DIPA
-                            # (akan digabung otomatis oleh merge_ikpa_dipa_auto)
-                            # ==========================
                             df_final = df_processed.copy()
-
-                            # kolom placeholder (AMAN)
                             df_final["Jenis Satker"] = pd.NA
                             df_final["Total Pagu"] = pd.NA
                             df_final["Tanggal Posting Revisi"] = pd.NA
 
-
-                            # ==========================
-                            # 5️⃣ SIMPAN SESSION STATE
-                            # ==========================
                             key = (detected_month, str(upload_year))
                             st.session_state.data_storage[key] = df_final.copy()
                             st.session_state.ikpa_dipa_merged = False
 
-                            # ==========================
-                            # 6️⃣ EXPORT KE GITHUB
-                            # ==========================
-                            KEEP_COLUMNS = [
-                                "Kode KPPN", "Kode BA", "Kode Satker",
-                                "Uraian Satker-RINGKAS",
-                                "Kualitas Perencanaan Anggaran",
-                                "Kualitas Pelaksanaan Anggaran",
-                                "Kualitas Hasil Pelaksanaan Anggaran",
-                                "Revisi DIPA",
-                                "Deviasi Halaman III DIPA",
-                                "Penyerapan Anggaran",
-                                "Belanja Kontraktual",
-                                "Penyelesaian Tagihan",
-                                "Pengelolaan UP dan TUP",
-                                "Capaian Output",
-                                "Nilai Total",
-                                "Nilai Akhir (Nilai Total/Konversi Bobot)",
-                                "Total Pagu DIPA",
-                                "Tanggal Posting Revisi",
-                                "Jenis Satker",
-                                "Bulan",
-                                "Tahun"
-                            ]
-
-                            df_export = df_final[[c for c in KEEP_COLUMNS if c in df_final.columns]]
-
                             excel_bytes = io.BytesIO()
                             with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                                df_export.to_excel(writer, index=False, sheet_name="Data IKPA")
+                                df_final.to_excel(writer, index=False, sheet_name="Data IKPA")
                             excel_bytes.seek(0)
 
                             save_file_to_github(
@@ -2811,7 +2782,6 @@ def page_admin():
                                 folder="data"
                             )
 
-                            # LOG
                             st.session_state.activity_log.append({
                                 "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "Aksi": "Upload",
@@ -2819,11 +2789,13 @@ def page_admin():
                                 "Status": "Sukses"
                             })
 
-                            st.success(f"✅ {uploaded_file.name} → {detected_month} {upload_year} berhasil disimpan.")
+                            st.success(
+                                f"✅ {uploaded_file.name} → {detected_month} {upload_year} berhasil disimpan"
+                            )
 
                         except Exception as e:
-                            st.error(f"❌ Error saat memproses data: {e}")
-
+                            st.error(f"❌ Error {uploaded_file.name}: {e}")
+                        
         # ============================================================
         # SUBMENU: UPLOAD DATA DIPA
         # ============================================================
