@@ -970,10 +970,14 @@ def safe_chart(df_part, jenis, top=True, color="Greens",
     )
 
     fig.update_layout(
-        height=260,                #  lebih rapat vertikal
-        bargap=0.08,               #  jarak antar batang
-        margin=dict(l=5, r=15, t=20, b=5),
-        xaxis=dict(range=[y_min, y_max])
+    height=260,
+    bargap=0.08,
+    margin=dict(l=5, r=15, t=20, b=5),
+    xaxis=dict(range=[y_min, y_max]),
+    yaxis=dict(
+        showticklabels=False,
+        title=None
+    )
     )
 
     st.plotly_chart(fig, use_container_width=True)
