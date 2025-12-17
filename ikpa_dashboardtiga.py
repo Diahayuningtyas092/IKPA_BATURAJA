@@ -950,12 +950,12 @@ def safe_chart(
     thin_bar=False
 ):
     # ===============================
-    # DETEKSI OTOMATIS KOLOM IKPA
+    # DETEKSI KOLOM IKPA
     # ===============================
     kandidat_ikpa = [
+        'Nilai Akhir (Nilai Total/Konversi Bobot)',
         'Nilai Total/Konversi Bobot',
-        'Nilai Total',
-        'Nilai Akhir (Nilai Total/Konversi Bobot)'
+        'Nilai Total'
     ]
 
     nilai_col = None
@@ -968,22 +968,19 @@ def safe_chart(
         st.warning(f"Kolom IKPA tidak ditemukan untuk {jenis}")
         return
 
-    if 'Total Pagu' not in df_part.columns:
-        st.warning(f"Kolom Total Pagu tidak ditemukan untuk {jenis}")
-        return
-
     # ===============================
-    # SORT BERDASARKAN TOTAL PAGU
+    # SORT IKPA (TINGGI → RENDAH)
     # ===============================
     df_sorted = (
         df_part
-        .sort_values('Total Pagu', ascending=not top)
+        .sort_values(nilai_col, ascending=not top)
         .head(10)
+        .sort_values(nilai_col, ascending=True) 
     )
 
     fig = px.bar(
         df_sorted,
-        x=nilai_col,   # ⬅️ IKPA
+        x=nilai_col,
         y="Satker",
         orientation="h",
         color=nilai_col,
@@ -999,9 +996,10 @@ def safe_chart(
     fig.update_layout(
         height=280,
         margin=dict(l=5, r=5, t=20, b=5),
-        yaxis_title=None,        
+        yaxis_title=None,         
         xaxis_title="Nilai IKPA",
-        xaxis=dict(range=[y_min, y_max])
+        xaxis=dict(range=[y_min, y_max]),
+        coloraxis_showscale=False 
     )
 
     st.plotly_chart(fig, use_container_width=True)
