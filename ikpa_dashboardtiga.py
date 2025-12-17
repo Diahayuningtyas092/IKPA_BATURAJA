@@ -1220,7 +1220,7 @@ def page_dashboard():
 
         with c1:
             st.markdown(
-                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Kecil Terbaik</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terbaik</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_kecil, "KECIL", top=True, color="Greens",
@@ -1228,7 +1228,7 @@ def page_dashboard():
 
         with c2:
             st.markdown(
-                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Sedang Terbaik</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terbaik</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens",
@@ -1236,14 +1236,14 @@ def page_dashboard():
 
         with c3:
             st.markdown(
-                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Besar Terbaik</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terbaik</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_besar, "BESAR", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
-        # ⬅️ JARAK ANTAR BARIS DIPERKECIL
-        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
+        # ⬇️ JARAK ANTAR BARIS (rapat tapi aman)
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
 
         # =========================
         # BARIS 2 – TERENDAH
@@ -1252,7 +1252,7 @@ def page_dashboard():
 
         with c4:
             st.markdown(
-                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Kecil Terendah</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terendah</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_kecil, "KECIL", top=False, color="Reds",
@@ -1260,7 +1260,7 @@ def page_dashboard():
 
         with c5:
             st.markdown(
-                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Sedang Terendah</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terendah</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_sedang, "SEDANG", top=False, color="Reds",
@@ -1268,7 +1268,7 @@ def page_dashboard():
 
         with c6:
             st.markdown(
-                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Besar Terendah</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terendah</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_besar, "BESAR", top=False, color="Reds",
