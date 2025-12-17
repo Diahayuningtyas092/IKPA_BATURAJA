@@ -969,40 +969,43 @@ def safe_chart(
         return
 
     # ===============================
-    # SORT IKPA (TINGGI → RENDAH)
+    # SORT DATA
     # ===============================
+    # top=True  → ambil nilai tertinggi
+    # top=False → ambil nilai terendah
     df_sorted = (
         df_part
         .sort_values(nilai_col, ascending=not top)
         .head(10)
-        .sort_values(nilai_col, ascending=True) 
+        .sort_values(nilai_col, ascending=True)  # agar visual dari bawah ke atas
     )
 
+    # ===============================
+    # PLOT
+    # ===============================
     fig = px.bar(
         df_sorted,
         x=nilai_col,
         y="Satker",
         orientation="h",
         color=nilai_col,
-        color_continuous_scale=color,
-        text=nilai_col
+        color_continuous_scale=color
+        # ⛔ TIDAK ADA text= → angka hilang
     )
 
     fig.update_traces(
-        width=0.6 if thin_bar else 0.75,
-        textposition="outside"
+        width=0.65 if thin_bar else 0.8  
     )
 
     fig.update_layout(
-    height=230,
-    bargap=0.03,
-    margin=dict(l=5, r=5, t=10, b=5),
-    xaxis_title=None,         
-    yaxis_title=None,
-    xaxis=dict(range=[y_min, y_max]),
-    coloraxis_showscale=False
+        height=220,                 
+        bargap=0.05,                
+        margin=dict(l=5, r=5, t=5, b=5),
+        xaxis_title=None,
+        yaxis_title=None,
+        xaxis=dict(range=[y_min, y_max]),
+        coloraxis_showscale=False
     )
-
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -1216,19 +1219,31 @@ def page_dashboard():
         c1, c2, c3 = st.columns(3)
 
         with c1:
-            st.markdown("10 Satker Kecil Terbaik")
+            st.markdown(
+                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Kecil Terbaik</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_kecil, "KECIL", top=True, color="Greens",
-                    y_min=y_min, y_max=y_max, thin_bar=True)
+                    y_min=y_min, y_max=y_max)
 
         with c2:
-            st.markdown("10 Satker Sedang Terbaik")
+            st.markdown(
+                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Sedang Terbaik</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens",
-                    y_min=y_min, y_max=y_max, thin_bar=True)
+                    y_min=y_min, y_max=y_max)
 
         with c3:
-            st.markdown("10 Satker Besar Terbaik")
+            st.markdown(
+                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Besar Terbaik</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_besar, "BESAR", top=True, color="Greens",
-                    y_min=y_min, y_max=y_max, thin_bar=True)
+                    y_min=y_min, y_max=y_max)
+
+        # ⬅️ JARAK ANTAR BARIS DIPERKECIL
+        st.markdown("<div style='height:6px'></div>", unsafe_allow_html=True)
 
         # =========================
         # BARIS 2 – TERENDAH
@@ -1236,19 +1251,28 @@ def page_dashboard():
         c4, c5, c6 = st.columns(3)
 
         with c4:
-            st.markdown("10 Satker Kecil Terendah")
+            st.markdown(
+                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Kecil Terendah</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_kecil, "KECIL", top=False, color="Reds",
-                    y_min=y_min, y_max=y_max, thin_bar=True)
+                    y_min=y_min, y_max=y_max)
 
         with c5:
-            st.markdown("10 Satker Sedang Terendah")
+            st.markdown(
+                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Sedang Terendah</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_sedang, "SEDANG", top=False, color="Reds",
-                    y_min=y_min, y_max=y_max, thin_bar=True)
+                    y_min=y_min, y_max=y_max)
 
         with c6:
-            st.markdown("10 Satker Besar Terendah")
+            st.markdown(
+                "<div style='margin-bottom:-12px; margin-top:-5px'><b>10 Satker Besar Terendah</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_besar, "BESAR", top=False, color="Reds",
-                    y_min=y_min, y_max=y_max, thin_bar=True)
+                    y_min=y_min, y_max=y_max)
 
 
         # Satker dengan masalah (Deviasi Hal 3 DIPA)
