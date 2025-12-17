@@ -997,9 +997,9 @@ def safe_chart(
     )
 
     fig.update_layout(
-        height=220,                 
+        height=200,                 
         bargap=0.05,                
-        margin=dict(l=5, r=5, t=5, b=5),
+        margin=dict(l=2, r=2, t=2, b=2),
         xaxis_title=None,
         yaxis_title=None,
         xaxis=dict(range=[y_min, y_max]),
@@ -1242,7 +1242,7 @@ def page_dashboard():
                     y_min=y_min, y_max=y_max)
 
         # ⬇️ JARAK ANTAR BARIS (rapat tapi aman)
-        st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
 
         # =========================
         # BARIS 2 – TERENDAH
