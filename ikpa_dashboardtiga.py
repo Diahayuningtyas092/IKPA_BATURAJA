@@ -1021,30 +1021,27 @@ def page_dashboard():
     if main_tab == "🎯 Highlights":
         st.markdown("## 🎯 Highlights Kinerja Satker")
 
-        # Single-row layout for period + metrics
-        col_period, col1, col2, col3, col4 = st.columns([1, 1, 1, 1, 1])
-
-        with col_period:
-            st.session_state.selected_period = st.selectbox(
-                "Pilih Periode",
-                options=all_periods,
-                index=0,
-                format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-                key="select_period_main"
-            )
-
-            selected_period_key = st.session_state.selected_period
-            df = st.session_state.data_storage.get(selected_period_key)
+        # -------------------------
+        # Pilih Periode
+        # -------------------------
+        selected_period = st.selectbox(
+            "Pilih Periode",
+            options=all_periods,
+            index=0,
+            format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+            key="select_period_main"
+        )
+        df = st.session_state.data_storage.get(selected_period)
 
         # ===============================
-        # VALIDASI DF
+        # Validasi DF
         # ===============================
         if df is None or df.empty:
             st.warning("Data IKPA belum tersedia.")
             st.stop()
 
         # ===============================
-        # PASTIKAN KOLOM JENIS SATKER ADA
+        # Pastikan kolom Jenis Satker ada
         # ===============================
         if 'Jenis Satker' not in df.columns:
             df['Jenis Satker'] = 'TIDAK TERKLASIFIKASI'
@@ -1060,6 +1057,15 @@ def page_dashboard():
             .str.replace('SATKER ', '', regex=False)
             .str.strip()
         )
+
+        # ===============================
+        # Filter Satker
+        # ===============================
+        VALID_JENIS = ['KECIL', 'SEDANG', 'BESAR']
+        df = df[df['Jenis Satker'].isin(VALID_JENIS)]
+        df_kecil  = df[df['Jenis Satker'] == 'KECIL']
+        df_sedang = df[df['Jenis Satker'] == 'SEDANG']
+        df_besar  = df[df['Jenis Satker'] == 'BESAR']
 
         # ===============================
         # METRIK UTAMA
@@ -1086,11 +1092,12 @@ def page_dashboard():
         jumlah_100 = len(perfect_df)
         jumlah_below = len(below89_df)
 
+        # Tampilan metrik
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("📋 Total Satker", len(df))
         with col2:
             st.metric("📈 Rata-rata Nilai", f"{avg_score:.2f}")
-
         with col3:
             st.metric("⭐ Nilai 100", jumlah_100)
             with st.popover("Lihat daftar satker"):
@@ -1105,7 +1112,6 @@ def page_dashboard():
                         hide_index=True,
                         height=min(400, len(display_df) * 35 + 38)
                     )
-
         with col4:
             st.metric("⚠️ Nilai < 89 (Predikat Belum Baik)", jumlah_below)
             with st.popover("Lihat daftar satker"):
@@ -1122,76 +1128,42 @@ def page_dashboard():
                     )
 
         # ===============================
-        # KONTROL SKALA CHART
+        # Kontrol Skala Chart
         # ===============================
         st.markdown("###### Atur Skala Nilai (Sumbu Y)")
         col_min, col_max = st.columns(2)
-
         with col_min:
-            y_min = st.slider(
-                "Nilai Minimum (Y-Axis)",
-                min_value=0,
-                max_value=50,
-                value=50,
-                step=1,
-                key="high_ymin"
-            )
-
+            y_min = st.slider("Nilai Minimum (Y-Axis)", 0, 50, 50, 1, key="high_ymin")
         with col_max:
-            y_max = st.slider(
-                "Nilai Maksimum (Y-Axis)",
-                min_value=51,
-                max_value=110,
-                value=110,
-                step=1,
-                key="high_ymax"
-            )
-
-        VALID_JENIS = ['KECIL', 'SEDANG', 'BESAR']
-        df = df[df['Jenis Satker'].isin(VALID_JENIS)]
+            y_max = st.slider("Nilai Maksimum (Y-Axis)", 51, 110, 110, 1, key="high_ymax")
 
         # ===============================
-        # FILTER JENIS SATKER
+        # CHART 6 MUAT DALAM 1 TAMPILAN
         # ===============================
-        df_kecil  = df[df['Jenis Satker'] == 'KECIL']
-        df_sedang = df[df['Jenis Satker'] == 'SEDANG']
-        df_besar  = df[df['Jenis Satker'] == 'BESAR']
+        st.markdown("### 📊 Satker Terbaik & Terendah (Compact)")
 
-
-        # ===============================
-        # CHART TERBAIK
-        # ===============================
-        st.markdown("### 🏆 Satker Terbaik")
+        # Baris 1: Terbaik
         c1, c2, c3 = st.columns(3)
-
         with c1:
-            st.markdown("##### 10 Satker KECIL Terbaik")
+            st.markdown("##### 10 Satker Kecil Terbaik")
             safe_chart(df_kecil, "KECIL", top=True, color="Greens", y_min=y_min, y_max=y_max)
-
         with c2:
-            st.markdown("##### 10 Satker SEDANG Terbaik")
+            st.markdown("##### 10 Satker Sedang Terbaik")
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens", y_min=y_min, y_max=y_max)
-
         with c3:
-            st.markdown("##### 10 Satker BESAR Terbaik")
+            st.markdown("##### 10 Satker Besar Terbaik")
             safe_chart(df_besar, "BESAR", top=True, color="Greens", y_min=y_min, y_max=y_max)
 
-        # ===============================
-        # CHART TERENDAH
-        # ===============================
-        st.markdown("### 📉 Satker Terendah")
+        # Baris 2: Terendah
         c4, c5, c6 = st.columns(3)
-
         with c4:
-            st.markdown("##### 10 Satker KECIL Terendah")
+            st.markdown("##### 10 Satker Kecil Terendah")
             safe_chart(df_kecil, "KECIL", top=False, color="Reds", y_min=y_min, y_max=y_max)
-
         with c5:
-            st.markdown("##### 10 Satker SEDANG Terendah")
+            st.markdown("##### 10 Satker Sedang Terendah")
             safe_chart(df_sedang, "SEDANG", top=False, color="Reds", y_min=y_min, y_max=y_max)
-
         with c6:
-            st.markdown("##### 10 Satker BESAR Terendah")
+            st.markdown("##### 10 Satker Besar Terendah")
             safe_chart(df_besar, "BESAR", top=False, color="Reds", y_min=y_min, y_max=y_max)
 
 
