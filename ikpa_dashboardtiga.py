@@ -974,10 +974,7 @@ def safe_chart(df_part, jenis, top=True, color="Greens",
     bargap=0.08,
     margin=dict(l=5, r=15, t=20, b=5),
     xaxis=dict(range=[y_min, y_max]),
-    yaxis=dict(
-        showticklabels=False,
-        title=None
-    )
+    yaxis_title=None   
     )
 
     st.plotly_chart(fig, use_container_width=True)
