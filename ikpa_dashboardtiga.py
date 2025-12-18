@@ -1410,11 +1410,24 @@ def page_dashboard():
                 # =============================
                 # 1. Gabungkan data per tahun
                 # =============================
+                # =============================
+                # 1. Gabungkan data per tahun
+                # =============================
                 df_list = []
+
                 for (mon, yr), df_period in st.session_state.data_storage.items():
                     if str(yr).strip() == str(selected_year).strip():
                         temp = df_period.copy()
-                        temp["Bulan_upper"] = mon.upper()
+
+                        # === AMBIL BULAN DARI DATA, BUKAN DARI KEY SESSION ===
+                        if 'Bulan' in temp.columns:
+                            temp['Bulan_upper'] = temp['Bulan']
+                        elif 'Nama Bulan' in temp.columns:
+                            temp['Bulan_upper'] = temp['Nama Bulan']
+                        else:
+                            st.error("❌ Kolom bulan ('Bulan' / 'Nama Bulan') tidak ditemukan di data")
+                            st.stop()
+
                         df_list.append(temp)
 
                 if not df_list:
@@ -1422,6 +1435,8 @@ def page_dashboard():
                     st.stop()
 
                 df_year = pd.concat(df_list, ignore_index=True)
+
+                st.write("DEBUG BULAN:", df_year['Bulan_upper'].unique())
 
                 # =============================
                 # 2. Normalisasi nama bulan
