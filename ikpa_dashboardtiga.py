@@ -1483,49 +1483,46 @@ def page_dashboard():
                 # =============================
                 # 5. Pivot berdasarkan Satker
                 # =============================
-                base_cols = [
-                    'Kode BA', 'Kode Satker',
-                    'Uraian Satker-RINGKAS',
-                    'Period_Column', 'Period_Order'
-                ]
+                df_pivot = df_year[
+                    [
+                        'Kode BA',
+                        'Kode Satker',
+                        'Uraian Satker-RINGKAS',
+                        'Period_Column',
+                        'Period_Order',
+                        selected_indicator
+                    ]
+                ].copy()
 
-                df_pivot = df_year[base_cols + [selected_indicator]].copy()
-
-                def last_valid(s):
-                    s = s.dropna()
-                    return s.iloc[-1] if not s.empty else None
-
-                df_pivot = (
+                # PIVOT LANGSUNG — JANGAN GROUPBY DULU
+                df_wide = (
                     df_pivot
-                    .sort_values('Period_Order')   # urut periode dengan benar
-                    .groupby(base_cols[:-1], as_index=False)
-                    .agg({selected_indicator: last_valid})
+                    .pivot_table(
+                        index=['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'],
+                        columns='Period_Column',
+                        values=selected_indicator,
+                        aggfunc='last'
+                    )
+                    .reset_index()
                 )
-
-                df_wide = df_pivot.pivot_table(
-                    index=['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'],
-                    columns='Period_Column',
-                    values=selected_indicator,
-                    aggfunc='last'
-                ).reset_index()
 
                 # =============================
                 # 6. Urutkan kolom periode
                 # =============================
                 if period_type == 'monthly':
-                    ordered_periods = [m for m in months_available if m in df_wide.columns]
+                    ordered_periods = sorted(
+                        [c for c in df_wide.columns if c in MONTH_ORDER],
+                        key=lambda x: MONTH_ORDER[x]
+                    )
                 else:
                     ordered_periods = [tw for tw in ['Tw I', 'Tw II', 'Tw III', 'Tw IV'] if tw in df_wide.columns]
 
                 # =============================
                 # 7. Ranking
                 # =============================
-                final_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'] + ordered_periods
-                df_wide = df_wide[final_cols]
-
                 if ordered_periods:
                     last_period = ordered_periods[-1]
-                    df_wide['Latest_Value'] = df_wide[last_period]
+                    df_wide['Latest_Value'] = pd.to_numeric(df_wide[last_period], errors='coerce')
                     df_wide['Peringkat'] = (
                         df_wide['Latest_Value']
                         .rank(ascending=False, method='dense')
@@ -1549,9 +1546,11 @@ def page_dashboard():
                 else:
                     display_period_cols = ordered_periods
 
+                # ⚠️ ISI "-" HANYA SETELAH SEMUA NUMERIK SELESAI
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
 
                 st.dataframe(df_display, use_container_width=True)
+
 
                 # =============================
                 # SEARCH & STYLING 
