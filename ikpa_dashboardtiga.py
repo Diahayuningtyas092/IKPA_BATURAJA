@@ -1542,11 +1542,16 @@ def page_dashboard():
                 if period_type == 'monthly':
                     rename_dict = {m: m.capitalize() for m in ordered_periods}
                     df_display = df_display.rename(columns=rename_dict)
+                    display_period_cols = [m.capitalize() for m in ordered_periods]
+                else:
+                    display_period_cols = ordered_periods
 
-                # OPTIONAL UI CLEAN
-                df_display = df_display.fillna("–")
+                # ⛔ JANGAN isi semua kolom
+                # ✅ Isi NaN HANYA di kolom periode
+                df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
 
                 st.dataframe(df_display, use_container_width=True)
+
 
 
                 # =============================
