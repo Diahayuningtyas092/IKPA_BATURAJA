@@ -1476,12 +1476,10 @@ def page_dashboard():
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
 
                 # =============================
-                # 4. Filter SETELAH period siap
+                # 4. Filter SETELAH Period_Column ADA
                 # =============================
-                df_year = df_year[
-                    df_year['Period_Column'].notna() &
-                    df_year[selected_indicator].notna()
-                ]
+                df_year = df_year[df_year['Period_Column'].notna()]
+
 
                 # =============================
                 # 5. Pivot berdasarkan Satker
