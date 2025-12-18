@@ -1480,7 +1480,6 @@ def page_dashboard():
                 # =============================
                 df_year = df_year[df_year['Period_Column'].notna()]
 
-
                 # =============================
                 # 5. Pivot berdasarkan Satker
                 # =============================
@@ -1492,11 +1491,15 @@ def page_dashboard():
 
                 df_pivot = df_year[base_cols + [selected_indicator]].copy()
 
+                def last_valid(s):
+                    s = s.dropna()
+                    return s.iloc[-1] if not s.empty else None
+
                 df_pivot = (
                     df_pivot
-                    .sort_values('Period_Order')   # ✅ URUT BENAR
+                    .sort_values('Period_Order')   # urut periode dengan benar
                     .groupby(base_cols[:-1], as_index=False)
-                    .last()
+                    .agg({selected_indicator: last_valid})
                 )
 
                 df_wide = df_pivot.pivot_table(
@@ -1546,13 +1549,9 @@ def page_dashboard():
                 else:
                     display_period_cols = ordered_periods
 
-                # ⛔ JANGAN isi semua kolom
-                # ✅ Isi NaN HANYA di kolom periode
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
 
                 st.dataframe(df_display, use_container_width=True)
-
-
 
                 # =============================
                 # SEARCH & STYLING 
@@ -1576,19 +1575,32 @@ def page_dashboard():
                 # Trend coloring
                 def color_trend(row):
                     styles = []
-                    vals = [row[c] for c in display_period_cols if pd.notna(row[c])]
+
+                    # ambil hanya nilai numerik (buang "–", NaN, dll)
+                    vals = []
+                    for c in display_period_cols:
+                        try:
+                            v = float(row[c])
+                            if not pd.isna(v):
+                                vals.append(v)
+                        except (ValueError, TypeError):
+                            continue
+
+                    # default: tidak ada warna
+                    color = ''
+
                     if len(vals) >= 2:
                         if vals[-1] > vals[-2]:
-                            color = 'background-color: #c6efce'
+                            color = 'background-color: #c6efce'  # hijau
                         elif vals[-1] < vals[-2]:
-                            color = 'background-color: #f8d7da'
-                        else:
-                            color = ''
-                    else:
-                        color = ''
+                            color = 'background-color: #f8d7da'  # merah
 
-                    for c in df_display_filtered.columns:
-                        styles.append(color if (display_period_cols and c == display_period_cols[-1]) else '')
+                    for c in row.index:
+                        if display_period_cols and c == display_period_cols[-1]:
+                            styles.append(color)
+                        else:
+                            styles.append('')
+
                     return styles
 
                 def highlight_top(s):
