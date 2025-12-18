@@ -1412,7 +1412,6 @@ def page_dashboard():
                 for (mon, yr), df_period in st.session_state.data_storage.items():
                     if str(yr).strip() == str(selected_year).strip():
                         temp = df_period.copy()
-                        temp["Bulan_raw"] = mon.upper()
                         temp["Bulan_upper"] = mon.upper()
                         df_list.append(temp)
 
@@ -1443,11 +1442,16 @@ def page_dashboard():
                     val = str(val).upper().strip()
                     return MONTH_FIX.get(val, val)
 
-                df_year['Bulan_upper'] = df_year['Bulan'].apply(normalize_month)
+                df_year['Bulan_upper'] = df_year['Bulan_upper'].apply(normalize_month)
                 months_available = sorted(
                     [m for m in df_year['Bulan_upper'].unique() if m],
                     key=lambda m: MONTH_ORDER.get(m, 999)
                 )
+
+                df_year = df_year[
+                    df_year['Period_Column'].notna() &
+                    df_year[selected_indicator].notna()
+                ]
 
                 # =============================
                 # Pivot berdasarkan Kode Satker
@@ -1469,13 +1473,14 @@ def page_dashboard():
                             return 'Tw IV'
                         return None
                     
-                    df_year['Period_Column'] = df_year['Bulan'].str.upper().apply(map_to_quarter)
+                    df_year['Period_Column'] = df_year['Bulan_upper'].apply(map_to_quarter)
                     df_year = df_year[df_year['Period_Column'].notna()]
                     
-                # =============================
-                # DEBUG 
-                # =============================
-                st.write("DEBUG Period_Column:", df_year['Period_Column'].unique())
+                st.write(
+                    df_year[['Kode Satker', 'Bulan_upper', 'Period_Column']]
+                    .drop_duplicates()
+                    .sort_values(['Kode Satker', 'Period_Column'])
+                )
 
                 # 2. Ambil kolom yang diperlukan
                 base_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS', 'Period_Column']
