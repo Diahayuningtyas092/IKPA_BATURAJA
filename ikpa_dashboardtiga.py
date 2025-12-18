@@ -2697,7 +2697,7 @@ def page_admin():
     # ============================================================
     with tab1:
 
-        st.subheader("📤 Upload Data Bulanan IKPA")
+        st.subheader("📤 Upload Data IKPA Satker")
 
         upload_year = st.selectbox(
             "Pilih Tahun",
@@ -2808,7 +2808,126 @@ def page_admin():
 
                         except Exception as e:
                             st.error(f"❌ Error {uploaded_file.name}: {e}")
-                        
+        
+
+    # Submenu Upload Data IKPA KPPN
+        st.subheader("📤 Upload Data IKPA KPPN")
+
+        upload_year_kppn = st.selectbox(
+            "Pilih Tahun",
+            list(range(2020, 2031)),
+            index=list(range(2020, 2031)).index(datetime.now().year),
+            key="tahun_kppn"
+        )
+
+        uploaded_file_kppn = st.file_uploader(
+            "Pilih file Excel IKPA KPPN",
+            type=['xlsx', 'xls'],
+            key="file_kppn"
+        )
+
+        if uploaded_file_kppn is not None:
+            try:
+                # 🔍 Preview periode dari file
+                df_temp = pd.read_excel(uploaded_file_kppn, header=None)
+                month_text = str(df_temp.iloc[1, 0])
+                month_preview = (
+                    month_text.split(":")[-1].strip()
+                    if ":" in month_text else "UNKNOWN"
+                )
+
+                period_key_preview = (str(month_preview), str(upload_year_kppn))
+                uploaded_file_kppn.seek(0)
+
+                if period_key_preview in st.session_state.data_storage_kppn:
+                    st.warning(
+                        f"⚠️ Data IKPA KPPN untuk **{month_preview} {upload_year_kppn}** sudah ada."
+                    )
+                    confirm_replace = st.checkbox(
+                        "✅ Ganti data yang sudah ada",
+                        key=f"confirm_replace_kppn_{month_preview}_{upload_year_kppn}"
+                    )
+                else:
+                    confirm_replace = True
+                    st.info(
+                        f"📝 Akan mengunggah data IKPA KPPN baru untuk periode: "
+                        f"**{month_preview} {upload_year_kppn}**"
+                    )
+
+            except Exception as e:
+                st.error(f"❌ Gagal membaca preview file: {e}")
+                confirm_replace = False
+
+            if st.button(
+                "🔄 Proses Data IKPA KPPN",
+                type="primary",
+                disabled=not confirm_replace,
+                key="proses_kppn"
+            ):
+                with st.spinner("Memproses data IKPA KPPN..."):
+                    df_processed, month, year = process_excel_file_kppn(
+                        uploaded_file_kppn,
+                        upload_year_kppn
+                    )
+
+                    if df_processed is None:
+                        st.error("❌ Gagal memproses file IKPA KPPN.")
+                        st.stop()
+
+                    # 🧩 Normalisasi Kode Satker
+                    if 'Kode Satker' in df_processed.columns:
+                        df_processed['Kode Satker'] = (
+                            df_processed['Kode Satker']
+                            .astype(str)
+                            .apply(normalize_kode_satker)
+                        )
+                    else:
+                        df_processed['Kode Satker'] = ''
+
+                    period_key = (str(month), str(year))
+                    filename = f"IKPA_KPPN_{month}_{year}.xlsx"
+
+                    try:
+                        # 💾 Simpan ke session_state
+                        st.session_state.data_storage_kppn[period_key] = df_processed
+
+                        # 💾 Simpan ke GitHub
+                        excel_bytes = io.BytesIO()
+                        with pd.ExcelWriter(excel_bytes, engine='openpyxl') as writer:
+                            df_excel = df_processed.drop(
+                                ['Bobot', 'Nilai Terbobot'],
+                                axis=1,
+                                errors='ignore'
+                            )
+                            df_excel.to_excel(
+                                writer,
+                                index=False,
+                                sheet_name='Data IKPA KPPN'
+                            )
+                        excel_bytes.seek(0)
+
+                        save_file_to_github(
+                            excel_bytes.getvalue(),
+                            filename,
+                            folder="data_kppn"
+                        )
+
+                        st.success(
+                            f"✅ Data IKPA KPPN {month} {year} berhasil disimpan."
+                        )
+                        st.snow()
+
+                        # 📝 Log Aktivitas
+                        st.session_state.activity_log.append({
+                            "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "Aksi": "Upload IKPA KPPN",
+                            "Periode": f"{month} {year}",
+                            "Status": "✅ Sukses"
+                        })
+
+                    except Exception as e:
+                        st.error(f"❌ Gagal menyimpan ke GitHub: {e}")
+            
         # ============================================================
         # SUBMENU: UPLOAD DATA DIPA
         # ============================================================
