@@ -1443,8 +1443,7 @@ def page_dashboard():
                 def normalize_month(val):
                     if pd.isna(val):
                         return None
-                    val = str(val).upper().strip()
-                    return MONTH_FIX.get(val, val)
+                    return MONTH_FIX.get(str(val).upper().strip(), str(val).upper().strip())
 
                 df_year['Bulan_upper'] = df_year['Bulan_upper'].apply(normalize_month)
 
@@ -1458,6 +1457,7 @@ def page_dashboard():
                 # =============================
                 if period_type == 'monthly':
                     df_year['Period_Column'] = df_year['Bulan_upper']
+                    df_year['Period_Order'] = df_year['Bulan_upper'].map(MONTH_ORDER)
 
                 else:  # quarterly
                     def map_to_quarter(month):
@@ -1471,10 +1471,12 @@ def page_dashboard():
                             return 'Tw IV'
                         return None
 
+                    quarter_order = {'Tw I': 1, 'Tw II': 2, 'Tw III': 3, 'Tw IV': 4}
                     df_year['Period_Column'] = df_year['Bulan_upper'].apply(map_to_quarter)
+                    df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
 
                 # =============================
-                # 4. Filter SETELAH Period_Column ADA
+                # 4. Filter SETELAH period siap
                 # =============================
                 df_year = df_year[
                     df_year['Period_Column'].notna() &
@@ -1482,24 +1484,20 @@ def page_dashboard():
                 ]
 
                 # =============================
-                # 5. DEBUG (hapus setelah beres)
+                # 5. Pivot berdasarkan Satker
                 # =============================
-                st.write(
-                    df_year[['Kode Satker', 'Bulan_upper', 'Period_Column']]
-                    .drop_duplicates()
-                    .sort_values(['Kode Satker', 'Period_Column'])
-                )
+                base_cols = [
+                    'Kode BA', 'Kode Satker',
+                    'Uraian Satker-RINGKAS',
+                    'Period_Column', 'Period_Order'
+                ]
 
-                # =============================
-                # 6. Pivot berdasarkan Satker
-                # =============================
-                base_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS', 'Period_Column']
                 df_pivot = df_year[base_cols + [selected_indicator]].copy()
 
                 df_pivot = (
                     df_pivot
-                    .sort_values('Period_Column')
-                    .groupby(base_cols, as_index=False)
+                    .sort_values('Period_Order')   # ✅ URUT BENAR
+                    .groupby(base_cols[:-1], as_index=False)
                     .last()
                 )
 
@@ -1511,7 +1509,7 @@ def page_dashboard():
                 ).reset_index()
 
                 # =============================
-                # 7. Urutkan kolom periode
+                # 6. Urutkan kolom periode
                 # =============================
                 if period_type == 'monthly':
                     ordered_periods = [m for m in months_available if m in df_wide.columns]
@@ -1519,7 +1517,7 @@ def page_dashboard():
                     ordered_periods = [tw for tw in ['Tw I', 'Tw II', 'Tw III', 'Tw IV'] if tw in df_wide.columns]
 
                 # =============================
-                # 8. Ranking
+                # 7. Ranking
                 # =============================
                 final_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'] + ordered_periods
                 df_wide = df_wide[final_cols]
@@ -1538,7 +1536,7 @@ def page_dashboard():
                 df_wide = df_wide.sort_values('Peringkat')
 
                 # =============================
-                # 9. Display
+                # 8. Display
                 # =============================
                 display_cols = ['Peringkat', 'Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS'] + ordered_periods
                 df_display = df_wide[display_cols].copy()
@@ -1546,9 +1544,12 @@ def page_dashboard():
                 if period_type == 'monthly':
                     rename_dict = {m: m.capitalize() for m in ordered_periods}
                     df_display = df_display.rename(columns=rename_dict)
-                    display_period_cols = [m.capitalize() for m in ordered_periods]
-                else:
-                    display_period_cols = ordered_periods
+
+                # OPTIONAL UI CLEAN
+                df_display = df_display.fillna("–")
+
+                st.dataframe(df_display, use_container_width=True)
+
 
                 # =============================
                 # SEARCH & STYLING 
