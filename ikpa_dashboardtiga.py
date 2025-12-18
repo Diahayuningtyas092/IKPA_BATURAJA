@@ -1407,32 +1407,34 @@ def page_dashboard():
             # -------------------------
             if period_type in ['monthly', 'quarterly']:
 
-                # =============================
                 # 1. Gabungkan data per tahun
-                # =============================
-                # =============================
-                # 1. Gabungkan data per tahun
-                # =============================
-                df_list = []
+                dfs = []
                 for (mon, yr), df_period in st.session_state.data_storage.items():
-                    if str(yr).strip() == str(selected_year).strip():
-                        temp = df_period.copy()
+                    try:
+                        if int(yr) == int(selected_year):
+                            temp = df_period.copy()
 
-                        if 'Bulan' in temp.columns:
-                            temp['Bulan_upper'] = temp['Bulan']
-                        elif 'Nama Bulan' in temp.columns:
-                            temp['Bulan_upper'] = temp['Nama Bulan']
-                        else:
-                            st.error("❌ Kolom bulan tidak ditemukan")
-                            st.stop()
+                            # ambil kolom bulan apa pun namanya
+                            if 'Bulan' in temp.columns:
+                                temp['Bulan_raw'] = temp['Bulan']
+                            elif 'Nama Bulan' in temp.columns:
+                                temp['Bulan_raw'] = temp['Nama Bulan']
+                            else:
+                                continue
 
-                        df_list.append(temp)
+                            dfs.append(temp)
+                    except:
+                        continue
 
-                df_year = pd.concat(df_list, ignore_index=True)
+                if not dfs:
+                    st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
+                    st.stop()
 
-                # =============================
-                # 2. Normalisasi bulan
-                # =============================
+                df_year = pd.concat(dfs, ignore_index=True)
+
+                # =========================================================
+                # 2. Normalisasi bulan (SUPER DEFENSIVE)
+                # =========================================================
                 MONTH_FIX = {
                     "JAN": "JANUARI", "JANUARI": "JANUARI",
                     "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
@@ -1448,21 +1450,21 @@ def page_dashboard():
                 }
 
                 df_year['Bulan_upper'] = (
-                    df_year['Bulan_upper']
+                    df_year['Bulan_raw']
                     .astype(str)
                     .str.upper()
                     .str.strip()
                     .map(lambda x: MONTH_FIX.get(x, x))
                 )
 
-                # =============================
-                # 3. Period Column & Order
-                # =============================
+                # =========================================================
+                # 3. Period Column & Order (INI KUNCI)
+                # =========================================================
                 if period_type == 'monthly':
                     df_year['Period_Column'] = df_year['Bulan_upper']
                     df_year['Period_Order'] = df_year['Bulan_upper'].map(MONTH_ORDER)
 
-                else:
+                else:  # quarterly
                     def to_quarter(m):
                         return {
                             'MARET': 'Tw I',
@@ -1471,20 +1473,22 @@ def page_dashboard():
                             'DESEMBER': 'Tw IV'
                         }.get(m)
 
+                    quarter_order = {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
-                    df_year['Period_Order'] = df_year['Period_Column'].map(
-                        {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
-                    )
+                    df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
 
-                # ❗ PENTING: JANGAN FILTER DATA BULAN
-                # df_year = df_year[df_year['Period_Column'].notna()]  ❌ DIHAPUS
-
-                # =============================
-                # 4. Pivot LANGSUNG (INI KUNCI)
-                # =============================
+                # =========================================================
+                # 4. PIVOT LANGSUNG
+                # =========================================================
                 df_pivot = df_year[
-                    ['Kode BA','Kode Satker','Uraian Satker-RINGKAS','Period_Column', selected_indicator]
-                ]
+                    [
+                        'Kode BA',
+                        'Kode Satker',
+                        'Uraian Satker-RINGKAS',
+                        'Period_Column',
+                        selected_indicator
+                    ]
+                ].copy()
 
                 df_wide = (
                     df_pivot
@@ -1497,9 +1501,9 @@ def page_dashboard():
                     .reset_index()
                 )
 
-                # =============================
+                # =========================================================
                 # 5. Urutkan kolom periode
-                # =============================
+                # =========================================================
                 if period_type == 'monthly':
                     ordered_periods = sorted(
                         [c for c in df_wide.columns if c in MONTH_ORDER],
@@ -1508,9 +1512,9 @@ def page_dashboard():
                 else:
                     ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
 
-                # =============================
-                # 6. Ranking (NUMERIC ONLY)
-                # =============================
+                # =========================================================
+                # 6. Ranking 
+                # =========================================================
                 if ordered_periods:
                     last = ordered_periods[-1]
                     df_wide['Latest_Value'] = pd.to_numeric(df_wide[last], errors='coerce')
@@ -1522,24 +1526,21 @@ def page_dashboard():
 
                 df_wide = df_wide.sort_values('Peringkat')
 
-                # =============================
-                # 7. DISPLAY (STRING DI AKHIR)
-                # =============================
+                # =========================================================
+                # 7. DISPLAY 
+                # =========================================================
                 display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + ordered_periods
                 df_display = df_wide[display_cols].copy()
 
                 if period_type == 'monthly':
-                    df_display.rename(columns={m:m.capitalize() for m in ordered_periods}, inplace=True)
+                    df_display.rename(columns={m: m.capitalize() for m in ordered_periods}, inplace=True)
                     display_period_cols = [m.capitalize() for m in ordered_periods]
                 else:
                     display_period_cols = ordered_periods
 
-                # ⬇️ ISI "-" HANYA DI SINI
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
 
                 st.dataframe(df_display, use_container_width=True)
-
-
 
                 # =============================
                 # SEARCH & STYLING 
