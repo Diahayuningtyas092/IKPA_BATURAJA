@@ -2230,55 +2230,72 @@ def menu_highlights():
         return
 
     # ===============================
-    # GABUNGKAN DATA IKPA KPPN
+    # GABUNGKAN DATA
     # ===============================
     all_data = []
     for (bulan, tahun), df in st.session_state.data_storage_kppn.items():
         df_copy = df.copy()
+
         df_copy["Periode"] = f"{bulan} {tahun}"
         df_copy["Tahun"] = int(tahun)
         df_copy["Bulan"] = bulan
+
         all_data.append(df_copy)
 
     df_all = pd.concat(all_data, ignore_index=True)
 
-    st.success(f"Data IKPA KPPN dimuat ({len(df_all)} baris)")
+    # ===============================
+    # NORMALISASI NAMA KOLOM (WAJIB)
+    # ===============================
+    df_all.columns = (
+        df_all.columns
+        .astype(str)
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
+
+    st.success(f"✅ Data IKPA KPPN dimuat ({len(df_all)} baris)")
 
     # ===============================
     # PILIH KPPN
     # ===============================
     kppn_list = sorted(df_all["Nama KPPN"].dropna().unique())
+
     selected_kppn = st.selectbox(
-        " Pilih KPPN",
+        "🏢 Pilih KPPN",
         kppn_list
     )
 
-    df_kppn = df_all[df_all["Nama KPPN"] == selected_kppn]
+    df_kppn = df_all[df_all["Nama KPPN"] == selected_kppn].copy()
 
     # ===============================
-    # PILIH INDIKATOR (KOLOM)
+    # DETEKSI KOLOM IKPA NUMERIK
     # ===============================
-    indikator_opsi = [
-        "Kualitas Perencanaan Anggaran",
-        "Revisi DIPA",
-        "Deviasi Halaman III DIPA",
-        "Penyerapan Anggaran",
-        "Belanja Kontraktual",
-        "Penyelesaian Tagihan",
-        "Pengelolaan UP dan TUP",
-        "Capaian Output",
-        "Nilai Total",
-        "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    exclude_cols = [
+        "No", "Kode KPPN", "Nama KPPN", "Keterangan",
+        "Bulan", "Tahun", "Periode"
     ]
 
+    indikator_opsi = [
+        c for c in df_kppn.columns
+        if c not in exclude_cols
+        and pd.api.types.is_numeric_dtype(df_kppn[c])
+    ]
+
+    if not indikator_opsi:
+        st.error("❌ Tidak ditemukan kolom indikator numerik IKPA.")
+        return
+
     selected_indikator = st.multiselect(
-        "Pilih Indikator yang Ditampilkan!!",
+        "📊 Pilih Indikator IKPA",
         indikator_opsi,
         default=["Nilai Akhir (Nilai Total/Konversi Bobot)"]
+        if "Nilai Akhir (Nilai Total/Konversi Bobot)" in indikator_opsi
+        else indikator_opsi[:1]
     )
 
     if not selected_indikator:
-        st.warning("Pilih minimal satu indikator!.")
+        st.warning("⚠️ Pilih minimal satu indikator.")
         return
 
     # ===============================
@@ -2288,7 +2305,7 @@ def menu_highlights():
     df_kppn = df_kppn.sort_values(["Tahun", "Month_Num"])
 
     # ===============================
-    # CHART (LINE / BAR)
+    # PILIH JENIS CHART
     # ===============================
     chart_type = st.radio(
         "📈 Jenis Grafik",
@@ -2296,28 +2313,40 @@ def menu_highlights():
         horizontal=True
     )
 
+    # ===============================
+    # BUAT CHART
+    # ===============================
     fig = go.Figure()
 
     for indikator in selected_indikator:
-        fig.add_trace(
-            go.Scatter(
-                x=df_kppn["Periode"],
-                y=df_kppn[indikator],
-                mode="lines+markers" if chart_type == "Line Chart" else "markers",
-                name=indikator
+        if indikator not in df_kppn.columns:
+            continue
+
+        if chart_type == "Line Chart":
+            fig.add_trace(
+                go.Scatter(
+                    x=df_kppn["Periode"],
+                    y=df_kppn[indikator],
+                    mode="lines+markers",
+                    name=indikator
+                )
             )
-        )
+        else:
+            fig.add_trace(
+                go.Bar(
+                    x=df_kppn["Periode"],
+                    y=df_kppn[indikator],
+                    name=indikator
+                )
+            )
 
     fig.update_layout(
-        title=f"Highlights IKPA KPPN – {selected_kppn}",
+        title=f"📊 Highlights IKPA – {selected_kppn}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
-        height=500,
+        height=550,
         hovermode="x unified"
     )
-
-    if chart_type == "Bar Chart":
-        fig.update_traces(type="bar")
 
     st.plotly_chart(fig, use_container_width=True)
 
