@@ -3275,7 +3275,7 @@ def page_admin():
     # TAB 2: HAPUS DATA
     # ============================================================
     with tab2:
-        # Submenu Hapus Data IKPA
+        # Submenu Hapus Data IKPA Satker
         st.subheader("🗑️ Hapus Data IKPA Satker")
         if not st.session_state.data_storage:
             st.info("ℹ️ Belum ada data IKPA tersimpan.")
@@ -3314,70 +3314,79 @@ def page_admin():
                 except Exception as e:
                     st.error(f"❌ Gagal menghapus data: {e}")
                     
-        #Submenu Hapus data IKPA KPPN
+        # Submenu Hapus Data IKPA KPPN
         st.subheader("🗑️ Hapus Data IKPA KPPN")
 
-        if "data_kppn" not in st.session_state or not st.session_state.data_kppn:
+        try:
+            token = st.secrets["GITHUB_TOKEN"]
+            repo_name = st.secrets["GITHUB_REPO"]
+
+            g = Github(auth=Auth.Token(token))
+            repo = g.get_repo(repo_name)
+
+            # Ambil semua file di folder data_kppn
+            contents = repo.get_contents("data_kppn")
+
+            files_kppn = [
+                c.name for c in contents
+                if c.name.startswith("IKPA_KPPN_") and c.name.endswith(".xlsx")
+            ]
+
+        except Exception as e:
+            st.error(f"❌ Gagal membaca data dari GitHub: {e}")
+            st.stop()
+
+        # ===============================
+        # JIKA BELUM ADA DATA
+        # ===============================
+        if not files_kppn:
             st.info("ℹ️ Belum ada data IKPA KPPN tersimpan.")
-        else:
-            available_periods = sorted(st.session_state.data_kppn.keys(), reverse=True)
+            st.stop()
 
-            period_to_delete = st.selectbox(
-                "Pilih periode IKPA KPPN yang akan dihapus",
-                options=available_periods,
-                format_func=lambda x: f"{x[0].capitalize()} {x[1]}"
-            )
+        # ===============================
+        # PILIH FILE
+        # ===============================
+        selected_file = st.selectbox(
+            "Pilih data IKPA KPPN yang akan dihapus",
+            sorted(files_kppn, reverse=True)
+        )
 
-            month, year = period_to_delete
-            filename = f"data_kppn/IKPA_KPPN_{month}_{year}.xlsx"
+        confirm_delete = st.checkbox(
+            f"⚠️ Saya yakin ingin menghapus **{selected_file}** dari sistem dan GitHub"
+        )
 
-            confirm_delete = st.checkbox(
-                f"⚠️ Hapus data IKPA KPPN {month} {year} dari sistem dan GitHub",
-                key=f"confirm_delete_kppn_{month}_{year}"
-            )
+        # ===============================
+        # PROSES HAPUS
+        # ===============================
+        if st.button("🗑️ Hapus Data IKPA KPPN", type="primary") and confirm_delete:
+            try:
+                file_path = f"data_kppn/{selected_file}"
+                content = repo.get_contents(file_path)
 
-            if st.button("🗑️ Hapus Data IKPA KPPN", type="primary") and confirm_delete:
-                try:
-                    # ===============================
-                    # HAPUS DARI SESSION STATE
-                    # ===============================
-                    del st.session_state.data_kppn[period_to_delete]
+                repo.delete_file(
+                    content.path,
+                    f"Delete {selected_file}",
+                    content.sha
+                )
 
-                    # ===============================
-                    # HAPUS DARI GITHUB
-                    # ===============================
-                    token = st.secrets.get("GITHUB_TOKEN")
-                    repo_name = st.secrets.get("GITHUB_REPO")
+                # Log aktivitas
+                if "activity_log" not in st.session_state:
+                    st.session_state.activity_log = []
 
-                    g = Github(auth=Auth.Token(token))
-                    repo = g.get_repo(repo_name)
+                st.session_state.activity_log.append({
+                    "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "Aksi": "Hapus IKPA KPPN",
+                    "File": selected_file,
+                    "Status": "✅ Sukses"
+                })
 
-                    contents = repo.get_contents(filename)
-                    repo.delete_file(
-                        contents.path,
-                        f"Delete IKPA KPPN {month} {year}",
-                        contents.sha
-                    )
+                st.success(f"✅ {selected_file} berhasil dihapus.")
+                st.snow()
+                st.rerun()
 
-                    # ===============================
-                    # LOG AKTIVITAS
-                    # ===============================
-                    if "activity_log" not in st.session_state:
-                        st.session_state.activity_log = []
+            except Exception as e:
+                st.error(f"❌ Gagal menghapus data IKPA KPPN: {e}")
 
-                    st.session_state.activity_log.append({
-                        "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "Aksi": "Hapus IKPA KPPN",
-                        "Periode": f"{month} {year}",
-                        "Status": "✅ Sukses"
-                    })
-
-                    st.success(f"✅ Data IKPA KPPN {month} {year} berhasil dihapus.")
-                    st.snow()
-                    st.rerun()
-
-                except Exception as e:
-                    st.error(f"❌ Gagal menghapus data IKPA KPPN: {e}")
 
         # Submenu Hapus Data DIPA
         st.markdown("---")
