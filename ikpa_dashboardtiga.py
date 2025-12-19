@@ -1804,22 +1804,23 @@ def page_dashboard():
 def page_trend():
     st.title("🏛️ Early Warning System Kinerja Keuangan Satker")
 
-    # 🔒 Access restriction (same password as Admin page)
+    # 🔒 Access restriction
     if 'authenticated' not in st.session_state:
         st.session_state.authenticated = False
 
     if not st.session_state.authenticated:
         st.warning("🔒 Halaman ini memerlukan autentikasi Admin untuk diakses.")
         password = st.text_input("Masukkan Password", type="password")
+
         if st.button("Login"):
-            if password == "109KPPN":
+            if password == ADMIN_PASSWORD:
                 st.session_state.authenticated = True
                 st.success("✅ Login berhasil! Silakan akses halaman ini.")
                 st.rerun()
             else:
                 st.error("❌ Password salah!")
         return
-    
+
     if not st.session_state.data_storage:
         st.warning("⚠️ Belum ada data yang diunggah. Silakan unggah data melalui halaman Admin.")
         return
@@ -2617,8 +2618,9 @@ def page_admin():
     if not st.session_state.authenticated:
         st.warning("🔒 Halaman ini memerlukan autentikasi Admin")
         password = st.text_input("Masukkan Password Admin", type="password")
+
         if st.button("Login"):
-            if password == "109KPPN":
+            if password == ADMIN_PASSWORD:
                 st.session_state.authenticated = True
                 st.success("✔ Login berhasil")
                 st.rerun()
