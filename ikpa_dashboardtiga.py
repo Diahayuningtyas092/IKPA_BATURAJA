@@ -2257,42 +2257,45 @@ def menu_highlights():
     # PILIH KPPN
     # ===============================
     kppn_list = sorted(df_all["Nama KPPN"].dropna().unique())
-
-    selected_kppn = st.selectbox(
-        "Pilih KPPN",
-        kppn_list
-    )
+    selected_kppn = st.selectbox("Pilih KPPN", kppn_list)
 
     df_kppn = df_all[df_all["Nama KPPN"] == selected_kppn].copy()
 
     # ===============================
-    # PILIH INDIKATOR (SEMUA KOLOM NUMERIK)
+    # DAFTAR INDIKATOR IKPA KPPN (FIX)
     # ===============================
-    kolom_dikecualikan = [
-        "No", "Kode KPPN", "Nama KPPN", "Keterangan",
-        "Bulan", "Tahun", "Periode"
-    ]
-
     indikator_opsi = [
-        col for col in df_kppn.columns
-        if col not in kolom_dikecualikan
-        and pd.api.types.is_numeric_dtype(df_kppn[col])
+        "Kualitas Perencanaan Anggaran",
+        "Revisi DIPA",
+        "Deviasi Halaman III DIPA",
+        "Penyerapan Anggaran",
+        "Belanja Kontraktual",
+        "Penyelesaian Tagihan",
+        "Pengelolaan UP dan TUP",
+        "Capaian Output",
+        "Nilai Total",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)"
     ]
 
-    if not indikator_opsi:
-        st.error("Tidak ditemukan kolom indikator IKPA.")
+    #  Ambil hanya kolom yang benar-benar ada
+    indikator_valid = [c for c in indikator_opsi if c in df_kppn.columns]
+
+    if not indikator_valid:
+        st.error("Kolom indikator IKPA KPPN tidak ditemukan di file.")
+        st.write("Kolom tersedia:")
+        st.write(list(df_kppn.columns))
         return
 
     selected_indikator = st.multiselect(
-        "Pilih Indikator IKPA KPPN",
-        indikator_opsi,
+        "Pilih Indikator IKPA KPPN !",
+        indikator_valid,
         default=["Nilai Akhir (Nilai Total/Konversi Bobot)"]
-        if "Nilai Akhir (Nilai Total/Konversi Bobot)" in indikator_opsi
-        else indikator_opsi[:1]
+        if "Nilai Akhir (Nilai Total/Konversi Bobot)" in indikator_valid
+        else indikator_valid[:1]
     )
 
     if not selected_indikator:
-        st.warning("Pilih minimal satu indikator.")
+        st.warning("⚠️ Pilih minimal satu indikator.")
         return
 
     # ===============================
@@ -2302,7 +2305,7 @@ def menu_highlights():
     df_kppn = df_kppn.sort_values(["Tahun", "Month_Num"])
 
     # ===============================
-    # LINE CHART (SAJA)
+    # LINE CHART
     # ===============================
     fig = go.Figure()
 
