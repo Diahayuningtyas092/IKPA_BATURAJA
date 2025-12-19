@@ -2242,14 +2242,27 @@ def menu_highlights():
     df_all = pd.concat(all_data, ignore_index=True)
 
     # ===============================
-    # NORMALISASI NAMA KOLOM (WAJIB)
+    # NORMALISASI NAMA KOLOM
     # ===============================
     df_all.columns = (
-        df_all.columns
-        .astype(str)
+        df_all.columns.astype(str)
         .str.replace(r"\s+", " ", regex=True)
         .str.strip()
     )
+
+    # ===============================
+    # PERBAIKI HEADER UNNAMED (IKPA)
+    # ===============================
+    rename_map = {
+        "Unnamed: 5": "Revisi DIPA",
+        "Unnamed: 7": "Deviasi Halaman III DIPA",
+        "Unnamed: 8": "Penyerapan Anggaran",
+        "Unnamed: 9": "Belanja Kontraktual",
+        "Unnamed: 10": "Penyelesaian Tagihan",
+        "Unnamed: 11": "Pengelolaan UP dan TUP",
+        "Unnamed: 12": "Capaian Output",
+    }
+    df_all = df_all.rename(columns=rename_map)
 
     st.success(f"Data IKPA KPPN dimuat ({len(df_all)} baris)")
 
@@ -2260,17 +2273,17 @@ def menu_highlights():
     selected_kppn = st.selectbox("Pilih KPPN", kppn_list)
 
     df_kppn = df_all[df_all["Nama KPPN"] == selected_kppn].copy()
-    
+
     # ===============================
     # FILTER BARIS NILAI SAJA
     # ===============================
     if "Keterangan" in df_kppn.columns:
         df_kppn = df_kppn[
             df_kppn["Keterangan"].astype(str).str.upper() == "NILAI"
-    ]
+        ]
 
     # ===============================
-    # DAFTAR INDIKATOR IKPA KPPN 
+    # DAFTAR INDIKATOR IKPA (FIX)
     # ===============================
     indikator_opsi = [
         "Kualitas Perencanaan Anggaran",
@@ -2285,6 +2298,9 @@ def menu_highlights():
         "Nilai Akhir (Nilai Total/Konversi Bobot)"
     ]
 
+    # ===============================
+    # KONVERSI KE NUMERIK
+    # ===============================
     for col in indikator_opsi:
         if col in df_kppn.columns:
             df_kppn[col] = (
@@ -2295,23 +2311,20 @@ def menu_highlights():
             )
             df_kppn[col] = pd.to_numeric(df_kppn[col], errors="coerce")
 
-
-    if not indikator_opsi:
-        st.error("❌ Kolom indikator IKPA tidak ditemukan di data.")
-        st.stop()
-
+    # ===============================
+    # PILIH INDIKATOR
+    # ===============================
     selected_indikator = st.multiselect(
         "Pilih Indikator IKPA KPPN !",
-        indikator_opsi,
+        [c for c in indikator_opsi if c in df_kppn.columns],
         default=["Nilai Akhir (Nilai Total/Konversi Bobot)"]
-        if "Nilai Akhir (Nilai Total/Konversi Bobot)" in indikator_opsi
-        else indikator_opsi[:1]
+        if "Nilai Akhir (Nilai Total/Konversi Bobot)" in df_kppn.columns
+        else None
     )
 
     if not selected_indikator:
         st.warning("⚠️ Pilih minimal satu indikator.")
-        st.stop()
-
+        return
 
     # ===============================
     # URUTKAN PERIODE
@@ -2319,45 +2332,31 @@ def menu_highlights():
     df_kppn["Month_Num"] = df_kppn["Bulan"].str.upper().map(MONTH_ORDER)
     df_kppn = df_kppn.sort_values(["Tahun", "Month_Num"])
 
+    categories = df_kppn["Periode"].tolist()
+
     # ===============================
     # LINE CHART
     # ===============================
     fig = go.Figure()
 
-    try:
-        # Pastikan data sudah terurut waktu
-        categories = [
-            f"{m} {y}" for y, m in sorted(
-                {(int(x['Tahun']), x['Bulan'].upper()) for _, x in df_kppn.iterrows()},
-                key=lambda t: (t[0], MONTH_ORDER.get(t[1], 0))
-            )
-        ]
-
-        for indikator in selected_indikator:
-            fig.add_trace(
-                go.Scatter(
-                    x=pd.Categorical(
-                        df_kppn["Periode"],
-                        categories=categories,
-                        ordered=True
-                    ),
-                    y=df_kppn[indikator],
-                    mode="lines+markers",
-                    name=indikator,
-                    hovertemplate=(
-                        "<b>%{fullData.name}</b><br>"
-                        "Periode: %{x}<br>"
-                        "Nilai: %{y:.2f}<extra></extra>"
-                    )
+    for indikator in selected_indikator:
+        fig.add_trace(
+            go.Scatter(
+                x=pd.Categorical(
+                    df_kppn["Periode"],
+                    categories=categories,
+                    ordered=True
+                ),
+                y=df_kppn[indikator],
+                mode="lines+markers",
+                name=indikator,
+                hovertemplate=(
+                    "<b>%{fullData.name}</b><br>"
+                    "Periode: %{x}<br>"
+                    "Nilai: %{y:.2f}<extra></extra>"
                 )
             )
-
-    except Exception as e:
-        st.error(f"❌ Error membuat chart Highlights IKPA KPPN: {str(e)}")
-        st.write("**Debug Info:**")
-        st.write("Indikator dipilih:", selected_indikator)
-        st.write("Kolom tersedia:", list(df_kppn.columns))
-        st.stop()
+        )
 
     fig.update_layout(
         title=f"📈 Tren IKPA KPPN – {selected_kppn}",
