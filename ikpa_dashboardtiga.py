@@ -2260,11 +2260,18 @@ def menu_highlights():
     selected_kppn = st.selectbox("Pilih KPPN", kppn_list)
 
     df_kppn = df_all[df_all["Nama KPPN"] == selected_kppn].copy()
+    
+    # ===============================
+    # FILTER BARIS NILAI SAJA
+    # ===============================
+    if "Keterangan" in df_kppn.columns:
+        df_kppn = df_kppn[
+            df_kppn["Keterangan"].astype(str).str.upper() == "NILAI"
+    ]
 
     # ===============================
-    # DAFTAR INDIKATOR IKPA KPPN (FIX)
+    # DAFTAR INDIKATOR IKPA KPPN 
     # ===============================
-
     indikator_opsi = [
         "Kualitas Perencanaan Anggaran",
         "Revisi DIPA",
@@ -2278,8 +2285,16 @@ def menu_highlights():
         "Nilai Akhir (Nilai Total/Konversi Bobot)"
     ]
 
-    # pastikan kolom benar-benar ada di dataframe
-    indikator_opsi = [c for c in indikator_opsi if c in df_kppn.columns]
+    for col in indikator_opsi:
+        if col in df_kppn.columns:
+            df_kppn[col] = (
+                df_kppn[col]
+                .astype(str)
+                .str.replace("%", "", regex=False)
+                .str.replace(",", ".", regex=False)
+            )
+            df_kppn[col] = pd.to_numeric(df_kppn[col], errors="coerce")
+
 
     if not indikator_opsi:
         st.error("❌ Kolom indikator IKPA tidak ditemukan di data.")
