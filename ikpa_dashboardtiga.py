@@ -2822,7 +2822,7 @@ def page_admin():
         
 
     # Submenu Upload Data IKPA KPPN
-        st.subheader("📤 Upload Data IKPA KPPN")
+        st.subheader("📝 Upload Data IKPA KPPN")
 
         upload_year_kppn = st.selectbox(
             "Pilih Tahun",
@@ -2885,7 +2885,7 @@ def page_admin():
                         st.error("❌ Gagal memproses file IKPA KPPN.")
                         st.stop()
 
-                    # 🧩 Normalisasi Kode Satker
+                    # Normalisasi Kode Satker
                     if 'Kode Satker' in df_processed.columns:
                         df_processed['Kode Satker'] = (
                             df_processed['Kode Satker']
@@ -2924,7 +2924,7 @@ def page_admin():
                         )
 
                         st.success(
-                            f"✅ Data IKPA KPPN {month} {year} berhasil disimpan."
+                            f" Data IKPA KPPN {month} {year} berhasil disimpan."
                         )
                         st.snow()
 
@@ -3091,7 +3091,7 @@ def page_admin():
     # ============================================================
     with tab2:
         # Submenu Hapus Data IKPA
-        st.subheader("🗑️ Hapus Data Bulanan IKPA")
+        st.subheader("🗑️ Hapus Data IKPA Satker")
         if not st.session_state.data_storage:
             st.info("ℹ️ Belum ada data IKPA tersimpan.")
         else:
@@ -3109,7 +3109,7 @@ def page_admin():
                 key=f"confirm_delete_{month}_{year}"
             )
 
-            if st.button("🗑️ Hapus Data IKPA Ini", type="primary") and confirm_delete:
+            if st.button("🗑️ Hapus Data IKPA Satker", type="primary") and confirm_delete:
                 try:
                     del st.session_state.data_storage[period_to_delete]
                     token = st.secrets.get("GITHUB_TOKEN")
@@ -3128,6 +3128,71 @@ def page_admin():
                     })
                 except Exception as e:
                     st.error(f"❌ Gagal menghapus data: {e}")
+                    
+        #Submenu Hapus data IKPA KPPN
+        st.subheader("🗑️ Hapus Data IKPA KPPN")
+
+        if "data_kppn" not in st.session_state or not st.session_state.data_kppn:
+            st.info("ℹ️ Belum ada data IKPA KPPN tersimpan.")
+        else:
+            available_periods = sorted(st.session_state.data_kppn.keys(), reverse=True)
+
+            period_to_delete = st.selectbox(
+                "Pilih periode IKPA KPPN yang akan dihapus",
+                options=available_periods,
+                format_func=lambda x: f"{x[0].capitalize()} {x[1]}"
+            )
+
+            month, year = period_to_delete
+            filename = f"data_kppn/IKPA_KPPN_{month}_{year}.xlsx"
+
+            confirm_delete = st.checkbox(
+                f"⚠️ Hapus data IKPA KPPN {month} {year} dari sistem dan GitHub",
+                key=f"confirm_delete_kppn_{month}_{year}"
+            )
+
+            if st.button("🗑️ Hapus Data IKPA KPPN", type="primary") and confirm_delete:
+                try:
+                    # ===============================
+                    # HAPUS DARI SESSION STATE
+                    # ===============================
+                    del st.session_state.data_kppn[period_to_delete]
+
+                    # ===============================
+                    # HAPUS DARI GITHUB
+                    # ===============================
+                    token = st.secrets.get("GITHUB_TOKEN")
+                    repo_name = st.secrets.get("GITHUB_REPO")
+
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
+
+                    contents = repo.get_contents(filename)
+                    repo.delete_file(
+                        contents.path,
+                        f"Delete IKPA KPPN {month} {year}",
+                        contents.sha
+                    )
+
+                    # ===============================
+                    # LOG AKTIVITAS
+                    # ===============================
+                    if "activity_log" not in st.session_state:
+                        st.session_state.activity_log = []
+
+                    st.session_state.activity_log.append({
+                        "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Aksi": "Hapus IKPA KPPN",
+                        "Periode": f"{month} {year}",
+                        "Status": "✅ Sukses"
+                    })
+
+                    st.success(f"✅ Data IKPA KPPN {month} {year} berhasil dihapus.")
+                    st.snow()
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"❌ Gagal menghapus data IKPA KPPN: {e}")
 
         # Submenu Hapus Data DIPA
         st.markdown("---")
@@ -3173,7 +3238,7 @@ def page_admin():
     # TAB 3: DOWNLOAD DATA
     # ============================================================
     with tab3:
-        st.subheader("📥 Download IKPA")
+        st.subheader("📥 Download IKPA Satker")
 
         if "data_storage" not in st.session_state or not st.session_state.data_storage:
             st.info("🔹 Data belum tersedia untuk diunduh")
@@ -3195,7 +3260,74 @@ def page_admin():
                     file_name=filename,
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 )
-                    
+         
+        # ===========================
+        # Submenu Download Data IKPA KPPN
+        # ===========================
+        st.subheader("📥 Download Data IKPA KPPN")
+
+        uploaded_file = st.file_uploader(
+            "Upload file IKPA KPPN (Excel)",
+            type=["xlsx"]
+        )
+
+        if uploaded_file:
+            try:
+                # =========================
+                # BACA FILE IKPA KPPN
+                # =========================
+                raw_df = pd.read_excel(uploaded_file, header=None)
+
+                # Cari baris header (yang ada 'Kode KPPN')
+                header_row = None
+                for i in range(len(raw_df)):
+                    if raw_df.iloc[i].astype(str).str.contains("Kode KPPN", case=False).any():
+                        header_row = i
+                        break
+
+                if header_row is None:
+                    st.error("❌ Header 'Kode KPPN' tidak ditemukan.")
+                    st.stop()
+
+                # Baca ulang dengan header yang benar
+                df = pd.read_excel(uploaded_file, header=header_row)
+
+                # =========================
+                # PILIH KOLOM PENTING
+                # =========================
+                kolom_penting = [
+                    "Kode KPPN",
+                    "Nama KPPN",
+                    "Nilai Akhir (Nilai Total/Konversi Bobot)"
+                ]
+
+                df_kppn = df[kolom_penting].dropna(how="all")
+
+                # =========================
+                # TAMPILKAN DATA
+                # =========================
+                st.success("✅ Data IKPA KPPN berhasil dibaca")
+                st.dataframe(df_kppn, use_container_width=True)
+
+                # =========================
+                # DOWNLOAD EXCEL
+                # =========================
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                    df_kppn.to_excel(writer, index=False, sheet_name="IKPA_KPPN")
+
+                output.seek(0)
+
+                st.download_button(
+                    label="📥 Download Data IKPA KPPN (Excel)",
+                    data=output,
+                    file_name="IKPA_KPPN_Januari_2025.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+            except Exception as e:
+                st.error(f"❌ Gagal memproses file: {e}")
+                
         # ===========================
         # Submenu Download Data DIPA
         # ===========================
