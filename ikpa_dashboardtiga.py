@@ -267,6 +267,19 @@ def process_excel_file(uploaded_file, upload_year):
     year = upload_year
     return df, month, year
 
+def process_excel_file_kppn(uploaded_file, year):
+    df, month, _ = process_excel_file(uploaded_file, year)
+
+    if df is None:
+        return None, None, None
+
+    # Validasi ulang keamanan
+    if "Nama KPPN" not in df.columns:
+        return None, None, None
+
+    df["Tahun"] = year
+    return df, month, year
+
 # ============================================================
 # PARSER DIPA 
 # ============================================================
