@@ -49,6 +49,9 @@ TEMPLATE_PATH = r"C:\Users\KEMENKEU\Desktop\INDIKATOR PELAKSANAAN ANGGARAN.xlsx"
 if "data_storage" not in st.session_state:
     st.session_state.data_storage = {}
 
+if "data_storage_kppn" not in st.session_state:
+    st.session_state.data_storage_kppn = {}
+
 if "DATA_DIPA_by_year" not in st.session_state:
     st.session_state.DATA_DIPA_by_year = {}
 
