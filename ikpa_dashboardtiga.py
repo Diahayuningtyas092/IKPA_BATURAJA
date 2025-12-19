@@ -1877,43 +1877,7 @@ def page_dashboard():
             )
 
 
-# HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)
-def page_trend():
-    st.title("📈 Dashboard Internal KPPN")
-
-    # ===============================
-    # 🔒 AUTHENTICATION
-    # ===============================
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
-
-    if not st.session_state.authenticated:
-        st.warning("🔒 Halaman ini memerlukan autentikasi Admin.")
-        password = st.text_input("Masukkan Password", type="password")
-
-        if st.button("Login"):
-            if password == ADMIN_PASSWORD:
-                st.session_state.authenticated = True
-                st.success("✅ Login berhasil!")
-                st.rerun()
-            else:
-                st.error("❌ Password salah!")
-        return
-
-    # ===============================
-    # 📂 MENU DASHBOARD INTERNAL
-    # ===============================
-    menu = st.radio(
-        "Pilih Menu",
-        [
-            "🏛️ Early Warning System Kinerja Keuangan Satker",
-            "✨ Highlights"
-        ],
-        horizontal=True
-    )
-
-    st.markdown("---")
-    
+# HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
 def menu_ews_satker():
     st.subheader("🏛️ Early Warning System Kinerja Keuangan Satker")
 
@@ -2256,6 +2220,51 @@ def menu_ews_satker():
 def menu_highlights():
     st.subheader("✨ Highlights")
     st.info("📌 Menu Highlights akan dikembangkan.")
+
+def page_trend():
+    st.title("📈 Dashboard Internal KPPN")
+
+    # ===============================
+    # 🔒 AUTHENTICATION
+    # ===============================
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if not st.session_state.authenticated:
+        st.warning("🔒 Halaman ini memerlukan autentikasi Admin.")
+        password = st.text_input("Masukkan Password", type="password")
+
+        if st.button("Login"):
+            if password == ADMIN_PASSWORD:
+                st.session_state.authenticated = True
+                st.success("✅ Login berhasil!")
+                st.rerun()
+            else:
+                st.error("❌ Password salah!")
+        return
+
+    # ===============================
+    # 📂 MENU DASHBOARD INTERNAL
+    # ===============================
+    menu = st.radio(
+        "Pilih Menu",
+        [
+            "🏛️ Early Warning System Kinerja Keuangan Satker",
+            "✨ Highlights"
+        ],
+        horizontal=True
+    )
+
+    st.markdown("---")
+
+    # ===============================
+    # 🔽 PANGGIL ISI MENU
+    # ===============================
+    if menu == "🏛️ Early Warning System Kinerja Keuangan Satker":
+        menu_ews_satker()
+
+    elif menu == "✨ Highlights":
+        menu_highlights()
 
         
 # ============================================================
