@@ -15,6 +15,15 @@ from github import Github
 from github import Auth
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 
+# =========================
+# AMBIL PASSWORD DARI SECRETS
+# =========================
+ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "")
+if not ADMIN_PASSWORD:
+    st.error("ADMIN_PASSWORD belum diset di Streamlit Secrets")
+    st.stop()
+
+
 # define month order map
 MONTH_ORDER = {
     'JANUARI': 1,
