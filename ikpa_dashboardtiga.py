@@ -2611,6 +2611,19 @@ def push_to_github(file_bytes, repo_path, repo_name, token, commit_message):
             st.success(f"✅ File {repo_path} berhasil dibuat di GitHub")
     except Exception as e:
         st.error(f"❌ Gagal push ke GitHub: {e}")
+        
+# Deteksi IKPA KPPN
+def detect_header_row(excel_file, keyword, max_rows=10):
+    """
+    Mendeteksi baris header berdasarkan keyword kolom
+    """
+    preview = pd.read_excel(excel_file, header=None, nrows=max_rows)
+
+    for i in range(len(preview)):
+        row = preview.iloc[i].astype(str).str.strip()
+        if keyword in row.values:
+            return i
+    return None
 
 # ============================================================
 #  Menu Admin
@@ -2717,8 +2730,8 @@ def page_admin():
         )
 
         uploaded_files = st.file_uploader(
-            "Pilih satu atau beberapa file Excel IKPA",
-            type=['xlsx', 'xls'],
+            "Pilih satu atau beberapa file Excel IKPA Satker",
+            type=["xlsx", "xls"],
             accept_multiple_files=True
         )
 
@@ -2750,21 +2763,31 @@ def page_admin():
                     for uploaded_file in uploaded_files:
                         try:
                             # ===============================
-                            # 🔐 VALIDASI IKPA SATKER
+                            # 🔐 VALIDASI FILE IKPA SATKER
                             # ===============================
                             uploaded_file.seek(0)
-                            df_check = pd.read_excel(uploaded_file)
+                            header_row = detect_header_row(
+                                uploaded_file,
+                                keyword="Nama Satker"
+                            )
 
-                            if "Nama KPPN" in df_check.columns:
-                                st.error(
-                                    f"❌ {uploaded_file.name} adalah IKPA KPPN. Upload ditolak."
-                                )
-                                continue
-
-                            if "Nama Satker" not in df_check.columns:
+                            if header_row is None:
                                 st.error(
                                     f"❌ {uploaded_file.name} bukan IKPA Satker "
                                     "(kolom 'Nama Satker' tidak ditemukan)."
+                                )
+                                continue
+
+                            uploaded_file.seek(0)
+                            df_check = pd.read_excel(
+                                uploaded_file,
+                                header=header_row
+                            )
+
+                            # ❌ TOLAK IKPA KPPN
+                            if "Nama KPPN" in df_check.columns:
+                                st.error(
+                                    f"❌ {uploaded_file.name} adalah IKPA KPPN. Upload ditolak."
                                 )
                                 continue
 
@@ -2817,6 +2840,9 @@ def page_admin():
                             st.session_state.data_storage[key] = df_final.copy()
                             st.session_state.ikpa_dipa_merged = False
 
+                            # ======================
+                            # 💾 SIMPAN KE GITHUB
+                            # ======================
                             excel_bytes = io.BytesIO()
                             with pd.ExcelWriter(
                                 excel_bytes,
@@ -2853,8 +2879,8 @@ def page_admin():
                             st.error(
                                 f"❌ Error {uploaded_file.name}: {e}"
                             )
-        
 
+        
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
 
@@ -2867,53 +2893,67 @@ def page_admin():
 
         uploaded_file_kppn = st.file_uploader(
             "Pilih file Excel IKPA KPPN",
-            type=['xlsx', 'xls'],
+            type=["xlsx", "xls"],
             key="file_kppn"
         )
 
         if uploaded_file_kppn is not None:
             try:
                 # ===============================
-                # 🔐 VALIDASI JENIS FILE (WAJIB)
+                # 🔐 VALIDASI & DETEKSI HEADER
                 # ===============================
-                df_check = pd.read_excel(uploaded_file_kppn)
+                uploaded_file_kppn.seek(0)
+                header_row = detect_header_row(
+                    uploaded_file_kppn,
+                    keyword="Nama KPPN"
+                )
 
-                # ❌ SALAH FILE: IKPA SATKER
+                if header_row is None:
+                    st.error(
+                        "❌ GAGAL UPLOAD!\n\n"
+                        "Kolom **'Nama KPPN'** tidak ditemukan.\n"
+                        "📌 File ini bukan IKPA KPPN yang valid."
+                    )
+                    st.stop()
+
+                uploaded_file_kppn.seek(0)
+                df_check = pd.read_excel(
+                    uploaded_file_kppn,
+                    header=header_row
+                )
+
+                # ❌ PROTEKSI SALAH FILE (IKPA SATKER)
                 if "Nama Satker" in df_check.columns:
                     st.error(
                         "❌ GAGAL UPLOAD!\n\n"
-                        "File yang Anda upload adalah **IKPA SATKER**.\n\n"
-                        "📌 Halaman ini hanya menerima **IKPA KPPN**.\n"
-                        "Silakan upload file IKPA KPPN yang benar."
-                    )
-                    st.stop()
-
-                # ❌ BUKAN IKPA KPPN
-                if "Nama KPPN" not in df_check.columns:
-                    st.error(
-                        "❌ GAGAL UPLOAD!\n\n"
-                        "Kolom **'Nama KPPN'** tidak ditemukan.\n\n"
-                        "📌 Pastikan file adalah data **IKPA KPPN** yang valid."
+                        "File yang Anda upload adalah **IKPA SATKER**.\n"
+                        "📌 Halaman ini hanya menerima **IKPA KPPN**."
                     )
                     st.stop()
 
                 # ===============================
-                # 🔍 PREVIEW PERIODE (LANJUT)
+                # 🔍 PREVIEW PERIODE
                 # ===============================
                 uploaded_file_kppn.seek(0)
-                df_temp = pd.read_excel(uploaded_file_kppn, header=None)
+                df_temp = pd.read_excel(
+                    uploaded_file_kppn,
+                    header=None
+                )
+
                 month_text = str(df_temp.iloc[1, 0])
                 month_preview = (
                     month_text.split(":")[-1].strip()
                     if ":" in month_text else "UNKNOWN"
                 )
 
-                period_key_preview = (str(month_preview), str(upload_year_kppn))
-                uploaded_file_kppn.seek(0)
+                period_key_preview = (
+                    str(month_preview),
+                    str(upload_year_kppn)
+                )
 
                 if period_key_preview in st.session_state.data_storage_kppn:
                     st.warning(
-                        f"⚠️ Data IKPA KPPN untuk **{month_preview} {upload_year_kppn}** sudah ada."
+                        f"⚠️ Data IKPA KPPN **{month_preview} {upload_year_kppn}** sudah ada."
                     )
                     confirm_replace = st.checkbox(
                         "✅ Ganti data yang sudah ada",
@@ -2922,14 +2962,17 @@ def page_admin():
                 else:
                     confirm_replace = True
                     st.info(
-                        f"📝 Akan mengunggah data IKPA KPPN baru untuk periode: "
-                        f"**{month_preview} {upload_year_kppn}**"
+                        f"📝 Akan mengunggah data IKPA KPPN baru "
+                        f"untuk periode **{month_preview} {upload_year_kppn}**"
                     )
 
             except Exception as e:
                 st.error(f"❌ Gagal membaca file: {e}")
                 confirm_replace = False
 
+            # ===============================
+            # 🔄 PROSES DATA
+            # ===============================
             if st.button(
                 "🔄 Proses Data IKPA KPPN",
                 type="primary",
@@ -2937,6 +2980,7 @@ def page_admin():
                 key="proses_kppn"
             ):
                 with st.spinner("Memproses data IKPA KPPN..."):
+
                     df_processed, month, year = process_excel_file_kppn(
                         uploaded_file_kppn,
                         upload_year_kppn
@@ -2947,32 +2991,37 @@ def page_admin():
                         st.stop()
 
                     # Normalisasi Kode Satker
-                    if 'Kode Satker' in df_processed.columns:
-                        df_processed['Kode Satker'] = (
-                            df_processed['Kode Satker']
+                    if "Kode Satker" in df_processed.columns:
+                        df_processed["Kode Satker"] = (
+                            df_processed["Kode Satker"]
                             .astype(str)
                             .apply(normalize_kode_satker)
                         )
                     else:
-                        df_processed['Kode Satker'] = ''
+                        df_processed["Kode Satker"] = ""
 
                     period_key = (str(month), str(year))
                     filename = f"IKPA_KPPN_{month}_{year}.xlsx"
 
                     try:
+                        # 💾 Simpan ke session
                         st.session_state.data_storage_kppn[period_key] = df_processed
 
+                        # 💾 Simpan ke GitHub
                         excel_bytes = io.BytesIO()
-                        with pd.ExcelWriter(excel_bytes, engine='openpyxl') as writer:
+                        with pd.ExcelWriter(
+                            excel_bytes,
+                            engine="openpyxl"
+                        ) as writer:
                             df_excel = df_processed.drop(
-                                ['Bobot', 'Nilai Terbobot'],
+                                ["Bobot", "Nilai Terbobot"],
                                 axis=1,
-                                errors='ignore'
+                                errors="ignore"
                             )
                             df_excel.to_excel(
                                 writer,
                                 index=False,
-                                sheet_name='Data IKPA KPPN'
+                                sheet_name="Data IKPA KPPN"
                             )
                         excel_bytes.seek(0)
 
@@ -2982,11 +3031,15 @@ def page_admin():
                             folder="data_kppn"
                         )
 
-                        st.success(f"✅ Data IKPA KPPN {month} {year} berhasil disimpan.")
+                        st.success(
+                            f"✅ Data IKPA KPPN {month} {year} berhasil disimpan."
+                        )
                         st.snow()
 
                         st.session_state.activity_log.append({
-                            "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "Waktu": datetime.now().strftime(
+                                "%Y-%m-%d %H:%M:%S"
+                            ),
                             "Aksi": "Upload IKPA KPPN",
                             "Periode": f"{month} {year}",
                             "Status": "✅ Sukses"
@@ -2994,6 +3047,7 @@ def page_admin():
 
                     except Exception as e:
                         st.error(f"❌ Gagal menyimpan ke GitHub: {e}")
+
 
             
         # ============================================================
