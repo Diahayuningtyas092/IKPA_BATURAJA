@@ -2131,48 +2131,42 @@ def menu_ews_satker():
     
     # Buat line chart
     fig = go.Figure()
-
+    
     try:
-        # Pastikan data sudah terurut waktu
-        categories = [
-            f"{m} {y}" for y, m in sorted(
-                {(int(x['Tahun']), x['Bulan'].upper()) for _, x in df_kppn.iterrows()},
+        for satker in selected_satker:
+            df_satker = df_plot[df_plot['Satker'] == satker].sort_values('Period_Sort')
+
+            # Ensure x-axis uses correct chronological month order
+            categories = [f"{m} {y}" for y, m in sorted(
+                {(int(x['Tahun']), x['Bulan'].upper()) for _, x in df_all.iterrows()},
                 key=lambda t: (t[0], MONTH_ORDER.get(t[1], 0))
-            )
-        ]
-
-        for indikator in selected_indikator:
-            fig.add_trace(
-                go.Scatter(
-                    x=pd.Categorical(
-                        df_kppn["Periode"],
-                        categories=categories,
-                        ordered=True
-                    ),
-                    y=df_kppn[indikator],
-                    mode="lines+markers",
-                    name=indikator,
-                    hovertemplate=(
-                        "<b>%{fullData.name}</b><br>"
-                        "Periode: %{x}<br>"
-                        "Nilai: %{y:.2f}<extra></extra>"
-                    )
-                )
-            )
-
+            )]
+            
+            fig.add_trace(go.Scatter(
+                x=pd.Categorical(
+                    df_satker['Period'],
+                    categories=categories,
+                    ordered=True
+                ),
+                y=df_satker[selected_metric],
+                mode='lines+markers',
+                name=satker,
+                hovertemplate='<b>%{fullData.name}</b><br>Periode: %{x}<br>Nilai: %{y:.2f}<extra></extra>'
+            ))
     except Exception as e:
-        st.error(f"❌ Error membuat chart Highlights IKPA KPPN: {str(e)}")
+        st.error(f"❌ Error membuat chart: {str(e)}")
         st.write("**Debug Info:**")
-        st.write("Indikator dipilih:", selected_indikator)
-        st.write("Kolom tersedia:", list(df_kppn.columns))
+        st.write(f"Selected satker: {selected_satker}")
+        st.write(f"df_plot shape: {df_plot.shape}")
+        st.write(f"Unique periods in df_plot: {df_plot['Period'].unique()}")
         st.stop()
-
+    
     fig.update_layout(
-        title=f"📈 Tren IKPA KPPN – {selected_kppn}",
+        title=f"Tren {selected_metric}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
         height=600,
-        hovermode="x unified",
+        hovermode='x unified',
         legend=dict(
             orientation="v",
             yanchor="top",
@@ -2181,9 +2175,8 @@ def menu_ews_satker():
             x=1.02
         )
     )
-
+    
     st.plotly_chart(fig, use_container_width=True)
-
 
     # Early Warning Satker Tren Menurun
     warnings = []  # Initialize warnings list
@@ -2271,6 +2264,7 @@ def menu_highlights():
     # ===============================
     # DAFTAR INDIKATOR IKPA KPPN (FIX)
     # ===============================
+
     indikator_opsi = [
         "Kualitas Perencanaan Anggaran",
         "Revisi DIPA",
@@ -2284,26 +2278,25 @@ def menu_highlights():
         "Nilai Akhir (Nilai Total/Konversi Bobot)"
     ]
 
-    #  Ambil hanya kolom yang benar-benar ada
-    indikator_valid = [c for c in indikator_opsi if c in df_kppn.columns]
+    # pastikan kolom benar-benar ada di dataframe
+    indikator_opsi = [c for c in indikator_opsi if c in df_kppn.columns]
 
-    if not indikator_valid:
-        st.error("Kolom indikator IKPA KPPN tidak ditemukan di file.")
-        st.write("Kolom tersedia:")
-        st.write(list(df_kppn.columns))
-        return
+    if not indikator_opsi:
+        st.error("❌ Kolom indikator IKPA tidak ditemukan di data.")
+        st.stop()
 
     selected_indikator = st.multiselect(
         "Pilih Indikator IKPA KPPN !",
-        indikator_valid,
+        indikator_opsi,
         default=["Nilai Akhir (Nilai Total/Konversi Bobot)"]
-        if "Nilai Akhir (Nilai Total/Konversi Bobot)" in indikator_valid
-        else indikator_valid[:1]
+        if "Nilai Akhir (Nilai Total/Konversi Bobot)" in indikator_opsi
+        else indikator_opsi[:1]
     )
 
     if not selected_indikator:
         st.warning("⚠️ Pilih minimal satu indikator.")
-        return
+        st.stop()
+
 
     # ===============================
     # URUTKAN PERIODE
@@ -2316,22 +2309,54 @@ def menu_highlights():
     # ===============================
     fig = go.Figure()
 
-    for indikator in selected_indikator:
-        fig.add_trace(
-            go.Scatter(
-                x=df_kppn["Periode"],
-                y=df_kppn[indikator],
-                mode="lines+markers",
-                name=indikator
+    try:
+        # Pastikan data sudah terurut waktu
+        categories = [
+            f"{m} {y}" for y, m in sorted(
+                {(int(x['Tahun']), x['Bulan'].upper()) for _, x in df_kppn.iterrows()},
+                key=lambda t: (t[0], MONTH_ORDER.get(t[1], 0))
             )
-        )
+        ]
+
+        for indikator in selected_indikator:
+            fig.add_trace(
+                go.Scatter(
+                    x=pd.Categorical(
+                        df_kppn["Periode"],
+                        categories=categories,
+                        ordered=True
+                    ),
+                    y=df_kppn[indikator],
+                    mode="lines+markers",
+                    name=indikator,
+                    hovertemplate=(
+                        "<b>%{fullData.name}</b><br>"
+                        "Periode: %{x}<br>"
+                        "Nilai: %{y:.2f}<extra></extra>"
+                    )
+                )
+            )
+
+    except Exception as e:
+        st.error(f"❌ Error membuat chart Highlights IKPA KPPN: {str(e)}")
+        st.write("**Debug Info:**")
+        st.write("Indikator dipilih:", selected_indikator)
+        st.write("Kolom tersedia:", list(df_kppn.columns))
+        st.stop()
 
     fig.update_layout(
         title=f"📈 Tren IKPA KPPN – {selected_kppn}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
-        height=550,
-        hovermode="x unified"
+        height=600,
+        hovermode="x unified",
+        legend=dict(
+            orientation="v",
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=1.02
+        )
     )
 
     st.plotly_chart(fig, use_container_width=True)
