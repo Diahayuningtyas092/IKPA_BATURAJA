@@ -267,87 +267,70 @@ def process_excel_file(uploaded_file, upload_year):
     year = upload_year
     return df, month, year
 
+def find_header_row_by_keyword(uploaded_file, keyword="Nama KPPN", max_rows=10):
+    uploaded_file.seek(0)
+    preview = pd.read_excel(uploaded_file, header=None, nrows=max_rows)
+
+    for i in range(preview.shape[0]):
+        row_values = preview.iloc[i].astype(str).str.upper()
+        if any(keyword.upper() in v for v in row_values):
+            return i
+
+    return None
+
 def process_excel_file_kppn(uploaded_file, year):
-    try:
-        # IKPA KPPN: header ada di baris ke-3
-        df = pd.read_excel(uploaded_file, header=3)
-    except Exception:
+    header_row = find_header_row_by_keyword(uploaded_file, "Nama KPPN")
+
+    if header_row is None:
         return None, None, None
 
-    # ===============================
-    # NORMALISASI NAMA KOLOM
-    # ===============================
+    uploaded_file.seek(0)
+    df = pd.read_excel(uploaded_file, header=header_row)
+
     df.columns = (
-        df.columns
-        .astype(str)
+        df.columns.astype(str)
         .str.strip()
         .str.replace(r"\s+", " ", regex=True)
     )
 
-    # ===============================
-    # VALIDASI WAJIB IKPA KPPN
-    # ===============================
-    col_lower = [c.lower() for c in df.columns]
-
-    if not any("kppn" in c for c in col_lower):
+    if "Nama KPPN" not in df.columns:
         return None, None, None
 
-    if any("satker" in c for c in col_lower):
+    if "Nama Satker" in df.columns:
         return None, None, None
 
-    # ===============================
-    # DETEKSI BULAN 
-    # ===============================
+    # Ambil bulan (tetap seperti sebelumnya)
     uploaded_file.seek(0)
     df_info = pd.read_excel(uploaded_file, header=None)
 
     MONTH_MAP = {
-        "JAN": "JANUARI",
-        "JANUARI": "JANUARI",
-        "FEB": "FEBRUARI",
-        "FEBRUARI": "FEBRUARI",
-        "MAR": "MARET",
-        "MARET": "MARET",
-        "APR": "APRIL",
-        "APRIL": "APRIL",
+        "JAN": "JANUARI", "JANUARI": "JANUARI",
+        "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
+        "MAR": "MARET", "MARET": "MARET",
+        "APR": "APRIL", "APRIL": "APRIL",
         "MEI": "MEI",
-        "MAY": "MEI",
-        "JUN": "JUNI",
-        "JUNI": "JUNI",
-        "JUL": "JULI",
-        "JULI": "JULI",
-        "AGT": "AGUSTUS",
-        "AGS": "AGUSTUS",
-        "AGUSTUS": "AGUSTUS",
-        "AUG": "AGUSTUS",
-        "SEP": "SEPTEMBER",
-        "SEPT": "SEPTEMBER",
-        "SEPTEMBER": "SEPTEMBER",
-        "OKT": "OKTOBER",
-        "OCT": "OKTOBER",
-        "OKTOBER": "OKTOBER",
-        "NOV": "NOVEMBER",
-        "NOVEMBER": "NOVEMBER",
-        "DES": "DESEMBER",
-        "DEC": "DESEMBER",
-        "DESEMBER": "DESEMBER",
+        "JUN": "JUNI", "JUNI": "JUNI",
+        "JUL": "JULI", "JULI": "JULI",
+        "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AGUSTUS": "AGUSTUS",
+        "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
+        "OKT": "OKTOBER", "OKTOBER": "OKTOBER",
+        "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
+        "DES": "DESEMBER", "DESEMBER": "DESEMBER",
     }
 
     month = "UNKNOWN"
     if df_info.shape[0] > 1:
         text = str(df_info.iloc[1, 0]).upper()
-        for key, val in MONTH_MAP.items():
-            if key in text:
-                month = val
+        for k, v in MONTH_MAP.items():
+            if k in text:
+                month = v
                 break
 
-    # ===============================
-    # FINALISASI
-    # ===============================
     df["Bulan"] = month
     df["Tahun"] = year
 
     return df, month, year
+
 
 # ============================================================
 # PARSER DIPA 
@@ -2969,6 +2952,9 @@ def page_admin():
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
 
+        # ===============================
+        # 📅 PILIH TAHUN
+        # ===============================
         upload_year_kppn = st.selectbox(
             "Pilih Tahun",
             list(range(2020, 2031)),
@@ -2976,28 +2962,55 @@ def page_admin():
             key="tahun_kppn"
         )
 
+        # ===============================
+        # 📂 UPLOAD FILE
+        # ===============================
         uploaded_file_kppn = st.file_uploader(
             "Pilih file Excel IKPA KPPN",
             type=["xlsx", "xls"],
             key="file_kppn"
         )
 
+        # ===============================
+        # 🔐 INISIALISASI SESSION
+        # ===============================
+        if "data_storage_kppn" not in st.session_state:
+            st.session_state.data_storage_kppn = {}
+
+        # ===============================
+        # 🚦 VALIDASI FILE
+        # ===============================
         if uploaded_file_kppn is not None:
             try:
-                # ===============================
-                # 🔐 VALIDASI FILE IKPA KPPN
-                # ===============================
-                uploaded_file_kppn.seek(0)
-                df_check = pd.read_excel(uploaded_file_kppn, header=3)
+                # Cari baris header otomatis
+                header_row = find_header_row_by_keyword(
+                    uploaded_file_kppn,
+                    keyword="Nama KPPN"
+                )
 
-                # Normalisasi kolom
+                if header_row is None:
+                    st.error(
+                        "GAGAL UPLOAD!\n\n"
+                        "Kolom **'Nama KPPN'** tidak ditemukan.\n"
+                        "File ini BUKAN data IKPA KPPN yang valid."
+                    )
+                    st.stop()
+
+                # Baca data dengan header yang benar
+                uploaded_file_kppn.seek(0)
+                df_check = pd.read_excel(
+                    uploaded_file_kppn,
+                    header=header_row
+                )
+
+                # Normalisasi nama kolom
                 df_check.columns = (
                     df_check.columns.astype(str)
                     .str.strip()
                     .str.replace(r"\s+", " ", regex=True)
                 )
 
-                #  Salah upload: IKPA Satker
+                #  SALAH FILE: IKPA SATKER
                 if "Nama Satker" in df_check.columns:
                     st.error(
                         "GAGAL UPLOAD!\n\n"
@@ -3006,38 +3019,30 @@ def page_admin():
                     )
                     st.stop()
 
-                #  Bukan IKPA KPPN
-                if "Nama KPPN" not in df_check.columns:
-                    st.error(
-                        "GAGAL UPLOAD!\n\n"
-                        "Kolom **'Nama KPPN'** tidak ditemukan.\n"
-                        "File ini bukan IKPA KPPN yang valid."
-                    )
-                    st.stop()
-
                 # ===============================
-                # 🔍 PREVIEW BULAN DARI HEADER
+                # 🔍 DETEKSI BULAN (HEADER ATAS)
                 # ===============================
                 uploaded_file_kppn.seek(0)
                 df_info = pd.read_excel(uploaded_file_kppn, header=None)
 
                 month_preview = "UNKNOWN"
+                MONTH_MAP = {
+                    "JAN": "JANUARI", "JANUARI": "JANUARI",
+                    "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
+                    "MAR": "MARET", "MARET": "MARET",
+                    "APR": "APRIL", "APRIL": "APRIL",
+                    "MEI": "MEI",
+                    "JUN": "JUNI", "JUNI": "JUNI",
+                    "JUL": "JULI", "JULI": "JULI",
+                    "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AGUSTUS": "AGUSTUS",
+                    "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
+                    "OKT": "OKTOBER", "OKTOBER": "OKTOBER",
+                    "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
+                    "DES": "DESEMBER", "DESEMBER": "DESEMBER"
+                }
+
                 if df_info.shape[0] > 1:
                     text = str(df_info.iloc[1, 0]).upper()
-                    MONTH_MAP = {
-                        "JAN": "JANUARI", "JANUARI": "JANUARI",
-                        "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
-                        "MAR": "MARET", "MARET": "MARET",
-                        "APR": "APRIL", "APRIL": "APRIL",
-                        "MEI": "MEI",
-                        "JUN": "JUNI", "JUNI": "JUNI",
-                        "JUL": "JULI", "JULI": "JULI",
-                        "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AGUSTUS": "AGUSTUS",
-                        "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
-                        "OKT": "OKTOBER", "OKTOBER": "OKTOBER",
-                        "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
-                        "DES": "DESEMBER", "DESEMBER": "DESEMBER",
-                    }
                     for k, v in MONTH_MAP.items():
                         if k in text:
                             month_preview = v
@@ -3047,28 +3052,28 @@ def page_admin():
 
                 if period_key_preview in st.session_state.data_storage_kppn:
                     st.warning(
-                        f"⚠️ Data IKPA KPPN **{month_preview} {upload_year_kppn}** sudah ada."
+                        f" Data IKPA KPPN **{month_preview} {upload_year_kppn}** sudah ada."
                     )
                     confirm_replace = st.checkbox(
-                        "Ganti data yang sudah ada",
+                        " Ganti data yang sudah ada",
                         key=f"confirm_replace_kppn_{month_preview}_{upload_year_kppn}"
                     )
                 else:
                     confirm_replace = True
                     st.info(
-                        f"📝 Akan mengunggah data IKPA KPPN "
+                        f"Akan mengunggah data IKPA KPPN "
                         f"untuk periode **{month_preview} {upload_year_kppn}**"
                     )
 
             except Exception as e:
-                st.error(f"Gagal membaca file: {e}")
+                st.error(f" Gagal membaca file: {e}")
                 confirm_replace = False
 
             # ===============================
             # 🔄 PROSES DATA
             # ===============================
             if st.button(
-                "🔄 Proses Data IKPA KPPN",
+                " Proses Data IKPA KPPN",
                 type="primary",
                 disabled=not confirm_replace,
                 key="proses_kppn"
@@ -3081,27 +3086,17 @@ def page_admin():
                     )
 
                     if df_processed is None:
-                        st.error("❌ Gagal memproses file IKPA KPPN.")
+                        st.error(" Gagal memproses file IKPA KPPN.")
                         st.stop()
-
-                    # Normalisasi Kode Satker (jika ada)
-                    if "Kode Satker" in df_processed.columns:
-                        df_processed["Kode Satker"] = (
-                            df_processed["Kode Satker"]
-                            .astype(str)
-                            .apply(normalize_kode_satker)
-                        )
-                    else:
-                        df_processed["Kode Satker"] = ""
 
                     period_key = (str(month), str(year))
                     filename = f"IKPA_KPPN_{month}_{year}.xlsx"
 
                     try:
-                        # 💾 Simpan ke session
+                        #  Simpan ke session
                         st.session_state.data_storage_kppn[period_key] = df_processed
 
-                        # 💾 Simpan ke GitHub
+                        #  Simpan ke GitHub
                         excel_bytes = io.BytesIO()
                         with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
                             df_processed.drop(
@@ -3121,20 +3116,13 @@ def page_admin():
                             folder="data_kppn"
                         )
 
-                        st.success(f"✅ Data IKPA KPPN {month} {year} berhasil disimpan.")
+                        st.success(
+                            f" Data IKPA KPPN {month} {year} berhasil disimpan."
+                        )
                         st.snow()
 
-                        st.session_state.activity_log.append({
-                            "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "Aksi": "Upload IKPA KPPN",
-                            "Periode": f"{month} {year}",
-                            "Status": "✅ Sukses"
-                        })
-
                     except Exception as e:
-                        st.error(f"❌ Gagal menyimpan ke GitHub: {e}")
-
-
+                        st.error(f" Gagal menyimpan ke GitHub: {e}")
             
         # ============================================================
         # SUBMENU: UPLOAD DATA DIPA
