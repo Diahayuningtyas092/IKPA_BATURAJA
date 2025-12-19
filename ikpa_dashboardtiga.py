@@ -1879,27 +1879,46 @@ def page_dashboard():
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)
 def page_trend():
-    st.title("🏛️ Early Warning System Kinerja Keuangan Satker")
+    st.title("📈 Dashboard Internal KPPN")
 
-    # 🔒 Access restriction
-    if 'authenticated' not in st.session_state:
+    # ===============================
+    # 🔒 AUTHENTICATION
+    # ===============================
+    if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
     if not st.session_state.authenticated:
-        st.warning("🔒 Halaman ini memerlukan autentikasi Admin untuk diakses.")
+        st.warning("🔒 Halaman ini memerlukan autentikasi Admin.")
         password = st.text_input("Masukkan Password", type="password")
 
         if st.button("Login"):
             if password == ADMIN_PASSWORD:
                 st.session_state.authenticated = True
-                st.success("✅ Login berhasil! Silakan akses halaman ini.")
+                st.success("✅ Login berhasil!")
                 st.rerun()
             else:
                 st.error("❌ Password salah!")
         return
 
-    if not st.session_state.data_storage:
-        st.warning("⚠️ Belum ada data yang diunggah. Silakan unggah data melalui halaman Admin.")
+    # ===============================
+    # 📂 MENU DASHBOARD INTERNAL
+    # ===============================
+    menu = st.radio(
+        "Pilih Menu",
+        [
+            "🏛️ Early Warning System Kinerja Keuangan Satker",
+            "✨ Highlights"
+        ],
+        horizontal=True
+    )
+
+    st.markdown("---")
+    
+def menu_ews_satker():
+    st.subheader("🏛️ Early Warning System Kinerja Keuangan Satker")
+
+    if "data_storage" not in st.session_state or not st.session_state.data_storage:
+        st.warning("⚠️ Belum ada data historis yang tersedia.")
         return
     
     # Gabungkan semua data
@@ -1985,7 +2004,8 @@ def page_trend():
     warnings = []
 
     st.markdown("---")
-# Analisis Tren
+    
+    # Analisis Tren
     st.subheader("📈 Analisis Tren")
     
     col1, col2, col3 = st.columns(3)
@@ -2232,6 +2252,11 @@ def page_trend():
             st.markdown("---")
     else:
         st.success("✅ Tidak ada satker dengan tren menurun pada periode yang dipilih!")
+        
+def menu_highlights():
+    st.subheader("✨ Highlights")
+    st.info("📌 Menu Highlights akan dikembangkan.")
+
         
 # ============================================================
 # 🔐 HALAMAN 3: ADMIN 
@@ -3239,7 +3264,7 @@ def page_admin():
 
                 st.dataframe(st.session_state.reference_df.tail(10), use_container_width=True)
 
-                # ✅ Save merged reference data permanently to GitHub
+                # Save merged reference data permanently to GitHub
                 try:
                     excel_bytes_ref = io.BytesIO()
                     with pd.ExcelWriter(excel_bytes_ref, engine='openpyxl') as writer:
@@ -3762,7 +3787,7 @@ def main():
     # NOTIF GLOBAL STATUS DATA (MUNCUL SAAT APP DIBUKA)
     # ============================================================
     if st.session_state.get("ikpa_dipa_merged", False):
-        st.success("✅ Data IKPA & DIPA berhasil dimuat dan siap digunakan")
+        st.success(" Data IKPA & DIPA berhasil dimuat dan siap digunakan")
 
 
     # ============================================================
