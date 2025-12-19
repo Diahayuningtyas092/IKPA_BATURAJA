@@ -3460,67 +3460,59 @@ def page_admin():
         # ===========================
         st.subheader("📥 Download Data IKPA KPPN")
 
-        uploaded_file = st.file_uploader(
-            "Upload file IKPA KPPN (Excel)",
-            type=["xlsx"]
+        try:
+            token = st.secrets["GITHUB_TOKEN"]
+            repo_name = st.secrets["GITHUB_REPO"]
+
+            g = Github(auth=Auth.Token(token))
+            repo = g.get_repo(repo_name)
+
+            contents = repo.get_contents("data_kppn")
+
+            files_kppn = [
+                c.name for c in contents
+                if c.name.startswith("IKPA_KPPN_") and c.name.endswith(".xlsx")
+            ]
+
+        except Exception as e:
+            st.error(f"❌ Gagal membaca data dari GitHub: {e}")
+            st.stop()
+
+        # ===============================
+        # JIKA BELUM ADA DATA
+        # ===============================
+        if not files_kppn:
+            st.info("ℹ️ Belum ada data IKPA KPPN tersedia untuk diunduh.")
+            st.stop()
+
+        # ===============================
+        # PILIH FILE
+        # ===============================
+        selected_file = st.selectbox(
+            "Pilih data IKPA KPPN",
+            sorted(files_kppn, reverse=True)
         )
 
-        if uploaded_file:
-            try:
-                # =========================
-                # BACA FILE IKPA KPPN
-                # =========================
-                raw_df = pd.read_excel(uploaded_file, header=None)
+        # ===============================
+        # AMBIL FILE DARI GITHUB
+        # ===============================
+        try:
+            file_path = f"data_kppn/{selected_file}"
+            file_content = repo.get_contents(file_path)
+            file_bytes = file_content.decoded_content
+        except Exception as e:
+            st.error(f"❌ Gagal mengambil file: {e}")
+            st.stop()
 
-                # Cari baris header (yang ada 'Kode KPPN')
-                header_row = None
-                for i in range(len(raw_df)):
-                    if raw_df.iloc[i].astype(str).str.contains("Kode KPPN", case=False).any():
-                        header_row = i
-                        break
-
-                if header_row is None:
-                    st.error("❌ Header 'Kode KPPN' tidak ditemukan.")
-                    st.stop()
-
-                # Baca ulang dengan header yang benar
-                df = pd.read_excel(uploaded_file, header=header_row)
-
-                # =========================
-                # PILIH KOLOM PENTING
-                # =========================
-                kolom_penting = [
-                    "Kode KPPN",
-                    "Nama KPPN",
-                    "Nilai Akhir (Nilai Total/Konversi Bobot)"
-                ]
-
-                df_kppn = df[kolom_penting].dropna(how="all")
-
-                # =========================
-                # TAMPILKAN DATA
-                # =========================
-                st.success("✅ Data IKPA KPPN berhasil dibaca")
-                st.dataframe(df_kppn, use_container_width=True)
-
-                # =========================
-                # DOWNLOAD EXCEL
-                # =========================
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                    df_kppn.to_excel(writer, index=False, sheet_name="IKPA_KPPN")
-
-                output.seek(0)
-
-                st.download_button(
-                    label="📥 Download Data IKPA KPPN (Excel)",
-                    data=output,
-                    file_name="IKPA_KPPN_Januari_2025.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-
-            except Exception as e:
-                st.error(f"❌ Gagal memproses file: {e}")
+        # ===============================
+        # DOWNLOAD BUTTON
+        # ===============================
+        st.download_button(
+            label="📥 Download File IKPA KPPN",
+            data=file_bytes,
+            file_name=selected_file,
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
                 
         # ===========================
         # Submenu Download Data DIPA
