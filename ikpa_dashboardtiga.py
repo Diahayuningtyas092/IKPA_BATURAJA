@@ -2217,15 +2217,115 @@ def menu_ews_satker():
     else:
         st.success("✅ Tidak ada satker dengan tren menurun pada periode yang dipilih!")
         
+#HIGHLIGHTS
+        
 def menu_highlights():
-    st.subheader("✨ Highlights")
-    st.info("📌 Menu Highlights akan dikembangkan.")
+    st.subheader("🎯 Highlights IKPA KPPN")
+
+    # ===============================
+    # VALIDASI DATA
+    # ===============================
+    if "data_storage_kppn" not in st.session_state or not st.session_state.data_storage_kppn:
+        st.info("ℹ️ Belum ada data IKPA KPPN yang tersimpan.")
+        return
+
+    # ===============================
+    # GABUNGKAN DATA IKPA KPPN
+    # ===============================
+    all_data = []
+    for (bulan, tahun), df in st.session_state.data_storage_kppn.items():
+        df_copy = df.copy()
+        df_copy["Periode"] = f"{bulan} {tahun}"
+        df_copy["Tahun"] = int(tahun)
+        df_copy["Bulan"] = bulan
+        all_data.append(df_copy)
+
+    df_all = pd.concat(all_data, ignore_index=True)
+
+    st.success(f"Data IKPA KPPN dimuat ({len(df_all)} baris)")
+
+    # ===============================
+    # PILIH KPPN
+    # ===============================
+    kppn_list = sorted(df_all["Nama KPPN"].dropna().unique())
+    selected_kppn = st.selectbox(
+        " Pilih KPPN",
+        kppn_list
+    )
+
+    df_kppn = df_all[df_all["Nama KPPN"] == selected_kppn]
+
+    # ===============================
+    # PILIH INDIKATOR (KOLOM)
+    # ===============================
+    indikator_opsi = [
+        "Kualitas Perencanaan Anggaran",
+        "Revisi DIPA",
+        "Deviasi Halaman III DIPA",
+        "Penyerapan Anggaran",
+        "Belanja Kontraktual",
+        "Penyelesaian Tagihan",
+        "Pengelolaan UP dan TUP",
+        "Capaian Output",
+        "Nilai Total",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    ]
+
+    selected_indikator = st.multiselect(
+        "Pilih Indikator yang Ditampilkan!!",
+        indikator_opsi,
+        default=["Nilai Akhir (Nilai Total/Konversi Bobot)"]
+    )
+
+    if not selected_indikator:
+        st.warning("Pilih minimal satu indikator!.")
+        return
+
+    # ===============================
+    # URUTKAN PERIODE
+    # ===============================
+    df_kppn["Month_Num"] = df_kppn["Bulan"].str.upper().map(MONTH_ORDER)
+    df_kppn = df_kppn.sort_values(["Tahun", "Month_Num"])
+
+    # ===============================
+    # CHART (LINE / BAR)
+    # ===============================
+    chart_type = st.radio(
+        "📈 Jenis Grafik",
+        ["Line Chart", "Bar Chart"],
+        horizontal=True
+    )
+
+    fig = go.Figure()
+
+    for indikator in selected_indikator:
+        fig.add_trace(
+            go.Scatter(
+                x=df_kppn["Periode"],
+                y=df_kppn[indikator],
+                mode="lines+markers" if chart_type == "Line Chart" else "markers",
+                name=indikator
+            )
+        )
+
+    fig.update_layout(
+        title=f"Highlights IKPA KPPN – {selected_kppn}",
+        xaxis_title="Periode",
+        yaxis_title="Nilai",
+        height=500,
+        hovermode="x unified"
+    )
+
+    if chart_type == "Bar Chart":
+        fig.update_traces(type="bar")
+
+    st.plotly_chart(fig, use_container_width=True)
 
 def page_trend():
     st.title("📈 Dashboard Internal KPPN")
 
     # ===============================
-    # 🔒 AUTHENTICATION
+    # AUTHENTICATION
     # ===============================
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
@@ -2237,20 +2337,20 @@ def page_trend():
         if st.button("Login"):
             if password == ADMIN_PASSWORD:
                 st.session_state.authenticated = True
-                st.success("✅ Login berhasil!")
+                st.success("Login berhasil!")
                 st.rerun()
             else:
-                st.error("❌ Password salah!")
+                st.error("Password salah!")
         return
 
     # ===============================
-    # 📂 MENU DASHBOARD INTERNAL
+    # MENU DASHBOARD INTERNAL
     # ===============================
     menu = st.radio(
         "Pilih Menu",
         [
             "🏛️ Early Warning System Kinerja Keuangan Satker",
-            "✨ Highlights"
+            "🎯 Highlights"
         ],
         horizontal=True
     )
@@ -2263,10 +2363,9 @@ def page_trend():
     if menu == "🏛️ Early Warning System Kinerja Keuangan Satker":
         menu_ews_satker()
 
-    elif menu == "✨ Highlights":
+    elif menu == "🎯 Highlights":
         menu_highlights()
-
-        
+   
 # ============================================================
 # 🔐 HALAMAN 3: ADMIN 
 # ============================================================
