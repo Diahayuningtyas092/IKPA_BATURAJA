@@ -3324,16 +3324,13 @@ def page_admin():
                     # 🔄 REFRESH MANUAL (REKOMENDASI)
                     # ===============================
                     st.markdown("---")
-                    st.info("ℹ️ Klik tombol ini untuk memuat ulang aplikasi dan memastikan data terbaru masuk ke dashboard.")
+                    st.info("🔄 Klik tombol ini untuk memuat ulang aplikasi dan memastikan data terbaru masuk ke dashboard.")
 
-                    if st.button("🔄 Refresh Aplikasi"):
-                        st.toast("🔄 Memuat ulang aplikasi…", icon="🔄")
+                    if st.button("🔄 Refresh Aplikasi", type="secondary"):
+                        st.session_state.force_refresh = True
+                        st.toast("Aplikasi sedang dimuat ulang...", icon="🔄")
+                        st.experimental_rerun()
 
-                        # 🔥 INI KUNCI
-                        st.cache_data.clear()
-                        st.cache_resource.clear()
-
-                        st.rerun()
 
         
         # Submenu Upload Data IKPA KPPN
@@ -4070,11 +4067,15 @@ def page_admin():
 def main():
     
     # ===============================
-    # FORCE REFRESH (GLOBAL)
+    # FORCE REFRESH HANDLER (KUNCI)
     # ===============================
-    if st.session_state.get("force_refresh"):
+    if st.session_state.get("force_refresh", False):
+        st.session_state.data_storage = {}
+        st.session_state.data_storage_kppn = {}
+        st.session_state.DATA_DIPA_by_year = {}
+        st.session_state.ikpa_dipa_merged = False
         st.session_state.force_refresh = False
-        st.rerun()
+
 
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
