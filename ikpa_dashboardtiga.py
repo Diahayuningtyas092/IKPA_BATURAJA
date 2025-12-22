@@ -3324,13 +3324,17 @@ def page_admin():
                     # 🔄 REFRESH MANUAL (REKOMENDASI)
                     # ===============================
                     st.markdown("---")
-                    st.info("ℹ️ Untuk memastikan data terbaru masuk ke chart & dashboard, silakan refresh aplikasi.")
+                    st.info("ℹ️ Klik tombol ini untuk memuat ulang aplikasi dan memastikan data terbaru masuk ke dashboard.")
 
-                    if st.button("🔄 Refresh Aplikasi", type="secondary"):
-                        st.toast("Memuat ulang data terbaru…", icon="🔄")
-                        st.session_state.ikpa_dipa_merged = False
+                    if st.button("🔄 Refresh Aplikasi"):
+                        st.toast("🔄 Memuat ulang aplikasi…", icon="🔄")
+
+                        # 🔥 INI KUNCI
+                        st.cache_data.clear()
+                        st.cache_resource.clear()
+
                         st.rerun()
-                            
+
         
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
