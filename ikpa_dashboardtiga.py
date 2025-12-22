@@ -257,65 +257,102 @@ def extract_kode_from_satker_field(s, width=6):
         return normalize_kode_satker(m2.group(1), width=width)
     return ''
 
-def reprocess_all_ikpa_satker():
-    """
-    Re-load dan reprocess semua IKPA Satker dari GitHub
-    """
-    with st.spinner("🔄 Memproses ulang seluruh IKPA Satker..."):
-        load_data_from_github()   # ini sudah proses + ranking
-        st.session_state.ikpa_dipa_merged = False
+        
+# ===============================
+# REGISTER IKPA SATKER (GLOBAL)
+# ===============================
+def register_ikpa_satker(df_final, month, year, source="Manual"):
+    key = (month, str(year))
 
+    df = df_final.copy()
+    df["Source"] = source
+    df["Period"] = f"{month} {year}"
+
+    MONTH_ORDER = {
+        "JANUARI": 1, "FEBRUARI": 2, "MARET": 3, "APRIL": 4,
+        "MEI": 5, "JUNI": 6, "JULI": 7, "AGUSTUS": 8,
+        "SEPTEMBER": 9, "OKTOBER": 10, "NOVEMBER": 11, "DESEMBER": 12
+    }
+
+    df["Period_Sort"] = f"{int(year):04d}-{MONTH_ORDER.get(month, 0):02d}"
+
+    if "Peringkat" not in df.columns:
+        df = df.sort_values(
+            "Nilai Akhir (Nilai Total/Konversi Bobot)",
+            ascending=False
+        ).reset_index(drop=True)
+        df["Peringkat"] = range(1, len(df) + 1)
+
+    st.session_state.data_storage[key] = df
+
+
+# ===============================
+# PARSER IKPA SATKER (INI KUNCI)
+# ===============================
 def process_excel_file(uploaded_file, upload_year):
-    df = pd.read_excel(uploaded_file)
-
-    month = "UNKNOWN"
-    if "Bulan" in df.columns:
-        month = str(df["Bulan"].iloc[0])
-
-    year = upload_year
-    return df, month, year
-
-def find_header_row_by_keyword(uploaded_file, keyword="Nama KPPN", max_rows=10):
-    uploaded_file.seek(0)
-    preview = pd.read_excel(uploaded_file, header=None, nrows=max_rows)
-
-    for i in range(preview.shape[0]):
-        row_values = preview.iloc[i].astype(str).str.upper()
-        if any(keyword.upper() in v for v in row_values):
-            return i
-
-    return None
-
-def read_excel_with_fixed_header(uploaded_file):
-    uploaded_file.seek(0)
+    """
+    PARSER IKPA SATKER — SATU-SATUNYA YANG BOLEH MEMBACA EXCEL MENTAH
+    """
     df_raw = pd.read_excel(uploaded_file, header=None)
 
-    # ===============================
-    # SESUAI STRUKTUR FILE KAMU
-    # ===============================
-    # Row 2 : header utama (ada merged cell)
-    # Row 3 : sub-header (indikator)
-    header_main = df_raw.iloc[2]
-    header_sub  = df_raw.iloc[3]
+    # Ambil bulan dari baris atas
+    month_text = str(df_raw.iloc[1, 0])
+    month = month_text.split(":")[-1].strip().upper()
 
-    columns = []
-    for main, sub in zip(header_main, header_sub):
-        main = str(main).strip() if pd.notna(main) else ""
-        sub  = str(sub).strip() if pd.notna(sub) else ""
+    # Data mulai baris ke-5
+    df_data = df_raw.iloc[4:].reset_index(drop=True)
+    df_data.columns = range(len(df_data.columns))
 
-        # Jika ada sub-header, pakai itu (ISI UNNAMED)
-        if sub != "":
-            columns.append(sub)
-        else:
-            columns.append(main)
+    processed_rows = []
+    i = 0
+    while i + 3 < len(df_data):
 
-    # ===============================
-    # DATA MULAI BARIS 4
-    # ===============================
-    df = df_raw.iloc[4:].reset_index(drop=True)
-    df.columns = columns
+        nilai = df_data.iloc[i]
+        bobot = df_data.iloc[i + 1]
+        nilai_akhir = df_data.iloc[i + 2]
+        nilai_aspek = df_data.iloc[i + 3]
 
-    return df
+        row = {
+            "No": nilai[0],
+            "Kode KPPN": str(nilai[1]).strip("'"),
+            "Kode BA": str(nilai[2]).strip("'"),
+            "Kode Satker": str(nilai[3]).strip("'"),
+            "Uraian Satker": nilai[4],
+
+            "Kualitas Perencanaan Anggaran": nilai_aspek[6],
+            "Kualitas Pelaksanaan Anggaran": nilai_aspek[8],
+            "Kualitas Hasil Pelaksanaan Anggaran": nilai_aspek[12],
+
+            "Revisi DIPA": nilai[6],
+            "Deviasi Halaman III DIPA": nilai[7],
+            "Penyerapan Anggaran": nilai[8],
+            "Belanja Kontraktual": nilai[9],
+            "Penyelesaian Tagihan": nilai[10],
+            "Pengelolaan UP dan TUP": nilai[11],
+            "Capaian Output": nilai[12],
+
+            "Nilai Total": nilai[13],
+            "Konversi Bobot": nilai[14],
+            "Dispensasi SPM (Pengurang)": nilai[15],
+            "Nilai Akhir (Nilai Total/Konversi Bobot)": nilai[16],
+
+            "Bulan": month,
+            "Tahun": upload_year
+        }
+
+        processed_rows.append(row)
+        i += 4
+
+    df_final = pd.DataFrame(processed_rows)
+    return df_final, month, upload_year
+
+# ===============================
+# REPROCESS ALL IKPA SATKER
+# ===============================
+def reprocess_all_ikpa_satker():
+    with st.spinner("🔄 Memproses ulang seluruh IKPA Satker..."):
+        load_data_from_github()
+        st.session_state.ikpa_dipa_merged = False
 
 
 def process_excel_file_kppn(uploaded_file, year):
@@ -667,6 +704,7 @@ def save_file_to_github(content_bytes, filename, folder):
     except Exception:
         # 3️⃣ jika folder tidak ada → buat file pertama
         repo.create_file(path, f"Create {filename}", content_bytes)
+        
 
 # ============================
 #  LOAD DATA IKPA DARI GITHUB
