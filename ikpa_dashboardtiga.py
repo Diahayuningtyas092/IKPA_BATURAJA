@@ -992,59 +992,19 @@ def make_column_chart(data, title, color_scale, y_min, y_max):
 
     return fig
 
-def safe_chart(df, label, top=True, color="Greens", y_min=0, y_max=110):
-    # ==========================
-    # VALIDASI DATA (INI KUNCI)
-    # ==========================
+def safe_chart(df, title, top=True, color="Greens", y_min=0, y_max=110):
     if df is None or df.empty:
-        st.info(f"ℹ️ Tidak ada data Satker {label} untuk ditampilkan.")
+        st.info("Tidak ada data.")
         return
 
-    nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
-    nama_col = "Uraian Satker-RINGKAS"
-
-    if nilai_col not in df.columns or nama_col not in df.columns:
-        st.warning(f"⚠️ Kolom tidak lengkap untuk chart Satker {label}.")
+    chart_df = get_top_bottom(df, 10, top)
+    if chart_df is None or chart_df.empty:
+        st.info("Tidak ada data.")
         return
 
-    # pastikan numerik
-    df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce")
-
-    df = df.dropna(subset=[nilai_col])
-    if df.empty:
-        st.info(f"ℹ️ Data Satker {label} tidak memiliki nilai valid.")
-        return
-
-    # ==========================
-    # SORT
-    # ==========================
-    df_sorted = df.sort_values(
-        nilai_col,
-        ascending=not top
-    ).head(10)
-
-    # ==========================
-    # CHART
-    # ==========================
-    fig = px.bar(
-        df_sorted,
-        x=nilai_col,
-        y=nama_col,
-        orientation="h",
-        text=nilai_col,
-        color=nilai_col,
-        color_continuous_scale=color,
-        range_x=[y_min, y_max]
-    )
-
-    fig.update_layout(
-        yaxis=dict(autorange="reversed"),
-        height=450,
-        coloraxis_showscale=False
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
-
+    fig = make_column_chart(chart_df, "", color, y_min, y_max)
+    if fig:
+        st.plotly_chart(fig, use_container_width=True)
 
 # ============================================================
 # Problem Chart untuk Dashboard Internal
@@ -1747,6 +1707,7 @@ def page_dashboard():
                         'JULI': 'Tw III', 'AGUSTUS': 'Tw III', 'SEPTEMBER': 'Tw III',
                         'OKTOBER': 'Tw IV', 'NOVEMBER': 'Tw IV', 'DESEMBER': 'Tw IV'
                     }.get(m)
+
 
                     quarter_order = {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
@@ -3103,39 +3064,6 @@ def merge_ikpa_dipa_auto():
 
     st.session_state.ikpa_dipa_merged = True
 
-# ===============================
-# HELPER FUNCTIONS
-# ===============================
-
-def normalize_kode_satker(x):
-    ...
-
-def apply_reference_short_names(df):
-    ...
-
-def create_satker_column(df):
-    ...
-
-def merge_ikpa_dipa_auto():
-    ...
-
-# ===============================
-# trigger merge otomatis
-# ===============================
-def trigger_auto_merge():
-    """
-    Auto-merge IKPA + DIPA setelah upload data baru
-    """
-    if (
-        st.session_state.get("data_storage")
-        and st.session_state.get("DATA_DIPA_by_year")
-    ):
-        with st.spinner("🔄 Menggabungkan data IKPA & DIPA..."):
-            merge_ikpa_dipa_auto()
-            st.session_state.ikpa_dipa_merged = True
-            
-        st.toast("IKPA & DIPA berhasil digabung", icon="✅")
-
 
 # ============================================================
 # 🔹 Fungsi convert DataFrame ke Excel bytes
@@ -3343,9 +3271,6 @@ def page_admin():
                                 year,
                                 source="Manual"
                             )
-                            
-                            # 🔑 AUTO MERGE TANPA REFRESH
-                            trigger_auto_merge()
 
                             # tandai perlu merge ulang
                             need_merge = True
@@ -3391,6 +3316,18 @@ def page_admin():
                         with st.spinner("🔄 Menggabungkan IKPA & DIPA..."):
                             merge_ikpa_dipa_auto()
                             st.session_state.ikpa_dipa_merged = True
+                            
+                    # ===============================
+                    # 🔄 REFRESH MANUAL (REKOMENDASI)
+                    # ===============================
+                    st.markdown("---")
+                    st.info("ℹ️ Untuk memastikan data terbaru masuk ke chart & dashboard, silakan refresh aplikasi.")
+
+                    if st.button("🔄 Refresh Aplikasi", type="secondary"):
+                        st.toast("Memuat ulang data terbaru…", icon="🔄")
+                        st.session_state.ikpa_dipa_merged = False
+                        st.rerun()
+                            
         
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
