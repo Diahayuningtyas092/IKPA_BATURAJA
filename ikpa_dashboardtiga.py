@@ -280,9 +280,6 @@ def find_header_row_by_keyword(uploaded_file, keyword="Nama KPPN", max_rows=10):
 
 def process_excel_file_kppn(uploaded_file, year):
     try:
-        # ===============================
-        # BACA RAW FILE (UNTUK BULAN)
-        # ===============================
         uploaded_file.seek(0)
         df_raw = pd.read_excel(uploaded_file, header=None)
 
@@ -312,11 +309,9 @@ def process_excel_file_kppn(uploaded_file, year):
                     break
 
         # ===============================
-        # 🔑 PAKAI HEADER FIX (INI KUNCI)
+        # HEADER FIX (INTI SOLUSI)
         # ===============================
         df = read_excel_with_fixed_header(uploaded_file)
-        st.write(df.columns.tolist())
-
 
         # ===============================
         # NORMALISASI KOLOM
@@ -328,7 +323,7 @@ def process_excel_file_kppn(uploaded_file, year):
         )
 
         # ===============================
-        # FILTER HANYA BARIS NILAI
+        # FILTER NILAI
         # ===============================
         df = df[df["Keterangan"] == "Nilai"].copy()
 
@@ -337,22 +332,6 @@ def process_excel_file_kppn(uploaded_file, year):
         # ===============================
         df["Kode KPPN"] = df["Kode KPPN"].astype(str).str.replace("'", "").str.strip()
         df["Nama KPPN"] = df["Nama KPPN"].astype(str).str.strip()
-
-        numeric_cols = [
-            "Revisi DIPA",
-            "Deviasi Halaman III DIPA",
-            "Penyerapan Anggaran",
-            "Belanja Kontraktual",
-            "Penyelesaian Tagihan",
-            "Pengelolaan UP dan TUP",
-            "Capaian Output",
-            "Nilai Total",
-            "Nilai Akhir (Nilai Total/Konversi Bobot)",
-        ]
-
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
 
         # ===============================
         # METADATA
