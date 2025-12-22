@@ -673,152 +673,149 @@ def save_file_to_github(content_bytes, filename, folder):
 # ============================
 def load_data_from_github():
     """
-    Load all IKPA Excel files from GitHub /data folder.
-    Filename format expected: IKPA_<BULAN>_<TAHUN>.xlsx
+    Load SELURUH IKPA Satker dari GitHub (/data).
+    HANYA menerima file yang SUDAH hasil proses (df_final).
+    File mentah / masih ada header bertingkat akan DITOLAK.
     """
 
-    # ---------------------------
-    # Validasi token GitHub
-    # ---------------------------
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
     if not token or not repo_name:
-        st.error("❌ Gagal mengakses GitHub: GITHUB_TOKEN atau GITHUB_REPO tidak ditemukan.")
+        st.error("❌ Gagal mengakses GitHub: token/repo tidak ditemukan.")
         st.stop()
         return
 
     g = Github(auth=Auth.Token(token))
     repo = g.get_repo(repo_name)
 
-    # ---------------------------
-    # Ambil list file di folder /data
-    # ---------------------------
     try:
         contents = repo.get_contents("data")
     except Exception:
-        st.info("📁 Folder 'data' belum ada di repository GitHub.")
+        st.warning("📁 Folder 'data' belum ada di GitHub.")
         return
 
-    if "data_storage" not in st.session_state:
-        st.session_state.data_storage = {}
-    else:
-        st.session_state.data_storage.clear()
+    # RESET SESSION
+    st.session_state.data_storage = {}
 
-    # ================================
-    # Helper: Hapus kolom Unnamed
-    # ================================
-    def clean_unnamed(df):
-        return df.loc[:, ~df.columns.str.contains('^Unnamed')]
+    # KOLOM WAJIB (HASIL PROCESS IKPA SATKER)
+    REQUIRED_COLUMNS = [
+        "No", "Kode KPPN", "Kode BA", "Kode Satker", "Uraian Satker",
+        "Kualitas Perencanaan Anggaran",
+        "Kualitas Pelaksanaan Anggaran",
+        "Kualitas Hasil Pelaksanaan Anggaran",
+        "Revisi DIPA", "Deviasi Halaman III DIPA",
+        "Penyerapan Anggaran", "Belanja Kontraktual",
+        "Penyelesaian Tagihan", "Pengelolaan UP dan TUP",
+        "Capaian Output",
+        "Nilai Total", "Konversi Bobot",
+        "Dispensasi SPM (Pengurang)",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)",
+        "Bulan", "Tahun"
+    ]
 
-    # ================================
-    # Proses setiap file Excel
-    # ================================
+    MONTH_ORDER = {
+        "JANUARI": 1, "FEBRUARI": 2, "MARET": 3, "APRIL": 4,
+        "MEI": 5, "JUNI": 6, "JULI": 7, "AGUSTUS": 8,
+        "SEPTEMBER": 9, "OKTOBER": 10, "NOVEMBER": 11, "DESEMBER": 12
+    }
+
     for file in contents:
         if not file.name.endswith(".xlsx"):
             continue
 
-        # ---------------------------
-        # Baca file Excel
-        # ---------------------------
-        decoded = base64.b64decode(file.content)
-        df = pd.read_excel(io.BytesIO(decoded))
-        df = clean_unnamed(df)
-
-        # ---------------------------
-        # PARSE NAMA FILE
-        # IKPA_JANUARI_2025.xlsx
-        # ---------------------------
-        name = file.name.replace("IKPA_", "").replace(".xlsx", "")
-        parts = name.split("_")
-
-        if len(parts) < 2:
-            continue
-
-        year = parts[-1]
-        month = "_".join(parts[:-1]).upper().replace(" ", "")
-
-        # Standardisasi bulan (misal "PEBRUARI" → "FEBRUARI")
-        MONTH_FIX = {
-            "PEBRUARI": "FEBRUARI",
-            "PEBRUARY": "FEBRUARI",
-            "OKT": "OKTOBER",
-        }
-        month = MONTH_FIX.get(month, month)
-
-        month_num = MONTH_ORDER.get(month.upper(), 0)
-
-        # ---------------------------
-        # Pastikan kolom Bulan & Tahun exist
-        # ---------------------------
-        df["Bulan"] = df.get("Bulan", month)
-        df["Tahun"] = df.get("Tahun", year)
-
-        df["Bulan"] = df["Bulan"].astype(str).str.upper()
-        df["Tahun"] = df["Tahun"].astype(str)
-
-        # ---------------------------
-        # Normalisasi Kode Satker
-        # ---------------------------
-        if "Kode Satker" in df.columns:
-            df["Kode Satker"] = df["Kode Satker"].astype(str).apply(normalize_kode_satker)
-        else:
-            df["Kode Satker"] = ""
-
-        # ---------------------------
-        # Reference Names (aman jika fungsi ada)
-        # ---------------------------
         try:
-            df = apply_reference_short_names(df)
-        except:
-            pass
+            decoded = base64.b64decode(file.content)
+            df = pd.read_excel(io.BytesIO(decoded))
 
-        try:
-            df = create_satker_column(df)
-        except:
-            pass
+            # ===============================
+            # VALIDASI: HARUS HASIL PROSES
+            # ===============================
+            if not all(col in df.columns for col in REQUIRED_COLUMNS):
+                st.warning(
+                    f"⚠️ {file.name} dilewati "
+                    "(bukan hasil proses IKPA Satker)"
+                )
+                continue
 
-        # ---------------------------
-        # Numeric columns
-        # ---------------------------
-        numeric_cols = [
-            "Nilai Akhir (Nilai Total/Konversi Bobot)",
-            "Nilai Total", "Konversi Bobot",
-            "Revisi DIPA", "Deviasi Halaman III DIPA",
-            "Penyerapan Anggaran",
-            "Belanja Kontraktual", "Penyelesaian Tagihan",
-            "Pengelolaan UP dan TUP", "Capaian Output"
-        ]
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+            # ===============================
+            # NORMALISASI DASAR
+            # ===============================
+            df["Bulan"] = df["Bulan"].astype(str).str.upper()
+            df["Tahun"] = df["Tahun"].astype(str)
 
-        # ---------------------------
-        # Date columns
-        # ---------------------------
-        if "Tanggal Posting Revisi" in df.columns:
-            df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Posting Revisi"], errors="coerce")
+            if "Kode Satker" in df.columns:
+                df["Kode Satker"] = (
+                    df["Kode Satker"]
+                    .astype(str)
+                    .apply(normalize_kode_satker)
+                )
 
-        # ---------------------------
-        # Tambahan kolom helper
-        # ---------------------------
-        df["Source"] = "GitHub"
-        df["Period"] = f"{month} {year}"
-        df["Period_Sort"] = f"{int(year):04d}-{month_num:02d}"
+            # ===============================
+            # REFERENCE & HELPER
+            # ===============================
+            try:
+                df = apply_reference_short_names(df)
+            except:
+                pass
 
-        # ---------------------------
-        # Generate ranking jika belum ada
-        # ---------------------------
-        if "Peringkat" not in df.columns and "Nilai Akhir (Nilai Total/Konversi Bobot)" in df.columns:
-            df = df.sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)", ascending=False)
-            df["Peringkat"] = range(1, len(df) + 1)
+            try:
+                df = create_satker_column(df)
+            except:
+                pass
 
-        # ---------------------------
-        # Simpan ke session_state
-        # ---------------------------
-        st.session_state.data_storage[(month, year)] = df
+            # ===============================
+            # NUMERIC CAST
+            # ===============================
+            numeric_cols = [
+                "Nilai Akhir (Nilai Total/Konversi Bobot)",
+                "Nilai Total", "Konversi Bobot",
+                "Revisi DIPA", "Deviasi Halaman III DIPA",
+                "Penyerapan Anggaran", "Belanja Kontraktual",
+                "Penyelesaian Tagihan", "Pengelolaan UP dan TUP",
+                "Capaian Output",
+                "Kualitas Perencanaan Anggaran",
+                "Kualitas Pelaksanaan Anggaran",
+                "Kualitas Hasil Pelaksanaan Anggaran",
+            ]
 
-    st.success(f"✅ {len(st.session_state.data_storage)} file berhasil dimuat dari GitHub.")
+            for col in numeric_cols:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+            # ===============================
+            # PERIOD HELPER
+            # ===============================
+            month = df["Bulan"].iloc[0]
+            year = df["Tahun"].iloc[0]
+            month_num = MONTH_ORDER.get(month, 0)
+
+            df["Source"] = "GitHub"
+            df["Period"] = f"{month} {year}"
+            df["Period_Sort"] = f"{int(year):04d}-{month_num:02d}"
+
+            # ===============================
+            # RANKING (AMAN)
+            # ===============================
+            if "Peringkat" not in df.columns:
+                df = df.sort_values(
+                    "Nilai Akhir (Nilai Total/Konversi Bobot)",
+                    ascending=False
+                ).reset_index(drop=True)
+                df["Peringkat"] = range(1, len(df) + 1)
+
+            # ===============================
+            # SIMPAN KE SESSION
+            # ===============================
+            st.session_state.data_storage[(month, year)] = df
+
+        except Exception as e:
+            st.error(f"❌ Gagal memuat {file.name}: {e}")
+
+    st.success(
+        f"✅ {len(st.session_state.data_storage)} "
+        f"file IKPA Satker berhasil dimuat."
+    )
 
 
 # ============================
