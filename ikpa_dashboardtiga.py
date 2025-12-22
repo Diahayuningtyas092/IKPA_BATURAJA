@@ -278,6 +278,35 @@ def find_header_row_by_keyword(uploaded_file, keyword="Nama KPPN", max_rows=10):
 
     return None
 
+def read_excel_with_fixed_header(uploaded_file):
+    uploaded_file.seek(0)
+    df_raw = pd.read_excel(uploaded_file, header=None)
+
+    # TEMPLATE KOLOM IKPA KPPN (FIX)
+    columns = [
+        "No",
+        "Kode KPPN",
+        "Nama KPPN",
+        "Keterangan",
+        "Revisi DIPA",
+        "Deviasi Halaman III DIPA",
+        "Penyerapan Anggaran",
+        "Belanja Kontraktual",
+        "Penyelesaian Tagihan",
+        "Pengelolaan UP dan TUP",
+        "Capaian Output",
+        "Nilai Total",
+        "Konversi Bobot",
+        "Dispensasi SPM (Pengurang)",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    ]
+
+    # Data selalu mulai baris ke-4
+    df = df_raw.iloc[4:, :len(columns)].reset_index(drop=True)
+    df.columns = columns
+
+    return df
+
 def process_excel_file_kppn(uploaded_file, year):
     try:
         uploaded_file.seek(0)
