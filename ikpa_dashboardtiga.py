@@ -341,10 +341,6 @@ def process_excel_file_kppn(uploaded_file, year):
                     break
 
         df = read_excel_with_fixed_header(uploaded_file)
-        
-        st.write("🚨 DEBUG: read_excel_with_fixed_header TERPANGGIL")
-        st.write("KOLOM:", df.columns.tolist())
-        st.stop()
 
         # ===============================
         # NORMALISASI KOLOM
