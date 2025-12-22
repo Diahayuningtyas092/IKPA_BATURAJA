@@ -2244,48 +2244,89 @@ def menu_ews_satker():
         )
     
     # Pilih satker
-    # All keys are (month_str, year_str). To sort by year then month, create sortable key:
+    #  AMBIL PERIODE TERBARU (AMAN)
     def period_sort_key(k):
         mon, yr = k
-        # convert year to int if possible, month remain string but sorting will be stable for same year
         try:
             y = int(yr)
         except Exception as e:
             st.warning(f"⚠️ Tidak bisa convert tahun '{yr}' untuk periode {mon}: {e}")
             y = 0
-        return (y, mon)
+        return (y, MONTH_ORDER.get(mon.upper(), 0))
 
     try:
-        latest_period = sorted(st.session_state.data_storage.keys(), key=period_sort_key, reverse=True)[0]
+        latest_period = sorted(
+            st.session_state.data_storage.keys(),
+            key=period_sort_key,
+            reverse=True
+        )[0]
         latest_df = st.session_state.data_storage[latest_period].copy()
     except Exception as e:
         st.error(f"❌ Error mendapatkan periode terbaru: {e}")
         st.write("**Periode yang tersedia:**")
         st.write(list(st.session_state.data_storage.keys()))
         st.stop()
-    
-    # Make sure 'Kode Satker' exists and is a string
+
+    # ======================================================
+    # 📌 PASTIKAN KOLOM KODE SATKER
+    # ======================================================
     if 'Kode Satker' in latest_df.columns:
         latest_df['Kode Satker'] = latest_df['Kode Satker'].astype(str)
     else:
         latest_df['Kode Satker'] = latest_df.index.astype(str)
 
-    bottom_10_default = latest_df.nsmallest(10, 'Nilai Akhir (Nilai Total/Konversi Bobot)')['Kode Satker'].astype(str).tolist()
-    
-    # use the new 'Satker' column for selection (unique)
-    all_satker = sorted(df_all['Satker'].unique())
+    bottom_10_default = (
+        latest_df
+        .nsmallest(10, 'Nilai Akhir (Nilai Total/Konversi Bobot)')['Kode Satker']
+        .astype(str)
+        .tolist()
+    )
+
+    # ======================================================
+    # 📌 PASTIKAN KOLOM SATKER (AMAN UNTUK SEMUA KONDISI)
+    # ======================================================
+    if "Satker" not in df_all.columns:
+        if "Uraian Satker" in df_all.columns and "Kode Satker" in df_all.columns:
+            df_all["Satker"] = (
+                df_all["Uraian Satker"].astype(str)
+                + " ("
+                + df_all["Kode Satker"].astype(str)
+                + ")"
+            )
+        elif "Uraian Satker" in df_all.columns:
+            df_all["Satker"] = df_all["Uraian Satker"].astype(str)
+        else:
+            st.error("❌ Kolom Satker tidak tersedia pada data.")
+            st.stop()
+
+    # ======================================================
+    # 📌 FILTER PERIODE (PASTIKAN df_filtered ADA)
+    # ======================================================
+    df_filtered = df_all.copy()
+
+    # ======================================================
+    # 📌 PILIH SATKER
+    # ======================================================
+    all_satker = sorted(df_filtered["Satker"].dropna().unique())
+
     selected_satker = st.multiselect(
         "Pilih Satker",
         options=all_satker,
-        default=[s for s in all_satker if any(str(code) in s for code in bottom_10_default)][:10]
+        default=[
+            s for s in all_satker
+            if any(code in s for code in bottom_10_default)
+        ][:10]
     )
-    
+
     if not selected_satker:
         st.warning("Silakan pilih minimal satu satker untuk melihat tren.")
         return
-    
-    # Filter berdasarkan satker (use 'Satker' to avoid duplicate names)
-    df_plot = df_filtered[df_filtered['Satker'].isin(selected_satker)]
+
+    # ======================================================
+    # 📌 DATA UNTUK PLOT
+    # ======================================================
+    df_plot = df_filtered[df_filtered["Satker"].isin(selected_satker)]
+
     
     # Buat line chart
     fig = go.Figure()
