@@ -281,7 +281,7 @@ def find_header_row_by_keyword(uploaded_file, keyword="Nama KPPN", max_rows=10):
 def process_excel_file_kppn(uploaded_file, year):
     try:
         # ===============================
-        # BACA RAW FILE
+        # BACA RAW FILE (UNTUK BULAN)
         # ===============================
         uploaded_file.seek(0)
         df_raw = pd.read_excel(uploaded_file, header=None)
@@ -312,18 +312,11 @@ def process_excel_file_kppn(uploaded_file, year):
                     break
 
         # ===============================
-        # CARI HEADER
+        # 🔑 PAKAI HEADER FIX (INI KUNCI)
         # ===============================
-        header_row = find_header_row_by_keyword(
-            uploaded_file,
-            keyword="Nama KPPN"
-        )
+        df = read_excel_with_fixed_header(uploaded_file)
+        st.write(df.columns.tolist())
 
-        if header_row is None:
-            raise ValueError("Header 'Nama KPPN' tidak ditemukan")
-
-        uploaded_file.seek(0)
-        df = pd.read_excel(uploaded_file, header=header_row)
 
         # ===============================
         # NORMALISASI KOLOM
@@ -342,13 +335,7 @@ def process_excel_file_kppn(uploaded_file, year):
         # ===============================
         # CLEANING
         # ===============================
-        df["Kode KPPN"] = (
-            df["Kode KPPN"]
-            .astype(str)
-            .str.replace("'", "")
-            .str.strip()
-        )
-
+        df["Kode KPPN"] = df["Kode KPPN"].astype(str).str.replace("'", "").str.strip()
         df["Nama KPPN"] = df["Nama KPPN"].astype(str).str.strip()
 
         numeric_cols = [
