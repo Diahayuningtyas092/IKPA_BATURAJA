@@ -3063,6 +3063,39 @@ def merge_ikpa_dipa_auto():
 
     st.session_state.ikpa_dipa_merged = True
 
+# ===============================
+# HELPER FUNCTIONS
+# ===============================
+
+def normalize_kode_satker(x):
+    ...
+
+def apply_reference_short_names(df):
+    ...
+
+def create_satker_column(df):
+    ...
+
+def merge_ikpa_dipa_auto():
+    ...
+
+# ===============================
+# trigger merge otomatis
+# ===============================
+def trigger_auto_merge():
+    """
+    Auto-merge IKPA + DIPA setelah upload data baru
+    """
+    if (
+        st.session_state.get("data_storage")
+        and st.session_state.get("DATA_DIPA_by_year")
+    ):
+        with st.spinner("🔄 Menggabungkan data IKPA & DIPA..."):
+            merge_ikpa_dipa_auto()
+            st.session_state.ikpa_dipa_merged = True
+            
+        st.toast("IKPA & DIPA berhasil digabung", icon="✅")
+
 
 # ============================================================
 # 🔹 Fungsi convert DataFrame ke Excel bytes
@@ -3270,6 +3303,9 @@ def page_admin():
                                 year,
                                 source="Manual"
                             )
+                            
+                            # 🔑 AUTO MERGE TANPA REFRESH
+                            trigger_auto_merge()
 
                             # tandai perlu merge ulang
                             need_merge = True
