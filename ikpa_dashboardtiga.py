@@ -992,19 +992,59 @@ def make_column_chart(data, title, color_scale, y_min, y_max):
 
     return fig
 
-def safe_chart(df, title, top=True, color="Greens", y_min=0, y_max=110):
+def safe_chart(df, label, top=True, color="Greens", y_min=0, y_max=110):
+    # ==========================
+    # VALIDASI DATA (INI KUNCI)
+    # ==========================
     if df is None or df.empty:
-        st.info("Tidak ada data.")
+        st.info(f"ℹ️ Tidak ada data Satker {label} untuk ditampilkan.")
         return
 
-    chart_df = get_top_bottom(df, 10, top)
-    if chart_df is None or chart_df.empty:
-        st.info("Tidak ada data.")
+    nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    nama_col = "Uraian Satker-RINGKAS"
+
+    if nilai_col not in df.columns or nama_col not in df.columns:
+        st.warning(f"⚠️ Kolom tidak lengkap untuk chart Satker {label}.")
         return
 
-    fig = make_column_chart(chart_df, "", color, y_min, y_max)
-    if fig:
-        st.plotly_chart(fig, use_container_width=True)
+    # pastikan numerik
+    df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce")
+
+    df = df.dropna(subset=[nilai_col])
+    if df.empty:
+        st.info(f"ℹ️ Data Satker {label} tidak memiliki nilai valid.")
+        return
+
+    # ==========================
+    # SORT
+    # ==========================
+    df_sorted = df.sort_values(
+        nilai_col,
+        ascending=not top
+    ).head(10)
+
+    # ==========================
+    # CHART
+    # ==========================
+    fig = px.bar(
+        df_sorted,
+        x=nilai_col,
+        y=nama_col,
+        orientation="h",
+        text=nilai_col,
+        color=nilai_col,
+        color_continuous_scale=color,
+        range_x=[y_min, y_max]
+    )
+
+    fig.update_layout(
+        yaxis=dict(autorange="reversed"),
+        height=450,
+        coloraxis_showscale=False
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
 
 # ============================================================
 # Problem Chart untuk Dashboard Internal
