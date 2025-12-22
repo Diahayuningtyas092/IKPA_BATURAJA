@@ -312,62 +312,77 @@ def read_excel_with_fixed_header(uploaded_file):
 
 def process_excel_file_kppn(uploaded_file, year):
     try:
-        uploaded_file.seek(0)
         df_raw = pd.read_excel(uploaded_file, header=None)
 
         # ===============================
         # DETEKSI BULAN
         # ===============================
-        month = "UNKNOWN"
-        if df_raw.shape[0] > 1:
-            text = str(df_raw.iloc[1, 0]).upper()
-            MONTH_MAP = {
-                "JAN": "JANUARI", "JANUARI": "JANUARI",
-                "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
-                "MAR": "MARET", "MARET": "MARET",
-                "APR": "APRIL", "APRIL": "APRIL",
-                "MEI": "MEI",
-                "JUN": "JUNI", "JUNI": "JUNI",
-                "JUL": "JULI", "JULI": "JULI",
-                "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AGUSTUS": "AGUSTUS",
-                "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
-                "OKT": "OKTOBER", "OKTOBER": "OKTOBER",
-                "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
-                "DES": "DESEMBER", "DESEMBER": "DESEMBER"
+        month_text = str(df_raw.iloc[1, 0])
+        month = month_text.split(":")[-1].strip() if ":" in month_text else "UNKNOWN"
+
+        # ===============================
+        # DATA MULAI BARIS KE-5
+        # ===============================
+        df_data = df_raw.iloc[4:].reset_index(drop=True)
+        df_data.columns = range(len(df_data.columns))
+
+        processed_rows = []
+        i = 0
+
+        while i + 3 < len(df_data):
+            nilai_row = df_data.iloc[i]
+            bobot_row = df_data.iloc[i + 1]
+            nilai_akhir_row = df_data.iloc[i + 2]
+            nilai_aspek_row = df_data.iloc[i + 3]
+
+            # ===============================
+            # IDENTITAS
+            # ===============================
+            no = nilai_row[0]
+            kode_kppn = str(nilai_row[1]).strip("'") if pd.notna(nilai_row[1]) else ""
+            nama_kppn = nilai_row[2] if pd.notna(nilai_row[2]) else ""
+
+            # ===============================
+            # KUALITAS (DARI NILAI ASPEK)
+            # ===============================
+            kualitas_perencanaan = nilai_aspek_row[6] if pd.notna(nilai_aspek_row[6]) else 0
+            kualitas_pelaksanaan = nilai_aspek_row[8] if pd.notna(nilai_aspek_row[8]) else 0
+            kualitas_hasil = nilai_aspek_row[12] if pd.notna(nilai_aspek_row[12]) else 0
+
+            # ===============================
+            # INDIKATOR NILAI
+            # ===============================
+            row_data = {
+                "No": no,
+                "Kode KPPN": kode_kppn,
+                "Nama KPPN": nama_kppn,
+
+                "Kualitas Perencanaan Anggaran": kualitas_perencanaan,
+                "Kualitas Pelaksanaan Anggaran": kualitas_pelaksanaan,
+                "Kualitas Hasil Pelaksanaan Anggaran": kualitas_hasil,
+
+                "Revisi DIPA": nilai_row[6],
+                "Deviasi Halaman III DIPA": nilai_row[7],
+                "Penyerapan Anggaran": nilai_row[8],
+                "Belanja Kontraktual": nilai_row[9],
+                "Penyelesaian Tagihan": nilai_row[10],
+                "Pengelolaan UP dan TUP": nilai_row[11],
+                "Capaian Output": nilai_row[12],
+
+                "Nilai Total": nilai_row[13],
+                "Konversi Bobot": nilai_row[14],
+                "Dispensasi SPM (Pengurang)": nilai_row[15],
+                "Nilai Akhir (Nilai Total/Konversi Bobot)": nilai_row[16],
+
+                "Bulan": month,
+                "Tahun": year,
+                "Source": "Upload"
             }
-            for k, v in MONTH_MAP.items():
-                if k in text:
-                    month = v
-                    break
 
-        df = read_excel_with_fixed_header(uploaded_file)
+            processed_rows.append(row_data)
+            i += 4  # 🔑 KUNCI UTAMA
 
-        # ===============================
-        # NORMALISASI KOLOM
-        # ===============================
-        df.columns = (
-            df.columns.astype(str)
-            .str.strip()
-            .str.replace(r"\s+", " ", regex=True)
-        )
-
-        # ===============================
-        # FILTER NILAI
-        # ===============================
-        df = df[df["Keterangan"] == "Nilai"].copy()
-
-        # ===============================
-        # CLEANING
-        # ===============================
-        df["Kode KPPN"] = df["Kode KPPN"].astype(str).str.replace("'", "").str.strip()
-        df["Nama KPPN"] = df["Nama KPPN"].astype(str).str.strip()
-
-        # ===============================
-        # METADATA
-        # ===============================
-        df["Bulan"] = month
-        df["Tahun"] = year
-        df["Source"] = "Upload"
+        df = pd.DataFrame(processed_rows)
 
         # ===============================
         # RANKING
