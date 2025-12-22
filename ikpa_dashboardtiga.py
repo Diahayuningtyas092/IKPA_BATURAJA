@@ -278,58 +278,54 @@ def find_header_row_by_keyword(uploaded_file, keyword="Nama KPPN", max_rows=10):
 
     return None
 
-def process_excel_file_kppn(uploaded_file, year):
-    header_row = find_header_row_by_keyword(uploaded_file, "Nama KPPN")
+def process_excel_file(uploaded_file, year):
+    """
+    Memproses file Excel IKPA KPPN (ringkasan per KPPN)
+    """
+    try:
+        df_raw = pd.read_excel(uploaded_file, header=None)
 
-    if header_row is None:
+        # 1️⃣ Ambil bulan (baris ke-2)
+        month_text = str(df_raw.iloc[1, 0])
+        month = month_text.split(":")[-1].strip().title() if ":" in month_text else "UNKNOWN"
+
+        # 2️⃣ Header ada di baris ke-3 (index 2)
+        df_data = df_raw.iloc[2:].reset_index(drop=True)
+        df_data.columns = df_data.iloc[0]
+        df_data = df_data[1:].reset_index(drop=True)
+
+        # 3️⃣ Rename kolom penting agar konsisten
+        df_data = df_data.rename(columns={
+            'Nilai Akhir (Nilai Total/Konversi Bobot)': 'Nilai Akhir'
+        })
+
+        # 4️⃣ Ambil kolom utama saja
+        df_processed = df_data[[
+            'Kode KPPN',
+            'Nama KPPN',
+            'Nilai Akhir'
+        ]].copy()
+
+        # 5️⃣ Cleaning data
+        df_processed = df_processed.dropna(subset=['Kode KPPN'])
+        df_processed['Kode KPPN'] = df_processed['Kode KPPN'].astype(str).str.strip().str.replace("'", "")
+        df_processed['Nama KPPN'] = df_processed['Nama KPPN'].astype(str).str.strip()
+        df_processed['Nilai Akhir'] = pd.to_numeric(df_processed['Nilai Akhir'], errors='coerce')
+
+        # 6️⃣ Tambahkan metadata
+        df_processed['Bulan'] = month
+        df_processed['Tahun'] = year
+        df_processed['Source'] = 'Upload'
+
+        # 7️⃣ Ranking
+        df_processed = df_processed.sort_values('Nilai Akhir', ascending=False).reset_index(drop=True)
+        df_processed['Peringkat'] = df_processed.index + 1
+
+        return df_processed, month, year
+
+    except Exception as e:
+        st.error(f"❌ Error memproses file IKPA KPPN: {str(e)}")
         return None, None, None
-
-    uploaded_file.seek(0)
-    df = pd.read_excel(uploaded_file, header=header_row)
-
-    df.columns = (
-        df.columns.astype(str)
-        .str.strip()
-        .str.replace(r"\s+", " ", regex=True)
-    )
-
-    if "Nama KPPN" not in df.columns:
-        return None, None, None
-
-    if "Nama Satker" in df.columns:
-        return None, None, None
-
-    # Ambil bulan (tetap seperti sebelumnya)
-    uploaded_file.seek(0)
-    df_info = pd.read_excel(uploaded_file, header=None)
-
-    MONTH_MAP = {
-        "JAN": "JANUARI", "JANUARI": "JANUARI",
-        "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
-        "MAR": "MARET", "MARET": "MARET",
-        "APR": "APRIL", "APRIL": "APRIL",
-        "MEI": "MEI",
-        "JUN": "JUNI", "JUNI": "JUNI",
-        "JUL": "JULI", "JULI": "JULI",
-        "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AGUSTUS": "AGUSTUS",
-        "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
-        "OKT": "OKTOBER", "OKTOBER": "OKTOBER",
-        "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
-        "DES": "DESEMBER", "DESEMBER": "DESEMBER",
-    }
-
-    month = "UNKNOWN"
-    if df_info.shape[0] > 1:
-        text = str(df_info.iloc[1, 0]).upper()
-        for k, v in MONTH_MAP.items():
-            if k in text:
-                month = v
-                break
-
-    df["Bulan"] = month
-    df["Tahun"] = year
-
-    return df, month, year
 
 
 # ============================================================
