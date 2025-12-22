@@ -60,6 +60,9 @@ if "ikpa_dipa_merged" not in st.session_state:
 
 if 'activity_log' not in st.session_state:
     st.session_state.activity_log = [] 
+    
+if "force_refresh" not in st.session_state:
+    st.session_state.force_refresh = False
 
 # -------------------------
 # standardize_dipa
@@ -4061,6 +4064,13 @@ def page_admin():
 # MAIN APP
 # ===============================
 def main():
+    
+    # ===============================
+    # FORCE REFRESH (GLOBAL)
+    # ===============================
+    if st.session_state.get("force_refresh"):
+        st.session_state.force_refresh = False
+        st.rerun()
 
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
