@@ -3180,6 +3180,8 @@ def page_admin():
                                 source="Manual"
                             )
 
+                            # tandai perlu merge ulang
+                            need_merge = True
                             st.session_state.ikpa_dipa_merged = False
 
                             # ======================
@@ -3218,10 +3220,13 @@ def page_admin():
                         except Exception as e:
                             st.error(f"❌ Error {uploaded_file.name}: {e}")
 
+                    if need_merge and st.session_state.DATA_DIPA_by_year:
+                        with st.spinner("🔄 Menggabungkan IKPA & DIPA..."):
+                            merge_ikpa_dipa_auto()
+                            st.session_state.ikpa_dipa_merged = True
         
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
-
         # ===============================
         # 📅 PILIH TAHUN
         # ===============================
