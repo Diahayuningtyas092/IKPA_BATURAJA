@@ -312,13 +312,43 @@ def read_excel_with_fixed_header(uploaded_file):
 
 def process_excel_file_kppn(uploaded_file, year):
     try:
+        import pandas as pd
+
+        # ===============================
+        # HELPER AMAN AKSES INDEX
+        # ===============================
+        def safe(row, idx):
+            return row[idx] if idx < len(row) and pd.notna(row[idx]) else 0
+
+        # ===============================
+        # BACA FILE
+        # ===============================
         df_raw = pd.read_excel(uploaded_file, header=None)
 
         # ===============================
         # DETEKSI BULAN
         # ===============================
-        month_text = str(df_raw.iloc[1, 0])
-        month = month_text.split(":")[-1].strip() if ":" in month_text else "UNKNOWN"
+        month = "UNKNOWN"
+        if df_raw.shape[0] > 1:
+            text = str(df_raw.iloc[1, 0]).upper()
+            MONTH_MAP = {
+                "JAN": "JANUARI", "JANUARI": "JANUARI",
+                "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
+                "MAR": "MARET", "MARET": "MARET",
+                "APR": "APRIL", "APRIL": "APRIL",
+                "MEI": "MEI",
+                "JUN": "JUNI", "JUNI": "JUNI",
+                "JUL": "JULI", "JULI": "JULI",
+                "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AGUSTUS": "AGUSTUS",
+                "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
+                "OKT": "OKTOBER", "OKTOBER": "OKTOBER",
+                "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
+                "DES": "DESEMBER", "DESEMBER": "DESEMBER"
+            }
+            for k, v in MONTH_MAP.items():
+                if k in text:
+                    month = v
+                    break
 
         # ===============================
         # DATA MULAI BARIS KE-5
@@ -331,58 +361,68 @@ def process_excel_file_kppn(uploaded_file, year):
 
         while i + 3 < len(df_data):
             nilai_row = df_data.iloc[i]
-            bobot_row = df_data.iloc[i + 1]
-            nilai_akhir_row = df_data.iloc[i + 2]
             nilai_aspek_row = df_data.iloc[i + 3]
 
-            # ===============================
-            # IDENTITAS
-            # ===============================
-            no = nilai_row[0]
-            kode_kppn = str(nilai_row[1]).strip("'") if pd.notna(nilai_row[1]) else ""
-            nama_kppn = nilai_row[2] if pd.notna(nilai_row[2]) else ""
-
-            # ===============================
-            # KUALITAS (DARI NILAI ASPEK)
-            # ===============================
-            kualitas_perencanaan = nilai_aspek_row[6] if pd.notna(nilai_aspek_row[6]) else 0
-            kualitas_pelaksanaan = nilai_aspek_row[8] if pd.notna(nilai_aspek_row[8]) else 0
-            kualitas_hasil = nilai_aspek_row[12] if pd.notna(nilai_aspek_row[12]) else 0
-
-            # ===============================
-            # INDIKATOR NILAI
-            # ===============================
             row_data = {
-                "No": no,
-                "Kode KPPN": kode_kppn,
-                "Nama KPPN": nama_kppn,
+                # IDENTITAS
+                "No": safe(nilai_row, 0),
+                "Kode KPPN": str(safe(nilai_row, 1)).replace("'", "").strip(),
+                "Nama KPPN": safe(nilai_row, 2),
 
-                "Kualitas Perencanaan Anggaran": kualitas_perencanaan,
-                "Kualitas Pelaksanaan Anggaran": kualitas_pelaksanaan,
-                "Kualitas Hasil Pelaksanaan Anggaran": kualitas_hasil,
+                # KUALITAS (DARI NILAI ASPEK)
+                "Kualitas Perencanaan Anggaran": safe(nilai_aspek_row, 4),
+                "Kualitas Pelaksanaan Anggaran": safe(nilai_aspek_row, 6),
+                "Kualitas Hasil Pelaksanaan Anggaran": safe(nilai_aspek_row, 10),
 
-                "Revisi DIPA": nilai_row[6],
-                "Deviasi Halaman III DIPA": nilai_row[7],
-                "Penyerapan Anggaran": nilai_row[8],
-                "Belanja Kontraktual": nilai_row[9],
-                "Penyelesaian Tagihan": nilai_row[10],
-                "Pengelolaan UP dan TUP": nilai_row[11],
-                "Capaian Output": nilai_row[12],
+                # INDIKATOR
+                "Revisi DIPA": safe(nilai_row, 4),
+                "Deviasi Halaman III DIPA": safe(nilai_row, 5),
+                "Penyerapan Anggaran": safe(nilai_row, 6),
+                "Belanja Kontraktual": safe(nilai_row, 7),
+                "Penyelesaian Tagihan": safe(nilai_row, 8),
+                "Pengelolaan UP dan TUP": safe(nilai_row, 9),
+                "Capaian Output": safe(nilai_row, 10),
 
-                "Nilai Total": nilai_row[13],
-                "Konversi Bobot": nilai_row[14],
-                "Dispensasi SPM (Pengurang)": nilai_row[15],
-                "Nilai Akhir (Nilai Total/Konversi Bobot)": nilai_row[16],
+                # NILAI AKHIR
+                "Nilai Total": safe(nilai_row, 11),
+                "Konversi Bobot": safe(nilai_row, 12),
+                "Dispensasi SPM (Pengurang)": safe(nilai_row, 13),
+                "Nilai Akhir (Nilai Total/Konversi Bobot)": safe(nilai_row, 14),
 
+                # METADATA
                 "Bulan": month,
                 "Tahun": year,
                 "Source": "Upload"
             }
 
             processed_rows.append(row_data)
-            i += 4  # 🔑 KUNCI UTAMA
+            i += 4  # 🔑 POLA IKPA (Nilai, Bobot, Nilai Akhir, Nilai Aspek)
 
         df = pd.DataFrame(processed_rows)
+
+        # ===============================
+        # NUMERIC CAST
+        # ===============================
+        numeric_cols = [
+            "Kualitas Perencanaan Anggaran",
+            "Kualitas Pelaksanaan Anggaran",
+            "Kualitas Hasil Pelaksanaan Anggaran",
+            "Revisi DIPA",
+            "Deviasi Halaman III DIPA",
+            "Penyerapan Anggaran",
+            "Belanja Kontraktual",
+            "Penyelesaian Tagihan",
+            "Pengelolaan UP dan TUP",
+            "Capaian Output",
+            "Nilai Total",
+            "Konversi Bobot",
+            "Dispensasi SPM (Pengurang)",
+            "Nilai Akhir (Nilai Total/Konversi Bobot)"
+        ]
+
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
 
         # ===============================
         # RANKING
