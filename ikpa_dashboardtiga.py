@@ -1702,11 +1702,11 @@ def page_dashboard():
                 else:  # quarterly
                     def to_quarter(m):
                         return {
-                            'MARET': 'Tw I',
-                            'JUNI': 'Tw II',
-                            'SEPTEMBER': 'Tw III',
-                            'DESEMBER': 'Tw IV'
-                        }.get(m)
+                        'JANUARI': 'Tw I', 'FEBRUARI': 'Tw I', 'MARET': 'Tw I',
+                        'APRIL': 'Tw II', 'MEI': 'Tw II', 'JUNI': 'Tw II',
+                        'JULI': 'Tw III', 'AGUSTUS': 'Tw III', 'SEPTEMBER': 'Tw III',
+                        'OKTOBER': 'Tw IV', 'NOVEMBER': 'Tw IV', 'DESEMBER': 'Tw IV'
+                    }.get(m)
 
                     quarter_order = {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
