@@ -3126,34 +3126,6 @@ def page_admin():
 
                     for uploaded_file in uploaded_files:
                         try:
-                            # ===============================
-                            # 🔐 VALIDASI FILE IKPA SATKER
-                            # ===============================
-                            uploaded_file.seek(0)
-                            header_row = detect_header_row(
-                                uploaded_file,
-                                keyword="Nama Satker"
-                            )
-
-                            if header_row is None:
-                                st.error(
-                                    f"❌ {uploaded_file.name} bukan IKPA Satker "
-                                    "(kolom 'Nama Satker' tidak ditemukan)."
-                                )
-                                continue
-
-                            uploaded_file.seek(0)
-                            df_check = pd.read_excel(
-                                uploaded_file,
-                                header=header_row
-                            )
-
-                            # ❌ TOLAK IKPA KPPN
-                            if "Nama KPPN" in df_check.columns:
-                                st.error(
-                                    f"❌ {uploaded_file.name} adalah IKPA KPPN. Upload ditolak."
-                                )
-                                continue
 
                             # ======================
                             # 🔎 DETEKSI BULAN
