@@ -265,6 +265,7 @@ def register_ikpa_satker(df_final, month, year, source="Manual"):
     key = (month, str(year))
 
     df = df_final.copy()
+
     df["Source"] = source
     df["Period"] = f"{month} {year}"
 
@@ -273,7 +274,6 @@ def register_ikpa_satker(df_final, month, year, source="Manual"):
         "MEI": 5, "JUNI": 6, "JULI": 7, "AGUSTUS": 8,
         "SEPTEMBER": 9, "OKTOBER": 10, "NOVEMBER": 11, "DESEMBER": 12
     }
-
     df["Period_Sort"] = f"{int(year):04d}-{MONTH_ORDER.get(month, 0):02d}"
 
     if "Peringkat" not in df.columns:
@@ -711,9 +711,9 @@ def save_file_to_github(content_bytes, filename, folder):
 # ============================
 def load_data_from_github():
     """
-    Load SELURUH IKPA Satker dari GitHub (/data).
-    HANYA menerima file yang SUDAH hasil proses (df_final).
-    File mentah / masih ada header bertingkat akan DITOLAK.
+    Load IKPA Satker dari GitHub (/data).
+    HANYA file hasil proses (df_final) yang diterima.
+    Data manual TIDAK akan ditimpa.
     """
 
     token = st.secrets.get("GITHUB_TOKEN")
@@ -733,10 +733,10 @@ def load_data_from_github():
         st.warning("📁 Folder 'data' belum ada di GitHub.")
         return
 
-    # RESET SESSION
-    st.session_state.data_storage = {}
+    # JANGAN RESET data_storage
+    if "data_storage" not in st.session_state:
+        st.session_state.data_storage = {}
 
-    # KOLOM WAJIB (HASIL PROCESS IKPA SATKER)
     REQUIRED_COLUMNS = [
         "No", "Kode KPPN", "Kode BA", "Kode Satker", "Uraian Satker",
         "Kualitas Perencanaan Anggaran",
@@ -758,6 +758,8 @@ def load_data_from_github():
         "SEPTEMBER": 9, "OKTOBER": 10, "NOVEMBER": 11, "DESEMBER": 12
     }
 
+    loaded_count = 0
+
     for file in contents:
         if not file.name.endswith(".xlsx"):
             continue
@@ -766,21 +768,21 @@ def load_data_from_github():
             decoded = base64.b64decode(file.content)
             df = pd.read_excel(io.BytesIO(decoded))
 
-            # ===============================
-            # VALIDASI: HARUS HASIL PROSES
-            # ===============================
+            # VALIDASI HASIL PROSES
             if not all(col in df.columns for col in REQUIRED_COLUMNS):
-                st.warning(
-                    f"⚠️ {file.name} dilewati "
-                    "(bukan hasil proses IKPA Satker)"
-                )
                 continue
 
-            # ===============================
-            # NORMALISASI DASAR
-            # ===============================
-            df["Bulan"] = df["Bulan"].astype(str).str.upper()
-            df["Tahun"] = df["Tahun"].astype(str)
+            month = str(df["Bulan"].iloc[0]).upper()
+            year = str(df["Tahun"].iloc[0])
+            key = (month, year)
+
+            # ❗ JIKA SUDAH ADA (MANUAL), LEWATI
+            if key in st.session_state.data_storage:
+                continue
+
+            # NORMALISASI
+            df["Bulan"] = month
+            df["Tahun"] = year
 
             if "Kode Satker" in df.columns:
                 df["Kode Satker"] = (
@@ -789,9 +791,6 @@ def load_data_from_github():
                     .apply(normalize_kode_satker)
                 )
 
-            # ===============================
-            # REFERENCE & HELPER
-            # ===============================
             try:
                 df = apply_reference_short_names(df)
             except:
@@ -802,9 +801,6 @@ def load_data_from_github():
             except:
                 pass
 
-            # ===============================
-            # NUMERIC CAST
-            # ===============================
             numeric_cols = [
                 "Nilai Akhir (Nilai Total/Konversi Bobot)",
                 "Nilai Total", "Konversi Bobot",
@@ -821,20 +817,12 @@ def load_data_from_github():
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-            # ===============================
-            # PERIOD HELPER
-            # ===============================
-            month = df["Bulan"].iloc[0]
-            year = df["Tahun"].iloc[0]
             month_num = MONTH_ORDER.get(month, 0)
 
             df["Source"] = "GitHub"
             df["Period"] = f"{month} {year}"
             df["Period_Sort"] = f"{int(year):04d}-{month_num:02d}"
 
-            # ===============================
-            # RANKING (AMAN)
-            # ===============================
             if "Peringkat" not in df.columns:
                 df = df.sort_values(
                     "Nilai Akhir (Nilai Total/Konversi Bobot)",
@@ -842,18 +830,13 @@ def load_data_from_github():
                 ).reset_index(drop=True)
                 df["Peringkat"] = range(1, len(df) + 1)
 
-            # ===============================
-            # SIMPAN KE SESSION
-            # ===============================
-            st.session_state.data_storage[(month, year)] = df
+            st.session_state.data_storage[key] = df
+            loaded_count += 1
 
         except Exception as e:
             st.error(f"❌ Gagal memuat {file.name}: {e}")
 
-    st.success(
-        f"✅ {len(st.session_state.data_storage)} "
-        f"file IKPA Satker berhasil dimuat."
-    )
+    st.success(f"✅ {loaded_count} file IKPA Satker dimuat dari GitHub.")
 
 
 # ============================
@@ -3150,73 +3133,53 @@ def page_admin():
 
             if st.button("🔄 Proses Semua Data IKPA", type="primary"):
 
-                with st.spinner("Memproses semua file..."):
-
-                    MONTH_FIX = {
-                        "JAN": "JANUARI", "JANUARY": "JANUARI", "JANUARI": "JANUARI",
-                        "FEB": "FEBRUARI", "FEBRUARY": "FEBRUARI", "FEBRUARI": "FEBRUARI",
-                        "MAR": "MARET", "MRT": "MARET", "MARET": "MARET",
-                        "APR": "APRIL", "APRIL": "APRIL",
-                        "MEI": "MEI",
-                        "JUN": "JUNI", "JUNE": "JUNI", "JUNI": "JUNI",
-                        "JUL": "JULI", "JULY": "JULI", "JULI": "JULI",
-                        "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AUG": "AGUSTUS", "AGUSTUS": "AGUSTUS",
-                        "SEP": "SEPTEMBER", "SEPT": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
-                        "OKT": "OKTOBER", "OCT": "OKTOBER", "OKTOBER": "OKTOBER",
-                        "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
-                        "DES": "DESEMBER", "DEC": "DESEMBER", "DESEMBER": "DESEMBER"
-                    }
+                with st.spinner("Memproses semua file IKPA Satker..."):
 
                     for uploaded_file in uploaded_files:
                         try:
-
                             # ======================
-                            # 🔎 DETEKSI BULAN
-                            # ======================
-                            detected_month = "UNKNOWN"
-                            filename = uploaded_file.name.upper()
-                            clean = re.sub(r"[^A-Z_]", "", filename)
-                            parts = clean.split("_")
-
-                            for p in parts:
-                                if p in MONTH_FIX:
-                                    detected_month = MONTH_FIX[p]
-                                    break
-
-                            # ======================
-                            # 🔄 PROSES IKPA
+                            # 🔄 PROSES FILE (PARSER LENGKAP)
                             # ======================
                             uploaded_file.seek(0)
-                            df_processed, _, _ = process_excel_file(
+                            df_final, month, year = process_excel_file(
                                 uploaded_file,
                                 upload_year
                             )
 
-                            if df_processed is None:
+                            if df_final is None or month == "UNKNOWN":
                                 st.warning(
-                                    f"⚠️ Gagal memproses {uploaded_file.name}"
+                                    f"⚠️ {uploaded_file.name} gagal diproses "
+                                    f"(bulan tidak terdeteksi)"
                                 )
                                 continue
 
-                            df_processed["Bulan"] = detected_month
-                            df_processed["Tahun"] = int(upload_year)
-
-                            if "Kode Satker" in df_processed.columns:
-                                df_processed["Kode Satker"] = (
-                                    df_processed["Kode Satker"]
+                            # ======================
+                            # NORMALISASI KODE SATKER
+                            # ======================
+                            if "Kode Satker" in df_final.columns:
+                                df_final["Kode Satker"] = (
+                                    df_final["Kode Satker"]
                                     .astype(str)
                                     .apply(normalize_kode_satker)
                                 )
-                            else:
-                                df_processed["Kode Satker"] = ""
 
-                            df_final = df_processed.copy()
-                            df_final["Jenis Satker"] = pd.NA
-                            df_final["Total Pagu"] = pd.NA
-                            df_final["Tanggal Posting Revisi"] = pd.NA
+                            # ======================
+                            # OVERRIDE JIKA BULAN SAMA
+                            # ======================
+                            st.session_state.data_storage.pop(
+                                (month, str(year)), None
+                            )
 
-                            key = (detected_month, str(upload_year))
-                            st.session_state.data_storage[key] = df_final.copy()
+                            # ======================
+                            # REGISTRASI KE SISTEM (KUNCI)
+                            # ======================
+                            register_ikpa_satker(
+                                df_final,
+                                month,
+                                year,
+                                source="Manual"
+                            )
+
                             st.session_state.ikpa_dipa_merged = False
 
                             # ======================
@@ -3236,28 +3199,24 @@ def page_admin():
 
                             save_file_to_github(
                                 excel_bytes.getvalue(),
-                                f"IKPA_{detected_month}_{upload_year}.xlsx",
+                                f"IKPA_{month}_{year}.xlsx",
                                 folder="data"
                             )
 
                             st.session_state.activity_log.append({
-                                "Waktu": datetime.now().strftime(
-                                    "%Y-%m-%d %H:%M:%S"
-                                ),
+                                "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "Aksi": "Upload IKPA Satker",
-                                "Periode": f"{detected_month} {upload_year}",
+                                "Periode": f"{month} {year}",
                                 "Status": "✅ Sukses"
                             })
 
                             st.success(
                                 f"✅ {uploaded_file.name} → "
-                                f"{detected_month} {upload_year} berhasil disimpan"
+                                f"{month} {year} berhasil diproses"
                             )
 
                         except Exception as e:
-                            st.error(
-                                f"❌ Error {uploaded_file.name}: {e}"
-                            )
+                            st.error(f"❌ Error {uploaded_file.name}: {e}")
 
         
         # Submenu Upload Data IKPA KPPN
