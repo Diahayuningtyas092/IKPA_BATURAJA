@@ -282,30 +282,33 @@ def read_excel_with_fixed_header(uploaded_file):
     uploaded_file.seek(0)
     df_raw = pd.read_excel(uploaded_file, header=None)
 
-    # TEMPLATE KOLOM IKPA KPPN (FIX)
-    columns = [
-        "No",
-        "Kode KPPN",
-        "Nama KPPN",
-        "Keterangan",
-        "Revisi DIPA",
-        "Deviasi Halaman III DIPA",
-        "Penyerapan Anggaran",
-        "Belanja Kontraktual",
-        "Penyelesaian Tagihan",
-        "Pengelolaan UP dan TUP",
-        "Capaian Output",
-        "Nilai Total",
-        "Konversi Bobot",
-        "Dispensasi SPM (Pengurang)",
-        "Nilai Akhir (Nilai Total/Konversi Bobot)"
-    ]
+    # ===============================
+    # SESUAI STRUKTUR FILE KAMU
+    # ===============================
+    # Row 2 : header utama (ada merged cell)
+    # Row 3 : sub-header (indikator)
+    header_main = df_raw.iloc[2]
+    header_sub  = df_raw.iloc[3]
 
-    # Data selalu mulai baris ke-4
-    df = df_raw.iloc[4:, :len(columns)].reset_index(drop=True)
+    columns = []
+    for main, sub in zip(header_main, header_sub):
+        main = str(main).strip() if pd.notna(main) else ""
+        sub  = str(sub).strip() if pd.notna(sub) else ""
+
+        # Jika ada sub-header, pakai itu (ISI UNNAMED)
+        if sub != "":
+            columns.append(sub)
+        else:
+            columns.append(main)
+
+    # ===============================
+    # DATA MULAI BARIS 4
+    # ===============================
+    df = df_raw.iloc[4:].reset_index(drop=True)
     df.columns = columns
 
     return df
+
 
 def process_excel_file_kppn(uploaded_file, year):
     try:
@@ -337,9 +340,6 @@ def process_excel_file_kppn(uploaded_file, year):
                     month = v
                     break
 
-        # ===============================
-        # HEADER FIX (INTI SOLUSI)
-        # ===============================
         df = read_excel_with_fixed_header(uploaded_file)
 
         # ===============================
