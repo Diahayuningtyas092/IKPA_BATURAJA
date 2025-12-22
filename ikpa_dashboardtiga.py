@@ -285,6 +285,29 @@ def register_ikpa_satker(df_final, month, year, source="Manual"):
 
     st.session_state.data_storage[key] = df
 
+def find_header_row_by_keyword(uploaded_file, keyword, max_rows=10):
+    """
+    Mencari baris header Excel berdasarkan keyword kolom
+    (contoh: 'Nama KPPN', 'Nama Satker')
+    """
+    uploaded_file.seek(0)
+    preview = pd.read_excel(
+        uploaded_file,
+        header=None,
+        nrows=max_rows
+    )
+
+    for i in range(preview.shape[0]):
+        row_values = (
+            preview.iloc[i]
+            .astype(str)
+            .str.upper()
+            .str.strip()
+        )
+        if any(keyword.upper() in v for v in row_values):
+            return i
+
+    return None
 
 # ===============================
 # PARSER IKPA SATKER (INI KUNCI)
