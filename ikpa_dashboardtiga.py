@@ -2377,7 +2377,7 @@ def menu_highlights():
     df_all = pd.concat(all_data, ignore_index=True)
 
     # ===============================
-    # NORMALISASI NAMA KOLOM
+    # NORMALISASI KOLOM
     # ===============================
     df_all.columns = (
         df_all.columns.astype(str)
@@ -2386,7 +2386,7 @@ def menu_highlights():
     )
 
     # ===============================
-    # PERBAIKI HEADER UNNAMED (IKPA)
+    # PERBAIKI UNNAMED (IKPA)
     # ===============================
     rename_map = {
         "Unnamed: 5": "Revisi DIPA",
@@ -2399,6 +2399,49 @@ def menu_highlights():
     }
     df_all = df_all.rename(columns=rename_map)
 
+    # ===============================
+    # 🔑 PASTIKAN PERIOD_SORT ADA
+    # ===============================
+    if "Period_Sort" not in df_all.columns:
+        df_all["Month_Num"] = df_all["Bulan"].str.upper().map(MONTH_ORDER)
+        df_all["Period_Sort"] = (
+            df_all["Tahun"].astype(str)
+            + "-"
+            + df_all["Month_Num"].astype(int).astype(str).str.zfill(2)
+        )
+
+    # ===============================
+    # 📅 FILTER PERIODE (BARU)
+    # ===============================
+    st.markdown("### 📅 Filter Periode")
+
+    available_periods = sorted(df_all["Period_Sort"].dropna().unique())
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        start_period = st.selectbox(
+            "Periode Awal",
+            options=available_periods,
+            index=0
+        )
+
+    with col2:
+        end_period = st.selectbox(
+            "Periode Akhir",
+            options=available_periods,
+            index=len(available_periods) - 1
+        )
+
+    df_all = df_all[
+        (df_all["Period_Sort"] >= start_period) &
+        (df_all["Period_Sort"] <= end_period)
+    ]
+
+    if df_all.empty:
+        st.warning("⚠️ Data kosong pada rentang periode tersebut.")
+        return
+
     st.success(f"Data IKPA KPPN dimuat ({len(df_all)} baris)")
 
     # ===============================
@@ -2410,7 +2453,7 @@ def menu_highlights():
     df_kppn = df_all[df_all["Nama KPPN"] == selected_kppn].copy()
 
     # ===============================
-    # FILTER BARIS NILAI SAJA
+    # FILTER BARIS NILAI
     # ===============================
     if "Keterangan" in df_kppn.columns:
         df_kppn = df_kppn[
@@ -2418,7 +2461,7 @@ def menu_highlights():
         ]
 
     # ===============================
-    # DAFTAR INDIKATOR IKPA (FIX)
+    # INDIKATOR
     # ===============================
     indikator_opsi = [
         "Kualitas Perencanaan Anggaran",
@@ -2433,9 +2476,6 @@ def menu_highlights():
         "Nilai Akhir (Nilai Total/Konversi Bobot)"
     ]
 
-    # ===============================
-    # KONVERSI KE NUMERIK
-    # ===============================
     for col in indikator_opsi:
         if col in df_kppn.columns:
             df_kppn[col] = (
@@ -2446,15 +2486,10 @@ def menu_highlights():
             )
             df_kppn[col] = pd.to_numeric(df_kppn[col], errors="coerce")
 
-    # ===============================
-    # PILIH INDIKATOR
-    # ===============================
     selected_indikator = st.multiselect(
         "Pilih Indikator IKPA KPPN !",
         [c for c in indikator_opsi if c in df_kppn.columns],
         default=["Nilai Akhir (Nilai Total/Konversi Bobot)"]
-        if "Nilai Akhir (Nilai Total/Konversi Bobot)" in df_kppn.columns
-        else None
     )
 
     if not selected_indikator:
@@ -2462,12 +2497,9 @@ def menu_highlights():
         return
 
     # ===============================
-    # URUTKAN PERIODE
+    # URUT PERIODE
     # ===============================
-    df_kppn["Month_Num"] = df_kppn["Bulan"].str.upper().map(MONTH_ORDER)
-    df_kppn = df_kppn.sort_values(["Tahun", "Month_Num"])
-
-    categories = df_kppn["Periode"].tolist()
+    df_kppn = df_kppn.sort_values("Period_Sort")
 
     # ===============================
     # LINE CHART
@@ -2477,19 +2509,10 @@ def menu_highlights():
     for indikator in selected_indikator:
         fig.add_trace(
             go.Scatter(
-                x=pd.Categorical(
-                    df_kppn["Periode"],
-                    categories=categories,
-                    ordered=True
-                ),
+                x=df_kppn["Periode"],
                 y=df_kppn[indikator],
                 mode="lines+markers",
                 name=indikator,
-                hovertemplate=(
-                    "<b>%{fullData.name}</b><br>"
-                    "Periode: %{x}<br>"
-                    "Nilai: %{y:.2f}<extra></extra>"
-                )
             )
         )
 
@@ -2498,17 +2521,11 @@ def menu_highlights():
         xaxis_title="Periode",
         yaxis_title="Nilai",
         height=600,
-        hovermode="x unified",
-        legend=dict(
-            orientation="v",
-            yanchor="top",
-            y=1,
-            xanchor="left",
-            x=1.02
-        )
+        hovermode="x unified"
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
 
 def page_trend():
     st.title("📈 Dashboard Internal KPPN")
