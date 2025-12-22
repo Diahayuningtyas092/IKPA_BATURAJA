@@ -257,6 +257,14 @@ def extract_kode_from_satker_field(s, width=6):
         return normalize_kode_satker(m2.group(1), width=width)
     return ''
 
+def reprocess_all_ikpa_satker():
+    """
+    Re-load dan reprocess semua IKPA Satker dari GitHub
+    """
+    with st.spinner("🔄 Memproses ulang seluruh IKPA Satker..."):
+        load_data_from_github()   # ini sudah proses + ranking
+        st.session_state.ikpa_dipa_merged = False
+
 def process_excel_file(uploaded_file, upload_year):
     df = pd.read_excel(uploaded_file)
 
