@@ -1713,13 +1713,22 @@ def page_dashboard():
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
 
                 # =========================================================
-                # 4. PIVOT LANGSUNG
+                # 4. PIVOT LANGSUNG (FIXED)
                 # =========================================================
+
+                # --- pilih nama SATKER TERPENDEK per Kode Satker ---
+                name_map = (
+                    df_year
+                    .assign(name_len=df_year['Uraian Satker-RINGKAS'].astype(str).str.len())
+                    .sort_values('name_len')
+                    .groupby('Kode Satker')['Uraian Satker-RINGKAS']
+                    .first()
+                )
+
                 df_pivot = df_year[
                     [
                         'Kode BA',
                         'Kode Satker',
-                        'Uraian Satker-RINGKAS',
                         'Period_Column',
                         selected_indicator
                     ]
@@ -1728,13 +1737,16 @@ def page_dashboard():
                 df_wide = (
                     df_pivot
                     .pivot_table(
-                        index=['Kode BA','Kode Satker','Uraian Satker-RINGKAS'],
+                        index=['Kode BA','Kode Satker'],  # ❗ IDENTIFIER ONLY
                         columns='Period_Column',
                         values=selected_indicator,
                         aggfunc='last'
                     )
                     .reset_index()
                 )
+
+                # --- pasang kembali nama satker ---
+                df_wide['Uraian Satker-RINGKAS'] = df_wide['Kode Satker'].map(name_map)
 
                 # =========================================================
                 # 5. Urutkan kolom periode
@@ -1774,8 +1786,6 @@ def page_dashboard():
                     display_period_cols = ordered_periods
 
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
-
-                st.dataframe(df_display, use_container_width=True)
 
                 # =============================
                 # SEARCH & STYLING 
