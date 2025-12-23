@@ -1590,7 +1590,7 @@ def page_dashboard():
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
         ["🎯 Highlights", "📋 Data Detail Satker"],
-        key=f"main_tab_choice_{st.session_state.get('selected_period', 'default')}",
+        key="main_tab",
         horizontal=True
     )
     st.session_state["main_tab"] = main_tab
