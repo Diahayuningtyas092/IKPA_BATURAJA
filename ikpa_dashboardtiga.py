@@ -59,7 +59,7 @@ if 'activity_log' not in st.session_state:
     st.session_state.activity_log = [] 
 
 if "BOOTSTRAP_DONE" not in st.session_state:
-    st.session_state.BOOTSTRAP_DONE = False
+    st.session_state.BOOTsOOTSTRAP_DONE = False
 
 def ensure_satker_column(df):
     """
@@ -1510,7 +1510,11 @@ def safe_chart(
         coloraxis_showscale=False
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        key=f"chart_{id(fig)}"
+    )
 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
@@ -1586,11 +1590,10 @@ def page_dashboard():
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
         ["🎯 Highlights", "📋 Data Detail Satker"],
-        key="main_tab_dashboard",  
+        key=f"main_tab_choice_{st.session_state.get('selected_period', 'default')}",
         horizontal=True
     )
     st.session_state["main_tab"] = main_tab
-
 
     # ======================================================
     # HIGHLIGHTS
@@ -1602,22 +1605,18 @@ def page_dashboard():
         # Pilih Periode
         # -------------------------
         selected_period = st.selectbox(
-        "Pilih Periode",
-        options=all_periods,
-        index=all_periods.index(st.session_state.selected_period),
-        format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-        key="select_period_main"
-    )
+            "Pilih Periode",
+            options=all_periods,
+            index=all_periods.index(st.session_state.selected_period),
+            format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+            key="select_period_main"
+        )
 
-    st.session_state.selected_period = selected_period
+        # simpan balik ke session_state 
+        st.session_state.selected_period = selected_period
 
-    # ⬇️ INI SAJA, JANGAN DIUBAH
-    df = st.session_state.data_storage.get(selected_period)
-
-    if df is None or df.empty:
-        st.warning("Data IKPA belum tersedia.")
-        st.stop()
-
+        # ambil data SETELAH normalisasi
+        df = st.session_state.data_storage.get(selected_period)
 
         # ===============================
         # Validasi DF
@@ -1652,19 +1651,10 @@ def page_dashboard():
         # Filter Satker
         # ===============================
         VALID_JENIS = ['KECIL', 'SEDANG', 'BESAR']
-
-        # Jika ada data Jenis Satker valid → filter
-        if 'Jenis Satker' in df.columns and df['Jenis Satker'].isin(VALID_JENIS).any():
-            df = df[df['Jenis Satker'].isin(VALID_JENIS)]
-        else:
-            # Fallback: jangan buang data
-            df = df.copy()
-            df['Jenis Satker'] = 'SEDANG'
-
+        df = df[df['Jenis Satker'].isin(VALID_JENIS)]
         df_kecil  = df[df['Jenis Satker'] == 'KECIL']
         df_sedang = df[df['Jenis Satker'] == 'SEDANG']
         df_besar  = df[df['Jenis Satker'] == 'BESAR']
-
 
         # ===============================
         # METRIK UTAMA
