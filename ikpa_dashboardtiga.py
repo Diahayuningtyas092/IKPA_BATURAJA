@@ -23,12 +23,6 @@ if not ADMIN_PASSWORD:
     st.error("ADMIN_PASSWORD belum diset di Streamlit Secrets")
     st.stop()
 
-# Konfigurasi halaman
-st.set_page_config(
-    page_title="Dashboard IKPA KPPN Baturaja",
-    page_icon="📊",
-    layout="wide"
-)
 
 # define month order map
 MONTH_ORDER = {
@@ -67,22 +61,28 @@ if "ikpa_dipa_merged" not in st.session_state:
 if 'activity_log' not in st.session_state:
     st.session_state.activity_log = [] 
 
-def reset_app_state():
-    keys_to_reset = [
-        "data_storage",
-        "data_storage_kppn",
-        "DATA_DIPA_by_year",
-        "ikpa_dipa_merged",
-        "activity_log",
-        "selected_period",
-        "main_tab",
-        "active_table_tab",
-        "period_type",
-    ]
+def ensure_satker_column(df):
+    """
+    Pastikan kolom 'Satker' selalu ada.
+    Aman untuk data lama & data baru.
+    """
+    if 'Satker' in df.columns:
+        return df
 
-    for k in keys_to_reset:
-        if k in st.session_state:
-            del st.session_state[k]
+    df = df.copy()
+
+    # Prioritas nama
+    if 'Uraian Satker-RINGKAS' in df.columns:
+        nama = df['Uraian Satker-RINGKAS']
+    elif 'Uraian Satker' in df.columns:
+        nama = df['Uraian Satker']
+    else:
+        nama = df.index.astype(str)
+
+    kode = df.get('Kode Satker', '').astype(str)
+
+    df['Satker'] = nama.astype(str) + " (" + kode + ")"
+    return df
 
 # -------------------------
 # standardize_dipa
@@ -253,6 +253,12 @@ def normalize_kode_satker(k, width=6):
     kod = digits[0].zfill(width)
     return kod
 
+# Konfigurasi halaman
+st.set_page_config(
+    page_title="Dashboard IKPA KPPN Baturaja",
+    page_icon="📊",
+    layout="wide"
+)
 
 st.write("GitHub token loaded:", bool(st.secrets.get("GITHUB_TOKEN")))
 
@@ -529,7 +535,6 @@ def process_excel_file_kppn(uploaded_file, year):
 # ============================================================
 # PARSER DIPA 
 # ============================================================
-#Parser Perbaikan DIPA
 def parse_dipa(df_raw):
     import pandas as pd
     import re
@@ -1026,8 +1031,26 @@ def safe_chart(df, title, top=True, color="Greens", y_min=0, y_max=110):
 # ============================================================
 # Problem Chart untuk Dashboard Internal
 # ============================================================
-def create_problem_chart(df, column, threshold, title, comparison='less', y_min=None, y_max=None, show_yaxis=True):
+# ============================================================
+# Problem Chart untuk Dashboard Internal (DOUBLE SAFETY)
+# ============================================================
+def create_problem_chart(
+    df,
+    column,
+    threshold,
+    title,
+    comparison='less',
+    y_min=None,
+    y_max=None,
+    show_yaxis=True
+):
 
+    if df is None or df.empty:
+        return None
+
+    # ===============================
+    # FILTER DATA
+    # ===============================
     if comparison == 'less':
         df_filtered = df[df[column] < threshold]
     elif comparison == 'greater':
@@ -1035,16 +1058,26 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
     else:
         df_filtered = df.copy()
 
-    # Jika hasil filter kosong → Cegah error
+    # Jika hasil filter kosong → cegah crash
     if df_filtered.empty:
-        df_filtered = df.head(1)
+        df_filtered = df.head(1).copy()
 
+    # ===============================
+    # 🔑 DOUBLE SAFETY: PAKSA ADA SATKER
+    # ===============================
+    if 'Satker' not in df_filtered.columns:
+        df_filtered = ensure_satker_column(df_filtered)
+
+    # ===============================
+    # SORT & RANGE WARNA
+    # ===============================
     df_filtered = df_filtered.sort_values(by=column, ascending=False)
-
-    # Ambil nilai range untuk colormap
     min_val = df_filtered[column].min()
     max_val = df_filtered[column].max()
 
+    # ===============================
+    # BUILD CHART
+    # ===============================
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=df_filtered['Satker'],
@@ -1059,11 +1092,13 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         text=df_filtered[column].round(2),
         textposition='outside',
         textangle=0,
-        textfont=dict(family="Arial Black", size=12), 
+        textfont=dict(family="Arial Black", size=12),
         hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
     ))
 
-    # Garis target threshold (tidak berubah)
+    # ===============================
+    # GARIS TARGET
+    # ===============================
     fig.add_hline(
         y=threshold,
         line_dash="dash",
@@ -1072,16 +1107,20 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         annotation_position="top right"
     )
 
-    # Bold judul dan label axis
+    # ===============================
+    # LAYOUT
+    # ===============================
     fig.update_layout(
+        title=title,
         xaxis=dict(
-        tickangle=-45,
-        tickmode='linear',
-        tickfont=dict(family="Arial Black", size=10),
-        automargin=True
-    ),
-    yaxis=dict(
-        tickfont=dict(family="Arial Black", size=11)
+            tickangle=-45,
+            tickmode='linear',
+            tickfont=dict(family="Arial Black", size=10),
+            automargin=True
+        ),
+        yaxis=dict(
+            tickfont=dict(family="Arial Black", size=11),
+            range=[y_min, y_max] if y_min is not None and y_max is not None else None
         ),
         height=600,
         margin=dict(l=50, r=20, t=80, b=200),
@@ -1092,6 +1131,7 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         fig.update_yaxes(showticklabels=False)
 
     return fig
+
 # ===============================================
 # Helper to apply reference short names (Simplified)
 # ===============================================
@@ -1213,70 +1253,64 @@ def safe_chart(
     y_max=None,
     thin_bar=False
 ):
-    if df_part is None or df_part.empty:
-        st.info("Tidak ada data.")
-        return
-
-    df = df_part.copy()
-
-    # pastikan kolom Satker
-    if "Satker" not in df.columns:
-        if "Uraian Satker-RINGKAS" in df.columns and "Kode Satker" in df.columns:
-            df["Satker"] = (
-                df["Uraian Satker-RINGKAS"].astype(str)
-                + " (" + df["Kode Satker"].astype(str) + ")"
-            )
-        else:
-            st.warning("Kolom Satker tidak tersedia.")
-            return
-
-    # deteksi kolom nilai
+    # ===============================
+    # DETEKSI KOLOM IKPA
+    # ===============================
     kandidat_ikpa = [
-        "Nilai Akhir (Nilai Total/Konversi Bobot)",
-        "Nilai Total/Konversi Bobot",
-        "Nilai Total"
+        'Nilai Akhir (Nilai Total/Konversi Bobot)',
+        'Nilai Total/Konversi Bobot',
+        'Nilai Total'
     ]
 
-    nilai_col = next((c for c in kandidat_ikpa if c in df.columns), None)
+    nilai_col = None
+    for col in kandidat_ikpa:
+        if col in df_part.columns:
+            nilai_col = col
+            break
+
     if nilai_col is None:
-        st.warning("Kolom nilai IKPA tidak ditemukan.")
+        st.warning(f"Kolom IKPA tidak ditemukan untuk {jenis}")
         return
 
-    df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce")
-    df = df.dropna(subset=[nilai_col])
-
-    if df.empty:
-        st.info("Tidak ada data valid.")
-        return
-
+    # ===============================
+    # SORT DATA
+    # ===============================
+    # top=True  → ambil nilai tertinggi
+    # top=False → ambil nilai terendah
     df_sorted = (
-        df.sort_values(nilai_col, ascending=not top)
-          .head(10)
-          .sort_values(nilai_col, ascending=True)
+        df_part
+        .sort_values(nilai_col, ascending=not top)
+        .head(10)
+        .sort_values(nilai_col, ascending=True)  # agar visual dari bawah ke atas
     )
 
+    # ===============================
+    # PLOT
+    # ===============================
     fig = px.bar(
-        df_sorted,
-        x=nilai_col,
-        y="Satker",
-        orientation="h",
-        color=nilai_col,
-        color_continuous_scale=color,
-        text=nilai_col
+    df_sorted,
+    x=nilai_col,
+    y="Satker",
+    orientation="h",
+    color=nilai_col,
+    color_continuous_scale=color,
+    text=nilai_col              
     )
 
     fig.update_traces(
-        texttemplate="%{text:.2f}",
-        textposition="outside",
-        cliponaxis=False,
-        width=0.6 if thin_bar else 0.8
+        width=0.65 if thin_bar else 0.8,
+        texttemplate="%{text:.2f}",   
+        textposition="outside",      
+        cliponaxis=False              
     )
 
     fig.update_layout(
-        height=max(250, len(df_sorted) * 30),
-        margin=dict(l=10, r=10, t=10, b=10),
-        xaxis=dict(range=[y_min, y_max] if y_min and y_max else None),
-        showlegend=False,
+        height=200,
+        bargap=0.05,
+        margin=dict(l=2, r=2, t=0, b=0),
+        xaxis_title=None,
+        yaxis_title=None,
+        xaxis=dict(range=[y_min, y_max]),
         coloraxis_showscale=False
     )
 
@@ -1330,27 +1364,30 @@ def page_dashboard():
         st.warning("⚠️ Belum ada data yang tersedia.")
         return
 
-    # ---------------------------
-    # Ensure a selected_period and df exist BEFORE any branch uses df
-    # ---------------------------
+    # ======================================================
+    # AMBIL PERIODE TERPILIH (AMAN)
+    # ======================================================
     if "selected_period" not in st.session_state:
         st.session_state.selected_period = all_periods[0]
 
-    # safe fetch of df for the selected_period (always a tuple key like ('JANUARI','2025'))
-    selected_period_key = st.session_state.get("selected_period", all_periods[0])
-    df = st.session_state.data_storage.get(selected_period_key, None)
+    selected_period_key = st.session_state.selected_period
+    df = st.session_state.data_storage.get(selected_period_key)
 
     if df is None:
-        st.warning(f"⚠️ Data untuk periode {selected_period_key} tidak ditemukan. Periksa st.session_state.data_storage keys.")
-        # show available keys to help debugging (optional - remove if sensitive)
+        st.warning(f"⚠️ Data untuk periode {selected_period_key} tidak ditemukan.")
         st.write("Periode yang tersedia:", list(st.session_state.data_storage.keys()))
         return
 
-    # ensure main_tab state exists
+    # 🔑 WAJIB: PAKSA ADA KOLOM SATKER SEJAK AWAL
+    df = ensure_satker_column(df)
+
+
+    # ======================================================
+    # MAIN TAB STATE
+    # ======================================================
     if "main_tab" not in st.session_state:
         st.session_state.main_tab = "🎯 Highlights"
 
-    # ---------- persistent main tab ----------
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
         ["🎯 Highlights", "📋 Data Detail Satker"],
@@ -1359,9 +1396,10 @@ def page_dashboard():
     )
     st.session_state["main_tab"] = main_tab
 
-    # -------------------------
+
+    # ======================================================
     # HIGHLIGHTS
-    # -------------------------
+    # ======================================================
     if main_tab == "🎯 Highlights":
         st.markdown("## 🎯 Highlights Kinerja Satker")
 
@@ -1371,11 +1409,20 @@ def page_dashboard():
         selected_period = st.selectbox(
             "Pilih Periode",
             options=all_periods,
-            index=0,
+            index=all_periods.index(st.session_state.selected_period),
             format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
             key="select_period_main"
         )
+
+        st.session_state.selected_period = selected_period
         df = st.session_state.data_storage.get(selected_period)
+
+        if df is None or df.empty:
+            st.warning("Data IKPA belum tersedia.")
+            st.stop()
+
+        # 🔒 WAJIB: pastikan lagi setelah ganti periode
+        df = ensure_satker_column(df)
 
         # ===============================
         # Validasi DF
@@ -3335,7 +3382,7 @@ def page_admin():
                         except Exception as e:
                             st.error(f"❌ Error {uploaded_file.name}: {e}")
 
-                    if need_merge and st.session_state.DATA_DIPA_by_year and not st.session_state.get("ikpa_dipa_merged", False):
+                    if need_merge and st.session_state.DATA_DIPA_by_year:
                         with st.spinner("🔄 Menggabungkan IKPA & DIPA..."):
                             merge_ikpa_dipa_auto()
                             st.session_state.ikpa_dipa_merged = True
@@ -4073,7 +4120,7 @@ def page_admin():
 # MAIN APP
 # ===============================
 def main():
-
+    
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
     # ============================================================
