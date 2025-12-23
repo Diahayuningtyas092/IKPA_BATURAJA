@@ -30,11 +30,6 @@ st.set_page_config(
     layout="wide"
 )
 
-if st.session_state.get("_hard_reset", False):
-    st.session_state.clear()
-    st.session_state._hard_reset = False
-    st.stop() 
-
 # define month order map
 MONTH_ORDER = {
     'JANUARI': 1,
@@ -74,6 +69,23 @@ if 'activity_log' not in st.session_state:
     
 if "force_refresh" not in st.session_state:
     st.session_state.force_refresh = False
+
+def reset_app_state():
+    keys_to_reset = [
+        "data_storage",
+        "data_storage_kppn",
+        "DATA_DIPA_by_year",
+        "ikpa_dipa_merged",
+        "activity_log",
+        "selected_period",
+        "main_tab",
+        "active_table_tab",
+        "period_type",
+    ]
+
+    for k in keys_to_reset:
+        if k in st.session_state:
+            del st.session_state[k]
 
 # -------------------------
 # standardize_dipa
@@ -3326,8 +3338,8 @@ def page_admin():
                             st.session_state.ikpa_dipa_merged = True
 
                     if st.button("🔄 Refresh Aplikasi"):
-                        st.session_state._hard_reset = True
-                        st.rerun()
+                        reset_app_state()
+                        st.experimental_rerun()
 
         
         # Submenu Upload Data IKPA KPPN
