@@ -1191,15 +1191,17 @@ def apply_reference_short_names(df):
         )
 
     # ===============================
-    # 🔑 FINAL FALLBACK (INI KUNCINYA)
+    # 🔑 FINAL FALLBACK (ANTI ERROR)
     # ===============================
-    df['Uraian Satker-RINGKAS'] = (
-        df.get('Uraian Satker-RINGKAS')
-        .fillna(df.get('Uraian Satker', ''))
-    )
-
+    if 'Uraian Satker-RINGKAS' not in df.columns:
+        df['Uraian Satker-RINGKAS'] = df.get('Uraian Satker', '')
+    else:
+        df['Uraian Satker-RINGKAS'] = (
+            df['Uraian Satker-RINGKAS']
+            .fillna(df.get('Uraian Satker', ''))
+        )
     df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
-
+    
     return df
 
     # Copy reference
@@ -1465,17 +1467,6 @@ def page_dashboard():
 
         # 🔒 WAJIB: pastikan lagi setelah ganti periode
         df = ensure_satker_column(df)
-
-        st.subheader("🔍 Debug Nama Satker (sementara)")
-
-        debug_cols = [c for c in [
-            'Kode Satker',
-            'Uraian Satker',
-            'Uraian Satker-RINGKAS'
-        ] if c in df.columns]
-
-        st.write("Kolom tersedia:", df.columns.tolist())
-        st.write(df[debug_cols].head(10))
 
         # ===============================
         # Validasi DF
