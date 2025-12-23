@@ -40,9 +40,6 @@ MONTH_ORDER = {
     'DESEMBER': 12
 }
 
-# Path ke file template (akan diatur di session state)
-TEMPLATE_PATH = r"C:\Users\KEMENKEU\Desktop\INDIKATOR PELAKSANAAN ANGGARAN.xlsx"
-
 # ================================
 # INIT SESSION STATE 
 # ================================
@@ -60,6 +57,9 @@ if "ikpa_dipa_merged" not in st.session_state:
 
 if 'activity_log' not in st.session_state:
     st.session_state.activity_log = [] 
+
+if "BOOTSTRAP_DONE" not in st.session_state:
+    st.session_state.BOOTSTRAP_DONE = False
 
 def ensure_satker_column(df):
     """
@@ -668,6 +668,51 @@ def parse_dipa(df_raw):
 
     return out
 
+# ===============================
+# AUTO BOOTSTRAP SEMUA DATA
+# ===============================
+def bootstrap_all_data():
+    if st.session_state.get("BOOTSTRAP_DONE", False):
+        return
+
+    with st.spinner("🔄 Memuat seluruh data dari GitHub..."):
+
+        # 1️⃣ TEMPLATE
+        load_template_from_github()
+
+        # 2️⃣ DIPA
+        load_DATA_DIPA_from_github()
+
+        # 3️⃣ IKPA SATKER
+        load_data_from_github()
+
+        # 4️⃣ IKPA KPPN
+        load_data_kppn_from_github()
+
+    st.session_state.BOOTSTRAP_DONE = True
+
+# ============================
+# LOAD TEMPLATE DARI GITHUB
+# ============================
+def load_template_from_github():
+    token = st.secrets.get("GITHUB_TOKEN")
+    repo_name = st.secrets.get("GITHUB_REPO")
+
+    if not token or not repo_name:
+        return None
+
+    g = Github(auth=Auth.Token(token))
+    repo = g.get_repo(repo_name)
+
+    try:
+        file = repo.get_contents("templates/INDIKATOR_PELAKSANAAN_ANGGARAN.xlsx")
+        content = base64.b64decode(file.content)
+        st.session_state.template_file = content
+        return content
+    except Exception:
+        st.warning("⚠️ Template tidak ditemukan di GitHub.")
+        return None
+
 
 # ============================================================
 # FUNGSI HELPER: Load Data DIPA dari GitHub
@@ -887,21 +932,85 @@ def load_data_from_github():
 
     st.success(f"✅ {loaded_count} file IKPA Satker dimuat dari GitHub.")
 
+# ============================
+# LOAD IKPA KPPN DARI GITHUB
+# ============================
+def load_data_kppn_from_github():
+    token = st.secrets.get("GITHUB_TOKEN")
+    repo_name = st.secrets.get("GITHUB_REPO")
+
+    if not token or not repo_name:
+        st.error("❌ GitHub token / repo tidak ditemukan.")
+        return False
+
+    g = Github(auth=Auth.Token(token))
+    repo = g.get_repo(repo_name)
+
+    try:
+        contents = repo.get_contents("data_kppn")
+    except Exception:
+        st.warning("📁 Folder 'data_kppn' belum ada di GitHub.")
+        return False
+
+    if "data_storage_kppn" not in st.session_state:
+        st.session_state.data_storage_kppn = {}
+
+    loaded = 0
+
+    for file in contents:
+        if not file.name.lower().endswith(".xlsx"):
+            continue
+
+        try:
+            raw = base64.b64decode(file.content)
+            df, month, year = process_excel_file_kppn(
+                io.BytesIO(raw),
+                year=int(re.findall(r"\d{4}", file.name)[0])
+            )
+
+            if df is None:
+                continue
+
+            key = (month, str(year))
+
+            # jangan timpa data manual
+            if key in st.session_state.data_storage_kppn:
+                continue
+
+            df["Source"] = "GitHub"
+            df["Period"] = f"{month} {year}"
+
+            st.session_state.data_storage_kppn[key] = df
+            loaded += 1
+
+        except Exception as e:
+            st.warning(f"⚠️ IKPA KPPN {file.name} gagal: {e}")
+
+    if loaded > 0:
+        st.success(f"✅ {loaded} file IKPA KPPN dimuat dari GitHub")
+
+    return True
 
 # ============================
-#  BACA TEMPLATE FILE
+# BACA TEMPLATE FILE (GITHUB FIRST)
 # ============================
 def get_template_file():
     try:
-        if Path(TEMPLATE_PATH).exists():
-            with open(TEMPLATE_PATH, "rb") as f:
-                return f.read()
-        else:
-            if "template_file" in st.session_state:
-                return st.session_state.template_file
-            return None
+        # 1️⃣ PRIORITAS: Template dari GitHub (session_state)
+        if "template_file" in st.session_state and st.session_state.template_file:
+            return st.session_state.template_file
+
+        # 2️⃣ FALLBACK: Lokal (hanya jika memang ada & dibutuhkan)
+        if 'TEMPLATE_PATH' in globals():
+            path = Path(TEMPLATE_PATH)
+            if path.exists():
+                with open(path, "rb") as f:
+                    return f.read()
+
+        return None
+
     except Exception as e:
-        st.error(f"Error membaca template: {e}")
+        st.error(f"❌ Error membaca template: {e}")
         return None
 
 # Fungsi visualisasi podium/bintang
