@@ -59,7 +59,7 @@ if 'activity_log' not in st.session_state:
     st.session_state.activity_log = [] 
 
 if "BOOTSTRAP_DONE" not in st.session_state:
-    st.session_state.BOOTSTRAP_DONE = False
+    st.session_state.BOOTsOOTSTRAP_DONE = False
 
 def ensure_satker_column(df):
     """
@@ -668,28 +668,6 @@ def parse_dipa(df_raw):
 
     return out
 
-# ===============================
-# AUTO BOOTSTRAP SEMUA DATA
-# ===============================
-def bootstrap_all_data():
-    if st.session_state.get("BOOTSTRAP_DONE", False):
-        return
-
-    with st.spinner("🔄 Memuat seluruh data dari GitHub..."):
-
-        # 1️⃣ TEMPLATE
-        load_template_from_github()
-
-        # 2️⃣ DIPA
-        load_DATA_DIPA_from_github()
-
-        # 3️⃣ IKPA SATKER
-        load_data_from_github()
-
-        # 4️⃣ IKPA KPPN
-        load_data_kppn_from_github()
-
-    st.session_state.BOOTSTRAP_DONE = True
 
 # ============================
 # LOAD TEMPLATE DARI GITHUB
@@ -705,15 +683,20 @@ def load_template_from_github():
     repo = g.get_repo(repo_name)
 
     try:
-        file = repo.get_contents("templates/INDIKATOR_PELAKSANAAN_ANGGARAN.xlsx")
-        content = base64.b64decode(file.content)
-        st.session_state.template_file = content
-        st.success("✅ Template IKPA berhasil dimuat dari GitHub")
-        return content
-    except Exception:
-        st.warning("⚠️ Template tidak ditemukan di GitHub.")
+        files = repo.get_contents("templates")
+        for f in files:
+            if f.name.lower().endswith(".xlsx"):
+                content = base64.b64decode(f.content)
+                st.session_state.template_file = content
+                st.success(f"✅ Template dimuat dari GitHub: {f.name}")
+                return content
+
+        st.warning("⚠️ Tidak ada file template (.xlsx) di folder templates.")
         return None
 
+    except Exception as e:
+        st.warning(f"⚠️ Gagal memuat template dari GitHub: {e}")
+        return None
 
 # ============================================================
 # FUNGSI HELPER: Load Data DIPA dari GitHub
@@ -859,9 +842,14 @@ def load_data_from_github():
             df = pd.read_excel(io.BytesIO(decoded))
 
             # ===============================
-            # VALIDASI STRUKTUR
+            # VALIDASI STRUKTUR (TRANSPARAN)
             # ===============================
-            if not all(col in df.columns for col in REQUIRED_COLUMNS):
+            missing_cols = [c for c in REQUIRED_COLUMNS if c not in df.columns]
+            if missing_cols:
+                st.warning(
+                    f"⚠️ File {file.name} dilewati. "
+                    f"Kolom hilang: {missing_cols}"
+                )
                 continue
 
             month = str(df["Bulan"].iloc[0]).upper().strip()
@@ -933,6 +921,7 @@ def load_data_from_github():
 
     st.success(f"✅ {loaded_count} file IKPA Satker dimuat dari GitHub.")
 
+
 # ============================
 # LOAD IKPA KPPN DARI GITHUB
 # ============================
@@ -972,9 +961,23 @@ def load_data_kppn_from_github():
             if df is None:
                 continue
 
-            key = (month, str(year))
+            # ===============================
+            # AMANKAN KOLOM (KPPN ≠ SATKER)
+            # ===============================
+            SAFE_NUMERIC_COLS = [
+                "Nilai Akhir (Nilai Total/Konversi Bobot)",
+                "Nilai Total",
+                "Konversi Bobot"
+            ]
+            for col in SAFE_NUMERIC_COLS:
+                if col not in df.columns:
+                    df[col] = 0
 
-            # jangan timpa data manual
+            # ===============================
+            # KEY UNIK PER FILE
+            # ===============================
+            key = (month, str(year), file.name)
+
             if key in st.session_state.data_storage_kppn:
                 continue
 
@@ -985,37 +988,52 @@ def load_data_kppn_from_github():
             loaded += 1
 
         except Exception as e:
-            st.warning(f"⚠️ IKPA KPPN {file.name} gagal: {e}")
+            st.error(f"❌ Error memproses IKPA KPPN ({file.name}): {e}")
 
     if loaded > 0:
         st.success(f"✅ {loaded} file IKPA KPPN dimuat dari GitHub")
-    else:
-        st.info("ℹ️ Data IKPA KPPN sudah tersedia atau tidak ada file baru.")
-
 
     return True
 
+# ===============================
+# AUTO BOOTSTRAP SEMUA DATA
+# ===============================
+def bootstrap_all_data():
+    if st.session_state.get("BOOTSTRAP_DONE", False):
+        return
+
+    with st.spinner("🔄 Memuat seluruh data dari GitHub..."):
+
+        # 1️⃣ TEMPLATE
+        load_template_from_github()
+
+        # 2️⃣ DIPA
+        load_DATA_DIPA_from_github()
+
+        # 3️⃣ IKPA SATKER
+        load_data_from_github()
+
+        # 4️⃣ IKPA KPPN
+        load_data_kppn_from_github()
+
+    st.session_state.BOOTSTRAP_DONE = True
+
+
 # ============================
-# BACA TEMPLATE FILE (GITHUB FIRST)
+# BACA TEMPLATE FILE
 # ============================
 def get_template_file():
     try:
-        # 1️⃣ PRIORITAS: Template dari GitHub (session_state)
+        # 1️⃣ PRIORITAS: Template dari session (manual / GitHub)
         if "template_file" in st.session_state and st.session_state.template_file:
             return st.session_state.template_file
-
-        # 2️⃣ FALLBACK: Lokal (hanya jika memang ada & dibutuhkan)
-        if 'TEMPLATE_PATH' in globals():
-            path = Path(TEMPLATE_PATH)
-            if path.exists():
-                with open(path, "rb") as f:
-                    return f.read()
 
         return None
 
     except Exception as e:
         st.error(f"❌ Error membaca template: {e}")
         return None
+
 
 # Fungsi visualisasi podium/bintang
 def create_ranking_chart(df, title, top=True, limit=10):
@@ -4279,6 +4297,7 @@ def page_admin():
 def main():
     bootstrap_all_data()
     page_dashboard()
+
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
     # ============================================================
