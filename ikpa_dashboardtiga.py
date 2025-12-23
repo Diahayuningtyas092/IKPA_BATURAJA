@@ -1510,11 +1510,7 @@ def safe_chart(
         coloraxis_showscale=False
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        key=f"chart_{id(fig)}"
-    )
+    st.plotly_chart(fig, use_container_width=True)
 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
