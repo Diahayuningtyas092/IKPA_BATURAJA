@@ -23,6 +23,16 @@ if not ADMIN_PASSWORD:
     st.error("ADMIN_PASSWORD belum diset di Streamlit Secrets")
     st.stop()
 
+# Konfigurasi halaman
+st.set_page_config(
+    page_title="Dashboard IKPA KPPN Baturaja",
+    page_icon="📊",
+    layout="wide"
+)
+
+if st.session_state.get("_restart_app", False):
+    st.session_state.clear()
+    st.rerun()
 
 # define month order map
 MONTH_ORDER = {
@@ -233,12 +243,6 @@ def normalize_kode_satker(k, width=6):
     kod = digits[0].zfill(width)
     return kod
 
-# Konfigurasi halaman
-st.set_page_config(
-    page_title="Dashboard IKPA KPPN Baturaja",
-    page_icon="📊",
-    layout="wide"
-)
 
 st.write("GitHub token loaded:", bool(st.secrets.get("GITHUB_TOKEN")))
 
@@ -3320,11 +3324,9 @@ def page_admin():
                             merge_ikpa_dipa_auto()
                             st.session_state.ikpa_dipa_merged = True
 
-                    st.divider()
-
                     if st.button("🔄 Refresh Aplikasi"):
-                        st.session_state.clear()
-                        st.rerun()
+                        st.session_state._restart_app = True
+
 
         
         # Submenu Upload Data IKPA KPPN
