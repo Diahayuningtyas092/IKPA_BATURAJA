@@ -3315,22 +3315,16 @@ def page_admin():
                         except Exception as e:
                             st.error(f"❌ Error {uploaded_file.name}: {e}")
 
-                    if need_merge and st.session_state.DATA_DIPA_by_year:
+                    if need_merge and st.session_state.DATA_DIPA_by_year and not st.session_state.get("ikpa_dipa_merged", False):
                         with st.spinner("🔄 Menggabungkan IKPA & DIPA..."):
                             merge_ikpa_dipa_auto()
                             st.session_state.ikpa_dipa_merged = True
-                            
-                    # ===============================
-                    # 🔄 REFRESH MANUAL (REKOMENDASI)
-                    # ===============================
-                    st.markdown("---")
-                    st.info("🔄 Klik tombol ini untuk memuat ulang aplikasi dan memastikan data terbaru masuk ke dashboard.")
 
-                    if st.button("🔄 Refresh Aplikasi", type="secondary"):
-                        st.session_state.force_refresh = True
-                        st.toast("Aplikasi sedang dimuat ulang...", icon="🔄")
-                        st.experimental_rerun()
+                    st.divider()
 
+                    if st.button("🔄 Refresh Aplikasi"):
+                        st.session_state.clear()
+                        st.rerun()
 
         
         # Submenu Upload Data IKPA KPPN
