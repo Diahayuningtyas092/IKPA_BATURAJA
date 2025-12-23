@@ -708,6 +708,7 @@ def load_template_from_github():
         file = repo.get_contents("templates/INDIKATOR_PELAKSANAAN_ANGGARAN.xlsx")
         content = base64.b64decode(file.content)
         st.session_state.template_file = content
+        st.success("✅ Template IKPA berhasil dimuat dari GitHub")
         return content
     except Exception:
         st.warning("⚠️ Template tidak ditemukan di GitHub.")
@@ -988,6 +989,9 @@ def load_data_kppn_from_github():
 
     if loaded > 0:
         st.success(f"✅ {loaded} file IKPA KPPN dimuat dari GitHub")
+    else:
+        st.info("ℹ️ Data IKPA KPPN sudah tersedia atau tidak ada file baru.")
+
 
     return True
 
