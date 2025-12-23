@@ -490,6 +490,12 @@ def process_excel_file_kppn(uploaded_file, year):
             i += 4  # 🔑 POLA IKPA (Nilai, Bobot, Nilai Akhir, Nilai Aspek)
 
         df = pd.DataFrame(processed_rows)
+        # ===============================
+        # FIX WAJIB: AMANKAN KOLOM NILAI AKHIR (KPPN)
+        # ===============================
+        if 'Nilai Akhir (Nilai Total/Konversi Bobot)' not in df.columns:
+            df['Nilai Akhir (Nilai Total/Konversi Bobot)'] = 0
+
 
         # ===============================
         # NUMERIC CAST
@@ -853,6 +859,15 @@ def load_data_from_github():
                 continue
 
             month = str(df["Bulan"].iloc[0]).upper().strip()
+            # fallback dari nama file
+            if month not in MONTH_ORDER:
+                m = re.search(
+                    r"(JANUARI|FEBRUARI|MARET|APRIL|MEI|JUNI|JULI|AGUSTUS|SEPTEMBER|OKTOBER|NOVEMBER|DESEMBER)",
+                    file.name.upper()
+                )
+                if m:
+                    month = m.group(1)
+
             year = str(df["Tahun"].iloc[0]).strip()
             key = (month, year)
 
@@ -1489,8 +1504,11 @@ def safe_chart(
         coloraxis_showscale=False
     )
 
-    st.plotly_chart(fig, use_container_width=True)
-
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        key=f"chart_{id(fig)}"
+    )
 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
