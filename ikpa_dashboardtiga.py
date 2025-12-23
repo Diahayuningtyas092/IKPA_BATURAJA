@@ -1137,28 +1137,66 @@ def create_problem_chart(
 # ===============================================
 def apply_reference_short_names(df):
     """
-    Simple version: apply reference short names to dataframe.
-    - Adds 'Uraian Satker-RINGKAS' (from reference 'Uraian Satker-SINGKAT' when available,
-      otherwise falls back to original 'Uraian Satker').
-    - Performs basic normalization on 'Kode Satker' before merging.
-    - Minimal user messages (no Excel/CSV creation, no verbose debugging).
+    Apply reference short names to dataframe.
+    - Menghasilkan kolom 'Uraian Satker-RINGKAS' PASTI ADA
+    - Jika reference match → pakai singkatan
+    - Jika tidak → fallback ke nama asli
     """
-    # Defensive copy
     df = df.copy()
 
-    # Ensure period columns exist
+    # Pastikan kolom periode ada
     if 'Bulan' not in df.columns:
         df['Bulan'] = ''
     if 'Tahun' not in df.columns:
         df['Tahun'] = ''
 
-    # If no reference in session, fallback silently to original names
+    # ===============================
+    # JIKA TIDAK ADA REFERENCE
+    # ===============================
     if 'reference_df' not in st.session_state or st.session_state.reference_df is None:
-        if 'Uraian Satker-RINGKAS' not in df.columns:
-            df['Uraian Satker-RINGKAS'] = df.get('Uraian Satker', '')
-        # also keep a final fallback column for compatibility
-        df['Uraian Satker Final'] = df.get('Uraian Satker', '')
+        df['Uraian Satker-RINGKAS'] = df.get('Uraian Satker', '')
+        df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
         return df
+
+    # ===============================
+    # NORMALISASI KODE SATKER
+    # ===============================
+    ref = st.session_state.reference_df.copy()
+
+    if 'Kode Satker' in df.columns:
+        df['Kode Satker'] = df['Kode Satker'].apply(normalize_kode_satker)
+    else:
+        df['Kode Satker'] = ''
+
+    if 'Kode Satker' in ref.columns:
+        ref['Kode Satker'] = ref['Kode Satker'].apply(normalize_kode_satker)
+    else:
+        df['Uraian Satker-RINGKAS'] = df.get('Uraian Satker', '')
+        df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
+        return df
+
+    # ===============================
+    # MERGE REFERENCE
+    # ===============================
+    if 'Uraian Satker-SINGKAT' in ref.columns:
+        df = df.merge(
+            ref[['Kode Satker', 'Uraian Satker-SINGKAT']]
+                .rename(columns={'Uraian Satker-SINGKAT': 'Uraian Satker-RINGKAS'}),
+            on='Kode Satker',
+            how='left'
+        )
+
+    # ===============================
+    # 🔑 FINAL FALLBACK (INI KUNCINYA)
+    # ===============================
+    df['Uraian Satker-RINGKAS'] = (
+        df.get('Uraian Satker-RINGKAS')
+        .fillna(df.get('Uraian Satker', ''))
+    )
+
+    df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
+
+    return df
 
     # Copy reference
     ref = st.session_state.reference_df.copy()
@@ -1424,11 +1462,16 @@ def page_dashboard():
         # 🔒 WAJIB: pastikan lagi setelah ganti periode
         df = ensure_satker_column(df)
 
-        # 🔍 DEBUG (SEMENTARA)
         st.subheader("🔍 Debug Nama Satker (sementara)")
-        st.write(
-            df[['Kode Satker', 'Uraian Satker', 'Uraian Satker-RINGKAS']].head(10)
-        )
+
+        debug_cols = [c for c in [
+            'Kode Satker',
+            'Uraian Satker',
+            'Uraian Satker-RINGKAS'
+        ] if c in df.columns]
+
+        st.write("Kolom tersedia:", df.columns.tolist())
+        st.write(df[debug_cols].head(10))
 
         # ===============================
         # Validasi DF
