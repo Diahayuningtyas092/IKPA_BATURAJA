@@ -789,6 +789,9 @@ def save_file_to_github(content_bytes, filename, folder):
 # ============================
 #  LOAD DATA IKPA DARI GITHUB
 # ============================
+# ============================
+#  LOAD DATA IKPA DARI GITHUB
+# ============================
 def load_data_from_github():
     """
     Load IKPA Satker dari GitHub (/data).
@@ -831,10 +834,14 @@ def load_data_from_github():
         "Bulan", "Tahun"
     ]
 
+    # 🔑 TERIMA NOPEMBER & NOVEMBER
     MONTH_ORDER = {
         "JANUARI": 1, "FEBRUARI": 2, "MARET": 3, "APRIL": 4,
         "MEI": 5, "JUNI": 6, "JULI": 7, "AGUSTUS": 8,
-        "SEPTEMBER": 9, "OKTOBER": 10, "NOVEMBER": 11, "DESEMBER": 12
+        "SEPTEMBER": 9, "OKTOBER": 10,
+        "NOPEMBER": 11,   # legacy data
+        "NOVEMBER": 11,   # future data
+        "DESEMBER": 12
     }
 
     loaded_count = 0
@@ -848,23 +855,27 @@ def load_data_from_github():
             df = pd.read_excel(io.BytesIO(decoded))
 
             # ===============================
-            # VALIDASI STRUKTUR (TRANSPARAN)
+            # VALIDASI STRUKTUR
             # ===============================
             missing_cols = [c for c in REQUIRED_COLUMNS if c not in df.columns]
             if missing_cols:
                 continue
 
+            # ===============================
+            # BULAN & TAHUN (IKUT DATA ASLI)
+            # ===============================
             month = str(df["Bulan"].iloc[0]).upper().strip()
-            # fallback dari nama file
+            year = str(df["Tahun"].iloc[0]).strip()
+
+            # fallback dari nama file (TANPA PAKSA NOVEMBER)
             if month not in MONTH_ORDER:
                 m = re.search(
-                    r"(JANUARI|FEBRUARI|MARET|APRIL|MEI|JUNI|JULI|AGUSTUS|SEPTEMBER|OKTOBER|NOVEMBER|DESEMBER)",
+                    r"(JANUARI|FEBRUARI|MARET|APRIL|MEI|JUNI|JULI|AGUSTUS|SEPTEMBER|OKTOBER|NOPEMBER|NOVEMBER|DESEMBER)",
                     file.name.upper()
                 )
                 if m:
                     month = m.group(1)
 
-            year = str(df["Tahun"].iloc[0]).strip()
             key = (month, year)
 
             # ❗ JIKA SUDAH ADA (MANUAL), LEWATI
@@ -881,7 +892,7 @@ def load_data_from_github():
                 df["Kode Satker"] = df["Kode Satker"].apply(normalize_kode_satker)
 
             # ===============================
-            # 🔑 WAJIB: APPLY REFERENCE & SATKER
+            # APPLY REFERENCE & SATKER
             # ===============================
             df = apply_reference_short_names(df)
             df = create_satker_column(df)
@@ -931,7 +942,6 @@ def load_data_from_github():
             st.error(f"❌ Gagal memuat {file.name}: {e}")
 
     st.success(f"✅ {loaded_count} file IKPA Satker dimuat dari GitHub.")
-
 
 # ============================
 # LOAD IKPA KPPN DARI GITHUB
@@ -1602,23 +1612,7 @@ def page_dashboard():
             key="select_period_main"
         )
 
-        # ===============================
-        # NORMALISASI PERIODE TERPILIH (FIX NOPEMBER)
-        # ===============================
-        month, year = selected_period
-        month = month.upper()
-
-        MONTH_FIX = {
-            "NOPEMBER": "NOVEMBER",
-            "NOPEMBER ": "NOVEMBER",
-            "NOPember": "NOVEMBER",
-            "NOPEMBER": "NOVEMBER"
-        }
-
-        month = MONTH_FIX.get(month, month)
-        selected_period = (month, year)
-
-        # simpan balik ke session_state (INI PENTING)
+        # simpan balik ke session_state 
         st.session_state.selected_period = selected_period
 
         # ambil data SETELAH normalisasi
