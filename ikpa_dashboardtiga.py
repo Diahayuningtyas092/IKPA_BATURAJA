@@ -59,7 +59,7 @@ if 'activity_log' not in st.session_state:
     st.session_state.activity_log = [] 
 
 if "BOOTSTRAP_DONE" not in st.session_state:
-    st.session_state.BOOTsOOTSTRAP_DONE = False
+    st.session_state.BOOTSTRAP_DONE = False
 
 def ensure_satker_column(df):
     """
@@ -1605,18 +1605,22 @@ def page_dashboard():
         # Pilih Periode
         # -------------------------
         selected_period = st.selectbox(
-            "Pilih Periode",
-            options=all_periods,
-            index=all_periods.index(st.session_state.selected_period),
-            format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-            key="select_period_main"
-        )
+        "Pilih Periode",
+        options=all_periods,
+        index=all_periods.index(st.session_state.selected_period),
+        format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+        key="select_period_main"
+    )
 
-        # simpan balik ke session_state 
-        st.session_state.selected_period = selected_period
+    st.session_state.selected_period = selected_period
 
-        # ambil data SETELAH normalisasi
-        df = st.session_state.data_storage.get(selected_period)
+    # ⬇️ INI SAJA, JANGAN DIUBAH
+    df = st.session_state.data_storage.get(selected_period)
+
+    if df is None or df.empty:
+        st.warning("Data IKPA belum tersedia.")
+        st.stop()
+
 
         # ===============================
         # Validasi DF
@@ -1651,10 +1655,19 @@ def page_dashboard():
         # Filter Satker
         # ===============================
         VALID_JENIS = ['KECIL', 'SEDANG', 'BESAR']
-        df = df[df['Jenis Satker'].isin(VALID_JENIS)]
+
+        # Jika ada data Jenis Satker valid → filter
+        if 'Jenis Satker' in df.columns and df['Jenis Satker'].isin(VALID_JENIS).any():
+            df = df[df['Jenis Satker'].isin(VALID_JENIS)]
+        else:
+            # Fallback: jangan buang data
+            df = df.copy()
+            df['Jenis Satker'] = 'SEDANG'
+
         df_kecil  = df[df['Jenis Satker'] == 'KECIL']
         df_sedang = df[df['Jenis Satker'] == 'SEDANG']
         df_besar  = df[df['Jenis Satker'] == 'BESAR']
+
 
         # ===============================
         # METRIK UTAMA
