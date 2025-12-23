@@ -1602,25 +1602,27 @@ def page_dashboard():
             key="select_period_main"
         )
 
-        st.session_state.selected_period = selected_period
-        df = st.session_state.data_storage.get(selected_period)
-        
         # ===============================
-        # NORMALISASI PERIODE TERPILIH
+        # NORMALISASI PERIODE TERPILIH (FIX NOPEMBER)
         # ===============================
         month, year = selected_period
-        month = month.upper().replace("NOPEMBER", "NOVEMBER").replace("NOPEMBER", "NOVEMBER")
+        month = month.upper()
+
+        MONTH_FIX = {
+            "NOPEMBER": "NOVEMBER",
+            "NOPEMBER ": "NOVEMBER",
+            "NOPember": "NOVEMBER",
+            "NOPEMBER": "NOVEMBER"
+        }
+
+        month = MONTH_FIX.get(month, month)
         selected_period = (month, year)
 
+        # simpan balik ke session_state (INI PENTING)
+        st.session_state.selected_period = selected_period
+
+        # ambil data SETELAH normalisasi
         df = st.session_state.data_storage.get(selected_period)
-
-
-        if df is None or df.empty:
-            st.warning("Data IKPA belum tersedia.")
-            st.stop()
-
-        # 🔒 WAJIB: pastikan lagi setelah ganti periode
-        df = ensure_satker_column(df)
 
         # ===============================
         # Validasi DF
@@ -1628,6 +1630,10 @@ def page_dashboard():
         if df is None or df.empty:
             st.warning("Data IKPA belum tersedia.")
             st.stop()
+
+        # 🔒 WAJIB: pastikan kolom Satker
+        df = ensure_satker_column(df)
+
 
         # ===============================
         # Pastikan kolom Jenis Satker ada
