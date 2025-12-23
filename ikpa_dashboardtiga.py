@@ -1424,6 +1424,12 @@ def page_dashboard():
         # 🔒 WAJIB: pastikan lagi setelah ganti periode
         df = ensure_satker_column(df)
 
+        # 🔍 DEBUG (SEMENTARA)
+        st.subheader("🔍 Debug Nama Satker (sementara)")
+        st.write(
+            df[['Kode Satker', 'Uraian Satker', 'Uraian Satker-RINGKAS']].head(10)
+        )
+
         # ===============================
         # Validasi DF
         # ===============================
