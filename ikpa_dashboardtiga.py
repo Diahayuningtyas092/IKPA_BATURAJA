@@ -1582,18 +1582,14 @@ def page_dashboard():
 
 
     # ======================================================
-    # MAIN TAB STATE
+    # MAIN TAB DASHBOARD
     # ======================================================
-    if "main_tab" not in st.session_state:
-        st.session_state.main_tab = "🎯 Highlights"
-
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
         ["🎯 Highlights", "📋 Data Detail Satker"],
         key="main_tab",
         horizontal=True
     )
-    st.session_state["main_tab"] = main_tab
 
     # ======================================================
     # HIGHLIGHTS
@@ -1607,27 +1603,17 @@ def page_dashboard():
         selected_period = st.selectbox(
             "Pilih Periode",
             options=all_periods,
-            index=all_periods.index(st.session_state.selected_period),
             format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-            key="select_period_main"
+            key="selected_period"
         )
 
-        # simpan balik ke session_state 
-        st.session_state.selected_period = selected_period
-
-        # ambil data SETELAH normalisasi
         df = st.session_state.data_storage.get(selected_period)
 
-        # ===============================
-        # Validasi DF
-        # ===============================
         if df is None or df.empty:
             st.warning("Data IKPA belum tersedia.")
             st.stop()
 
-        # 🔒 WAJIB: pastikan kolom Satker
         df = ensure_satker_column(df)
-
 
         # ===============================
         # Pastikan kolom Jenis Satker ada
@@ -1637,9 +1623,6 @@ def page_dashboard():
         else:
             df['Jenis Satker'] = df['Jenis Satker'].fillna('TIDAK TERKLASIFIKASI')
 
-        # ===============================
-        # NORMALISASI JENIS SATKER
-        # ===============================
         df['Jenis Satker'] = (
             df['Jenis Satker']
             .str.upper()
@@ -1647,11 +1630,9 @@ def page_dashboard():
             .str.strip()
         )
 
-        # ===============================
-        # Filter Satker
-        # ===============================
         VALID_JENIS = ['KECIL', 'SEDANG', 'BESAR']
         df = df[df['Jenis Satker'].isin(VALID_JENIS)]
+
         df_kecil  = df[df['Jenis Satker'] == 'KECIL']
         df_sedang = df[df['Jenis Satker'] == 'SEDANG']
         df_besar  = df[df['Jenis Satker'] == 'BESAR']
@@ -1665,245 +1646,133 @@ def page_dashboard():
         perfect_df = df[df[nilai_col] == 100]
         below89_df = df[df[nilai_col] < 89]
 
-        # Pastikan kolom Satker tersedia
-        def make_satker_col(dd):
-            if 'Satker' in dd.columns:
-                return dd
-            uraian = dd.get('Uraian Satker-RINGKAS', dd.index.astype(str))
-            kode = dd.get('Kode Satker', '')
-            dd = dd.copy()
-            dd['Satker'] = uraian.astype(str) + " (" + kode.astype(str) + ")"
-            return dd
-
-        perfect_df = make_satker_col(perfect_df)
-        below89_df = make_satker_col(below89_df)
-
-        jumlah_100 = len(perfect_df)
-        jumlah_below = len(below89_df)
-
-        # Tampilan metrik
         col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("📋 Total Satker", len(df))
-        with col2:
-            st.metric("📈 Rata-rata Nilai", f"{avg_score:.2f}")
-        with col3:
-            st.metric("⭐ Nilai 100", jumlah_100)
-            with st.popover("Lihat daftar satker"):
-                if jumlah_100 == 0:
-                    st.write("Tidak ada satker dengan nilai 100.")
-                else:
-                    display_df = perfect_df[['Satker']].reset_index(drop=True)
-                    display_df.insert(0, 'No', range(1, len(display_df) + 1))
-                    st.dataframe(
-                        display_df,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=min(400, len(display_df) * 35 + 38)
-                    )
-        with col4:
-            st.metric("⚠️ Nilai < 89 (Predikat Belum Baik)", jumlah_below)
-            with st.popover("Lihat daftar satker"):
-                if jumlah_below == 0:
-                    st.write("Tidak ada satker dengan nilai < 89.")
-                else:
-                    display_df = below89_df[['Satker']].reset_index(drop=True)
-                    display_df.insert(0, 'No', range(1, len(display_df) + 1))
-                    st.dataframe(
-                        display_df,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=min(400, len(display_df) * 35 + 38)
-                    )
+        col1.metric("📋 Total Satker", len(df))
+        col2.metric("📈 Rata-rata Nilai", f"{avg_score:.2f}")
+        col3.metric("⭐ Nilai 100", len(perfect_df))
+        col4.metric("⚠️ Nilai < 89", len(below89_df))
 
         # ===============================
         # Kontrol Skala Chart
         # ===============================
         st.markdown("###### Atur Skala Nilai (Sumbu Y)")
-        col_min, col_max = st.columns(2)
-        with col_min:
-            y_min = st.slider("Nilai Minimum (Y-Axis)", 0, 50, 50, 1, key="high_ymin")
-        with col_max:
-            y_max = st.slider("Nilai Maksimum (Y-Axis)", 51, 110, 110, 1, key="high_ymax")
+        y_min = st.slider("Nilai Minimum", 0, 50, 50, 1, key="ymin_highlight")
+        y_max = st.slider("Nilai Maksimum", 51, 110, 110, 1, key="ymax_highlight")
 
         # ===============================
-        # CHART 6 MUAT DALAM 1 TAMPILAN
+        # CHART TERBAIK
         # ===============================
-        st.markdown("### 📊 Satker Terbaik & Terendah Berdasarkan Nilai IKPA")
+        st.markdown("### 📊 Satker Terbaik & Terendah")
 
-        # =========================
-        # BARIS 1 – TERBAIK
-        # =========================
         c1, c2, c3 = st.columns(3)
-
         with c1:
-            st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terbaik</b></div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("**Satker Kecil Terbaik**")
             safe_chart(df_kecil, "KECIL", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
         with c2:
-            st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terbaik</b></div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("**Satker Sedang Terbaik**")
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
         with c3:
-            st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terbaik</b></div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("**Satker Besar Terbaik**")
             safe_chart(df_besar, "BESAR", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
-        # ⬇️ JARAK ANTAR BARIS (rapat tapi aman)
-        st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
-
-        # =========================
-        # BARIS 2 – TERENDAH
-        # =========================
         c4, c5, c6 = st.columns(3)
-
         with c4:
-            st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terendah</b></div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("**Satker Kecil Terendah**")
             safe_chart(df_kecil, "KECIL", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
         with c5:
-            st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terendah</b></div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("**Satker Sedang Terendah**")
             safe_chart(df_sedang, "SEDANG", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
         with c6:
-            st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terendah</b></div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("**Satker Besar Terendah**")
             safe_chart(df_besar, "BESAR", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
+        # ===============================
+        # DEViasi HAL III
+        # ===============================
+        st.subheader("🚨 Satker dengan Deviasi Halaman III DIPA")
 
-        # Satker dengan masalah (Deviasi Hal 3 DIPA)
-        st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
-        st.markdown("###### Atur Skala Nilai (Sumbu Y)")
-        col_min_dev, col_max_dev = st.columns(2)
-        with col_min_dev:
-            y_min_dev = st.slider(
-                "Nilai Minimum (Y-Axis)",
-                min_value=0,
-                max_value=50,
-                value=40,
-                step=1,
-                key="high_ymin_dev"
-            )
-        with col_max_dev:
-            y_max_dev = st.slider(
-                "Nilai Maksimum (Y-Axis)",
-                min_value=51,
-                max_value=110,
-                value=110,
-                step=1,
-                key="high_ymax_dev"
-            )
+        y_min_dev = st.slider("Nilai Minimum Deviasi", 0, 50, 40, 1, key="ymin_dev")
+        y_max_dev = st.slider("Nilai Maksimum Deviasi", 51, 110, 110, 1, key="ymax_dev")
 
         fig_dev = create_problem_chart(
-            df, 
-            'Deviasi Halaman III DIPA', 
-            90, 
-            "Deviasi Hal 3 DIPA Belum Optimal (< 90)",
+            df,
+            'Deviasi Halaman III DIPA',
+            90,
+            "Deviasi Hal III < 90",
             'less',
             y_min=y_min_dev,
-            y_max=y_max_dev,
-            show_yaxis=True
+            y_max=y_max_dev
         )
+
         if fig_dev:
             st.plotly_chart(fig_dev, use_container_width=True)
-        else:
-            st.success("✅ Semua satker sudah optimal untuk Deviasi Hal 3 DIPA")
 
-    # -------------------------
+    # ======================================================
     # DATA DETAIL SATKER
-    # -------------------------
+    # ======================================================
     else:
         st.subheader("📋 Tabel Detail Satker")
-
-        # persistent sub-tab for Periodik / Detail Satker
-        if "active_table_tab" not in st.session_state:
-            st.session_state.active_table_tab = "📆 Periodik"
 
         sub_tab = st.radio(
             "Pilih Mode Tabel",
             ["📆 Periodik", "📋 Detail Satker"],
-            key="sub_tab_choice",
+            key="detail_tab",
             horizontal=True
         )
-        st.session_state['active_table_tab'] = sub_tab
 
-        # -------------------------
-        # PERIODIK TABLE
-        # -------------------------
         if sub_tab == "📆 Periodik":
-            st.markdown("#### Periodik — ringkasan per bulan / triwulan / perbandingan")
+            st.markdown("#### Periodik")
 
-            # Tentukan tahun yang tersedia
-            years = set()
-            for k, df_period in st.session_state.data_storage.items():
-                years.update(df_period['Tahun'].astype(str).unique())
-            years = sorted([int(y) for y in years if str(y).strip() != ''], reverse=True)
+            years = sorted(
+                {int(y) for _, dfp in st.session_state.data_storage.items()
+                for y in dfp['Tahun'].astype(str) if y.strip()},
+                reverse=True
+            )
 
-            if not years:
-                st.info("Tidak ada data periodik untuk ditampilkan.")
-                st.stop()
+            selected_year = st.selectbox("Pilih Tahun", years, key="periodik_year")
 
-            default_year = years[0]
-            selected_year = st.selectbox("Pilih Tahun", options=years, index=0, key='tab_periodik_year_select')
-
-            # session state untuk period_type
-            if "period_type" not in st.session_state:
-                st.session_state.period_type = "quarterly"
-
-            period_options = ["quarterly", "monthly", "compare"]
-            try:
-                period_index = period_options.index(st.session_state.period_type)
-            except ValueError:
-                period_index = 0
-                st.session_state.period_type = "quarterly"
-
-            # Radio button
             period_type = st.radio(
                 "Jenis Periode",
-                options=period_options,
-                format_func=lambda x: {"quarterly": "Triwulan", "monthly": "Bulanan", "compare": "Perbandingan"}.get(x, x),
-                horizontal=True,
-                index=period_index,
-                key="period_type_radio_v2"
+                ["quarterly", "monthly", "compare"],
+                format_func=lambda x: {
+                    "quarterly": "Triwulan",
+                    "monthly": "Bulanan",
+                    "compare": "Perbandingan"
+                }[x],
+                key="period_type"
             )
-            st.session_state.period_type = period_type
 
-            # Pilih indikator (satu untuk semua mode)
             indicator_options = [
-                'Kualitas Perencanaan Anggaran', 'Kualitas Pelaksanaan Anggaran', 'Kualitas Hasil Pelaksanaan Anggaran',
-                'Revisi DIPA', 'Deviasi Halaman III DIPA', 'Penyerapan Anggaran', 'Belanja Kontraktual',
-                'Penyelesaian Tagihan', 'Pengelolaan UP dan TUP', 'Capaian Output', 'Dispensasi SPM (Pengurang)',
+                'Kualitas Perencanaan Anggaran',
+                'Kualitas Pelaksanaan Anggaran',
+                'Kualitas Hasil Pelaksanaan Anggaran',
+                'Revisi DIPA',
+                'Deviasi Halaman III DIPA',
+                'Penyerapan Anggaran',
+                'Belanja Kontraktual',
+                'Penyelesaian Tagihan',
+                'Pengelolaan UP dan TUP',
+                'Capaian Output',
+                'Dispensasi SPM (Pengurang)',
                 'Nilai Akhir (Nilai Total/Konversi Bobot)'
             ]
-            default_indicator = 'Deviasi Halaman III DIPA'
+
             selected_indicator = st.selectbox(
-                "Pilih Indikator", 
-                options=indicator_options, 
-                index=indicator_options.index(default_indicator) if default_indicator in indicator_options else 0,
-                key='tab_periodik_indicator_select'
+                "Pilih Indikator",
+                indicator_options,
+                key="periodik_indicator"
             )
+
             
             # -------------------------
             # Monthly / Quarterly
