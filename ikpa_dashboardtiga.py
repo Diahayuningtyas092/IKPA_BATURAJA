@@ -4319,7 +4319,6 @@ def page_admin():
 # ===============================
 def main():
     bootstrap_all_data()
-    page_dashboard()
 
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
