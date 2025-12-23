@@ -778,7 +778,6 @@ def load_data_from_github():
         st.warning("📁 Folder 'data' belum ada di GitHub.")
         return
 
-    # JANGAN RESET data_storage
     if "data_storage" not in st.session_state:
         st.session_state.data_storage = {}
 
@@ -806,46 +805,45 @@ def load_data_from_github():
     loaded_count = 0
 
     for file in contents:
-        if not file.name.endswith(".xlsx"):
+        if not file.name.lower().endswith(".xlsx"):
             continue
 
         try:
             decoded = base64.b64decode(file.content)
             df = pd.read_excel(io.BytesIO(decoded))
 
-            # VALIDASI HASIL PROSES
+            # ===============================
+            # VALIDASI STRUKTUR
+            # ===============================
             if not all(col in df.columns for col in REQUIRED_COLUMNS):
                 continue
 
-            month = str(df["Bulan"].iloc[0]).upper()
-            year = str(df["Tahun"].iloc[0])
+            month = str(df["Bulan"].iloc[0]).upper().strip()
+            year = str(df["Tahun"].iloc[0]).strip()
             key = (month, year)
 
             # ❗ JIKA SUDAH ADA (MANUAL), LEWATI
             if key in st.session_state.data_storage:
                 continue
 
-            # NORMALISASI
+            # ===============================
+            # NORMALISASI DASAR
+            # ===============================
             df["Bulan"] = month
             df["Tahun"] = year
 
             if "Kode Satker" in df.columns:
-                df["Kode Satker"] = (
-                    df["Kode Satker"]
-                    .astype(str)
-                    .apply(normalize_kode_satker)
-                )
+                df["Kode Satker"] = df["Kode Satker"].apply(normalize_kode_satker)
 
-            try:
-                df = apply_reference_short_names(df)
-            except:
-                pass
+            # ===============================
+            # 🔑 WAJIB: APPLY REFERENCE & SATKER
+            # ===============================
+            df = apply_reference_short_names(df)
+            df = create_satker_column(df)
 
-            try:
-                df = create_satker_column(df)
-            except:
-                pass
-
+            # ===============================
+            # CAST NUMERIC
+            # ===============================
             numeric_cols = [
                 "Nilai Akhir (Nilai Total/Konversi Bobot)",
                 "Nilai Total", "Konversi Bobot",
@@ -862,12 +860,18 @@ def load_data_from_github():
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
+            # ===============================
+            # METADATA
+            # ===============================
             month_num = MONTH_ORDER.get(month, 0)
 
             df["Source"] = "GitHub"
             df["Period"] = f"{month} {year}"
             df["Period_Sort"] = f"{int(year):04d}-{month_num:02d}"
 
+            # ===============================
+            # RANKING
+            # ===============================
             if "Peringkat" not in df.columns:
                 df = df.sort_values(
                     "Nilai Akhir (Nilai Total/Konversi Bobot)",
