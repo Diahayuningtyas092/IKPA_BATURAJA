@@ -66,9 +66,6 @@ if "ikpa_dipa_merged" not in st.session_state:
 
 if 'activity_log' not in st.session_state:
     st.session_state.activity_log = [] 
-    
-if "force_refresh" not in st.session_state:
-    st.session_state.force_refresh = False
 
 def reset_app_state():
     keys_to_reset = [
@@ -1216,65 +1213,108 @@ def safe_chart(
     y_max=None,
     thin_bar=False
 ):
+    """
+    Safe bar chart untuk IKPA Satker.
+    - Aman jika data kosong
+    - Aman jika kolom Satker tidak ada
+    - Aman jika kolom nilai IKPA berbeda nama
+    - Tidak akan crash Plotly
+    """
+
     # ===============================
-    # DETEKSI KOLOM IKPA
+    # 1️⃣ VALIDASI DATAFRAME
+    # ===============================
+    if df_part is None or df_part.empty:
+        st.info(f"Tidak ada data untuk Satker {jenis}.")
+        return
+
+    df = df_part.copy()
+
+    # ===============================
+    # 2️⃣ PASTIKAN KOLOM SATKER ADA
+    # ===============================
+    if "Satker" not in df.columns:
+        if "Uraian Satker-RINGKAS" in df.columns and "Kode Satker" in df.columns:
+            df["Satker"] = (
+                df["Uraian Satker-RINGKAS"].astype(str)
+                + " (" + df["Kode Satker"].astype(str) + ")"
+            )
+        elif "Uraian Satker" in df.columns and "Kode Satker" in df.columns:
+            df["Satker"] = (
+                df["Uraian Satker"].astype(str)
+                + " (" + df["Kode Satker"].astype(str) + ")"
+            )
+        else:
+            st.warning(f"Kolom Satker tidak ditemukan untuk Satker {jenis}.")
+            return
+
+    # ===============================
+    # 3️⃣ DETEKSI KOLOM NILAI IKPA
     # ===============================
     kandidat_ikpa = [
-        'Nilai Akhir (Nilai Total/Konversi Bobot)',
-        'Nilai Total/Konversi Bobot',
-        'Nilai Total'
+        "Nilai Akhir (Nilai Total/Konversi Bobot)",
+        "Nilai Total/Konversi Bobot",
+        "Nilai Total",
     ]
 
     nilai_col = None
     for col in kandidat_ikpa:
-        if col in df_part.columns:
+        if col in df.columns:
             nilai_col = col
             break
 
     if nilai_col is None:
-        st.warning(f"Kolom IKPA tidak ditemukan untuk {jenis}")
+        st.warning(f"Kolom nilai IKPA tidak ditemukan untuk Satker {jenis}.")
         return
 
     # ===============================
-    # SORT DATA
+    # 4️⃣ CAST NUMERIK (WAJIB)
     # ===============================
-    # top=True  → ambil nilai tertinggi
-    # top=False → ambil nilai terendah
+    df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce")
+
+    df = df.dropna(subset=[nilai_col])
+
+    if df.empty:
+        st.info(f"Tidak ada data numerik valid untuk Satker {jenis}.")
+        return
+
+    # ===============================
+    # 5️⃣ SORT & AMBIL TOP / BOTTOM 10
+    # ===============================
     df_sorted = (
-        df_part
-        .sort_values(nilai_col, ascending=not top)
-        .head(10)
-        .sort_values(nilai_col, ascending=True)  # agar visual dari bawah ke atas
+        df.sort_values(nilai_col, ascending=not top)
+          .head(10)
+          .sort_values(nilai_col, ascending=True)
     )
 
     # ===============================
-    # PLOT
+    # 6️⃣ BUAT CHART (AMAN)
     # ===============================
     fig = px.bar(
-    df_sorted,
-    x=nilai_col,
-    y="Satker",
-    orientation="h",
-    color=nilai_col,
-    color_continuous_scale=color,
-    text=nilai_col              
+        df_sorted,
+        x=nilai_col,
+        y="Satker",
+        orientation="h",
+        color=nilai_col,
+        color_continuous_scale=color,
+        text=nilai_col
     )
 
     fig.update_traces(
-        width=0.65 if thin_bar else 0.8,
-        texttemplate="%{text:.2f}",   
-        textposition="outside",      
-        cliponaxis=False              
+        texttemplate="%{text:.2f}",
+        textposition="outside",
+        cliponaxis=False,
+        width=0.6 if thin_bar else 0.8
     )
 
     fig.update_layout(
-        height=200,
-        bargap=0.05,
-        margin=dict(l=2, r=2, t=0, b=0),
+        height=max(250, len(df_sorted) * 30),
+        margin=dict(l=10, r=10, t=10, b=10),
         xaxis_title=None,
         yaxis_title=None,
-        xaxis=dict(range=[y_min, y_max]),
-        coloraxis_showscale=False
+        showlegend=False,
+        coloraxis_showscale=False,
+        xaxis=dict(range=[y_min, y_max] if y_min is not None and y_max is not None else None),
     )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -3337,10 +3377,6 @@ def page_admin():
                             merge_ikpa_dipa_auto()
                             st.session_state.ikpa_dipa_merged = True
 
-                    if st.button("🔄 Refresh Aplikasi"):
-                        reset_app_state()
-                        st.experimental_rerun()
-
         
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
@@ -4074,17 +4110,6 @@ def page_admin():
 # MAIN APP
 # ===============================
 def main():
-    
-    # ===============================
-    # FORCE REFRESH HANDLER (KUNCI)
-    # ===============================
-    if st.session_state.get("force_refresh", False):
-        st.session_state.data_storage = {}
-        st.session_state.data_storage_kppn = {}
-        st.session_state.DATA_DIPA_by_year = {}
-        st.session_state.ikpa_dipa_merged = False
-        st.session_state.force_refresh = False
-
 
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
