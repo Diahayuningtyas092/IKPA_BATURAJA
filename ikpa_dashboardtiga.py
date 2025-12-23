@@ -30,9 +30,10 @@ st.set_page_config(
     layout="wide"
 )
 
-if st.session_state.get("_restart_app", False):
+if st.session_state.get("_hard_reset", False):
     st.session_state.clear()
-    st.rerun()
+    st.session_state._hard_reset = False
+    st.stop() 
 
 # define month order map
 MONTH_ORDER = {
@@ -3325,8 +3326,8 @@ def page_admin():
                             st.session_state.ikpa_dipa_merged = True
 
                     if st.button("🔄 Refresh Aplikasi"):
-                        st.session_state._restart_app = True
-
+                        st.session_state._hard_reset = True
+                        st.rerun()
 
         
         # Submenu Upload Data IKPA KPPN
