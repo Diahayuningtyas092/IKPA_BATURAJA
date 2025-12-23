@@ -852,10 +852,6 @@ def load_data_from_github():
             # ===============================
             missing_cols = [c for c in REQUIRED_COLUMNS if c not in df.columns]
             if missing_cols:
-                st.warning(
-                    f"⚠️ File {file.name} dilewati. "
-                    f"Kolom hilang: {missing_cols}"
-                )
                 continue
 
             month = str(df["Bulan"].iloc[0]).upper().strip()
@@ -1584,11 +1580,10 @@ def page_dashboard():
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
         ["🎯 Highlights", "📋 Data Detail Satker"],
-        key="main_tab_choice",
+        key=f"main_tab_choice_{st.session_state.get('selected_period', 'default')}",
         horizontal=True
     )
     st.session_state["main_tab"] = main_tab
-
 
     # ======================================================
     # HIGHLIGHTS
@@ -1609,6 +1604,16 @@ def page_dashboard():
 
         st.session_state.selected_period = selected_period
         df = st.session_state.data_storage.get(selected_period)
+        
+        # ===============================
+        # NORMALISASI PERIODE TERPILIH
+        # ===============================
+        month, year = selected_period
+        month = month.upper().replace("NOPEMBER", "NOVEMBER").replace("NOPEMBER", "NOVEMBER")
+        selected_period = (month, year)
+
+        df = st.session_state.data_storage.get(selected_period)
+
 
         if df is None or df.empty:
             st.warning("Data IKPA belum tersedia.")
