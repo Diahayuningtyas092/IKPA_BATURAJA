@@ -1204,121 +1204,84 @@ def create_satker_column(df):
     return df
 
 # BAGIAN 4 CHART DASHBOARD UTAMA
-def create_problem_chart(
-    df,
-    column,
-    threshold,
-    title,
-    comparison='less',
+def safe_chart(
+    df_part,
+    jenis,
+    top=True,
+    color="Greens",
     y_min=None,
     y_max=None,
-    show_yaxis=True
+    thin_bar=False
 ):
-    """
-    Chart masalah IKPA (AMAN):
-    - Tidak error walau kolom Satker belum ada
-    - Tidak error walau data kosong
-    """
-
-    if df is None or df.empty:
+    if df_part is None or df_part.empty:
         st.info("Tidak ada data.")
-        return None
+        return
 
-    df = df.copy()
+    df = df_part.copy()
 
-    # ===============================
-    # 🔑 PASTIKAN KOLOM 'Satker' ADA
-    # ===============================
+    # pastikan kolom Satker
     if "Satker" not in df.columns:
         if "Uraian Satker-RINGKAS" in df.columns and "Kode Satker" in df.columns:
             df["Satker"] = (
                 df["Uraian Satker-RINGKAS"].astype(str)
                 + " (" + df["Kode Satker"].astype(str) + ")"
             )
-        elif "Uraian Satker" in df.columns and "Kode Satker" in df.columns:
-            df["Satker"] = (
-                df["Uraian Satker"].astype(str)
-                + " (" + df["Kode Satker"].astype(str) + ")"
-            )
         else:
-            st.warning("Kolom Satker tidak tersedia untuk chart masalah.")
-            return None
+            st.warning("Kolom Satker tidak tersedia.")
+            return
 
-    # ===============================
-    # VALIDASI KOLOM TARGET
-    # ===============================
-    if column not in df.columns:
-        st.warning(f"Kolom '{column}' tidak ditemukan.")
-        return None
+    # deteksi kolom nilai
+    kandidat_ikpa = [
+        "Nilai Akhir (Nilai Total/Konversi Bobot)",
+        "Nilai Total/Konversi Bobot",
+        "Nilai Total"
+    ]
 
-    df[column] = pd.to_numeric(df[column], errors="coerce")
-    df = df.dropna(subset=[column])
+    nilai_col = next((c for c in kandidat_ikpa if c in df.columns), None)
+    if nilai_col is None:
+        st.warning("Kolom nilai IKPA tidak ditemukan.")
+        return
+
+    df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce")
+    df = df.dropna(subset=[nilai_col])
 
     if df.empty:
-        st.info("Tidak ada data valid untuk ditampilkan.")
-        return None
+        st.info("Tidak ada data valid.")
+        return
 
-    # ===============================
-    # FILTER MASALAH
-    # ===============================
-    if comparison == 'less':
-        df_filtered = df[df[column] < threshold]
-    elif comparison == 'greater':
-        df_filtered = df[df[column] > threshold]
-    else:
-        df_filtered = df.copy()
+    df_sorted = (
+        df.sort_values(nilai_col, ascending=not top)
+          .head(10)
+          .sort_values(nilai_col, ascending=True)
+    )
 
-    if df_filtered.empty:
-        st.success("✅ Semua satker sudah memenuhi target.")
-        return None
+    fig = px.bar(
+        df_sorted,
+        x=nilai_col,
+        y="Satker",
+        orientation="h",
+        color=nilai_col,
+        color_continuous_scale=color,
+        text=nilai_col
+    )
 
-    # ===============================
-    # SORT DATA
-    # ===============================
-    df_filtered = df_filtered.sort_values(by=column, ascending=True)
-
-    # ===============================
-    # BUAT CHART (AMAN)
-    # ===============================
-    fig = go.Figure()
-
-    fig.add_trace(go.Bar(
-        x=df_filtered['Satker'],
-        y=df_filtered[column],
-        marker=dict(
-            color=df_filtered[column],
-            colorscale='OrRd_r',
-            showscale=True,
-        ),
-        text=df_filtered[column].round(2),
-        textposition='outside',
-        hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
-    ))
-
-    fig.add_hline(
-        y=threshold,
-        line_dash="dash",
-        line_color="red",
-        annotation_text=f"Target: {threshold}",
-        annotation_position="top right"
+    fig.update_traces(
+        texttemplate="%{text:.2f}",
+        textposition="outside",
+        cliponaxis=False,
+        width=0.6 if thin_bar else 0.8
     )
 
     fig.update_layout(
-        title=title,
-        height=600,
-        margin=dict(l=50, r=20, t=80, b=200),
+        height=max(250, len(df_sorted) * 30),
+        margin=dict(l=10, r=10, t=10, b=10),
+        xaxis=dict(range=[y_min, y_max] if y_min and y_max else None),
         showlegend=False,
-        yaxis=dict(range=[y_min, y_max] if y_min is not None and y_max is not None else None),
-        xaxis=dict(
-            tickangle=-45,
-            automargin=True
-        )
+        coloraxis_showscale=False
     )
 
-    if not show_yaxis:
-        fig.update_yaxes(showticklabels=False)
+    st.plotly_chart(fig, use_container_width=True)
 
-    return fig
 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
