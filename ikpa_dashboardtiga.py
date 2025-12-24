@@ -224,6 +224,32 @@ def normalize_kode_ba(x):
         return str(int(x)).zfill(3)
     except:
         return None
+
+# ===============================
+# LOAD DATA REFERENSI BA (GITHUB)
+# ===============================
+@st.cache_data
+def load_reference_ba():
+    url_ref = (
+        "https://raw.githubusercontent.com/"
+        "Diahayuningtyas092/IKPA_BATURAJA/main/templates/"
+        "Template_Data_Referensi.xlsx"
+    )
+    try:
+        ref = pd.read_excel(url_ref, sheet_name="BA", dtype=str)
+        ref["Kode BA"] = ref["Kode BA"].apply(normalize_kode_ba)
+        return ref
+    except Exception as e:
+        st.warning(f"⚠️ Gagal memuat reference BA: {e}")
+        return pd.DataFrame(columns=["Kode BA","Nama BA"])
+
+# ===============================
+# MAP KODE BA → NAMA BA
+# ===============================
+def get_ba_map(df_ref_ba):
+    return dict(
+        zip(df_ref_ba["Kode BA"], df_ref_ba["Nama BA"])
+    )
     
 def apply_filter_ba(df):
     selected_ba = st.session_state.get("filter_ba_main", ["SEMUA BA"])
@@ -1286,6 +1312,13 @@ def safe_chart(
 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
+    
+    # ===============================
+    # LOAD REFERENSI BA (1x)
+    # ===============================
+    df_ref_ba = load_reference_ba()
+    BA_MAP = get_ba_map(df_ref_ba)
+
     # ===============================
     # SOLUSI 3 — DELAY RENDER SETELAH UPLOAD
     # ===============================
@@ -1364,52 +1397,31 @@ def page_dashboard():
     # ==================================================
     st.markdown("### 🔎 Filter Kode BA")
 
-    if df is not None and 'Kode BA' in df.columns:
+    if 'Kode BA' in df.columns:
+        ba_codes = sorted(df['Kode BA'].dropna().unique().tolist())
 
-        # normalisasi kode BA
-        df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
+        ba_options = ["SEMUA BA"] + ba_codes
 
-        # ambil daftar BA dari data
-        ba_list = (
-            df['Kode BA']
-            .dropna()
-            .astype(str)
-            .unique()
-            .tolist()
-        )
-        ba_list = sorted(ba_list)
-
-        # ===============================
-        # MAP KODE BA → NAMA BA
-        # ===============================
-        ba_name_map = {}
-
-        ref = st.session_state.get("reference_ba_df")
-        if ref is not None and {'Kode BA', 'Nama BA'}.issubset(ref.columns):
-            ref = ref.copy()
-            ref['Kode BA'] = ref['Kode BA'].apply(normalize_kode_ba)
-            ba_name_map = dict(zip(ref['Kode BA'], ref['Nama BA']))
-
-        def format_ba(kode):
-            if kode == "SEMUA BA":
+        def format_ba(code):
+            if code == "SEMUA BA":
                 return "SEMUA BA"
-            nama = ba_name_map.get(kode, "Nama BA tidak diketahui")
-            return f"{kode} — {nama}"
+            return f"{code} — {BA_MAP.get(code, 'Nama BA Tidak Diketahui')}"
 
-        ba_options = ["SEMUA BA"] + ba_list
-
-        st.multiselect(
+        selected_ba = st.multiselect(
             "Pilih Kode BA",
             options=ba_options,
             default=st.session_state.get("filter_ba_main", ["SEMUA BA"]),
-            format_func=format_ba,
-            key="filter_ba_main"
+            key="filter_ba_main",
+            format_func=lambda x: (
+                "SEMUA BA"
+                if x == "SEMUA BA"
+                else f"{x} – {BA_MAP.get(x, 'Tidak Diketahui')}"
+            )
         )
-
     else:
-        st.info("Filter Kode BA tidak tersedia.")
+        st.warning("Kolom Kode BA tidak tersedia.")
 
-    
+
     # ---------- persistent main tab ----------
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
