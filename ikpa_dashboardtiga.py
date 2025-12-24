@@ -230,26 +230,22 @@ def normalize_kode_ba(x):
 # ===============================
 @st.cache_data
 def load_reference_ba():
-    url_ref = (
+    url = (
         "https://raw.githubusercontent.com/"
         "Diahayuningtyas092/IKPA_BATURAJA/main/templates/"
         "Template_Data_Referensi.xlsx"
     )
-    try:
-        ref = pd.read_excel(url_ref, sheet_name="BA", dtype=str)
-        ref["Kode BA"] = ref["Kode BA"].apply(normalize_kode_ba)
-        return ref
-    except Exception as e:
-        st.warning(f"⚠️ Gagal memuat reference BA: {e}")
-        return pd.DataFrame(columns=["Kode BA","Nama BA"])
+    ref = pd.read_excel(url, sheet_name=0, dtype=str)
+    ref['Kode BA'] = ref['Kode BA'].apply(normalize_kode_ba)
+    ref['Nama BA'] = ref['K/L'].astype(str).str.strip()
+    return ref
 
 # ===============================
 # MAP KODE BA → NAMA BA
 # ===============================
 def get_ba_map(df_ref_ba):
-    return dict(
-        zip(df_ref_ba["Kode BA"], df_ref_ba["Nama BA"])
-    )
+    return dict(zip(df_ref_ba['Kode BA'], df_ref_ba['Nama BA']))
+
     
 def apply_filter_ba(df):
     selected_ba = st.session_state.get("filter_ba_main", ["SEMUA BA"])
@@ -1398,25 +1394,21 @@ def page_dashboard():
     st.markdown("### 🔎 Filter Kode BA")
 
     if 'Kode BA' in df.columns:
-        ba_codes = sorted(df['Kode BA'].dropna().unique().tolist())
+        ba_codes = sorted(df['Kode BA'].dropna().unique())
 
         ba_options = ["SEMUA BA"] + ba_codes
 
         def format_ba(code):
             if code == "SEMUA BA":
                 return "SEMUA BA"
-            return f"{code} — {BA_MAP.get(code, 'Nama BA Tidak Diketahui')}"
+            return f"{code} – {BA_MAP.get(code, 'Nama BA tidak ditemukan')}"
 
-        selected_ba = st.multiselect(
+        st.multiselect(
             "Pilih Kode BA",
             options=ba_options,
+            format_func=format_ba,
             default=st.session_state.get("filter_ba_main", ["SEMUA BA"]),
-            key="filter_ba_main",
-            format_func=lambda x: (
-                "SEMUA BA"
-                if x == "SEMUA BA"
-                else f"{x} – {BA_MAP.get(x, 'Tidak Diketahui')}"
-            )
+            key="filter_ba_main"
         )
     else:
         st.warning("Kolom Kode BA tidak tersedia.")
