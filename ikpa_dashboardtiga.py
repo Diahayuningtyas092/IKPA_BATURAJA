@@ -224,6 +224,12 @@ def normalize_kode_ba(x):
         return str(int(x)).zfill(3)
     except:
         return None
+    
+def apply_filter_ba(df):
+    selected_ba = st.session_state.get("filter_ba_main", ["SEMUA BA"])
+    if not selected_ba or "SEMUA BA" in selected_ba:
+        return df
+    return df[df['Kode BA'].astype(str).isin(selected_ba)].copy()
 
 # Normalize kode satker
 def normalize_kode_satker(k, width=6):
@@ -1378,47 +1384,42 @@ def page_dashboard():
             format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
             key="select_period_main"
         )
+
         df = st.session_state.data_storage.get(selected_period)
-        
-        # ===============================
-        # NORMALISASI KODE BA (WAJIB)
-        # ===============================
-        if 'Kode BA' in df.columns:
-            df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
-
 
         # ===============================
-        # Validasi DF
+        # VALIDASI DF (PALING AWAL)
         # ===============================
         if df is None or df.empty:
             st.warning("Data IKPA belum tersedia.")
             st.stop()
-            
-        # PAKSA KOLOM SATKER ADA
-        if 'Satker' not in df.columns:
-            df = create_satker_column(df)
-        
+
+        df = df.copy()
+
         # ===============================
-        # NORMALISASI KODE BA (WAJIB)
+        # NORMALISASI KODE BA (1x SAJA)
         # ===============================
         if 'Kode BA' in df.columns:
             df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
 
-
         # ===============================
-        st.markdown("### 🔎 Filter Kode BA")
+        # PAKSA KOLOM SATKER (1x SAJA)
+        # ===============================
+        if 'Satker' not in df.columns:
+            df = create_satker_column(df)
 
         # ===============================
         # FILTER KODE BA (GLOBAL)
         # ===============================
+        st.markdown("### 🔎 Filter Kode BA")
+
         if 'Kode BA' not in df.columns:
-            st.warning("Kolom Kode BA tidak ditemukan pada data.")
+            st.warning("Kolom Kode BA tidak ditemukan.")
         else:
-            ba_list = (
+            ba_list = sorted(
                 df['Kode BA']
                 .dropna()
                 .astype(str)
-                .sort_values()
                 .unique()
                 .tolist()
             )
@@ -1432,12 +1433,12 @@ def page_dashboard():
                 key="filter_ba_main"
             )
 
-            # ===============================
-            # APPLY FILTER
-            # ===============================
             if "SEMUA BA" not in selected_ba:
-                df = df[df['Kode BA'].astype(str).isin(selected_ba)].copy()
+                df = df[df['Kode BA'].isin(selected_ba)].copy()
 
+        if df.empty:
+            st.info("Tidak ada data sesuai filter Kode BA.")
+            st.stop()
 
 
         # ===============================
@@ -1743,23 +1744,18 @@ def page_dashboard():
             # Monthly / Quarterly
             # -------------------------
             if period_type in ['monthly', 'quarterly']:
-    
-                # 1. Gabungkan data per tahun
-                dfs = []
 
-                # ambil filter BA dari dashboard utama
-                selected_ba = st.session_state.get("filter_ba_main", None)
+                # ===============================
+                # 1. GABUNGKAN DATA PER TAHUN (TANPA FILTER BA)
+                # ===============================
+                dfs = []
 
                 for (mon, yr), df_period in st.session_state.data_storage.items():
                     try:
                         if int(yr) == int(selected_year):
                             temp = df_period.copy()
 
-                            # 🔎 FILTER KODE BA (INI KUNCINYA)
-                            if selected_ba:
-                                temp = temp[temp['Kode BA'].astype(str).isin(selected_ba)]
-
-                            # ambil kolom bulan apa pun namanya
+                            # ambil kolom bulan
                             if 'Bulan' in temp.columns:
                                 temp['Bulan_raw'] = temp['Bulan']
                             elif 'Nama Bulan' in temp.columns:
@@ -1767,22 +1763,35 @@ def page_dashboard():
                             else:
                                 continue
 
-                            # hanya tambahkan jika masih ada data
-                            if not temp.empty:
-                                dfs.append(temp)
+                            dfs.append(temp)
 
                     except Exception:
                         continue
 
                 if not dfs:
-                    st.info(f"Tidak ditemukan data untuk tahun {selected_year} (sesuai filter BA).")
+                    st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
                     st.stop()
 
                 df_year = pd.concat(dfs, ignore_index=True)
 
-                # =========================================================
-                # 2. Normalisasi bulan (SUPER DEFENSIVE)
-                # =========================================================
+                # ===============================
+                # 2. NORMALISASI KODE BA
+                # ===============================
+                if 'Kode BA' in df_year.columns:
+                    df_year['Kode BA'] = df_year['Kode BA'].apply(normalize_kode_ba)
+
+                # ===============================
+                # 3. APPLY FILTER BA (GLOBAL)
+                # ===============================
+                df_year = apply_filter_ba(df_year)
+
+                if df_year.empty:
+                    st.info(f"Tidak ada data sesuai filter Kode BA untuk tahun {selected_year}.")
+                    st.stop()
+
+                # ===============================
+                # 4. NORMALISASI BULAN
+                # ===============================
                 MONTH_FIX = {
                     "JAN": "JANUARI", "JANUARI": "JANUARI",
                     "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
@@ -1805,14 +1814,18 @@ def page_dashboard():
                     .map(lambda x: MONTH_FIX.get(x, x))
                 )
 
-                # =========================================================
-                # 3. Period Column & Order (INI KUNCI)
-                # =========================================================
+                # ===============================
+                # 5. PERIOD COLUMN
+                # ===============================
                 if period_type == 'monthly':
                     df_year['Period_Column'] = df_year['Bulan_upper']
                     df_year['Period_Order'] = df_year['Bulan_upper'].map(MONTH_ORDER)
 
                 else:  # quarterly
+                    df_year = df_year[df_year['Bulan_upper'].isin(
+                        ['MARET', 'JUNI', 'SEPTEMBER', 'DESEMBER']
+                    )]
+
                     def to_quarter(m):
                         return {
                             'MARET': 'Tw I',
@@ -1825,17 +1838,11 @@ def page_dashboard():
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
 
-                # =========================================================
-                # 4. PIVOT LANGSUNG
-                # =========================================================
+                # ===============================
+                # 6. PIVOT
+                # ===============================
                 df_pivot = df_year[
-                    [
-                        'Kode BA',
-                        'Kode Satker',
-                        'Uraian Satker-RINGKAS',
-                        'Period_Column',
-                        selected_indicator
-                    ]
+                    ['Kode BA','Kode Satker','Uraian Satker-RINGKAS','Period_Column', selected_indicator]
                 ].copy()
 
                 df_wide = (
@@ -1954,25 +1961,48 @@ def page_dashboard():
 
                 st.dataframe(styler, use_container_width=True, height=600)
 
-
+            # COMPARE
             elif period_type == "compare":
                 st.markdown("### Perbandingan Antara Dua Tahun")
 
                # Gabungkan seluruh data
                 all_data = []
+
+                selected_ba = st.session_state.get("filter_ba_main", [])
+
                 for (mon, yr), df in st.session_state.data_storage.items():
                     df2 = df.copy()
-                    
-                    # 🔎 FILTER KODE BA
-                    if selected_ba:
-                        df2 = df2[df2['Kode BA'].astype(str).isin(selected_ba)]
 
-                    df2["Bulan_upper"] = df2["Bulan"].astype(str).str.upper().str.strip()
-                    df2["Tahun"] = df2["Tahun"].astype(int)
+                    # ===============================
+                    # NORMALISASI KODE BA (WAJIB)
+                    # ===============================
+                    if 'Kode BA' in df2.columns:
+                        df2['Kode BA'] = df2['Kode BA'].apply(normalize_kode_ba)
+
+                    # ===============================
+                    # APPLY FILTER BA (COMPARE)
+                    # ===============================
+                    if selected_ba and "SEMUA BA" not in selected_ba:
+                        df2 = df2[df2['Kode BA'].isin(selected_ba)]
+
+                    # ===============================
+                    # NORMALISASI BULAN & TAHUN
+                    # ===============================
+                    df2["Bulan_upper"] = (
+                        df2["Bulan"]
+                        .astype(str)
+                        .str.upper()
+                        .str.strip()
+                    )
+                    df2["Tahun"] = pd.to_numeric(df2["Tahun"], errors="coerce").astype("Int64")
+
                     all_data.append(df2)
 
+                # ===============================
+                # VALIDASI
+                # ===============================
                 if not all_data:
-                    st.warning("Belum ada data yang di-upload.")
+                    st.warning("Belum ada data yang sesuai filter BA.")
                     st.stop()
 
                 df_full = pd.concat(all_data, ignore_index=True)
@@ -2088,22 +2118,35 @@ def page_dashboard():
         # DETAIL SATKER (legacy table)
         # -------------------------
         else:
-            # ensure df available (use selected period if set)
-            df = st.session_state.data_storage.get(st.session_state.get('selected_period', all_periods[0]), None)
-            
             # ===============================
-            # APPLY FILTER BA (SETELAH NORMALISASI)
+            # AMBIL DATA PERIODE AKTIF
+            # ===============================
+            df = st.session_state.data_storage.get(
+                st.session_state.get('selected_period', all_periods[0]),
+                None
+            )
+
+            if df is None or df.empty:
+                st.info("Data untuk detail satker tidak tersedia untuk periode yang dipilih.")
+                return
+
+            df = df.copy()
+
+            # ===============================
+            # NORMALISASI KODE BA (1x SAJA)
             # ===============================
             if 'Kode BA' in df.columns:
                 df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
 
-            selected_ba = st.session_state.get("filter_ba_main", [])
-            if selected_ba:
-                df = df[df['Kode BA'].isin(selected_ba)].copy()
+            # ===============================
+            # APPLY FILTER BA (GLOBAL & AMAN)
+            # ===============================
+            df = apply_filter_ba(df)
 
-            if df is None:
-                st.info("Data untuk detail satker tidak tersedia untuk periode yang dipilih.")
+            if df.empty:
+                st.info("Tidak ada data sesuai filter Kode BA.")
                 return
+
 
             col1, col2 = st.columns([2, 1])
             with col1:
