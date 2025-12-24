@@ -1310,7 +1310,7 @@ def safe_chart(
 def page_dashboard():
     
     # ===============================
-    # LOAD REFERENSI BA (1x)
+    # LOAD & MAP BA (WAJIB DI SINI)
     # ===============================
     df_ref_ba = load_reference_ba()
     BA_MAP = get_ba_map(df_ref_ba)
@@ -1395,7 +1395,6 @@ def page_dashboard():
 
     if 'Kode BA' in df.columns:
         ba_codes = sorted(df['Kode BA'].dropna().unique())
-
         ba_options = ["SEMUA BA"] + ba_codes
 
         def format_ba(code):
