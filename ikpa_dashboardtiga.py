@@ -1432,15 +1432,26 @@ def page_dashboard():
     # ---------- persistent main tab ----------
     st.markdown("""
     <style>
+    /* Judul radio */
     div[data-testid="stRadio"] > label {
         font-size: 18px !important;
-        font-weight: 600;
+        font-weight: 700 !important;
+        margin-bottom: 8px;
     }
+
+    /* Item radio (Highlights & Data Detail Satker) */
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
+        font-size: 20px !important;
+        font-weight: 600 !important;
+    }
+
+    /* Spasi antar pilihan */
     div[data-testid="stRadio"] div[role="radiogroup"] {
-        gap: 20px;
+        gap: 22px;
     }
     </style>
     """, unsafe_allow_html=True)
+
 
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
