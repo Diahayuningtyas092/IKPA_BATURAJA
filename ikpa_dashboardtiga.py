@@ -3243,7 +3243,7 @@ def page_admin():
                     for uploaded_file in uploaded_files:
                         try:
                             # ======================
-                            # 🔄 PROSES FILE (PARSER LENGKAP)
+                            # 🔄 PROSES FILE 
                             # ======================
                             uploaded_file.seek(0)
                             df_final, month, year = process_excel_file(
@@ -3267,6 +3267,12 @@ def page_admin():
                                     .astype(str)
                                     .apply(normalize_kode_satker)
                                 )
+
+                            # ======================
+                            # 🔐 NORMALISASI NAMA SATKER (WAJIB)
+                            # ======================
+                            df_final = apply_reference_short_names(df_final)
+                            df_final = create_satker_column(df_final)
 
                             # ======================
                             # OVERRIDE JIKA BULAN SAMA
