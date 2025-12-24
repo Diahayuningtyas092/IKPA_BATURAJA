@@ -1359,6 +1359,36 @@ def page_dashboard():
     if "main_tab" not in st.session_state:
         st.session_state.main_tab = "🎯 Highlights"
 
+    # ==================================================
+    # 🔎 FILTER KODE BA (GLOBAL - SELALU DIRENDER)
+    # ==================================================
+    st.markdown("### 🔎 Filter Kode BA")
+
+    if df is not None and 'Kode BA' in df.columns:
+        # normalisasi 1x
+        df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
+
+        ba_list = (
+            df['Kode BA']
+            .dropna()
+            .astype(str)
+            .unique()
+            .tolist()
+        )
+        ba_list = sorted(ba_list)
+
+        ba_options = ["SEMUA BA"] + ba_list
+
+        st.multiselect(
+            "Pilih Kode BA",
+            options=ba_options,
+            default=st.session_state.get("filter_ba_main", ["SEMUA BA"]),
+            key="filter_ba_main"
+        )
+    else:
+        st.info("Filter Kode BA tidak tersedia untuk data ini.")
+
+    
     # ---------- persistent main tab ----------
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
@@ -1409,33 +1439,6 @@ def page_dashboard():
         # ===============================
         if 'Satker' not in df.columns:
             df = create_satker_column(df)
-
-        # ===============================
-        # FILTER KODE BA (GLOBAL)
-        # ===============================
-        st.markdown("### 🔎 Filter Kode BA")
-
-        if 'Kode BA' in df.columns:
-            ba_list = (
-                df['Kode BA']
-                .dropna()
-                .astype(str)
-                .unique()
-                .tolist()
-            )
-            ba_list = sorted(ba_list)
-
-            ba_options = ["SEMUA BA"] + ba_list
-
-            st.multiselect(
-                "Pilih Kode BA",
-                options=ba_options,
-                default=st.session_state.get("filter_ba_main", ["SEMUA BA"]),
-                key="filter_ba_main"
-            )
-        else:
-            st.warning("Kolom Kode BA tidak tersedia.")
-
 
         # ===============================
         # Pastikan kolom Jenis Satker ada
