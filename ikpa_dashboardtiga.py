@@ -1280,7 +1280,8 @@ def page_dashboard():
     if st.session_state.get("_just_uploaded"):
         st.session_state["_just_uploaded"] = False
         st.info("🔄 Data baru dimuat, mempersiapkan grafik...")
-        st.stop()
+        st.rerun()
+
     st.title("📊 Dashboard Utama IKPA Satker Mitra KPPN Baturaja")
     
     st.markdown("""
@@ -3330,7 +3331,7 @@ def page_admin():
                             st.session_state.ikpa_dipa_merged = True
                     
                     st.session_state["_just_uploaded"] = True
-                    st.experimental_rerun()
+                    st.rerun()
 
         
         # Submenu Upload Data IKPA KPPN
