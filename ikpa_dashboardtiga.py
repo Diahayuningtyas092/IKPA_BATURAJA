@@ -1391,11 +1391,25 @@ def page_dashboard():
     # ==================================================
     # 🔎 FILTER KODE BA (GLOBAL - SELALU DIRENDER)
     # ==================================================
-    st.markdown("### 🔎 Filter Kode BA")
+    st.markdown(
+        "<div style='font-size:14px; font-weight:600; margin-bottom:4px'>🔎 Filter Kode BA</div>",
+        unsafe_allow_html=True
+    )
+
+    # CSS khusus untuk multiselect BA (diperkecil)
+    st.markdown("""
+    <style>
+    div[data-testid="stMultiSelect"] {
+        font-size: 13px;
+    }
+    div[data-testid="stMultiSelect"] label {
+        font-size: 13px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
     if 'Kode BA' in df.columns:
         ba_codes = sorted(df['Kode BA'].dropna().unique())
-
         ba_options = ["SEMUA BA"] + ba_codes
 
         def format_ba(code):
@@ -1404,17 +1418,30 @@ def page_dashboard():
             return f"{code} – {BA_MAP.get(code, 'Nama BA tidak ditemukan')}"
 
         st.multiselect(
-            "Pilih Kode BA",
+            "Pilih Kode BA",   # label tetap, tapi kecil
             options=ba_options,
             format_func=format_ba,
             default=st.session_state.get("filter_ba_main", ["SEMUA BA"]),
-            key="filter_ba_main"
+            key="filter_ba_main",
+            label_visibility="collapsed"  
         )
     else:
         st.warning("Kolom Kode BA tidak tersedia.")
 
 
     # ---------- persistent main tab ----------
+    st.markdown("""
+    <style>
+    div[data-testid="stRadio"] > label {
+        font-size: 18px !important;
+        font-weight: 600;
+    }
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        gap: 20px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
         ["🎯 Highlights", "📋 Data Detail Satker"],
@@ -1422,6 +1449,7 @@ def page_dashboard():
         horizontal=True
     )
     st.session_state["main_tab"] = main_tab
+
 
     # -------------------------
     # HIGHLIGHTS
