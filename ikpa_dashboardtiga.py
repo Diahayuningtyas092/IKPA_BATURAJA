@@ -1365,9 +1365,11 @@ def page_dashboard():
     st.markdown("### 🔎 Filter Kode BA")
 
     if df is not None and 'Kode BA' in df.columns:
-        # normalisasi 1x
+
+        # normalisasi kode BA
         df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
 
+        # ambil daftar BA dari data
         ba_list = (
             df['Kode BA']
             .dropna()
@@ -1377,16 +1379,35 @@ def page_dashboard():
         )
         ba_list = sorted(ba_list)
 
+        # ===============================
+        # MAP KODE BA → NAMA BA
+        # ===============================
+        ba_name_map = {}
+
+        ref = st.session_state.get("reference_ba_df")
+        if ref is not None and {'Kode BA', 'Nama BA'}.issubset(ref.columns):
+            ref = ref.copy()
+            ref['Kode BA'] = ref['Kode BA'].apply(normalize_kode_ba)
+            ba_name_map = dict(zip(ref['Kode BA'], ref['Nama BA']))
+
+        def format_ba(kode):
+            if kode == "SEMUA BA":
+                return "SEMUA BA"
+            nama = ba_name_map.get(kode, "Nama BA tidak diketahui")
+            return f"{kode} — {nama}"
+
         ba_options = ["SEMUA BA"] + ba_list
 
         st.multiselect(
             "Pilih Kode BA",
             options=ba_options,
             default=st.session_state.get("filter_ba_main", ["SEMUA BA"]),
+            format_func=format_ba,
             key="filter_ba_main"
         )
+
     else:
-        st.info("Filter Kode BA tidak tersedia untuk data ini.")
+        st.info("Filter Kode BA tidak tersedia.")
 
     
     # ---------- persistent main tab ----------
