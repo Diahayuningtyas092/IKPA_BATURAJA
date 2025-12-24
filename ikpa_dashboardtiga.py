@@ -40,6 +40,9 @@ MONTH_ORDER = {
     'DESEMBER': 12
 }
 
+# Path ke file template (akan diatur di session state)
+TEMPLATE_PATH = r"C:\Users\KEMENKEU\Desktop\INDIKATOR PELAKSANAAN ANGGARAN.xlsx"
+
 # ================================
 # INIT SESSION STATE 
 # ================================
@@ -57,32 +60,6 @@ if "ikpa_dipa_merged" not in st.session_state:
 
 if 'activity_log' not in st.session_state:
     st.session_state.activity_log = [] 
-
-if "BOOTSTRAP_DONE" not in st.session_state:
-    st.session_state.BOOTsOOTSTRAP_DONE = False
-
-def ensure_satker_column(df):
-    """
-    Pastikan kolom 'Satker' selalu ada.
-    Aman untuk data lama & data baru.
-    """
-    if 'Satker' in df.columns:
-        return df
-
-    df = df.copy()
-
-    # Prioritas nama
-    if 'Uraian Satker-RINGKAS' in df.columns:
-        nama = df['Uraian Satker-RINGKAS']
-    elif 'Uraian Satker' in df.columns:
-        nama = df['Uraian Satker']
-    else:
-        nama = df.index.astype(str)
-
-    kode = df.get('Kode Satker', '').astype(str)
-
-    df['Satker'] = nama.astype(str) + " (" + kode + ")"
-    return df
 
 # -------------------------
 # standardize_dipa
@@ -490,12 +467,6 @@ def process_excel_file_kppn(uploaded_file, year):
             i += 4  # 🔑 POLA IKPA (Nilai, Bobot, Nilai Akhir, Nilai Aspek)
 
         df = pd.DataFrame(processed_rows)
-        # ===============================
-        # FIX WAJIB: AMANKAN KOLOM NILAI AKHIR (KPPN)
-        # ===============================
-        if 'Nilai Akhir (Nilai Total/Konversi Bobot)' not in df.columns:
-            df['Nilai Akhir (Nilai Total/Konversi Bobot)'] = 0
-
 
         # ===============================
         # NUMERIC CAST
@@ -541,6 +512,7 @@ def process_excel_file_kppn(uploaded_file, year):
 # ============================================================
 # PARSER DIPA 
 # ============================================================
+#Parser Perbaikan DIPA
 def parse_dipa(df_raw):
     import pandas as pd
     import re
@@ -675,35 +647,6 @@ def parse_dipa(df_raw):
     return out
 
 
-# ============================
-# LOAD TEMPLATE DARI GITHUB
-# ============================
-def load_template_from_github():
-    token = st.secrets.get("GITHUB_TOKEN")
-    repo_name = st.secrets.get("GITHUB_REPO")
-
-    if not token or not repo_name:
-        return None
-
-    g = Github(auth=Auth.Token(token))
-    repo = g.get_repo(repo_name)
-
-    try:
-        files = repo.get_contents("templates")
-        for f in files:
-            if f.name.lower().endswith(".xlsx"):
-                content = base64.b64decode(f.content)
-                st.session_state.template_file = content
-                st.success(f"✅ Template dimuat dari GitHub: {f.name}")
-                return content
-
-        st.warning("⚠️ Tidak ada file template (.xlsx) di folder templates.")
-        return None
-
-    except Exception as e:
-        st.warning(f"⚠️ Gagal memuat template dari GitHub: {e}")
-        return None
-
 # ============================================================
 # FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
@@ -789,9 +732,6 @@ def save_file_to_github(content_bytes, filename, folder):
 # ============================
 #  LOAD DATA IKPA DARI GITHUB
 # ============================
-# ============================
-#  LOAD DATA IKPA DARI GITHUB
-# ============================
 def load_data_from_github():
     """
     Load IKPA Satker dari GitHub (/data).
@@ -816,6 +756,7 @@ def load_data_from_github():
         st.warning("📁 Folder 'data' belum ada di GitHub.")
         return
 
+    # JANGAN RESET data_storage
     if "data_storage" not in st.session_state:
         st.session_state.data_storage = {}
 
@@ -834,72 +775,55 @@ def load_data_from_github():
         "Bulan", "Tahun"
     ]
 
-    # 🔑 TERIMA NOPEMBER & NOVEMBER
     MONTH_ORDER = {
         "JANUARI": 1, "FEBRUARI": 2, "MARET": 3, "APRIL": 4,
         "MEI": 5, "JUNI": 6, "JULI": 7, "AGUSTUS": 8,
-        "SEPTEMBER": 9, "OKTOBER": 10,
-        "NOPEMBER": 11,   # legacy data
-        "NOVEMBER": 11,   # future data
-        "DESEMBER": 12
+        "SEPTEMBER": 9, "OKTOBER": 10, "NOVEMBER": 11, "DESEMBER": 12
     }
 
     loaded_count = 0
 
     for file in contents:
-        if not file.name.lower().endswith(".xlsx"):
+        if not file.name.endswith(".xlsx"):
             continue
 
         try:
             decoded = base64.b64decode(file.content)
             df = pd.read_excel(io.BytesIO(decoded))
 
-            # ===============================
-            # VALIDASI STRUKTUR
-            # ===============================
-            missing_cols = [c for c in REQUIRED_COLUMNS if c not in df.columns]
-            if missing_cols:
+            # VALIDASI HASIL PROSES
+            if not all(col in df.columns for col in REQUIRED_COLUMNS):
                 continue
 
-            # ===============================
-            # BULAN & TAHUN (IKUT DATA ASLI)
-            # ===============================
-            month = str(df["Bulan"].iloc[0]).upper().strip()
-            year = str(df["Tahun"].iloc[0]).strip()
-
-            # fallback dari nama file (TANPA PAKSA NOVEMBER)
-            if month not in MONTH_ORDER:
-                m = re.search(
-                    r"(JANUARI|FEBRUARI|MARET|APRIL|MEI|JUNI|JULI|AGUSTUS|SEPTEMBER|OKTOBER|NOPEMBER|NOVEMBER|DESEMBER)",
-                    file.name.upper()
-                )
-                if m:
-                    month = m.group(1)
-
+            month = str(df["Bulan"].iloc[0]).upper()
+            year = str(df["Tahun"].iloc[0])
             key = (month, year)
 
             # ❗ JIKA SUDAH ADA (MANUAL), LEWATI
             if key in st.session_state.data_storage:
                 continue
 
-            # ===============================
-            # NORMALISASI DASAR
-            # ===============================
+            # NORMALISASI
             df["Bulan"] = month
             df["Tahun"] = year
 
             if "Kode Satker" in df.columns:
-                df["Kode Satker"] = df["Kode Satker"].apply(normalize_kode_satker)
+                df["Kode Satker"] = (
+                    df["Kode Satker"]
+                    .astype(str)
+                    .apply(normalize_kode_satker)
+                )
 
-            # ===============================
-            # APPLY REFERENCE & SATKER
-            # ===============================
-            df = apply_reference_short_names(df)
-            df = create_satker_column(df)
+            try:
+                df = apply_reference_short_names(df)
+            except:
+                pass
 
-            # ===============================
-            # CAST NUMERIC
-            # ===============================
+            try:
+                df = create_satker_column(df)
+            except:
+                pass
+
             numeric_cols = [
                 "Nilai Akhir (Nilai Total/Konversi Bobot)",
                 "Nilai Total", "Konversi Bobot",
@@ -916,18 +840,12 @@ def load_data_from_github():
                 if col in df.columns:
                     df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-            # ===============================
-            # METADATA
-            # ===============================
             month_num = MONTH_ORDER.get(month, 0)
 
             df["Source"] = "GitHub"
             df["Period"] = f"{month} {year}"
             df["Period_Sort"] = f"{int(year):04d}-{month_num:02d}"
 
-            # ===============================
-            # RANKING
-            # ===============================
             if "Peringkat" not in df.columns:
                 df = df.sort_values(
                     "Nilai Akhir (Nilai Total/Konversi Bobot)",
@@ -943,118 +861,22 @@ def load_data_from_github():
 
     st.success(f"✅ {loaded_count} file IKPA Satker dimuat dari GitHub.")
 
-# ============================
-# LOAD IKPA KPPN DARI GITHUB
-# ============================
-def load_data_kppn_from_github():
-    token = st.secrets.get("GITHUB_TOKEN")
-    repo_name = st.secrets.get("GITHUB_REPO")
-
-    if not token or not repo_name:
-        st.error("❌ GitHub token / repo tidak ditemukan.")
-        return False
-
-    g = Github(auth=Auth.Token(token))
-    repo = g.get_repo(repo_name)
-
-    try:
-        contents = repo.get_contents("data_kppn")
-    except Exception:
-        st.warning("📁 Folder 'data_kppn' belum ada di GitHub.")
-        return False
-
-    if "data_storage_kppn" not in st.session_state:
-        st.session_state.data_storage_kppn = {}
-
-    loaded = 0
-
-    for file in contents:
-        if not file.name.lower().endswith(".xlsx"):
-            continue
-
-        try:
-            raw = base64.b64decode(file.content)
-            df, month, year = process_excel_file_kppn(
-                io.BytesIO(raw),
-                year=int(re.findall(r"\d{4}", file.name)[0])
-            )
-
-            if df is None:
-                continue
-
-            # ===============================
-            # AMANKAN KOLOM (KPPN ≠ SATKER)
-            # ===============================
-            SAFE_NUMERIC_COLS = [
-                "Nilai Akhir (Nilai Total/Konversi Bobot)",
-                "Nilai Total",
-                "Konversi Bobot"
-            ]
-            for col in SAFE_NUMERIC_COLS:
-                if col not in df.columns:
-                    df[col] = 0
-
-            # ===============================
-            # KEY UNIK PER FILE
-            # ===============================
-            key = (month, str(year), file.name)
-
-            if key in st.session_state.data_storage_kppn:
-                continue
-
-            df["Source"] = "GitHub"
-            df["Period"] = f"{month} {year}"
-
-            st.session_state.data_storage_kppn[key] = df
-            loaded += 1
-
-        except Exception as e:
-            st.error(f"❌ Error memproses IKPA KPPN ({file.name}): {e}")
-
-    if loaded > 0:
-        st.success(f"✅ {loaded} file IKPA KPPN dimuat dari GitHub")
-
-    return True
-
-# ===============================
-# AUTO BOOTSTRAP SEMUA DATA
-# ===============================
-def bootstrap_all_data():
-    if st.session_state.get("BOOTSTRAP_DONE", False):
-        return
-
-    with st.spinner("🔄 Memuat seluruh data dari GitHub..."):
-
-        # 1️⃣ TEMPLATE
-        load_template_from_github()
-
-        # 2️⃣ DIPA
-        load_DATA_DIPA_from_github()
-
-        # 3️⃣ IKPA SATKER
-        load_data_from_github()
-
-        # 4️⃣ IKPA KPPN
-        load_data_kppn_from_github()
-
-    st.session_state.BOOTSTRAP_DONE = True
-
 
 # ============================
-# BACA TEMPLATE FILE
+#  BACA TEMPLATE FILE
 # ============================
 def get_template_file():
     try:
-        # 1️⃣ PRIORITAS: Template dari session (manual / GitHub)
-        if "template_file" in st.session_state and st.session_state.template_file:
-            return st.session_state.template_file
-
-        return None
-
+        if Path(TEMPLATE_PATH).exists():
+            with open(TEMPLATE_PATH, "rb") as f:
+                return f.read()
+        else:
+            if "template_file" in st.session_state:
+                return st.session_state.template_file
+            return None
     except Exception as e:
-        st.error(f"❌ Error membaca template: {e}")
+        st.error(f"Error membaca template: {e}")
         return None
-
 
 # Fungsi visualisasi podium/bintang
 def create_ranking_chart(df, title, top=True, limit=10):
@@ -1187,26 +1009,8 @@ def safe_chart(df, title, top=True, color="Greens", y_min=0, y_max=110):
 # ============================================================
 # Problem Chart untuk Dashboard Internal
 # ============================================================
-# ============================================================
-# Problem Chart untuk Dashboard Internal (DOUBLE SAFETY)
-# ============================================================
-def create_problem_chart(
-    df,
-    column,
-    threshold,
-    title,
-    comparison='less',
-    y_min=None,
-    y_max=None,
-    show_yaxis=True
-):
+def create_problem_chart(df, column, threshold, title, comparison='less', y_min=None, y_max=None, show_yaxis=True):
 
-    if df is None or df.empty:
-        return None
-
-    # ===============================
-    # FILTER DATA
-    # ===============================
     if comparison == 'less':
         df_filtered = df[df[column] < threshold]
     elif comparison == 'greater':
@@ -1214,26 +1018,16 @@ def create_problem_chart(
     else:
         df_filtered = df.copy()
 
-    # Jika hasil filter kosong → cegah crash
+    # Jika hasil filter kosong → Cegah error
     if df_filtered.empty:
-        df_filtered = df.head(1).copy()
+        df_filtered = df.head(1)
 
-    # ===============================
-    # 🔑 DOUBLE SAFETY: PAKSA ADA SATKER
-    # ===============================
-    if 'Satker' not in df_filtered.columns:
-        df_filtered = ensure_satker_column(df_filtered)
-
-    # ===============================
-    # SORT & RANGE WARNA
-    # ===============================
     df_filtered = df_filtered.sort_values(by=column, ascending=False)
+
+    # Ambil nilai range untuk colormap
     min_val = df_filtered[column].min()
     max_val = df_filtered[column].max()
 
-    # ===============================
-    # BUILD CHART
-    # ===============================
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=df_filtered['Satker'],
@@ -1248,13 +1042,11 @@ def create_problem_chart(
         text=df_filtered[column].round(2),
         textposition='outside',
         textangle=0,
-        textfont=dict(family="Arial Black", size=12),
+        textfont=dict(family="Arial Black", size=12), 
         hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
     ))
 
-    # ===============================
-    # GARIS TARGET
-    # ===============================
+    # Garis target threshold (tidak berubah)
     fig.add_hline(
         y=threshold,
         line_dash="dash",
@@ -1263,20 +1055,16 @@ def create_problem_chart(
         annotation_position="top right"
     )
 
-    # ===============================
-    # LAYOUT
-    # ===============================
+    # Bold judul dan label axis
     fig.update_layout(
-        title=title,
         xaxis=dict(
-            tickangle=-45,
-            tickmode='linear',
-            tickfont=dict(family="Arial Black", size=10),
-            automargin=True
-        ),
-        yaxis=dict(
-            tickfont=dict(family="Arial Black", size=11),
-            range=[y_min, y_max] if y_min is not None and y_max is not None else None
+        tickangle=-45,
+        tickmode='linear',
+        tickfont=dict(family="Arial Black", size=10),
+        automargin=True
+    ),
+    yaxis=dict(
+        tickfont=dict(family="Arial Black", size=11)
         ),
         height=600,
         margin=dict(l=50, r=20, t=80, b=200),
@@ -1287,74 +1075,33 @@ def create_problem_chart(
         fig.update_yaxes(showticklabels=False)
 
     return fig
-
 # ===============================================
 # Helper to apply reference short names (Simplified)
 # ===============================================
 def apply_reference_short_names(df):
     """
-    Apply reference short names to dataframe.
-    - Menghasilkan kolom 'Uraian Satker-RINGKAS' PASTI ADA
-    - Jika reference match → pakai singkatan
-    - Jika tidak → fallback ke nama asli
+    Simple version: apply reference short names to dataframe.
+    - Adds 'Uraian Satker-RINGKAS' (from reference 'Uraian Satker-SINGKAT' when available,
+      otherwise falls back to original 'Uraian Satker').
+    - Performs basic normalization on 'Kode Satker' before merging.
+    - Minimal user messages (no Excel/CSV creation, no verbose debugging).
     """
+    # Defensive copy
     df = df.copy()
 
-    # Pastikan kolom periode ada
+    # Ensure period columns exist
     if 'Bulan' not in df.columns:
         df['Bulan'] = ''
     if 'Tahun' not in df.columns:
         df['Tahun'] = ''
 
-    # ===============================
-    # JIKA TIDAK ADA REFERENCE
-    # ===============================
+    # If no reference in session, fallback silently to original names
     if 'reference_df' not in st.session_state or st.session_state.reference_df is None:
-        df['Uraian Satker-RINGKAS'] = df.get('Uraian Satker', '')
-        df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
+        if 'Uraian Satker-RINGKAS' not in df.columns:
+            df['Uraian Satker-RINGKAS'] = df.get('Uraian Satker', '')
+        # also keep a final fallback column for compatibility
+        df['Uraian Satker Final'] = df.get('Uraian Satker', '')
         return df
-
-    # ===============================
-    # NORMALISASI KODE SATKER
-    # ===============================
-    ref = st.session_state.reference_df.copy()
-
-    if 'Kode Satker' in df.columns:
-        df['Kode Satker'] = df['Kode Satker'].apply(normalize_kode_satker)
-    else:
-        df['Kode Satker'] = ''
-
-    if 'Kode Satker' in ref.columns:
-        ref['Kode Satker'] = ref['Kode Satker'].apply(normalize_kode_satker)
-    else:
-        df['Uraian Satker-RINGKAS'] = df.get('Uraian Satker', '')
-        df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
-        return df
-
-    # ===============================
-    # MERGE REFERENCE
-    # ===============================
-    if 'Uraian Satker-SINGKAT' in ref.columns:
-        df = df.merge(
-            ref[['Kode Satker', 'Uraian Satker-SINGKAT']]
-                .rename(columns={'Uraian Satker-SINGKAT': 'Uraian Satker-RINGKAS'}),
-            on='Kode Satker',
-            how='left'
-        )
-
-    # ===============================
-    # 🔑 FINAL FALLBACK (ANTI ERROR)
-    # ===============================
-    if 'Uraian Satker-RINGKAS' not in df.columns:
-        df['Uraian Satker-RINGKAS'] = df.get('Uraian Satker', '')
-    else:
-        df['Uraian Satker-RINGKAS'] = (
-            df['Uraian Satker-RINGKAS']
-            .fillna(df.get('Uraian Satker', ''))
-        )
-    df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
-    
-    return df
 
     # Copy reference
     ref = st.session_state.reference_df.copy()
@@ -1510,11 +1257,8 @@ def safe_chart(
         coloraxis_showscale=False
     )
 
-    st.plotly_chart(
-        fig,
-        use_container_width=True,
-        key=f"chart_{id(fig)}"
-    )
+    st.plotly_chart(fig, use_container_width=True)
+
 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
@@ -1563,37 +1307,38 @@ def page_dashboard():
         st.warning("⚠️ Belum ada data yang tersedia.")
         return
 
-    # ======================================================
-    # AMBIL PERIODE TERPILIH (AMAN)
-    # ======================================================
+    # ---------------------------
+    # Ensure a selected_period and df exist BEFORE any branch uses df
+    # ---------------------------
     if "selected_period" not in st.session_state:
         st.session_state.selected_period = all_periods[0]
 
-    selected_period_key = st.session_state.selected_period
-    df = st.session_state.data_storage.get(selected_period_key)
+    # safe fetch of df for the selected_period (always a tuple key like ('JANUARI','2025'))
+    selected_period_key = st.session_state.get("selected_period", all_periods[0])
+    df = st.session_state.data_storage.get(selected_period_key, None)
 
     if df is None:
-        st.warning(f"⚠️ Data untuk periode {selected_period_key} tidak ditemukan.")
+        st.warning(f"⚠️ Data untuk periode {selected_period_key} tidak ditemukan. Periksa st.session_state.data_storage keys.")
+        # show available keys to help debugging (optional - remove if sensitive)
         st.write("Periode yang tersedia:", list(st.session_state.data_storage.keys()))
         return
 
-    # 🔑 WAJIB: PAKSA ADA KOLOM SATKER SEJAK AWAL
-    df = ensure_satker_column(df)
+    # ensure main_tab state exists
+    if "main_tab" not in st.session_state:
+        st.session_state.main_tab = "🎯 Highlights"
 
-
-    # ======================================================
-    # MAIN TAB DASHBOARD
-    # ======================================================
+    # ---------- persistent main tab ----------
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
         ["🎯 Highlights", "📋 Data Detail Satker"],
-        key="main_tab",
+        key="main_tab_choice",
         horizontal=True
     )
+    st.session_state["main_tab"] = main_tab
 
-    # ======================================================
+    # -------------------------
     # HIGHLIGHTS
-    # ======================================================
+    # -------------------------
     if main_tab == "🎯 Highlights":
         st.markdown("## 🎯 Highlights Kinerja Satker")
 
@@ -1603,17 +1348,18 @@ def page_dashboard():
         selected_period = st.selectbox(
             "Pilih Periode",
             options=all_periods,
+            index=0,
             format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-            key="selected_period"
+            key="select_period_main"
         )
-
         df = st.session_state.data_storage.get(selected_period)
 
+        # ===============================
+        # Validasi DF
+        # ===============================
         if df is None or df.empty:
             st.warning("Data IKPA belum tersedia.")
             st.stop()
-
-        df = ensure_satker_column(df)
 
         # ===============================
         # Pastikan kolom Jenis Satker ada
@@ -1623,6 +1369,9 @@ def page_dashboard():
         else:
             df['Jenis Satker'] = df['Jenis Satker'].fillna('TIDAK TERKLASIFIKASI')
 
+        # ===============================
+        # NORMALISASI JENIS SATKER
+        # ===============================
         df['Jenis Satker'] = (
             df['Jenis Satker']
             .str.upper()
@@ -1630,9 +1379,11 @@ def page_dashboard():
             .str.strip()
         )
 
+        # ===============================
+        # Filter Satker
+        # ===============================
         VALID_JENIS = ['KECIL', 'SEDANG', 'BESAR']
         df = df[df['Jenis Satker'].isin(VALID_JENIS)]
-
         df_kecil  = df[df['Jenis Satker'] == 'KECIL']
         df_sedang = df[df['Jenis Satker'] == 'SEDANG']
         df_besar  = df[df['Jenis Satker'] == 'BESAR']
@@ -1646,133 +1397,245 @@ def page_dashboard():
         perfect_df = df[df[nilai_col] == 100]
         below89_df = df[df[nilai_col] < 89]
 
+        # Pastikan kolom Satker tersedia
+        def make_satker_col(dd):
+            if 'Satker' in dd.columns:
+                return dd
+            uraian = dd.get('Uraian Satker-RINGKAS', dd.index.astype(str))
+            kode = dd.get('Kode Satker', '')
+            dd = dd.copy()
+            dd['Satker'] = uraian.astype(str) + " (" + kode.astype(str) + ")"
+            return dd
+
+        perfect_df = make_satker_col(perfect_df)
+        below89_df = make_satker_col(below89_df)
+
+        jumlah_100 = len(perfect_df)
+        jumlah_below = len(below89_df)
+
+        # Tampilan metrik
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("📋 Total Satker", len(df))
-        col2.metric("📈 Rata-rata Nilai", f"{avg_score:.2f}")
-        col3.metric("⭐ Nilai 100", len(perfect_df))
-        col4.metric("⚠️ Nilai < 89", len(below89_df))
+        with col1:
+            st.metric("📋 Total Satker", len(df))
+        with col2:
+            st.metric("📈 Rata-rata Nilai", f"{avg_score:.2f}")
+        with col3:
+            st.metric("⭐ Nilai 100", jumlah_100)
+            with st.popover("Lihat daftar satker"):
+                if jumlah_100 == 0:
+                    st.write("Tidak ada satker dengan nilai 100.")
+                else:
+                    display_df = perfect_df[['Satker']].reset_index(drop=True)
+                    display_df.insert(0, 'No', range(1, len(display_df) + 1))
+                    st.dataframe(
+                        display_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        height=min(400, len(display_df) * 35 + 38)
+                    )
+        with col4:
+            st.metric("⚠️ Nilai < 89 (Predikat Belum Baik)", jumlah_below)
+            with st.popover("Lihat daftar satker"):
+                if jumlah_below == 0:
+                    st.write("Tidak ada satker dengan nilai < 89.")
+                else:
+                    display_df = below89_df[['Satker']].reset_index(drop=True)
+                    display_df.insert(0, 'No', range(1, len(display_df) + 1))
+                    st.dataframe(
+                        display_df,
+                        use_container_width=True,
+                        hide_index=True,
+                        height=min(400, len(display_df) * 35 + 38)
+                    )
 
         # ===============================
         # Kontrol Skala Chart
         # ===============================
         st.markdown("###### Atur Skala Nilai (Sumbu Y)")
-        y_min = st.slider("Nilai Minimum", 0, 50, 50, 1, key="ymin_highlight")
-        y_max = st.slider("Nilai Maksimum", 51, 110, 110, 1, key="ymax_highlight")
+        col_min, col_max = st.columns(2)
+        with col_min:
+            y_min = st.slider("Nilai Minimum (Y-Axis)", 0, 50, 50, 1, key="high_ymin")
+        with col_max:
+            y_max = st.slider("Nilai Maksimum (Y-Axis)", 51, 110, 110, 1, key="high_ymax")
 
         # ===============================
-        # CHART TERBAIK
+        # CHART 6 MUAT DALAM 1 TAMPILAN
         # ===============================
-        st.markdown("### 📊 Satker Terbaik & Terendah")
+        st.markdown("### 📊 Satker Terbaik & Terendah Berdasarkan Nilai IKPA")
 
+        # =========================
+        # BARIS 1 – TERBAIK
+        # =========================
         c1, c2, c3 = st.columns(3)
+
         with c1:
-            st.markdown("**Satker Kecil Terbaik**")
+            st.markdown(
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terbaik</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_kecil, "KECIL", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
         with c2:
-            st.markdown("**Satker Sedang Terbaik**")
+            st.markdown(
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terbaik</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
         with c3:
-            st.markdown("**Satker Besar Terbaik**")
+            st.markdown(
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terbaik</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_besar, "BESAR", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
+        # ⬇️ JARAK ANTAR BARIS (rapat tapi aman)
+        st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
+
+        # =========================
+        # BARIS 2 – TERENDAH
+        # =========================
         c4, c5, c6 = st.columns(3)
+
         with c4:
-            st.markdown("**Satker Kecil Terendah**")
+            st.markdown(
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terendah</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_kecil, "KECIL", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
         with c5:
-            st.markdown("**Satker Sedang Terendah**")
+            st.markdown(
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terendah</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_sedang, "SEDANG", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
         with c6:
-            st.markdown("**Satker Besar Terendah**")
+            st.markdown(
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terendah</b></div>",
+                unsafe_allow_html=True
+            )
             safe_chart(df_besar, "BESAR", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
-        # ===============================
-        # DEViasi HAL III
-        # ===============================
-        st.subheader("🚨 Satker dengan Deviasi Halaman III DIPA")
 
-        y_min_dev = st.slider("Nilai Minimum Deviasi", 0, 50, 40, 1, key="ymin_dev")
-        y_max_dev = st.slider("Nilai Maksimum Deviasi", 51, 110, 110, 1, key="ymax_dev")
+        # Satker dengan masalah (Deviasi Hal 3 DIPA)
+        st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
+        st.markdown("###### Atur Skala Nilai (Sumbu Y)")
+        col_min_dev, col_max_dev = st.columns(2)
+        with col_min_dev:
+            y_min_dev = st.slider(
+                "Nilai Minimum (Y-Axis)",
+                min_value=0,
+                max_value=50,
+                value=40,
+                step=1,
+                key="high_ymin_dev"
+            )
+        with col_max_dev:
+            y_max_dev = st.slider(
+                "Nilai Maksimum (Y-Axis)",
+                min_value=51,
+                max_value=110,
+                value=110,
+                step=1,
+                key="high_ymax_dev"
+            )
 
         fig_dev = create_problem_chart(
-            df,
-            'Deviasi Halaman III DIPA',
-            90,
-            "Deviasi Hal III < 90",
+            df, 
+            'Deviasi Halaman III DIPA', 
+            90, 
+            "Deviasi Hal 3 DIPA Belum Optimal (< 90)",
             'less',
             y_min=y_min_dev,
-            y_max=y_max_dev
+            y_max=y_max_dev,
+            show_yaxis=True
         )
-
         if fig_dev:
             st.plotly_chart(fig_dev, use_container_width=True)
+        else:
+            st.success("✅ Semua satker sudah optimal untuk Deviasi Hal 3 DIPA")
 
-    # ======================================================
+    # -------------------------
     # DATA DETAIL SATKER
-    # ======================================================
+    # -------------------------
     else:
         st.subheader("📋 Tabel Detail Satker")
+
+        # persistent sub-tab for Periodik / Detail Satker
+        if "active_table_tab" not in st.session_state:
+            st.session_state.active_table_tab = "📆 Periodik"
 
         sub_tab = st.radio(
             "Pilih Mode Tabel",
             ["📆 Periodik", "📋 Detail Satker"],
-            key="detail_tab",
+            key="sub_tab_choice",
             horizontal=True
         )
+        st.session_state['active_table_tab'] = sub_tab
 
+        # -------------------------
+        # PERIODIK TABLE
+        # -------------------------
         if sub_tab == "📆 Periodik":
-            st.markdown("#### Periodik")
+            st.markdown("#### Periodik — ringkasan per bulan / triwulan / perbandingan")
 
-            years = sorted(
-                {int(y) for _, dfp in st.session_state.data_storage.items()
-                for y in dfp['Tahun'].astype(str) if y.strip()},
-                reverse=True
-            )
+            # Tentukan tahun yang tersedia
+            years = set()
+            for k, df_period in st.session_state.data_storage.items():
+                years.update(df_period['Tahun'].astype(str).unique())
+            years = sorted([int(y) for y in years if str(y).strip() != ''], reverse=True)
 
-            selected_year = st.selectbox("Pilih Tahun", years, key="periodik_year")
+            if not years:
+                st.info("Tidak ada data periodik untuk ditampilkan.")
+                st.stop()
 
+            default_year = years[0]
+            selected_year = st.selectbox("Pilih Tahun", options=years, index=0, key='tab_periodik_year_select')
+
+            # session state untuk period_type
+            if "period_type" not in st.session_state:
+                st.session_state.period_type = "quarterly"
+
+            period_options = ["quarterly", "monthly", "compare"]
+            try:
+                period_index = period_options.index(st.session_state.period_type)
+            except ValueError:
+                period_index = 0
+                st.session_state.period_type = "quarterly"
+
+            # Radio button
             period_type = st.radio(
                 "Jenis Periode",
-                ["quarterly", "monthly", "compare"],
-                format_func=lambda x: {
-                    "quarterly": "Triwulan",
-                    "monthly": "Bulanan",
-                    "compare": "Perbandingan"
-                }[x],
-                key="period_type"
+                options=period_options,
+                format_func=lambda x: {"quarterly": "Triwulan", "monthly": "Bulanan", "compare": "Perbandingan"}.get(x, x),
+                horizontal=True,
+                index=period_index,
+                key="period_type_radio_v2"
             )
+            st.session_state.period_type = period_type
 
+            # Pilih indikator (satu untuk semua mode)
             indicator_options = [
-                'Kualitas Perencanaan Anggaran',
-                'Kualitas Pelaksanaan Anggaran',
-                'Kualitas Hasil Pelaksanaan Anggaran',
-                'Revisi DIPA',
-                'Deviasi Halaman III DIPA',
-                'Penyerapan Anggaran',
-                'Belanja Kontraktual',
-                'Penyelesaian Tagihan',
-                'Pengelolaan UP dan TUP',
-                'Capaian Output',
-                'Dispensasi SPM (Pengurang)',
+                'Kualitas Perencanaan Anggaran', 'Kualitas Pelaksanaan Anggaran', 'Kualitas Hasil Pelaksanaan Anggaran',
+                'Revisi DIPA', 'Deviasi Halaman III DIPA', 'Penyerapan Anggaran', 'Belanja Kontraktual',
+                'Penyelesaian Tagihan', 'Pengelolaan UP dan TUP', 'Capaian Output', 'Dispensasi SPM (Pengurang)',
                 'Nilai Akhir (Nilai Total/Konversi Bobot)'
             ]
-
+            default_indicator = 'Deviasi Halaman III DIPA'
             selected_indicator = st.selectbox(
-                "Pilih Indikator",
-                indicator_options,
-                key="periodik_indicator"
+                "Pilih Indikator", 
+                options=indicator_options, 
+                index=indicator_options.index(default_indicator) if default_indicator in indicator_options else 0,
+                key='tab_periodik_indicator_select'
             )
-
             
             # -------------------------
             # Monthly / Quarterly
@@ -1839,34 +1702,24 @@ def page_dashboard():
                 else:  # quarterly
                     def to_quarter(m):
                         return {
-                        'JANUARI': 'Tw I', 'FEBRUARI': 'Tw I', 'MARET': 'Tw I',
-                        'APRIL': 'Tw II', 'MEI': 'Tw II', 'JUNI': 'Tw II',
-                        'JULI': 'Tw III', 'AGUSTUS': 'Tw III', 'SEPTEMBER': 'Tw III',
-                        'OKTOBER': 'Tw IV', 'NOVEMBER': 'Tw IV', 'DESEMBER': 'Tw IV'
-                    }.get(m)
-
+                            'MARET': 'Tw I',
+                            'JUNI': 'Tw II',
+                            'SEPTEMBER': 'Tw III',
+                            'DESEMBER': 'Tw IV'
+                        }.get(m)
 
                     quarter_order = {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
 
                 # =========================================================
-                # 4. PIVOT LANGSUNG (FIXED)
+                # 4. PIVOT LANGSUNG
                 # =========================================================
-
-                # --- pilih nama SATKER TERPENDEK per Kode Satker ---
-                name_map = (
-                    df_year
-                    .assign(name_len=df_year['Uraian Satker-RINGKAS'].astype(str).str.len())
-                    .sort_values('name_len')
-                    .groupby('Kode Satker')['Uraian Satker-RINGKAS']
-                    .first()
-                )
-
                 df_pivot = df_year[
                     [
                         'Kode BA',
                         'Kode Satker',
+                        'Uraian Satker-RINGKAS',
                         'Period_Column',
                         selected_indicator
                     ]
@@ -1875,16 +1728,13 @@ def page_dashboard():
                 df_wide = (
                     df_pivot
                     .pivot_table(
-                        index=['Kode BA','Kode Satker'],  # ❗ IDENTIFIER ONLY
+                        index=['Kode BA','Kode Satker','Uraian Satker-RINGKAS'],
                         columns='Period_Column',
                         values=selected_indicator,
                         aggfunc='last'
                     )
                     .reset_index()
                 )
-
-                # --- pasang kembali nama satker ---
-                df_wide['Uraian Satker-RINGKAS'] = df_wide['Kode Satker'].map(name_map)
 
                 # =========================================================
                 # 5. Urutkan kolom periode
@@ -1924,6 +1774,8 @@ def page_dashboard():
                     display_period_cols = ordered_periods
 
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
+
+                st.dataframe(df_display, use_container_width=True)
 
                 # =============================
                 # SEARCH & STYLING 
@@ -3453,7 +3305,6 @@ def page_admin():
                         with st.spinner("🔄 Menggabungkan IKPA & DIPA..."):
                             merge_ikpa_dipa_auto()
                             st.session_state.ikpa_dipa_merged = True
-
         
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
@@ -4187,7 +4038,6 @@ def page_admin():
 # MAIN APP
 # ===============================
 def main():
-    bootstrap_all_data()
 
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
