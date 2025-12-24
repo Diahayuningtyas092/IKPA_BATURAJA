@@ -1432,22 +1432,29 @@ def page_dashboard():
     # ---------- persistent main tab ----------
     st.markdown("""
     <style>
+    /* ===== MENU UTAMA DASHBOARD ===== */
+
     /* Judul radio */
     div[data-testid="stRadio"] > label {
-        font-size: 18px !important;
-        font-weight: 700 !important;
-        margin-bottom: 8px;
+        font-size: 22px !important;
+        font-weight: 800 !important;
+        margin-bottom: 12px;
     }
 
-    /* Item radio (Highlights & Data Detail Satker) */
-    div[data-testid="stRadio"] div[role="radiogroup"] label {
-        font-size: 20px !important;
-        font-weight: 600 !important;
-    }
-
-    /* Spasi antar pilihan */
+    /* Grup radio horizontal */
     div[data-testid="stRadio"] div[role="radiogroup"] {
-        gap: 22px;
+        gap: 40px !important;
+    }
+
+    /* Teks pilihan */
+    div[data-testid="stRadio"] div[role="radiogroup"] label span {
+        font-size: 28px !important;   /* ⬅️ BESAR */
+        font-weight: 800 !important;
+    }
+
+    /* Lingkaran radio */
+    div[data-testid="stRadio"] input[type="radio"] {
+        transform: scale(1.7);
     }
     </style>
     """, unsafe_allow_html=True)
