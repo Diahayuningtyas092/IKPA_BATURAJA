@@ -1386,6 +1386,36 @@ def page_dashboard():
             df = create_satker_column(df)
 
         # ===============================
+        # 🔎 FILTER KODE BA (GLOBAL)
+        # ===============================
+        st.markdown("### 🔎 Filter Kode BA")
+
+        # Pastikan kolom Kode BA ada
+        if 'Kode BA' not in df.columns:
+            st.warning("Kolom Kode BA tidak ditemukan pada data.")
+        else:
+            ba_list = (
+                df['Kode BA']
+                .dropna()
+                .astype(str)
+                .unique()
+                .tolist()
+            )
+            ba_list = sorted(ba_list)
+
+            selected_ba = st.multiselect(
+                "Pilih Kode BA",
+                options=ba_list,
+                default=ba_list,
+                key="filter_ba_main"
+            )
+
+            # APPLY FILTER
+            if selected_ba:
+                df = df[df['Kode BA'].astype(str).isin(selected_ba)].copy()
+
+
+        # ===============================
         # Pastikan kolom Jenis Satker ada
         # ===============================
         if 'Jenis Satker' not in df.columns:
@@ -1610,6 +1640,11 @@ def page_dashboard():
     # -------------------------
     else:
         st.subheader("📋 Tabel Detail Satker")
+        
+        # ===============================
+        # 🔎 AMBIL FILTER KODE BA (DARI DASHBOARD UTAMA)
+        # ===============================
+        selected_ba = st.session_state.get("filter_ba_main", None)
 
         # persistent sub-tab for Periodik / Detail Satker
         if "active_table_tab" not in st.session_state:
@@ -1683,13 +1718,21 @@ def page_dashboard():
             # Monthly / Quarterly
             # -------------------------
             if period_type in ['monthly', 'quarterly']:
-
+    
                 # 1. Gabungkan data per tahun
                 dfs = []
+
+                # ambil filter BA dari dashboard utama
+                selected_ba = st.session_state.get("filter_ba_main", None)
+
                 for (mon, yr), df_period in st.session_state.data_storage.items():
                     try:
                         if int(yr) == int(selected_year):
                             temp = df_period.copy()
+
+                            # 🔎 FILTER KODE BA (INI KUNCINYA)
+                            if selected_ba:
+                                temp = temp[temp['Kode BA'].astype(str).isin(selected_ba)]
 
                             # ambil kolom bulan apa pun namanya
                             if 'Bulan' in temp.columns:
@@ -1699,12 +1742,15 @@ def page_dashboard():
                             else:
                                 continue
 
-                            dfs.append(temp)
-                    except:
+                            # hanya tambahkan jika masih ada data
+                            if not temp.empty:
+                                dfs.append(temp)
+
+                    except Exception:
                         continue
 
                 if not dfs:
-                    st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
+                    st.info(f"Tidak ditemukan data untuk tahun {selected_year} (sesuai filter BA).")
                     st.stop()
 
                 df_year = pd.concat(dfs, ignore_index=True)
@@ -1891,6 +1937,11 @@ def page_dashboard():
                 all_data = []
                 for (mon, yr), df in st.session_state.data_storage.items():
                     df2 = df.copy()
+                    
+                    # 🔎 FILTER KODE BA
+                    if selected_ba:
+                        df2 = df2[df2['Kode BA'].astype(str).isin(selected_ba)]
+
                     df2["Bulan_upper"] = df2["Bulan"].astype(str).str.upper().str.strip()
                     df2["Tahun"] = df2["Tahun"].astype(int)
                     all_data.append(df2)
@@ -2014,6 +2065,11 @@ def page_dashboard():
         else:
             # ensure df available (use selected period if set)
             df = st.session_state.data_storage.get(st.session_state.get('selected_period', all_periods[0]), None)
+            
+            # 🔎 FILTER KODE BA
+            if selected_ba:
+                df = df[df['Kode BA'].astype(str).isin(selected_ba)].copy()
+
             if df is None:
                 st.info("Data untuk detail satker tidak tersedia untuk periode yang dipilih.")
                 return
