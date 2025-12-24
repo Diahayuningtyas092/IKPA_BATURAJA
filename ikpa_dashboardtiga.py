@@ -218,6 +218,12 @@ def standardize_dipa(df_raw):
 
     return out
 
+#Normalisasi kode BA
+def normalize_kode_ba(x):
+    try:
+        return str(int(x)).zfill(3)
+    except:
+        return None
 
 # Normalize kode satker
 def normalize_kode_satker(k, width=6):
@@ -1373,6 +1379,13 @@ def page_dashboard():
             key="select_period_main"
         )
         df = st.session_state.data_storage.get(selected_period)
+        
+        # ===============================
+        # NORMALISASI KODE BA (WAJIB)
+        # ===============================
+        if 'Kode BA' in df.columns:
+            df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
+
 
         # ===============================
         # Validasi DF
@@ -1384,13 +1397,20 @@ def page_dashboard():
         # PAKSA KOLOM SATKER ADA
         if 'Satker' not in df.columns:
             df = create_satker_column(df)
-
+        
         # ===============================
-        # 🔎 FILTER KODE BA (GLOBAL)
+        # NORMALISASI KODE BA (WAJIB)
+        # ===============================
+        if 'Kode BA' in df.columns:
+            df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
+
+
         # ===============================
         st.markdown("### 🔎 Filter Kode BA")
 
-        # Pastikan kolom Kode BA ada
+        # ===============================
+        # FILTER KODE BA (GLOBAL)
+        # ===============================
         if 'Kode BA' not in df.columns:
             st.warning("Kolom Kode BA tidak ditemukan pada data.")
         else:
@@ -1398,21 +1418,26 @@ def page_dashboard():
                 df['Kode BA']
                 .dropna()
                 .astype(str)
+                .sort_values()
                 .unique()
                 .tolist()
             )
-            ba_list = sorted(ba_list)
+
+            ba_options = ["SEMUA BA"] + ba_list
 
             selected_ba = st.multiselect(
                 "Pilih Kode BA",
-                options=ba_list,
-                default=ba_list,
+                options=ba_options,
+                default=["SEMUA BA"],
                 key="filter_ba_main"
             )
 
+            # ===============================
             # APPLY FILTER
-            if selected_ba:
+            # ===============================
+            if "SEMUA BA" not in selected_ba:
                 df = df[df['Kode BA'].astype(str).isin(selected_ba)].copy()
+
 
 
         # ===============================
@@ -2066,9 +2091,15 @@ def page_dashboard():
             # ensure df available (use selected period if set)
             df = st.session_state.data_storage.get(st.session_state.get('selected_period', all_periods[0]), None)
             
-            # 🔎 FILTER KODE BA
+            # ===============================
+            # APPLY FILTER BA (SETELAH NORMALISASI)
+            # ===============================
+            if 'Kode BA' in df.columns:
+                df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
+
+            selected_ba = st.session_state.get("filter_ba_main", [])
             if selected_ba:
-                df = df[df['Kode BA'].astype(str).isin(selected_ba)].copy()
+                df = df[df['Kode BA'].isin(selected_ba)].copy()
 
             if df is None:
                 st.info("Data untuk detail satker tidak tersedia untuk periode yang dipilih.")
