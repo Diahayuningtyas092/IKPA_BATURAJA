@@ -1432,33 +1432,25 @@ def page_dashboard():
     # ---------- persistent main tab ----------
     st.markdown("""
     <style>
-    /* ===== MENU UTAMA DASHBOARD ===== */
+    /* ===== BESARKAN MENU UTAMA DASHBOARD ===== */
 
-    /* Judul radio */
-    div[data-testid="stRadio"] > label {
-        font-size: 22px !important;
-        font-weight: 800 !important;
-        margin-bottom: 12px;
-    }
-
-    /* Grup radio horizontal */
-    div[data-testid="stRadio"] div[role="radiogroup"] {
-        gap: 40px !important;
-    }
-
-    /* Teks pilihan */
-    div[data-testid="stRadio"] div[role="radiogroup"] label span {
-        font-size: 28px !important;   /* ⬅️ BESAR */
+    /* Teks label radio */
+    div[data-testid="stRadio"] label span {
+        font-size: 80px !important;   /* ⬅️ BESAR */
         font-weight: 800 !important;
     }
 
     /* Lingkaran radio */
     div[data-testid="stRadio"] input[type="radio"] {
-        transform: scale(1.7);
+        transform: scale(1.8);
+    }
+
+    /* Jarak antar pilihan */
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        gap: 48px !important;
     }
     </style>
     """, unsafe_allow_html=True)
-
 
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
@@ -1467,7 +1459,6 @@ def page_dashboard():
         horizontal=True
     )
     st.session_state["main_tab"] = main_tab
-
 
     # -------------------------
     # HIGHLIGHTS
