@@ -1552,7 +1552,10 @@ def page_dashboard():
   
         # Satker dengan masalah (Deviasi Hal 3 DIPA)
         st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
-        st.markdown("###### ⚠️ Deviasi Hal 3 DIPA Belum Optimal (< 90)")
+
+        # -----------------------------
+        # Slider
+        # -----------------------------
         st.markdown("###### Atur Skala Nilai (Sumbu Y)")
 
         col_min_dev, col_max_dev = st.columns(2)
@@ -1578,6 +1581,28 @@ def page_dashboard():
                 step=1,
                 key="high_ymax_dev"
             )
+
+        # -----------------------------
+        # ⚠️ JUDUL CHART (DI SINI TEMPATNYA)
+        # -----------------------------
+        st.markdown("###### ⚠️ Deviasi Hal 3 DIPA Belum Optimal (< 90)")
+
+        fig_dev = create_problem_chart(
+            df,
+            'Deviasi Halaman III DIPA',
+            90,
+            "",
+            comparison='less',
+            y_min=y_min_dev,
+            y_max=y_max_dev,
+            show_yaxis=True
+        )
+
+        if fig_dev:
+            st.plotly_chart(fig_dev, use_container_width=True)
+        else:
+            st.success("✅ Semua satker sudah optimal untuk Deviasi Hal 3 DIPA")
+
 
 
     # -------------------------
