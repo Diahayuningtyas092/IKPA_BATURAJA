@@ -1197,20 +1197,23 @@ def safe_chart(
     thin_bar=False
 ):
     # ===============================
-    # DETEKSI KOLOM IKPA
+    # PROTEKSI AWAL
     # ===============================
+    if df_part is None or df_part.empty:
+        st.info("Tidak ada data.")
+        return
+
+    if "Satker" not in df_part.columns:
+        st.warning("Kolom Satker belum siap.")
+        return
+
     kandidat_ikpa = [
-        'Nilai Akhir (Nilai Total/Konversi Bobot)',
-        'Nilai Total/Konversi Bobot',
-        'Nilai Total'
+        "Nilai Akhir (Nilai Total/Konversi Bobot)",
+        "Nilai Total/Konversi Bobot",
+        "Nilai Total"
     ]
 
-    nilai_col = None
-    for col in kandidat_ikpa:
-        if col in df_part.columns:
-            nilai_col = col
-            break
-
+    nilai_col = next((c for c in kandidat_ikpa if c in df_part.columns), None)
     if nilai_col is None:
         st.warning(f"Kolom IKPA tidak ditemukan untuk {jenis}")
         return
@@ -1218,33 +1221,42 @@ def safe_chart(
     # ===============================
     # SORT DATA
     # ===============================
-    # top=True  → ambil nilai tertinggi
-    # top=False → ambil nilai terendah
     df_sorted = (
         df_part
         .sort_values(nilai_col, ascending=not top)
         .head(10)
-        .sort_values(nilai_col, ascending=True)  # agar visual dari bawah ke atas
+        .sort_values(nilai_col, ascending=True)
+        .copy()
     )
+
+    # ===============================
+    # 🔐 PROTEKSI PLOTLY (INI YANG HILANG)
+    # ===============================
+    df_sorted["Satker"] = df_sorted["Satker"].astype(str).str.strip()
+    df_sorted = df_sorted[df_sorted["Satker"] != ""]
+
+    if df_sorted.empty:
+        st.info("Tidak ada data valid untuk ditampilkan.")
+        return
 
     # ===============================
     # PLOT
     # ===============================
     fig = px.bar(
-    df_sorted,
-    x=nilai_col,
-    y="Satker",
-    orientation="h",
-    color=nilai_col,
-    color_continuous_scale=color,
-    text=nilai_col              
+        df_sorted,
+        x=nilai_col,
+        y="Satker",
+        orientation="h",
+        color=nilai_col,
+        color_continuous_scale=color,
+        text=nilai_col
     )
 
     fig.update_traces(
         width=0.65 if thin_bar else 0.8,
-        texttemplate="%{text:.2f}",   
-        textposition="outside",      
-        cliponaxis=False              
+        texttemplate="%{text:.2f}",
+        textposition="outside",
+        cliponaxis=False
     )
 
     fig.update_layout(
@@ -1258,10 +1270,17 @@ def safe_chart(
     )
 
     st.plotly_chart(fig, use_container_width=True)
-
+    
 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
+    # ===============================
+    # SOLUSI 3 — DELAY RENDER SETELAH UPLOAD
+    # ===============================
+    if st.session_state.get("_just_uploaded"):
+        st.session_state["_just_uploaded"] = False
+        st.info("🔄 Data baru dimuat, mempersiapkan grafik...")
+        st.stop()
     st.title("📊 Dashboard Utama IKPA Satker Mitra KPPN Baturaja")
     
     st.markdown("""
@@ -1360,6 +1379,10 @@ def page_dashboard():
         if df is None or df.empty:
             st.warning("Data IKPA belum tersedia.")
             st.stop()
+            
+        # PAKSA KOLOM SATKER ADA
+        if 'Satker' not in df.columns:
+            df = create_satker_column(df)
 
         # ===============================
         # Pastikan kolom Jenis Satker ada
@@ -3305,6 +3328,10 @@ def page_admin():
                         with st.spinner("🔄 Menggabungkan IKPA & DIPA..."):
                             merge_ikpa_dipa_auto()
                             st.session_state.ikpa_dipa_merged = True
+                    
+                    st.session_state["_just_uploaded"] = True
+                    st.experimental_rerun()
+
         
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
