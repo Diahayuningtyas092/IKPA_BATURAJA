@@ -1401,6 +1401,8 @@ def page_dashboard():
         # ===============================
         if 'Kode BA' in df.columns:
             df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
+        
+        df = apply_filter_ba(df)
 
         # ===============================
         # PAKSA KOLOM SATKER (1x SAJA)
@@ -1413,32 +1415,26 @@ def page_dashboard():
         # ===============================
         st.markdown("### 🔎 Filter Kode BA")
 
-        if 'Kode BA' not in df.columns:
-            st.warning("Kolom Kode BA tidak ditemukan.")
-        else:
-            ba_list = sorted(
+        if 'Kode BA' in df.columns:
+            ba_list = (
                 df['Kode BA']
                 .dropna()
                 .astype(str)
                 .unique()
                 .tolist()
             )
+            ba_list = sorted(ba_list)
 
             ba_options = ["SEMUA BA"] + ba_list
 
-            selected_ba = st.multiselect(
+            st.multiselect(
                 "Pilih Kode BA",
                 options=ba_options,
-                default=["SEMUA BA"],
+                default=st.session_state.get("filter_ba_main", ["SEMUA BA"]),
                 key="filter_ba_main"
             )
-
-            if "SEMUA BA" not in selected_ba:
-                df = df[df['Kode BA'].isin(selected_ba)].copy()
-
-        if df.empty:
-            st.info("Tidak ada data sesuai filter Kode BA.")
-            st.stop()
+        else:
+            st.warning("Kolom Kode BA tidak tersedia.")
 
 
         # ===============================
@@ -1785,10 +1781,6 @@ def page_dashboard():
                 # ===============================
                 df_year = apply_filter_ba(df_year)
 
-                if df_year.empty:
-                    st.info(f"Tidak ada data sesuai filter Kode BA untuk tahun {selected_year}.")
-                    st.stop()
-
                 # ===============================
                 # 4. NORMALISASI BULAN
                 # ===============================
@@ -1973,11 +1965,6 @@ def page_dashboard():
                 for (mon, yr), df in st.session_state.data_storage.items():
                     df2 = df.copy()
 
-                    # ===============================
-                    # NORMALISASI KODE BA (WAJIB)
-                    # ===============================
-                    if 'Kode BA' in df2.columns:
-                        df2['Kode BA'] = df2['Kode BA'].apply(normalize_kode_ba)
 
                     # ===============================
                     # APPLY FILTER BA (COMPARE)
@@ -2006,6 +1993,11 @@ def page_dashboard():
                     st.stop()
 
                 df_full = pd.concat(all_data, ignore_index=True)
+
+                if 'Kode BA' in df_full.columns:
+                    df_full['Kode BA'] = df_full['Kode BA'].apply(normalize_kode_ba)
+
+                df_full = apply_filter_ba(df_full)
 
 
                 # Tahun yang valid
