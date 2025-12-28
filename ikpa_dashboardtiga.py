@@ -1392,59 +1392,45 @@ def page_dashboard():
     <style>
 
     /* =================================================
-    1. KECILKAN HANYA FILTER KODE BA
+    KUNCI SIDEBAR AGAR TIDAK IKUT MEMBESAR
+    ================================================= */
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] p {
+        font-size: 14px !important;
+        font-weight: 500 !important;
+    }
+
+
+    /* =================================================
+    KECILKAN JUDUL FILTER KODE BA SAJA
     ================================================= */
     .filter-ba h3 {
-        font-size: 15px !important;
+        font-size: 14px !important;
         margin-bottom: 4px !important;
     }
 
-    .filter-ba label {
-        font-size: 12px !important;
-        margin-bottom: 2px !important;
-    }
-
-    .filter-ba div[data-baseweb="select"] {
-        font-size: 12px !important;
-        min-height: 30px !important;
-        margin-bottom: 6px !important;
-    }
-
-    .filter-ba div[data-baseweb="tag"] span {
-        font-size: 11px !important;
-        padding: 2px 6px !important;
-    }
-
 
     /* =================================================
-    2. BESARKAN RADIO PILIH BAGIAN DASHBOARD
-    (SETARA ## HEADING)
+    BESARKAN HANYA RADIO NAVIGASI UTAMA
+    key = main_tab_choice
     ================================================= */
-    div[role="radiogroup"] {
-        margin-top: 6px !important;
-    }
-
-    div[role="radiogroup"] > label {
+    div[data-testid="stRadio"][id*="main_tab_choice"] > label {
         font-size: 24px !important;
         font-weight: 700 !important;
-        margin-bottom: 6px !important;
     }
 
-    div[role="radiogroup"] label p {
+    div[data-testid="stRadio"][id*="main_tab_choice"] label p {
         font-size: 24px !important;
         font-weight: 600 !important;
-        margin: 0 16px 0 0 !important;
     }
 
 
     /* =================================================
-    3. KUNCI SELECTBOX PERIODE (NOVEMBER 2025)
-    AGAR TIDAK PERNAH MENGECIL
+    JANGAN SENTUH DROPDOWN (BIAR NORMAL)
     ================================================= */
-    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
+    div[data-baseweb="select"],
+    div[data-baseweb="tag"] span {
         font-size: 16px !important;
-        min-height: 38px !important;
-        line-height: 1.4 !important;
     }
 
     </style>
@@ -1813,17 +1799,16 @@ def page_dashboard():
 
             # Radio button
             period_type = st.radio(
-                "Jenis Periode",
-                options=period_options,
-                format_func=lambda x: {
-                    "quarterly": "Triwulan",
-                    "monthly": "Bulanan",
-                    "compare": "Perbandingan"
-                }.get(x, x),
-                horizontal=True,
-                index=period_index,
-                key="period_type_radio_v2"
-
+            "Jenis Periode",
+            options=period_options,
+            format_func=lambda x: {
+                "quarterly": "Triwulan",
+                "monthly": "Bulanan",
+                "compare": "Perbandingan"
+            }.get(x, x),
+            horizontal=True,
+            index=period_index,
+            key="period_type_radio_v2"
             )
             st.session_state.period_type = period_type
 
