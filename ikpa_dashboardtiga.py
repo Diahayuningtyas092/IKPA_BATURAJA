@@ -1392,45 +1392,59 @@ def page_dashboard():
     <style>
 
     /* =================================================
-    KUNCI SIDEBAR AGAR TIDAK IKUT MEMBESAR
-    ================================================= */
-    section[data-testid="stSidebar"] label,
-    section[data-testid="stSidebar"] p {
-        font-size: 14px !important;
-        font-weight: 500 !important;
-    }
-
-
-    /* =================================================
-    KECILKAN JUDUL FILTER KODE BA SAJA
+    1. KECILKAN HANYA FILTER KODE BA
     ================================================= */
     .filter-ba h3 {
-        font-size: 14px !important;
+        font-size: 15px !important;
         margin-bottom: 4px !important;
     }
 
+    .filter-ba label {
+        font-size: 12px !important;
+        margin-bottom: 2px !important;
+    }
+
+    .filter-ba div[data-baseweb="select"] {
+        font-size: 12px !important;
+        min-height: 30px !important;
+        margin-bottom: 6px !important;
+    }
+
+    .filter-ba div[data-baseweb="tag"] span {
+        font-size: 11px !important;
+        padding: 2px 6px !important;
+    }
+
 
     /* =================================================
-    BESARKAN HANYA RADIO NAVIGASI UTAMA
-    key = main_tab_choice
+    2. BESARKAN RADIO PILIH BAGIAN DASHBOARD
+    (SETARA ## HEADING)
     ================================================= */
-    div[data-testid="stRadio"][id*="main_tab_choice"] > label {
+    div[role="radiogroup"] {
+        margin-top: 6px !important;
+    }
+
+    div[role="radiogroup"] > label {
         font-size: 24px !important;
         font-weight: 700 !important;
+        margin-bottom: 6px !important;
     }
 
-    div[data-testid="stRadio"][id*="main_tab_choice"] label p {
+    div[role="radiogroup"] label p {
         font-size: 24px !important;
         font-weight: 600 !important;
+        margin: 0 16px 0 0 !important;
     }
 
 
     /* =================================================
-    JANGAN SENTUH DROPDOWN (BIAR NORMAL)
+    3. KUNCI SELECTBOX PERIODE (NOVEMBER 2025)
+    AGAR TIDAK PERNAH MENGECIL
     ================================================= */
-    div[data-baseweb="select"],
-    div[data-baseweb="tag"] span {
+    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
         font-size: 16px !important;
+        min-height: 38px !important;
+        line-height: 1.4 !important;
     }
 
     </style>
@@ -1442,7 +1456,7 @@ def page_dashboard():
     # ===============================
     st.markdown('<div class="filter-ba">', unsafe_allow_html=True)
 
-    st.markdown("### 🔎 Filter Kode BA")  # ⬅️ WAJIB heading
+    st.markdown("🔎 Filter Kode BA")  
 
     if 'Kode BA' in df.columns:
 
