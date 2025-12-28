@@ -2073,7 +2073,6 @@ def page_dashboard():
                 for (mon, yr), df in st.session_state.data_storage.items():
                     df2 = df.copy()
 
-                    # Normalisasi bulan & tahun
                     df2["Bulan_upper"] = (
                         df2["Bulan"]
                         .astype(str)
@@ -2096,6 +2095,9 @@ def page_dashboard():
                 # ===============================
                 # 2. FILTER KODE BA KHUSUS COMPARE
                 # ===============================
+                if "filter_ba_compare" not in st.session_state:
+                    st.session_state["filter_ba_compare"] = ["SEMUA BA"]
+
                 if "Kode BA" in df_full.columns:
                     ba_list = sorted(df_full["Kode BA"].dropna().unique())
                     ba_options = ["SEMUA BA"] + ba_list
@@ -2103,11 +2105,11 @@ def page_dashboard():
                     selected_ba_compare = st.multiselect(
                         "Pilih Kode BA (Perbandingan)",
                         options=ba_options,
-                        default=["SEMUA BA"],
+                        default=st.session_state["filter_ba_compare"],
                         key="filter_ba_compare"
                     )
 
-                    if selected_ba_compare and "SEMUA BA" not in selected_ba_compare:
+                    if "SEMUA BA" not in selected_ba_compare:
                         df_full = df_full[df_full["Kode BA"].isin(selected_ba_compare)]
 
                 # ===============================
@@ -2120,7 +2122,7 @@ def page_dashboard():
                 if len(available_years) < 2:
                     st.info(
                         "Data tahun tidak cukup untuk Kode BA yang dipilih. "
-                        "Pilih BA lain atau gunakan SEMUA BA."
+                        "Silakan pilih BA lain atau gunakan SEMUA BA."
                     )
                     st.stop()
 
@@ -2194,7 +2196,7 @@ def page_dashboard():
                 )
 
                 # ===============================
-                # 7. BANGUN TABEL PERBANDINGAN
+                # 7. BANGUN TABEL PERBANDINGAN (AMAN INDIKATOR)
                 # ===============================
                 rows = []
 
@@ -2209,10 +2211,22 @@ def page_dashboard():
                     }
 
                     latest_a, latest_b = None, None
+                    has_data = False
 
                     for tw in ['Tw I', 'Tw II', 'Tw III', 'Tw IV']:
-                        valA = tw_a[tw][tw_a[tw]['Kode Satker'] == kode][selected_indicator].values
-                        valB = tw_b[tw][tw_b[tw]['Kode Satker'] == kode][selected_indicator].values
+
+                        if selected_indicator not in tw_a[tw].columns:
+                            continue
+
+                        valA = tw_a[tw].loc[
+                            tw_a[tw]['Kode Satker'] == kode,
+                            selected_indicator
+                        ].values
+
+                        valB = tw_b[tw].loc[
+                            tw_b[tw]['Kode Satker'] == kode,
+                            selected_indicator
+                        ].values
 
                         valA = valA[0] if len(valA) else None
                         valB = valB[0] if len(valB) else None
@@ -2222,8 +2236,13 @@ def page_dashboard():
 
                         if valA is not None:
                             latest_a = valA
+                            has_data = True
                         if valB is not None:
                             latest_b = valB
+                            has_data = True
+
+                    if not has_data:
+                        continue
 
                     row[f"Δ Total ({year_b}-{year_a})"] = (
                         latest_b - latest_a
@@ -2232,6 +2251,10 @@ def page_dashboard():
                     )
 
                     rows.append(row)
+
+                if not rows:
+                    st.info("Tidak ada data indikator untuk periode dan BA yang dipilih.")
+                    st.stop()
 
                 df_compare = pd.DataFrame(rows)
 
@@ -2252,6 +2275,7 @@ def page_dashboard():
 
                 st.markdown("### 📋 Hasil Perbandingan")
                 st.dataframe(df_style, use_container_width=True, height=600)
+
 
         # -------------------------
         # DETAIL SATKER (legacy table)
