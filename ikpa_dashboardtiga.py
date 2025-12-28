@@ -1450,16 +1450,26 @@ def page_dashboard():
     st.markdown("""
     <style>
     /* ===============================
-    BESARKAN RADIO DASHBOARD
+    SAMAKAN RADIO DENGAN H2 (##)
     =============================== */
 
+    /* Judul radio: Pilih Bagian Dashboard */
     div[role="radiogroup"] > label {
-        font-size: 20px !important;
+        font-size: 24px !important;
         font-weight: 700 !important;
+        margin-bottom: 10px;
     }
 
-    div[role="radiogroup"] span {
-        font-size: 18px !important;
+    /* Opsi radio: 🎯 Highlights, 📋 Data Detail */
+    div[role="radiogroup"] label p {
+        font-size: 24px !important;
+        font-weight: 600 !important;
+        line-height: 1.4;
+    }
+
+    /* Spasi antar opsi */
+    div[role="radiogroup"] label {
+        margin-right: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
