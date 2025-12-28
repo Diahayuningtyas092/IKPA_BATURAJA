@@ -1392,48 +1392,58 @@ def page_dashboard():
     <style>
 
     /* =================================================
-    RESET SEMUA SELECTBOX & MULTISELECT KE NORMAL
-    (NOVEMBER 2025 & SEMUA BA)
+    RESET SEMUA SELECTBOX & MULTISELECT (NORMAL)
     ================================================= */
-
-    /* Semua dropdown */
     div[data-baseweb="select"] {
         font-size: 16px !important;
         min-height: 38px !important;
         line-height: 1.4 !important;
     }
 
-    /* Chip multiselect (SEMUA BA) */
     div[data-baseweb="tag"] span {
         font-size: 14px !important;
         padding: 4px 8px !important;
     }
 
-    /* Label dropdown */
     label {
         font-size: 16px !important;
     }
 
+
     /* =================================================
-    3. KUNCI SELECTBOX PERIODE (NOVEMBER 2025)
-    AGAR TIDAK PERNAH MENGECIL
+    KECILKAN JUDUL FILTER KODE BA SAJA
     ================================================= */
-    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
-        font-size: 16px !important;
-        min-height: 38px !important;
-        line-height: 1.4 !important;
+    .filter-ba h3 {
+        font-size: 14px !important;
+        margin-bottom: 4px !important;
+    }
+
+
+    /* =================================================
+    BESARKAN RADIO NAVIGASI UTAMA SAJA
+    (key = main_tab_choice)
+    ================================================= */
+    div[data-testid="stRadio"][id*="main_tab_choice"] > label {
+        font-size: 32px !important;
+        font-weight: 700 !important;
+        margin-bottom: 6px !important;
+    }
+
+    div[data-testid="stRadio"][id*="main_tab_choice"] label p {
+        font-size: 32px !important;
+        font-weight: 600 !important;
     }
 
     </style>
     """, unsafe_allow_html=True)
 
-    
+
     # ===============================
     # FILTER KODE BA
     # ===============================
     st.markdown('<div class="filter-ba">', unsafe_allow_html=True)
 
-    st.markdown("# 🔎 Filter Kode BA")  # ⬅️ WAJIB heading
+    st.markdown("### 🔎 Filter Kode BA")  # kecil via CSS
 
     if 'Kode BA' in df.columns:
 
@@ -1457,40 +1467,15 @@ def page_dashboard():
     else:
         st.warning("Kolom Kode BA tidak tersedia.")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # ⬅️ PENTING: tutup div
-
-    st.markdown("""
-    <style>
-
-    /* =========================================
-    BESARKAN HANYA RADIO NAVIGASI UTAMA
-    key = main_tab_choice
-    ========================================= */
-    div[data-testid="stRadio"][id*="main_tab_choice"] label {
-        font-size: 24px !important;
-        font-weight: 700 !important;
-    }
-
-    div[data-testid="stRadio"][id*="main_tab_choice"] label p {
-        font-size: 24px !important;
-        font-weight: 600 !important;
-    }
-
-    /* RAPATKAN SPASI */
-    div[data-testid="stRadio"][id*="main_tab_choice"] {
-        margin-bottom: 8px !important;
-    }
-
-    </style>
-    """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
     
     # ===============================
     # RADIO PILIH BAGIAN DASHBOARD
     # ===============================
     main_tab = st.radio(
-        "###Pilih Bagian Dashboard",
-        ["##🎯 Highlights", "##📋 Data Detail Satker"],
+        "Pilih Bagian Dashboard",
+        ["🎯 Highlights", "📋 Data Detail Satker"],
         key="main_tab_choice",
         horizontal=True
     )
