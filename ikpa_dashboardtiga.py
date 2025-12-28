@@ -1392,50 +1392,27 @@ def page_dashboard():
     <style>
 
     /* =================================================
-    1. KECILKAN HANYA FILTER KODE BA
+    RESET SEMUA SELECTBOX & MULTISELECT KE NORMAL
+    (NOVEMBER 2025 & SEMUA BA)
     ================================================= */
-    .filter-ba h3 {
-        font-size: 15px !important;
-        margin-bottom: 4px !important;
+
+    /* Semua dropdown */
+    div[data-baseweb="select"] {
+        font-size: 16px !important;
+        min-height: 38px !important;
+        line-height: 1.4 !important;
     }
 
-    .filter-ba label {
-        font-size: 12px !important;
-        margin-bottom: 2px !important;
+    /* Chip multiselect (SEMUA BA) */
+    div[data-baseweb="tag"] span {
+        font-size: 14px !important;
+        padding: 4px 8px !important;
     }
 
-    .filter-ba div[data-baseweb="select"] {
-        font-size: 12px !important;
-        min-height: 30px !important;
-        margin-bottom: 6px !important;
+    /* Label dropdown */
+    label {
+        font-size: 16px !important;
     }
-
-    .filter-ba div[data-baseweb="tag"] span {
-        font-size: 11px !important;
-        padding: 2px 6px !important;
-    }
-
-
-    /* =================================================
-    2. BESARKAN RADIO PILIH BAGIAN DASHBOARD
-    (SETARA ## HEADING)
-    ================================================= */
-    div[role="radiogroup"] {
-        margin-top: 6px !important;
-    }
-
-    div[role="radiogroup"] > label {
-        font-size: 24px !important;
-        font-weight: 700 !important;
-        margin-bottom: 6px !important;
-    }
-
-    div[role="radiogroup"] label p {
-        font-size: 24px !important;
-        font-weight: 600 !important;
-        margin: 0 16px 0 0 !important;
-    }
-
 
     /* =================================================
     3. KUNCI SELECTBOX PERIODE (NOVEMBER 2025)
@@ -1482,7 +1459,32 @@ def page_dashboard():
 
     st.markdown('</div>', unsafe_allow_html=True)  # ⬅️ PENTING: tutup div
 
+    st.markdown("""
+    <style>
 
+    /* =========================================
+    BESARKAN HANYA RADIO NAVIGASI UTAMA
+    key = main_tab_choice
+    ========================================= */
+    div[data-testid="stRadio"][id*="main_tab_choice"] label {
+        font-size: 24px !important;
+        font-weight: 700 !important;
+    }
+
+    div[data-testid="stRadio"][id*="main_tab_choice"] label p {
+        font-size: 24px !important;
+        font-weight: 600 !important;
+    }
+
+    /* RAPATKAN SPASI */
+    div[data-testid="stRadio"][id*="main_tab_choice"] {
+        margin-bottom: 8px !important;
+    }
+
+    </style>
+    """, unsafe_allow_html=True)
+
+    
     # ===============================
     # RADIO PILIH BAGIAN DASHBOARD
     # ===============================
@@ -1815,10 +1817,15 @@ def page_dashboard():
             period_type = st.radio(
                 "Jenis Periode",
                 options=period_options,
-                format_func=lambda x: {"quarterly": "Triwulan", "monthly": "Bulanan", "compare": "Perbandingan"}.get(x, x),
+                format_func=lambda x: {
+                    "quarterly": "Triwulan",
+                    "monthly": "Bulanan",
+                    "compare": "Perbandingan"
+                }.get(x, x),
                 horizontal=True,
                 index=period_index,
                 key="period_type_radio_v2"
+
             )
             st.session_state.period_type = period_type
 
