@@ -1433,7 +1433,7 @@ def page_dashboard():
     # ===============================
     st.markdown('<div class="filter-ba">', unsafe_allow_html=True)
 
-    st.markdown("### 🔎 Filter Kode BA")  # ⬅️ WAJIB heading
+    st.markdown("# 🔎 Filter Kode BA")  # ⬅️ WAJIB heading
 
     if 'Kode BA' in df.columns:
 
@@ -1489,8 +1489,8 @@ def page_dashboard():
     # RADIO PILIH BAGIAN DASHBOARD
     # ===============================
     main_tab = st.radio(
-        "Pilih Bagian Dashboard",
-        ["🎯 Highlights", "📋 Data Detail Satker"],
+        "###Pilih Bagian Dashboard",
+        ["##🎯 Highlights", "##📋 Data Detail Satker"],
         key="main_tab_choice",
         horizontal=True
     )
