@@ -1390,43 +1390,34 @@ def page_dashboard():
 
     st.markdown("""
     <style>
-
     /* ===============================
-    FILTER KODE BA - DIPERKECIL
+    KECILKAN FILTER KODE BA SAJA
     =============================== */
-    .filter-ba h3 {
-        font-size: 16px !important;
-        margin-bottom: 4px;
+
+    /* Judul: 🔎 Filter Kode BA */
+    h3:has(span:contains("Filter Kode BA")) {
+        font-size: 15px !important;
     }
 
-    .filter-ba label {
-        font-size: 13px !important;
-    }
-
-    .filter-ba div[data-baseweb="select"] {
-        font-size: 13px !important;
-        min-height: 32px !important;
-    }
-
-    .filter-ba span {
+    /* Label: Pilih Kode BA */
+    label:has(span:contains("Pilih Kode BA")) {
         font-size: 12px !important;
+    }
+
+    /* Dropdown multiselect */
+    div[data-baseweb="select"] {
+        font-size: 12px !important;
+        min-height: 30px !important;
+    }
+
+    /* Chip: SEMUA BA */
+    span {
+        font-size: 11px !important;
         padding: 2px 6px !important;
     }
-
-    /* ===============================
-    RADIO PILIH BAGIAN - DIBESARKAN
-    =============================== */
-    div[role="radiogroup"] label {
-        font-size: 18px !important;
-        font-weight: 600;
-    }
-
-    div[role="radiogroup"] {
-        margin-top: 10px;
-    }
-
     </style>
     """, unsafe_allow_html=True)
+
     
     st.markdown('<div class="filter-ba">', unsafe_allow_html=True)
 
@@ -1456,9 +1447,26 @@ def page_dashboard():
 
     st.markdown('</div>', unsafe_allow_html=True)
 
+    st.markdown("""
+    <style>
+    /* ===============================
+    BESARKAN RADIO DASHBOARD
+    =============================== */
+
+    div[role="radiogroup"] > label {
+        font-size: 20px !important;
+        font-weight: 700 !important;
+    }
+
+    div[role="radiogroup"] span {
+        font-size: 18px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     # ---------- persistent main tab ----------
     main_tab = st.radio(
-        "#Pilih Bagian Dashboard",
+        "Pilih Bagian Dashboard",
         ["🎯 Highlights", "📋 Data Detail Satker"],
         key="main_tab_choice",
         horizontal=True
