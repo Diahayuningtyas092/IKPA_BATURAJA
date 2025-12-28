@@ -1388,12 +1388,54 @@ def page_dashboard():
     if "main_tab" not in st.session_state:
         st.session_state.main_tab = "🎯 Highlights"
 
-    # ==================================================
-    # 🔎 FILTER KODE BA (GLOBAL - SELALU DIRENDER)
-    # ==================================================
+    st.markdown("""
+    <style>
+
+    /* ===============================
+    FILTER KODE BA - DIPERKECIL
+    =============================== */
+    .filter-ba h3 {
+        font-size: 16px !important;
+        margin-bottom: 4px;
+    }
+
+    .filter-ba label {
+        font-size: 13px !important;
+    }
+
+    .filter-ba div[data-baseweb="select"] {
+        font-size: 13px !important;
+        min-height: 32px !important;
+    }
+
+    .filter-ba span {
+        font-size: 12px !important;
+        padding: 2px 6px !important;
+    }
+
+    /* ===============================
+    RADIO PILIH BAGIAN - DIBESARKAN
+    =============================== */
+    div[role="radiogroup"] label {
+        font-size: 18px !important;
+        font-weight: 600;
+    }
+
+    div[role="radiogroup"] {
+        margin-top: 10px;
+    }
+
+    </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown('<div class="filter-ba">', unsafe_allow_html=True)
+
     st.markdown("### 🔎 Filter Kode BA")
 
     if 'Kode BA' in df.columns:
+
+        df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
+
         ba_codes = sorted(df['Kode BA'].dropna().unique())
         ba_options = ["SEMUA BA"] + ba_codes
 
@@ -1412,6 +1454,7 @@ def page_dashboard():
     else:
         st.warning("Kolom Kode BA tidak tersedia.")
 
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # ---------- persistent main tab ----------
     main_tab = st.radio(
@@ -1421,7 +1464,7 @@ def page_dashboard():
         horizontal=True
     )
     st.session_state["main_tab"] = main_tab
-
+    
     # -------------------------
     # HIGHLIGHTS
     # -------------------------
