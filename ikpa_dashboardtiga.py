@@ -2093,6 +2093,27 @@ def page_dashboard():
                 df_full = pd.concat(all_data, ignore_index=True)
 
                 # ===============================
+                #  HAPUS BA YANG TIDAK ADA DI HIGHLIGHTS (PERIODE TERBARU)
+                # ===============================
+                latest_period = max(
+                    st.session_state.data_storage.keys(),
+                    key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0], 0))
+                )
+
+                df_latest = st.session_state.data_storage[latest_period].copy()
+
+                # Normalisasi Kode BA
+                df_latest["Kode BA"] = df_latest["Kode BA"].apply(normalize_kode_ba)
+                df_full["Kode BA"] = df_full["Kode BA"].apply(normalize_kode_ba)
+
+                # Ambil BA yang valid (yang muncul di highlights)
+                valid_ba = df_latest["Kode BA"].dropna().unique()
+
+                #  FILTER FINAL
+                df_full = df_full[df_full["Kode BA"].isin(valid_ba)]
+
+
+                # ===============================
                 # 2. FILTER KODE BA KHUSUS COMPARE
                 # ===============================
                 if "filter_ba_compare" not in st.session_state:
