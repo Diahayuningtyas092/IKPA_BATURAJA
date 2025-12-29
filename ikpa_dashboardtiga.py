@@ -61,6 +61,7 @@ if "ikpa_dipa_merged" not in st.session_state:
 if 'activity_log' not in st.session_state:
     st.session_state.activity_log = [] 
 
+
 # -------------------------
 # standardize_dipa
 # -------------------------
@@ -1189,11 +1190,9 @@ def apply_reference_short_names(df):
         return df_merged
 
     except Exception as e:
-        # Minimal error notification and fallback
-        st.error(f"❌ Gagal menerapkan nama singkat untuk periode {df.get('Bulan', [''])[0]} {df.get('Tahun', [''])[0]}: {e}")
-        if 'Uraian Satker-RINGKAS' not in df.columns:
-            df['Uraian Satker-RINGKAS'] = df.get('Uraian Satker', '')
-        df['Uraian Satker Final'] = df.get('Uraian Satker', '')
+        # Silent fallback (tanpa warning)
+        df['Uraian Satker-RINGKAS'] = df.get('Uraian Satker', '')
+        df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
         return df
 
 # ===============================================
