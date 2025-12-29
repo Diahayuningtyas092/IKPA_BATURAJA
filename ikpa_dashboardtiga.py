@@ -2099,18 +2099,28 @@ def page_dashboard():
                     st.session_state["filter_ba_compare"] = ["SEMUA BA"]
 
                 if "Kode BA" in df_full.columns:
+
+                    df_full["Kode BA"] = df_full["Kode BA"].apply(normalize_kode_ba)
+
                     ba_list = sorted(df_full["Kode BA"].dropna().unique())
                     ba_options = ["SEMUA BA"] + ba_list
+
+                    def format_ba_compare(code):
+                        if code == "SEMUA BA":
+                            return "SEMUA BA"
+                        return f"{code} – {BA_MAP.get(code, 'Nama BA tidak ditemukan')}"
 
                     selected_ba_compare = st.multiselect(
                         "Pilih Kode BA (Perbandingan)",
                         options=ba_options,
+                        format_func=format_ba_compare,
                         default=st.session_state["filter_ba_compare"],
                         key="filter_ba_compare"
                     )
 
                     if "SEMUA BA" not in selected_ba_compare:
                         df_full = df_full[df_full["Kode BA"].isin(selected_ba_compare)]
+
 
                 # ===============================
                 # 3. VALIDASI TAHUN (SETELAH FILTER BA COMPARE)
