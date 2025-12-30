@@ -1219,7 +1219,7 @@ def create_satker_column(df):
     df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
     return df
 
-# BAGIAN 4 CHART DASHBOARD UTAMA
+# BAGIAN 6 CHART DASHBOARD UTAMA
 def safe_chart(
     df_part,
     jenis,
@@ -1254,13 +1254,29 @@ def safe_chart(
     # ===============================
     # SORT DATA
     # ===============================
-    df_sorted = (
+    # Ambil 10 TERBAIK dulu (SELALU)
+    df_top = (
         df_part
-        .sort_values(nilai_col, ascending=not top)
+        .sort_values(nilai_col, ascending=False)
         .head(10)
-        .sort_values(nilai_col, ascending=True)
-        .copy()
     )
+
+    if top:
+        df_sorted = (
+            df_top
+            .sort_values(nilai_col, ascending=True)
+            .copy()
+        )
+    else:
+        # EXCLUDE satker terbaik
+        df_sisa = df_part[~df_part["Satker"].isin(df_top["Satker"])]
+
+        df_sorted = (
+            df_sisa
+            .sort_values(nilai_col, ascending=True)
+            .head(10)
+            .copy()
+        )
 
     # ===============================
     # 🔐 PROTEKSI PLOTLY (INI YANG HILANG)
