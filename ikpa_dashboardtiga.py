@@ -1828,23 +1828,6 @@ def page_dashboard():
     # DATA DETAIL SATKER
     # -------------------------
     else:
-        st.markdown("""
-        <style>
-        [data-testid="stDataEditor"] {
-            font-size: 11px;
-        }
-        [data-testid="stDataEditor"] th {
-            font-size: 11px;
-            padding: 4px 6px;
-        }
-        [data-testid="stDataEditor"] td {
-            padding: 3px 6px;
-            white-space: nowrap;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-
         st.subheader("📋 Tabel Detail Satker")
         
         # ===============================
@@ -2064,40 +2047,20 @@ def page_dashboard():
                 # =========================================================
                 # 7. DISPLAY 
                 # =========================================================
-                # Nama bulan pendek (HANYA UNTUK TAMPILAN)
-                SHORT_MONTH = {
-                    "JANUARI":"Jan","FEBRUARI":"Feb","MARET":"Mar","APRIL":"Apr",
-                    "MEI":"Mei","JUNI":"Jun","JULI":"Jul","AGUSTUS":"Agu",
-                    "SEPTEMBER":"Sep","OKTOBER":"Okt","NOVEMBER":"Nov","DESEMBER":"Des"
-                }
-
-                # Kolom dasar
-                base_cols = ['Peringkat', 'Kode Satker', 'Uraian Satker-RINGKAS']
-
-                # Kolom periode ASLI (RAW – untuk logika & urutan)
-                period_cols_raw = ordered_periods.copy()
-
-                # Bangun dataframe tampilan (MASIH RAW)
-                df_display = df_wide[base_cols + period_cols_raw].copy()
+                display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + ordered_periods
+                df_display = df_wide[display_cols].copy()
 
                 if period_type == 'monthly':
-                    # Kolom periode untuk TAMPILAN
-                    period_cols_display = [SHORT_MONTH.get(m, m) for m in period_cols_raw]
-
-                    # Rename HANYA untuk tampilan
-                    df_display.rename(
-                        columns=dict(zip(period_cols_raw, period_cols_display)),
-                        inplace=True
-                    )
+                    df_display.rename(columns={m: m.capitalize() for m in ordered_periods}, inplace=True)
+                    display_period_cols = [m.capitalize() for m in ordered_periods]
                 else:
-                    # Triwulan: tidak diubah
-                    period_cols_display = period_cols_raw
+                    display_period_cols = ordered_periods
 
-                # Isi NaN dengan strip (PAKAI KOLOM DISPLAY)
-                df_display[period_cols_display] = df_display[period_cols_display].fillna("–")
+                df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
+
 
                 # =============================
-                # SEARCH (PERIODIK)
+                # SEARCH & STYLING 
                 # =============================
                 search_query = st.text_input(
                     "🔎 Cari (Periodik) – ketik untuk filter di semua kolom",
@@ -2115,24 +2078,52 @@ def page_dashboard():
                 else:
                     df_display_filtered = df_display.copy()
 
-                # =============================
-                # FORMAT ANGKA (WAJIB UNTUK data_editor)
-                # =============================
-                df_display_filtered[period_cols_display] = (
-                    df_display_filtered[period_cols_display]
-                    .apply(pd.to_numeric, errors='coerce')
-                    .round(1)
-                )
+                # Trend coloring
+                def color_trend(row):
+                    styles = []
 
-                # =============================
-                # TAMPILKAN TABEL (RAMPING & KECIL)
-                # =============================
-                st.data_editor(
-                    df_display_filtered,
-                    use_container_width=True,
-                    height=420,
-                    disabled=True
-                )
+                    # ambil hanya nilai numerik (buang "–", NaN, dll)
+                    vals = []
+                    for c in display_period_cols:
+                        try:
+                            v = float(row[c])
+                            if not pd.isna(v):
+                                vals.append(v)
+                        except (ValueError, TypeError):
+                            continue
+
+                    # default: tidak ada warna
+                    color = ''
+
+                    if len(vals) >= 2:
+                        if vals[-1] > vals[-2]:
+                            color = 'background-color: #c6efce'  # hijau
+                        elif vals[-1] < vals[-2]:
+                            color = 'background-color: #f8d7da'  # merah
+
+                    for c in row.index:
+                        if display_period_cols and c == display_period_cols[-1]:
+                            styles.append(color)
+                        else:
+                            styles.append('')
+
+                    return styles
+
+                def highlight_top(s):
+                    if s.name == 'Peringkat':
+                        return [
+                            'background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else ''
+                            for v in s
+                        ]
+                    return ['' for _ in s]
+
+                styler = df_display_filtered.style.format(precision=2, na_rep='–')
+                if display_period_cols:
+                    styler = styler.apply(color_trend, axis=1)
+                styler = styler.apply(highlight_top)
+
+                st.dataframe(styler, use_container_width=True, height=600)
+
 
             # ===============================
             # COMPARE
@@ -2168,7 +2159,7 @@ def page_dashboard():
                 df_full = pd.concat(all_data, ignore_index=True)
 
                 # ===============================
-                #  HAPUS BA YANG TIDAK ADA DI HIGHLIGHTS
+                #  HAPUS BA YANG TIDAK ADA DI HIGHLIGHTS (PERIODE TERBARU)
                 # ===============================
                 latest_period = max(
                     st.session_state.data_storage.keys(),
@@ -2219,7 +2210,7 @@ def page_dashboard():
 
 
                 # ===============================
-                # 3. VALIDASI TAHUN 
+                # 3. VALIDASI TAHUN (SETELAH FILTER BA COMPARE)
                 # ===============================
                 available_years = sorted(
                     [int(y) for y in df_full["Tahun"].dropna().unique()]
@@ -2337,8 +2328,8 @@ def page_dashboard():
                         valA = valA[0] if len(valA) else None
                         valB = valB[0] if len(valB) else None
 
-                        row[f"{tw} {year_a%100}"] = valA
-                        row[f"{tw} {year_b%100}"] = valB
+                        row[f"{tw} {year_a}"] = valA
+                        row[f"{tw} {year_b}"] = valB
 
                         if valA is not None:
                             latest_a = valA
@@ -2350,7 +2341,7 @@ def page_dashboard():
                     if not has_data:
                         continue
 
-                    row[f"Δ {year_b%100}-{year_a%100}"] = (
+                    row[f"Δ Total ({year_b}-{year_a})"] = (
                         latest_b - latest_a
                         if latest_a is not None and latest_b is not None
                         else None
@@ -2469,7 +2460,7 @@ def page_dashboard():
                 return ['' for _ in s]
 
             st.dataframe(
-                df_display_filtered.style.apply(highlight_top).format(precision=1),
+                df_display_filtered.style.apply(highlight_top).format(precision=2),
                 use_container_width=True,
                 height=600
             )
