@@ -1252,9 +1252,22 @@ def safe_chart(
         return
 
     # ===============================
+    # NORMALISASI SATKER (WAJIB)
+    # ===============================
+    df_part = df_part.copy()
+
+    df_part["_SATKER_KEY"] = (
+        df_part["Satker"]
+        .astype(str)
+        .str.upper()
+        .str.strip()
+        .str.replace(r"\s+", " ", regex=True)
+    )
+
+    # ===============================
     # SORT DATA
     # ===============================
-    # Ambil 10 TERBAIK dulu (SELALU)
+    # Ambil 10 TERBAIK dulu
     df_top = (
         df_part
         .sort_values(nilai_col, ascending=False)
@@ -1268,8 +1281,10 @@ def safe_chart(
             .copy()
         )
     else:
-        # EXCLUDE satker terbaik
-        df_sisa = df_part[~df_part["Satker"].isin(df_top["Satker"])]
+        # ❌ EXCLUDE pakai SATKER_KEY
+        df_sisa = df_part[
+            ~df_part["_SATKER_KEY"].isin(df_top["_SATKER_KEY"])
+        ]
 
         df_sorted = (
             df_sisa
@@ -1277,6 +1292,7 @@ def safe_chart(
             .head(10)
             .copy()
         )
+
 
     # ===============================
     # 🔐 PROTEKSI PLOTLY (INI YANG HILANG)
