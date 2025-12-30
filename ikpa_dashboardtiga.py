@@ -1828,6 +1828,33 @@ def page_dashboard():
     # DATA DETAIL SATKER
     # -------------------------
     else:
+        st.markdown("""
+        <style>
+        /* =========================
+        GLOBAL DATAFRAME COMPACT
+        ========================= */
+        [data-testid="stDataFrame"] {
+            font-size: 11px;
+        }
+
+        [data-testid="stDataFrame"] thead tr th {
+            font-size: 11px;
+            padding: 4px 6px;
+            white-space: nowrap;
+        }
+
+        [data-testid="stDataFrame"] tbody tr td {
+            padding: 3px 6px;
+            white-space: nowrap;
+        }
+
+        /* Hilangkan wrap panjang */
+        [data-testid="stDataFrame"] div {
+            overflow-x: auto;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
         st.subheader("📋 Tabel Detail Satker")
         
         # ===============================
@@ -2047,17 +2074,30 @@ def page_dashboard():
                 # =========================================================
                 # 7. DISPLAY 
                 # =========================================================
-                display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + ordered_periods
+                # Nama bulan pendek
+                SHORT_MONTH = {
+                    "JANUARI":"Jan","FEBRUARI":"Feb","MARET":"Mar","APRIL":"Apr",
+                    "MEI":"Mei","JUNI":"Jun","JULI":"Jul","AGUSTUS":"Agu",
+                    "SEPTEMBER":"Sep","OKTOBER":"Okt","DESEMBER":"Des"
+                }
+
+                # Kolom yang ditampilkan (kode tetap ada di data, tapi tidak dipaksa tampil)
+                display_cols = ['Peringkat', 'Kode Satker', 'Uraian Satker-RINGKAS'] + ordered_periods
                 df_display = df_wide[display_cols].copy()
 
                 if period_type == 'monthly':
-                    df_display.rename(columns={m: m.capitalize() for m in ordered_periods}, inplace=True)
-                    display_period_cols = [m.capitalize() for m in ordered_periods]
+                    # Rename bulan → Jan, Feb, Mar, dst
+                    df_display.rename(
+                        columns={m: SHORT_MONTH.get(m, m) for m in ordered_periods},
+                        inplace=True
+                    )
+                    display_period_cols = [SHORT_MONTH.get(m, m) for m in ordered_periods]
                 else:
+                    # Triwulan tetap
                     display_period_cols = ordered_periods
 
+                # Isi NaN dengan strip
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
-
 
                 # =============================
                 # SEARCH & STYLING 
@@ -2117,12 +2157,13 @@ def page_dashboard():
                         ]
                     return ['' for _ in s]
 
-                styler = df_display_filtered.style.format(precision=2, na_rep='–')
+                styler = df_display_filtered.style.format(precision=1, na_rep='–')
+
                 if display_period_cols:
                     styler = styler.apply(color_trend, axis=1)
                 styler = styler.apply(highlight_top)
-
-                st.dataframe(styler, use_container_width=True, height=600)
+                
+                st.dataframe(styler, use_container_width=True, height=420)
 
 
             # ===============================
@@ -2159,7 +2200,7 @@ def page_dashboard():
                 df_full = pd.concat(all_data, ignore_index=True)
 
                 # ===============================
-                #  HAPUS BA YANG TIDAK ADA DI HIGHLIGHTS (PERIODE TERBARU)
+                #  HAPUS BA YANG TIDAK ADA DI HIGHLIGHTS
                 # ===============================
                 latest_period = max(
                     st.session_state.data_storage.keys(),
@@ -2210,7 +2251,7 @@ def page_dashboard():
 
 
                 # ===============================
-                # 3. VALIDASI TAHUN (SETELAH FILTER BA COMPARE)
+                # 3. VALIDASI TAHUN 
                 # ===============================
                 available_years = sorted(
                     [int(y) for y in df_full["Tahun"].dropna().unique()]
@@ -2328,8 +2369,8 @@ def page_dashboard():
                         valA = valA[0] if len(valA) else None
                         valB = valB[0] if len(valB) else None
 
-                        row[f"{tw} {year_a}"] = valA
-                        row[f"{tw} {year_b}"] = valB
+                        row[f"{tw} {year_a%100}"] = valA
+                        row[f"{tw} {year_b%100}"] = valB
 
                         if valA is not None:
                             latest_a = valA
@@ -2341,7 +2382,7 @@ def page_dashboard():
                     if not has_data:
                         continue
 
-                    row[f"Δ Total ({year_b}-{year_a})"] = (
+                    row[f"Δ {year_b%100}-{year_a%100}"] = (
                         latest_b - latest_a
                         if latest_a is not None and latest_b is not None
                         else None
@@ -2460,7 +2501,7 @@ def page_dashboard():
                 return ['' for _ in s]
 
             st.dataframe(
-                df_display_filtered.style.apply(highlight_top).format(precision=2),
+                df_display_filtered.style.apply(highlight_top).format(precision=1),
                 use_container_width=True,
                 height=600
             )
