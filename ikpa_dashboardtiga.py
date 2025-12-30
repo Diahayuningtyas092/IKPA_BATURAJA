@@ -1955,6 +1955,9 @@ def page_dashboard():
                 # ===============================
                 # 4. NORMALISASI BULAN
                 # ===============================
+                # ===============================
+                # 4. NORMALISASI BULAN (FINAL)
+                # ===============================
                 MONTH_FIX = {
                     "JAN": "JANUARI", "JANUARI": "JANUARI",
                     "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
@@ -1974,17 +1977,23 @@ def page_dashboard():
                     .astype(str)
                     .str.upper()
                     .str.strip()
-                    .map(lambda x: MONTH_FIX.get(x, x))
+                    .map(lambda x: MONTH_FIX.get(x, None))
                 )
 
+                # 🚨 INI KUNCI: BUANG BULAN TIDAK VALID
+                df_year = df_year[df_year['Bulan_upper'].isin(MONTH_ORDER.keys())]
+
+
+                # ===============================
+                # 5. PERIOD COLUMN
+                # ===============================
                 # ===============================
                 # 5. PERIOD COLUMN
                 # ===============================
                 if period_type == 'monthly':
                     df_year['Period_Column'] = df_year['Bulan_upper']
                     df_year['Period_Order'] = df_year['Bulan_upper'].map(MONTH_ORDER)
-
-                else:  # quarterly
+                else:
                     df_year = df_year[df_year['Bulan_upper'].isin(
                         ['MARET', 'JUNI', 'SEPTEMBER', 'DESEMBER']
                     )]
@@ -2000,6 +2009,7 @@ def page_dashboard():
                     quarter_order = {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
+
 
                 # ===============================
                 # 6. PIVOT
@@ -2018,32 +2028,6 @@ def page_dashboard():
                     )
                     .reset_index()
                 )
-
-                # =========================================================
-                # 5. Urutkan kolom periode
-                # =========================================================
-                if period_type == 'monthly':
-
-                    # 1️⃣ Bulan yang BENAR-BENAR ada datanya (UNTUK RANKING)
-                    ordered_periods = sorted(
-                        [
-                            c for c in df_wide.columns
-                            if c in MONTH_ORDER and df_wide[c].notna().any()
-                        ],
-                        key=lambda x: MONTH_ORDER[x]
-                    )
-
-                    # 2️⃣ PASTIKAN SEMUA BULAN ADA SEBAGAI KOLOM
-                    for m in MONTH_ORDER:
-                        if m not in df_wide.columns:
-                            df_wide[m] = pd.NA
-
-                    # 3️⃣ Bulan yang DITAMPILKAN (SELALU Jan–Des)
-                    display_months = list(MONTH_ORDER.keys())
-
-                else:
-                    ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
-                    display_months = ordered_periods
 
 
                 # =========================================================
