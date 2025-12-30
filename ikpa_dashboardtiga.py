@@ -2024,7 +2024,7 @@ def page_dashboard():
                 # =========================================================
                 if period_type == 'monthly':
 
-                    # 1️⃣ Bulan yang BENAR-BENAR ada datanya (untuk ranking)
+                    # 1️⃣ Bulan yang BENAR-BENAR ada datanya (UNTUK RANKING)
                     ordered_periods = sorted(
                         [
                             c for c in df_wide.columns
@@ -2033,12 +2033,12 @@ def page_dashboard():
                         key=lambda x: MONTH_ORDER[x]
                     )
 
-                    # 2️⃣ Pastikan SEMUA bulan ada sebagai kolom (meski kosong)
+                    # 2️⃣ PASTIKAN SEMUA BULAN ADA SEBAGAI KOLOM
                     for m in MONTH_ORDER:
                         if m not in df_wide.columns:
                             df_wide[m] = pd.NA
 
-                    # 3️⃣ Bulan yang DITAMPILKAN (selalu lengkap Jan–Des)
+                    # 3️⃣ Bulan yang DITAMPILKAN (SELALU Jan–Des)
                     display_months = list(MONTH_ORDER.keys())
 
                 else:
@@ -2047,7 +2047,7 @@ def page_dashboard():
 
 
                 # =========================================================
-                # 6. RANKING (PAKAI ordered_periods SAJA)
+                # 6. RANKING (HANYA PAKAI ordered_periods)
                 # =========================================================
                 if ordered_periods:
                     last = ordered_periods[-1]
@@ -2086,6 +2086,7 @@ def page_dashboard():
                     display_period_cols = display_months
 
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
+
 
 
                 # =============================
