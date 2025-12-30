@@ -2064,7 +2064,7 @@ def page_dashboard():
                 # =========================================================
                 # 7. DISPLAY 
                 # =========================================================
-                display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + display_periods
+                display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + ordered_periods
                 df_display = df_wide[display_cols].copy()
 
                 if period_type == 'monthly':
