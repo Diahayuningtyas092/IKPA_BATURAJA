@@ -2001,7 +2001,7 @@ def page_dashboard():
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
 
-                 # ===============================
+                # ===============================
                 # 6. PIVOT
                 # ===============================
                 df_pivot = df_year[
@@ -2023,15 +2023,31 @@ def page_dashboard():
                 # 5. Urutkan kolom periode
                 # =========================================================
                 if period_type == 'monthly':
+
+                    # 1️⃣ Bulan yang BENAR-BENAR ada datanya (untuk ranking)
                     ordered_periods = sorted(
-                        [c for c in df_wide.columns if c in MONTH_ORDER],
+                        [
+                            c for c in df_wide.columns
+                            if c in MONTH_ORDER and df_wide[c].notna().any()
+                        ],
                         key=lambda x: MONTH_ORDER[x]
                     )
+
+                    # 2️⃣ Pastikan SEMUA bulan ada sebagai kolom (meski kosong)
+                    for m in MONTH_ORDER:
+                        if m not in df_wide.columns:
+                            df_wide[m] = pd.NA
+
+                    # 3️⃣ Bulan yang DITAMPILKAN (selalu lengkap Jan–Des)
+                    display_months = list(MONTH_ORDER.keys())
+
                 else:
                     ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
+                    display_months = ordered_periods
+
 
                 # =========================================================
-                # 6. Ranking 
+                # 6. RANKING (PAKAI ordered_periods SAJA)
                 # =========================================================
                 if ordered_periods:
                     last = ordered_periods[-1]
@@ -2041,22 +2057,36 @@ def page_dashboard():
                         .rank(ascending=False, method='dense')
                         .astype('Int64')
                     )
+                else:
+                    df_wide['Peringkat'] = pd.NA
 
                 df_wide = df_wide.sort_values('Peringkat')
 
+
                 # =========================================================
-                # 7. DISPLAY 
+                # 7. DISPLAY (PAKAI display_months)
                 # =========================================================
-                display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + ordered_periods
+                display_cols = [
+                    'Peringkat',
+                    'Kode BA',
+                    'Kode Satker',
+                    'Uraian Satker-RINGKAS'
+                ] + display_months
+
                 df_display = df_wide[display_cols].copy()
 
+                # Rename bulan untuk tampilan
                 if period_type == 'monthly':
-                    df_display.rename(columns={m: m.capitalize() for m in ordered_periods}, inplace=True)
-                    display_period_cols = [m.capitalize() for m in ordered_periods]
+                    df_display.rename(
+                        columns={m: m.capitalize() for m in display_months},
+                        inplace=True
+                    )
+                    display_period_cols = [m.capitalize() for m in display_months]
                 else:
-                    display_period_cols = ordered_periods
+                    display_period_cols = display_months
 
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
+
 
                 # =============================
                 # SEARCH & STYLING 
