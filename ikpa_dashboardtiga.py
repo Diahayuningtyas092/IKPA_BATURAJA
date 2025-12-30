@@ -2019,6 +2019,15 @@ def page_dashboard():
                     .reset_index()
                 )
 
+                # ===============================
+                # 🔎 DEBUG BULAN (SEMENTARA)
+                # ===============================
+                st.write("Bulan tersedia (setelah normalisasi):",
+                        sorted(df_year['Bulan_upper'].dropna().unique()))
+
+                st.write("Kolom pivot (sebelum display):",
+                        df_wide.columns.tolist())
+
                 # =========================================================
                 # 5. Urutkan kolom periode
                 # =========================================================
