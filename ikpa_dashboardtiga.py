@@ -2000,8 +2000,6 @@ def page_dashboard():
                     quarter_order = {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
-                    
-                st.warning("DEBUG: TEST")
 
                 # ===============================
                 # 6. PIVOT
@@ -2021,25 +2019,31 @@ def page_dashboard():
                     .reset_index()
                 )
 
-                # ===============================
-                # 🔎 DEBUG BULAN (SEMENTARA)
-                # ===============================
-                st.write("Bulan tersedia (setelah normalisasi):",
-                        sorted(df_year['Bulan_upper'].dropna().unique()))
-
-                st.write("Kolom pivot (sebelum display):",
-                        df_wide.columns.tolist())
-
                 # =========================================================
                 # 5. Urutkan kolom periode
                 # =========================================================
                 if period_type == 'monthly':
-                    ordered_periods = sorted(
-                        [c for c in df_wide.columns if c in MONTH_ORDER],
-                        key=lambda x: MONTH_ORDER[x]
+                    # ambil bulan dari DATA, bukan dari pivot
+                    ordered_periods = (
+                        df_year['Bulan_upper']
+                        .dropna()
+                        .unique()
+                        .tolist()
                     )
+
+                    # filter hanya bulan valid
+                    ordered_periods = [m for m in ordered_periods if m in MONTH_ORDER]
+
+                    # urutkan sesuai MONTH_ORDER
+                    ordered_periods = sorted(ordered_periods, key=lambda x: MONTH_ORDER[x])
+
+                    # pastikan kolom ada di df_wide (kalau tidak → buat kolom kosong)
+                    for m in ordered_periods:
+                        if m not in df_wide.columns:
+                            df_wide[m] = np.nan
                 else:
                     ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
+
 
                 # =========================================================
                 # 6. Ranking 
