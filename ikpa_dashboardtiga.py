@@ -1830,30 +1830,20 @@ def page_dashboard():
     else:
         st.markdown("""
         <style>
-        /* =========================
-        GLOBAL DATAFRAME COMPACT
-        ========================= */
-        [data-testid="stDataFrame"] {
+        [data-testid="stDataEditor"] {
             font-size: 11px;
         }
-
-        [data-testid="stDataFrame"] thead tr th {
+        [data-testid="stDataEditor"] th {
             font-size: 11px;
             padding: 4px 6px;
-            white-space: nowrap;
         }
-
-        [data-testid="stDataFrame"] tbody tr td {
+        [data-testid="stDataEditor"] td {
             padding: 3px 6px;
             white-space: nowrap;
         }
-
-        /* Hilangkan wrap panjang */
-        [data-testid="stDataFrame"] div {
-            overflow-x: auto;
-        }
         </style>
         """, unsafe_allow_html=True)
+
 
         st.subheader("📋 Tabel Detail Satker")
         
@@ -2106,9 +2096,8 @@ def page_dashboard():
                 # Isi NaN dengan strip (PAKAI KOLOM DISPLAY)
                 df_display[period_cols_display] = df_display[period_cols_display].fillna("–")
 
-
                 # =============================
-                # SEARCH & STYLING 
+                # SEARCH (PERIODIK)
                 # =============================
                 search_query = st.text_input(
                     "🔎 Cari (Periodik) – ketik untuk filter di semua kolom",
@@ -2126,54 +2115,24 @@ def page_dashboard():
                 else:
                     df_display_filtered = df_display.copy()
 
-                # Trend coloring
-                def color_trend(row):
-                    styles = []
+                # =============================
+                # FORMAT ANGKA (WAJIB UNTUK data_editor)
+                # =============================
+                df_display_filtered[period_cols_display] = (
+                    df_display_filtered[period_cols_display]
+                    .apply(pd.to_numeric, errors='coerce')
+                    .round(1)
+                )
 
-                    # ambil hanya nilai numerik (buang "–", NaN, dll)
-                    vals = []
-                    for c_raw, c_disp in zip(period_cols_raw, period_cols_display):
-                        try:
-                            v = float(row[c_disp])   # ambil dari kolom tampilan
-                            if not pd.isna(v):
-                                vals.append(v)
-                        except (ValueError, TypeError):
-                            continue
-
-
-                    # default: tidak ada warna
-                    color = ''
-
-                    if len(vals) >= 2:
-                        if vals[-1] > vals[-2]:
-                            color = 'background-color: #c6efce'  # hijau
-                        elif vals[-1] < vals[-2]:
-                            color = 'background-color: #f8d7da'  # merah
-
-                    for c in row.index:
-                        if display_period_cols and c == display_period_cols[-1]:
-                            styles.append(color)
-                        else:
-                            styles.append('')
-
-                    return styles
-
-                def highlight_top(s):
-                    if s.name == 'Peringkat':
-                        return [
-                            'background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else ''
-                            for v in s
-                        ]
-                    return ['' for _ in s]
-
-                styler = df_display_filtered.style.format(precision=1, na_rep='–')
-
-                if display_period_cols:
-                    styler = styler.apply(color_trend, axis=1)
-                styler = styler.apply(highlight_top)
-                
-                st.dataframe(styler, use_container_width=True, height=420)
-
+                # =============================
+                # TAMPILKAN TABEL (RAMPING & KECIL)
+                # =============================
+                st.data_editor(
+                    df_display_filtered,
+                    use_container_width=True,
+                    height=420,
+                    disabled=True
+                )
 
             # ===============================
             # COMPARE
