@@ -2023,12 +2023,27 @@ def page_dashboard():
                 # 5. Urutkan kolom periode
                 # =========================================================
                 if period_type == 'monthly':
+                    # bulan yang benar-benar ada datanya
+                    existing_months = [
+                        c for c in df_wide.columns
+                        if c in MONTH_ORDER and df_wide[c].notna().any()
+                    ]
+
                     ordered_periods = sorted(
-                        [c for c in df_wide.columns if c in MONTH_ORDER],
+                        existing_months,
                         key=lambda x: MONTH_ORDER[x]
                     )
+
+                    # (opsional) tambahkan bulan kosong ke kanan untuk tampilan
+                    for m in MONTH_ORDER:
+                        if m not in df_wide.columns:
+                            df_wide[m] = pd.NA
+
+                    display_months = list(MONTH_ORDER.keys())
+
                 else:
                     ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
+                    display_months = ordered_periods
 
 
                 # =========================================================
@@ -2048,7 +2063,7 @@ def page_dashboard():
                 # =========================================================
                 # 7. DISPLAY 
                 # =========================================================
-                display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + ordered_periods
+                display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + display_months
                 df_display = df_wide[display_cols].copy()
 
                 if period_type == 'monthly':
