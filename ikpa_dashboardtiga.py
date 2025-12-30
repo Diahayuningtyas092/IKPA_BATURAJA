@@ -2024,22 +2024,27 @@ def page_dashboard():
                 # 5. Urutkan kolom periode
                 # =========================================================
                 # =========================================================
-                # 5. URUTKAN KOLOM PERIODE (AMAN & KONSISTEN)
+                # 5. Urutkan kolom periode (FINAL & AMAN)
                 # =========================================================
                 if period_type == 'monthly':
 
-                    # pastikan semua bulan ada sebagai kolom
-                    for m in MONTH_ORDER.keys():
+                    # ambil hanya bulan yang benar-benar ADA DATA
+                    ordered_periods = sorted(
+                        [c for c in df_wide.columns if c in MONTH_ORDER and df_wide[c].notna().any()],
+                        key=lambda x: MONTH_ORDER[x]
+                    )
+
+                    # untuk tampilan: tampilkan semua bulan Jan–Des
+                    display_periods = list(MONTH_ORDER.keys())
+
+                    # pastikan semua kolom bulan ada (walau kosong)
+                    for m in display_periods:
                         if m not in df_wide.columns:
                             df_wide[m] = pd.NA
 
-                    # urutan logika & tampilan SAMA
-                    ordered_periods = list(MONTH_ORDER.keys())
-                    display_months = ordered_periods.copy()
-
                 else:
                     ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
-                    display_months = ordered_periods.copy()
+                    display_periods = ordered_periods
 
 
                 # =========================================================
@@ -2059,15 +2064,8 @@ def page_dashboard():
                 # =========================================================
                 # 7. DISPLAY 
                 # =========================================================
-                display_cols = [
-                    'Peringkat',
-                    'Kode BA',
-                    'Kode Satker',
-                    'Uraian Satker-RINGKAS'
-                ] + display_months
-
+                display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + display_periods
                 df_display = df_wide[display_cols].copy()
-
 
                 if period_type == 'monthly':
                     df_display.rename(columns={m: m.capitalize() for m in ordered_periods}, inplace=True)
