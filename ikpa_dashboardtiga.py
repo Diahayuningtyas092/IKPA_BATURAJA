@@ -2023,29 +2023,13 @@ def page_dashboard():
                 # =========================================================
                 # 5. Urutkan kolom periode
                 # =========================================================
-                # =========================================================
-                # 5. Urutkan kolom periode (FINAL & AMAN)
-                # =========================================================
                 if period_type == 'monthly':
-
-                    # ambil hanya bulan yang benar-benar ADA DATA
                     ordered_periods = sorted(
-                        [c for c in df_wide.columns if c in MONTH_ORDER and df_wide[c].notna().any()],
+                        [c for c in df_wide.columns if c in MONTH_ORDER],
                         key=lambda x: MONTH_ORDER[x]
                     )
-
-                    # untuk tampilan: tampilkan semua bulan Jan–Des
-                    display_periods = list(MONTH_ORDER.keys())
-
-                    # pastikan semua kolom bulan ada (walau kosong)
-                    for m in display_periods:
-                        if m not in df_wide.columns:
-                            df_wide[m] = pd.NA
-
                 else:
                     ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
-                    display_periods = ordered_periods
-
 
                 # =========================================================
                 # 6. Ranking 
@@ -2074,6 +2058,8 @@ def page_dashboard():
                     display_period_cols = ordered_periods
 
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
+
+                st.dataframe(df_display, use_container_width=True)
 
 
                 # =============================
