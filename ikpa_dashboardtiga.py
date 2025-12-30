@@ -2001,7 +2001,7 @@ def page_dashboard():
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
 
-                # ===============================
+                 # ===============================
                 # 6. PIVOT
                 # ===============================
                 df_pivot = df_year[
@@ -2018,7 +2018,6 @@ def page_dashboard():
                     )
                     .reset_index()
                 )
-
 
                 # =========================================================
                 # 5. Urutkan kolom periode
@@ -2058,9 +2057,6 @@ def page_dashboard():
                     display_period_cols = ordered_periods
 
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
-
-                st.dataframe(df_display, use_container_width=True)
-
 
                 # =============================
                 # SEARCH & STYLING 
