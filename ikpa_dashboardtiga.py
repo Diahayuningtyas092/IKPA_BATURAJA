@@ -2074,30 +2074,38 @@ def page_dashboard():
                 # =========================================================
                 # 7. DISPLAY 
                 # =========================================================
-                # Nama bulan pendek
+                # Nama bulan pendek (HANYA UNTUK TAMPILAN)
                 SHORT_MONTH = {
                     "JANUARI":"Jan","FEBRUARI":"Feb","MARET":"Mar","APRIL":"Apr",
                     "MEI":"Mei","JUNI":"Jun","JULI":"Jul","AGUSTUS":"Agu",
-                    "SEPTEMBER":"Sep","OKTOBER":"Okt","DESEMBER":"Des"
+                    "SEPTEMBER":"Sep","OKTOBER":"Okt","NOVEMBER":"Nov","DESEMBER":"Des"
                 }
 
-                # Kolom yang ditampilkan (kode tetap ada di data, tapi tidak dipaksa tampil)
-                display_cols = ['Peringkat', 'Kode Satker', 'Uraian Satker-RINGKAS'] + ordered_periods
-                df_display = df_wide[display_cols].copy()
+                # Kolom dasar
+                base_cols = ['Peringkat', 'Kode Satker', 'Uraian Satker-RINGKAS']
+
+                # Kolom periode ASLI (RAW – untuk logika & urutan)
+                period_cols_raw = ordered_periods.copy()
+
+                # Bangun dataframe tampilan (MASIH RAW)
+                df_display = df_wide[base_cols + period_cols_raw].copy()
 
                 if period_type == 'monthly':
-                    # Rename bulan → Jan, Feb, Mar, dst
+                    # Kolom periode untuk TAMPILAN
+                    period_cols_display = [SHORT_MONTH.get(m, m) for m in period_cols_raw]
+
+                    # Rename HANYA untuk tampilan
                     df_display.rename(
-                        columns={m: SHORT_MONTH.get(m, m) for m in ordered_periods},
+                        columns=dict(zip(period_cols_raw, period_cols_display)),
                         inplace=True
                     )
-                    display_period_cols = [SHORT_MONTH.get(m, m) for m in ordered_periods]
                 else:
-                    # Triwulan tetap
-                    display_period_cols = ordered_periods
+                    # Triwulan: tidak diubah
+                    period_cols_display = period_cols_raw
 
-                # Isi NaN dengan strip
-                df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
+                # Isi NaN dengan strip (PAKAI KOLOM DISPLAY)
+                df_display[period_cols_display] = df_display[period_cols_display].fillna("–")
+
 
                 # =============================
                 # SEARCH & STYLING 
@@ -2124,13 +2132,14 @@ def page_dashboard():
 
                     # ambil hanya nilai numerik (buang "–", NaN, dll)
                     vals = []
-                    for c in display_period_cols:
+                    for c_raw, c_disp in zip(period_cols_raw, period_cols_display):
                         try:
-                            v = float(row[c])
+                            v = float(row[c_disp])   # ambil dari kolom tampilan
                             if not pd.isna(v):
                                 vals.append(v)
                         except (ValueError, TypeError):
                             continue
+
 
                     # default: tidak ada warna
                     color = ''
