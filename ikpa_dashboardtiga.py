@@ -2023,12 +2023,15 @@ def page_dashboard():
                 # 5. Urutkan kolom periode
                 # =========================================================
                 if period_type == 'monthly':
-                    ordered_periods = sorted(
-                        [c for c in df_wide.columns if c in MONTH_ORDER],
-                        key=lambda x: MONTH_ORDER[x]
-                    )
+                    # pastikan semua bulan ada
+                    for m in MONTH_ORDER:
+                        if m not in df_wide.columns:
+                            df_wide[m] = pd.NA
+
+                    ordered_periods = list(MONTH_ORDER.keys())
                 else:
                     ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
+
 
                 # =========================================================
                 # 6. Ranking 
