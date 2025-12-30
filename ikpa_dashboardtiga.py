@@ -2082,7 +2082,6 @@ def page_dashboard():
                 def color_trend(row):
                     styles = []
 
-                    # ambil hanya nilai numerik (buang "–", NaN, dll)
                     vals = []
                     for c in display_period_cols:
                         try:
@@ -2092,14 +2091,13 @@ def page_dashboard():
                         except (ValueError, TypeError):
                             continue
 
-                    # default: tidak ada warna
                     color = ''
 
                     if len(vals) >= 2:
                         if vals[-1] > vals[-2]:
-                            color = 'background-color: #c6efce'  # hijau
+                            color = 'background-color: #c6efce; color: black'
                         elif vals[-1] < vals[-2]:
-                            color = 'background-color: #f8d7da'  # merah
+                            color = 'background-color: #f8d7da; color: black'
 
                     for c in row.index:
                         if display_period_cols and c == display_period_cols[-1]:
@@ -2109,13 +2107,16 @@ def page_dashboard():
 
                     return styles
 
+
                 def highlight_top(s):
                     if s.name == 'Peringkat':
                         return [
-                            'background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else ''
+                            'background-color: gold; color: black'
+                            if (pd.to_numeric(v, errors='coerce') <= 3) else ''
                             for v in s
                         ]
                     return ['' for _ in s]
+
 
                 styler = df_display_filtered.style.format(precision=2, na_rep='–')
                 if display_period_cols:
