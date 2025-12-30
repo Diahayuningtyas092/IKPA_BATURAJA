@@ -2029,9 +2029,35 @@ def page_dashboard():
                     .reset_index()
                 )
 
+                # =========================================================
+                # 5. URUTKAN KOLOM PERIODE (FIX TOTAL)
+                # =========================================================
+                if period_type == 'monthly':
+
+                    # 1️⃣ Bulan yang BENAR-BENAR ada datanya (untuk ranking)
+                    ordered_periods = sorted(
+                        [
+                            c for c in df_wide.columns
+                            if c in MONTH_ORDER and df_wide[c].notna().any()
+                        ],
+                        key=lambda x: MONTH_ORDER[x]
+                    )
+
+                    # 2️⃣ Paksa semua bulan Jan–Des ada sebagai kolom
+                    for m in MONTH_ORDER:
+                        if m not in df_wide.columns:
+                            df_wide[m] = pd.NA
+
+                    # 3️⃣ Bulan yang DITAMPILKAN (selalu Jan–Des)
+                    display_months = list(MONTH_ORDER.keys())
+
+                else:
+                    ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
+                    display_months = ordered_periods
+
 
                 # =========================================================
-                # 6. RANKING (HANYA PAKAI ordered_periods)
+                # 6. RANKING (AMAN, TIDAK BISA NameError)
                 # =========================================================
                 if ordered_periods:
                     last = ordered_periods[-1]
@@ -2048,7 +2074,7 @@ def page_dashboard():
 
 
                 # =========================================================
-                # 7. DISPLAY (PAKAI display_months)
+                # 7. DISPLAY (PASTI RAPI)
                 # =========================================================
                 display_cols = [
                     'Peringkat',
