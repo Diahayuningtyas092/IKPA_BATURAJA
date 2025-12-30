@@ -2000,6 +2000,8 @@ def page_dashboard():
                     quarter_order = {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
+                    
+                st.warning("DEBUG: TEST")
 
                 # ===============================
                 # 6. PIVOT
