@@ -2019,9 +2019,6 @@ def page_dashboard():
                     .reset_index()
                 )
 
-                st.write("Kolom pivot:", df_wide.columns.tolist())
-                st.write("Bulan dengan data:",
-                        [c for c in df_wide.columns if c in MONTH_ORDER and df_wide[c].notna().any()])
 
                 # =========================================================
                 # 5. Urutkan kolom periode
@@ -2041,7 +2038,7 @@ def page_dashboard():
                     ordered_periods = [
                         c for c in ['Tw I','Tw II','Tw III','Tw IV']
                         if c in df_wide.columns
-    ]
+                    ]
 
 
                 # =========================================================
