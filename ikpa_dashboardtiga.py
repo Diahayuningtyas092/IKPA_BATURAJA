@@ -1336,6 +1336,39 @@ def safe_chart(
 
     st.plotly_chart(fig, use_container_width=True)
     
+def hitung_jumlah_satker(df_part, top=True, limit=10):
+    if df_part is None or df_part.empty:
+        return 0
+
+    kandidat_ikpa = [
+        "Nilai Akhir (Nilai Total/Konversi Bobot)",
+        "Nilai Total/Konversi Bobot",
+        "Nilai Total"
+    ]
+
+    nilai_col = next((c for c in kandidat_ikpa if c in df_part.columns), None)
+    if nilai_col is None:
+        return 0
+
+    df = df_part.copy()
+
+    # Normalisasi SATKER (HARUS SAMA DENGAN safe_chart)
+    df["_SATKER_KEY"] = (
+        df["Satker"]
+        .astype(str)
+        .str.upper()
+        .str.strip()
+        .str.replace(r"\s+", " ", regex=True)
+    )
+
+    # Ambil TOP dulu
+    df_top = df.sort_values(nilai_col, ascending=False).head(limit)
+
+    if top:
+        return len(df_top)
+    else:
+        df_sisa = df[~df["_SATKER_KEY"].isin(df_top["_SATKER_KEY"])]
+        return min(limit, len(df_sisa))
 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
@@ -1677,31 +1710,32 @@ def page_dashboard():
         c1, c2, c3 = st.columns(3)
 
         with c1:
+            jumlah = hitung_jumlah_satker(df_kecil, top=True)
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terbaik</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Kecil Terbaik</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_kecil, "KECIL", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
         with c2:
+            jumlah = hitung_jumlah_satker(df_sedang, top=True)
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terbaik</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Sedang Terbaik</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
         with c3:
+            jumlah = hitung_jumlah_satker(df_besar, top=True)
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terbaik</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Besar Terbaik</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_besar, "BESAR", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
-        # ⬇️ JARAK ANTAR BARIS (rapat tapi aman)
-        st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
 
         # =========================
         # BARIS 2 – TERENDAH
@@ -1709,34 +1743,35 @@ def page_dashboard():
         c4, c5, c6 = st.columns(3)
 
         with c4:
+            jumlah = hitung_jumlah_satker(df_kecil, top=False)
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terendah</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Kecil Terendah</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_kecil, "KECIL", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
         with c5:
+            jumlah = hitung_jumlah_satker(df_sedang, top=False)
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terendah</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Sedang Terendah</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_sedang, "SEDANG", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
         with c6:
+            jumlah = hitung_jumlah_satker(df_besar, top=False)
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terendah</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Besar Terendah</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_besar, "BESAR", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
-
   
         # Satker dengan masalah (Deviasi Hal 3 DIPA)
         st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
-
         # -----------------------------
         # Slider
         # -----------------------------
