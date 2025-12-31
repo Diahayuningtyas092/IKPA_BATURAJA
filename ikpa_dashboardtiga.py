@@ -896,14 +896,19 @@ def load_data_from_github():
 
     st.success(f"✅ {loaded_count} file IKPA Satker dimuat dari GitHub.")
 
-@st.cache_data
+
+from github import Github, Auth
+import base64
+import io
+
+@st.cache_data(show_spinner=False)
 def load_data_ikpa_kppn_from_github():
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
     if not token or not repo_name:
-        st.error("❌ GitHub token / repo tidak ditemukan.")
-        return
+        st.error("❌ GitHub token atau repo belum diset di secrets.")
+        return {}
 
     g = Github(auth=Auth.Token(token))
     repo = g.get_repo(repo_name)
@@ -912,27 +917,31 @@ def load_data_ikpa_kppn_from_github():
         contents = repo.get_contents("data_kppn")
     except Exception:
         st.warning("📁 Folder 'data_kppn' tidak ditemukan di GitHub.")
-        return
+        return {}
 
-    st.session_state.data_storage_kppn = {}
+    data_kppn = {}
 
     for file in contents:
-        if not file.name.endswith(".xlsx"):
+        if not file.name.lower().endswith(".xlsx"):
             continue
 
-        decoded = base64.b64decode(file.content)
-        df = pd.read_excel(io.BytesIO(decoded))
+        try:
+            decoded = base64.b64decode(file.content)
+            df = pd.read_excel(io.BytesIO(decoded))
+        except Exception as e:
+            st.warning(f"⚠️ Gagal membaca {file.name}: {e}")
+            continue
 
         if "Bulan" not in df.columns or "Tahun" not in df.columns:
+            st.warning(f"⚠️ File {file.name} tidak memiliki kolom Bulan/Tahun.")
             continue
 
-        bulan = str(df["Bulan"].iloc[0]).upper()
-        tahun = str(df["Tahun"].iloc[0])
+        bulan = str(df["Bulan"].iloc[0]).upper().strip()
+        tahun = str(df["Tahun"].iloc[0]).strip()
 
-        df["Source"] = "GitHub"
-        st.session_state.data_storage_kppn[(bulan, tahun)] = df
+        data_kppn[(bulan, tahun)] = df
 
-    st.success("✅ Data IKPA KPPN dimuat dari GitHub.")
+    return data_kppn
 
 # ============================
 #  BACA TEMPLATE FILE
