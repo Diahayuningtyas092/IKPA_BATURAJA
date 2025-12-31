@@ -766,6 +766,7 @@ def save_file_to_github(content_bytes, filename, folder):
 # ============================
 #  LOAD DATA IKPA DARI GITHUB
 # ============================
+@st.cache_data
 def load_data_from_github():
     """
     Load IKPA Satker dari GitHub (/data).
@@ -1345,6 +1346,30 @@ def page_dashboard():
     }
     </style>
     """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <style>
+    /* =========================================
+    DARK MODE – FIX STREAMLIT DATAFRAME
+    Cell highlight → teks hitam
+    ========================================= */
+
+    @media (prefers-color-scheme: dark) {
+
+        /* TARGET UTAMA: cell dataframe streamlit */
+        div[data-testid="stDataFrame"] div[style*="background"] {
+            color: #000000 !important;
+            font-weight: 600;
+        }
+
+        /* Jaga header tetap putih */
+        div[data-testid="stDataFrame"] [role="columnheader"] {
+            color: white !important;
+        }
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 
     # protect against missing data_storage
     if not st.session_state.get('data_storage'):
@@ -1761,30 +1786,7 @@ def page_dashboard():
     # -------------------------
     else:
         st.subheader("📋 Tabel Detail Satker")
-        st.markdown("""
-        <style>
-        /* =========================================
-        DARK MODE – FIX STREAMLIT DATAFRAME
-        Cell highlight → teks hitam
-        ========================================= */
 
-        @media (prefers-color-scheme: dark) {
-
-            /* TARGET UTAMA: cell dataframe streamlit */
-            div[data-testid="stDataFrame"] div[style*="background"] {
-                color: #000000 !important;
-                font-weight: 600;
-            }
-
-            /* Jaga header tetap putih */
-            div[data-testid="stDataFrame"] [role="columnheader"] {
-                color: white !important;
-            }
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        
         # ===============================
         # 🔎 AMBIL FILTER KODE BA (DARI DASHBOARD UTAMA)
         # ===============================
