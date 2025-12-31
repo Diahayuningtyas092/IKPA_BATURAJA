@@ -2654,6 +2654,23 @@ def menu_ews_satker():
     col1, col2 = st.columns(2)
 
     with col1:
+    # ===============================
+    # JUDUL INDIKATOR
+    # ===============================
+        st.markdown(
+            """
+            <div style="margin-bottom:6px;">
+                <span style="font-size:16px; font-weight:600;">
+                    ⚠️ Pengelolaan UP dan TUP
+                </span><br>
+                <span style="font-size:13px; color:#666;">
+                    Pengelolaan UP dan TUP Belum Optimal (&lt; 100)
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
         fig_up = create_problem_chart(
             df_latest,
             'Pengelolaan UP dan TUP',
@@ -2662,14 +2679,30 @@ def menu_ews_satker():
             'less',
             y_min=y_min_int,
             y_max=y_max_int,
-            show_yaxis=True  # Left chart shows Y-axis
+            show_yaxis=True
         )
+
         if fig_up:
             st.plotly_chart(fig_up, use_container_width=True)
         else:
             st.success("✅ Semua satker sudah optimal untuk Pengelolaan UP dan TUP")
 
+
     with col2:
+        st.markdown(
+            """
+            <div style="margin-bottom:6px;">
+                <span style="font-size:16px; font-weight:600;">
+                    ⚠️ Capaian Output
+                </span><br>
+                <span style="font-size:13px; color:#666;">
+                    Capaian Output Belum Optimal (&lt; 100)
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
         fig_output = create_problem_chart(
             df_latest,
             'Capaian Output',
@@ -2678,12 +2711,14 @@ def menu_ews_satker():
             'less',
             y_min=y_min_int,
             y_max=y_max_int,
-            show_yaxis=False  # Right chart hides Y-axis
+            show_yaxis=False
         )
+
         if fig_output:
             st.plotly_chart(fig_output, use_container_width=True)
         else:
             st.success("✅ Semua satker sudah optimal untuk Capaian Output")
+
     
     warnings = []
     
