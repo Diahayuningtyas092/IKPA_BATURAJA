@@ -1303,7 +1303,43 @@ def safe_chart(
     )
 
     st.plotly_chart(fig, use_container_width=True)
-    
+
+def get_top_bottom_unique(
+    df,
+    value_col,
+    n=10,
+    kode_col="Kode Satker"
+):
+    """
+    Ambil Top N dan Bottom N TANPA satker ganda
+    """
+    # Top N
+    top_df = (
+        df.sort_values(value_col, ascending=False)
+          .head(n)
+          .copy()
+    )
+
+    # Kode satker yang sudah tampil di Top
+    used_kode = set(top_df[kode_col].astype(str))
+
+    # Bottom N (buang yang sudah muncul di Top)
+    bottom_df = (
+        df[~df[kode_col].astype(str).isin(used_kode)]
+        .sort_values(value_col, ascending=True)
+        .head(n)
+        .copy()
+    )
+
+    return top_df, bottom_df
+
+
+def dynamic_title(ukuran, kategori, df):
+    """
+    Judul otomatis sesuai jumlah data
+    """
+    jumlah = len(df)
+    return f"{jumlah} Satker {ukuran} {kategori}"    
 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
@@ -1635,9 +1671,18 @@ def page_dashboard():
             y_max = st.slider("Nilai Maksimum (Y-Axis)", 51, 110, 110, 1, key="high_ymax")
 
         # ===============================
-        # CHART 6 MUAT DALAM 1 TAMPILAN
+        # CHART 6 DALAM 1 TAMPILAN
         # ===============================
         st.markdown("### 📊 Satker Terbaik & Terendah Berdasarkan Nilai IKPA")
+
+        nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+
+        # =========================
+        # PREPARE DATA (UNIK)
+        # =========================
+        top_kecil, bottom_kecil = get_top_bottom_unique(df_kecil, nilai_col)
+        top_sedang, bottom_sedang = get_top_bottom_unique(df_sedang, nilai_col)
+        top_besar, bottom_besar = get_top_bottom_unique(df_besar, nilai_col)
 
         # =========================
         # BARIS 1 – TERBAIK
@@ -1646,29 +1691,41 @@ def page_dashboard():
 
         with c1:
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terbaik</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                f"{dynamic_title('Kecil','Terbaik', top_kecil)}</b></div>",
                 unsafe_allow_html=True
             )
-            safe_chart(df_kecil, "KECIL", top=True, color="Greens",
-                    y_min=y_min, y_max=y_max)
+            safe_chart(
+                top_kecil, "KECIL",
+                top=True, color="Greens",
+                y_min=y_min, y_max=y_max
+            )
 
         with c2:
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terbaik</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                f"{dynamic_title('Sedang','Terbaik', top_sedang)}</b></div>",
                 unsafe_allow_html=True
             )
-            safe_chart(df_sedang, "SEDANG", top=True, color="Greens",
-                    y_min=y_min, y_max=y_max)
+            safe_chart(
+                top_sedang, "SEDANG",
+                top=True, color="Greens",
+                y_min=y_min, y_max=y_max
+            )
 
         with c3:
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terbaik</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                f"{dynamic_title('Besar','Terbaik', top_besar)}</b></div>",
                 unsafe_allow_html=True
             )
-            safe_chart(df_besar, "BESAR", top=True, color="Greens",
-                    y_min=y_min, y_max=y_max)
+            safe_chart(
+                top_besar, "BESAR",
+                top=True, color="Greens",
+                y_min=y_min, y_max=y_max
+            )
 
-        # ⬇️ JARAK ANTAR BARIS (rapat tapi aman)
+        # ⬇️ JARAK ANTAR BARIS
         st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
 
         # =========================
@@ -1678,30 +1735,41 @@ def page_dashboard():
 
         with c4:
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terendah</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                f"{dynamic_title('Kecil','Terendah', bottom_kecil)}</b></div>",
                 unsafe_allow_html=True
             )
-            safe_chart(df_kecil, "KECIL", top=False, color="Reds",
-                    y_min=y_min, y_max=y_max)
+            safe_chart(
+                bottom_kecil, "KECIL",
+                top=False, color="Reds",
+                y_min=y_min, y_max=y_max
+            )
 
         with c5:
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terendah</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                f"{dynamic_title('Sedang','Terendah', bottom_sedang)}</b></div>",
                 unsafe_allow_html=True
             )
-            safe_chart(df_sedang, "SEDANG", top=False, color="Reds",
-                    y_min=y_min, y_max=y_max)
+            safe_chart(
+                bottom_sedang, "SEDANG",
+                top=False, color="Reds",
+                y_min=y_min, y_max=y_max
+            )
 
         with c6:
             st.markdown(
-                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terendah</b></div>",
+                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                f"{dynamic_title('Besar','Terendah', bottom_besar)}</b></div>",
                 unsafe_allow_html=True
             )
-            safe_chart(df_besar, "BESAR", top=False, color="Reds",
-                    y_min=y_min, y_max=y_max)
+            safe_chart(
+                bottom_besar, "BESAR",
+                top=False, color="Reds",
+                y_min=y_min, y_max=y_max
+            )
 
 
-  
         # Satker dengan masalah (Deviasi Hal 3 DIPA)
         st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
 
