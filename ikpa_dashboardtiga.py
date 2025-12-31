@@ -911,14 +911,6 @@ def load_data_ikpa_kppn_from_github():
     g = Github(auth=Auth.Token(token))
     repo = g.get_repo(repo_name)
 
-    # DEBUG ROOT
-    try:
-        root = repo.get_contents("")
-        st.write("DEBUG ROOT:", [c.path for c in root])
-    except Exception as e:
-        st.error(f"Gagal akses repo root: {e}")
-        return {}
-
     # GANTI PATH INI SESUAI HASIL DEBUG
     KPPN_PATH = "data_kppn"   # <- UBAH DI SINI
 
