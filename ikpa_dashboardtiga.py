@@ -1346,37 +1346,6 @@ def page_dashboard():
     }
     </style>
     """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    <style>
-    /* =====================================================
-    DARK MODE – STREAMLIT DATAFRAME (FINAL FIX)
-    1. Semua teks → PUTIH
-    2. Hanya cell highlight → HITAM
-    ===================================================== */
-
-    @media (prefers-color-scheme: dark) {
-
-        /* 1️⃣ BASELINE: semua teks dataframe PUTIH */
-        div[data-testid="stDataFrame"] * {
-            color: #ffffff !important;
-        }
-
-        /* 2️⃣ OVERRIDE: cell yang di-highlight */
-        div[data-testid="stDataFrame"] div[style*="background"] * {
-            color: #000000 !important;
-            font-weight: 600;
-        }
-
-        /* 3️⃣ Header kolom tetap putih */
-        div[data-testid="stDataFrame"] [role="columnheader"] * {
-            color: #ffffff !important;
-        }
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-
 
     # protect against missing data_storage
     if not st.session_state.get('data_storage'):
@@ -2048,12 +2017,10 @@ def page_dashboard():
                 else:
                     df_display_filtered = df_display.copy()
 
-                # Trend coloring
                 def color_trend(row):
                     styles = []
-
-                    # ambil hanya nilai numerik (buang "–", NaN, dll)
                     vals = []
+
                     for c in display_period_cols:
                         try:
                             v = float(row[c])
@@ -2062,14 +2029,13 @@ def page_dashboard():
                         except (ValueError, TypeError):
                             continue
 
-                    # default: tidak ada warna
                     color = ''
 
                     if len(vals) >= 2:
                         if vals[-1] > vals[-2]:
-                            color = 'background-color: #c6efce'  # hijau
+                            color = 'background-color: #c6efce; color: black; font-weight: 600'
                         elif vals[-1] < vals[-2]:
-                            color = 'background-color: #f8d7da'  # merah
+                            color = 'background-color: #f8d7da; color: black; font-weight: 600'
 
                     for c in row.index:
                         if display_period_cols and c == display_period_cols[-1]:
@@ -2079,19 +2045,23 @@ def page_dashboard():
 
                     return styles
 
+
                 def highlight_top(s):
                     if s.name == 'Peringkat':
                         return [
-                            'background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else ''
+                            'background-color: gold; color: black; font-weight: 600'
+                            if (pd.to_numeric(v, errors='coerce') <= 3) else ''
                             for v in s
                         ]
                     return ['' for _ in s]
+
 
                 styler = df_display_filtered.style.format(precision=2, na_rep='–')
                 if display_period_cols:
                     styler = styler.apply(color_trend, axis=1)
                 styler = styler.apply(highlight_top)
 
+                
                 st.dataframe(styler, use_container_width=True, height=600)
 
 
