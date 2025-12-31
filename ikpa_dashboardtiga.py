@@ -2747,6 +2747,22 @@ def menu_ews_satker():
         (df_all['Period_Sort'] <= end_period)
     ]
     
+    # ===============================
+    # DATA UNTUK ANALISIS TREN
+    # ===============================
+    if df_filtered.empty:
+        st.warning("⚠️ Tidak ada data pada rentang periode yang dipilih.")
+        st.stop()
+
+    df_trend = df_filtered.copy()
+    
+    trend_df = (
+        df_trend
+        .groupby(['Kode Satker', 'Period_Sort'])[selected_metric]
+        .mean()
+        .reset_index()
+    )
+
     with col3:
         # Pilihan metrik
         metric_options = {
