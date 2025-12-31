@@ -229,7 +229,6 @@ def normalize_kode_ba(x):
 # ===============================
 # LOAD DATA REFERENSI BA (GITHUB)
 # ===============================
-@st.cache_data
 def load_reference_ba():
     url = (
         "https://raw.githubusercontent.com/"
