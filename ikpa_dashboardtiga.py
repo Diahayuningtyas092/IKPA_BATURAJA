@@ -1763,29 +1763,24 @@ def page_dashboard():
         st.subheader("📋 Tabel Detail Satker")
         st.markdown("""
         <style>
+        /* =========================================
+        DARK MODE – FIX STREAMLIT DATAFRAME
+        Cell highlight → teks hitam
+        ========================================= */
 
-        /* =========================================================
-        DARK MODE ONLY
-        Ubah warna teks pada cell yang di-highlight
-        TANPA mengganggu cell lain
-        ========================================================= */
-
-        /* Deteksi dark mode Streamlit */
         @media (prefers-color-scheme: dark) {
 
-            /* Cell dataframe yang memiliki background highlight */
-            div[data-testid="stDataFrame"] td[style*="background-color"] {
-                color: #000000 !important;   /* teks HITAM */
+            /* TARGET UTAMA: cell dataframe streamlit */
+            div[data-testid="stDataFrame"] div[style*="background"] {
+                color: #000000 !important;
                 font-weight: 600;
             }
 
-            /* Header tetap aman */
-            div[data-testid="stDataFrame"] th {
+            /* Jaga header tetap putih */
+            div[data-testid="stDataFrame"] [role="columnheader"] {
                 color: white !important;
             }
-
         }
-
         </style>
         """, unsafe_allow_html=True)
 
