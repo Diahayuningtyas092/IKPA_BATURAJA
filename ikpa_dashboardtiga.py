@@ -901,47 +901,45 @@ from github import Github, Auth
 import base64
 import io
 
-@st.cache_data(show_spinner=False)
 def load_data_ikpa_kppn_from_github():
+    from github import Github, Auth
+    import base64, io
+
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
-
-    if not token or not repo_name:
-        st.error("❌ GitHub token atau repo belum diset di secrets.")
-        return {}
 
     g = Github(auth=Auth.Token(token))
     repo = g.get_repo(repo_name)
 
+    # DEBUG ROOT
     try:
-        contents = repo.get_contents("data_kppn")
-    except Exception:
-        st.warning("📁 Folder 'data_kppn' tidak ditemukan di GitHub.")
+        root = repo.get_contents("")
+        st.write("DEBUG ROOT:", [c.path for c in root])
+    except Exception as e:
+        st.error(f"Gagal akses repo root: {e}")
         return {}
 
-    data_kppn = {}
+    # GANTI PATH INI SESUAI HASIL DEBUG
+    KPPN_PATH = "data_kppn"   # <- UBAH DI SINI
 
-    for file in contents:
-        if not file.name.lower().endswith(".xlsx"):
-            continue
+    try:
+        contents = repo.get_contents(KPPN_PATH)
+    except Exception as e:
+        st.error(f"Folder '{KPPN_PATH}' tidak ditemukan di GitHub")
+        return {}
 
-        try:
-            decoded = base64.b64decode(file.content)
-            df = pd.read_excel(io.BytesIO(decoded))
-        except Exception as e:
-            st.warning(f"⚠️ Gagal membaca {file.name}: {e}")
-            continue
+    data = {}
+    for f in contents:
+        if f.name.endswith(".xlsx"):
+            df = pd.read_excel(io.BytesIO(base64.b64decode(f.content)))
+            if "Bulan" in df.columns and "Tahun" in df.columns:
+                key = (
+                    str(df["Bulan"].iloc[0]).upper(),
+                    str(df["Tahun"].iloc[0])
+                )
+                data[key] = df
 
-        if "Bulan" not in df.columns or "Tahun" not in df.columns:
-            st.warning(f"⚠️ File {file.name} tidak memiliki kolom Bulan/Tahun.")
-            continue
-
-        bulan = str(df["Bulan"].iloc[0]).upper().strip()
-        tahun = str(df["Tahun"].iloc[0]).strip()
-
-        data_kppn[(bulan, tahun)] = df
-
-    return data_kppn
+    return data
 
 # ============================
 #  BACA TEMPLATE FILE
@@ -4479,6 +4477,16 @@ def main():
     if not st.session_state.data_storage:
         with st.spinner("🔄 Memuat data IKPA..."):
             load_data_from_github()
+
+    # ===============================
+    # LOAD IKPA KPPN DARI GITHUB
+    # ===============================
+    if "data_storage_kppn" not in st.session_state:
+        st.session_state.data_storage_kppn = {}
+
+    if not st.session_state.data_storage_kppn:
+        data_kppn = load_data_ikpa_kppn_from_github()
+        st.session_state.data_storage_kppn = data_kppn
 
     # ============================================================
     # 3️⃣ AUTO LOAD DATA DIPA (HASIL PROCESSING STREAMLIT)
