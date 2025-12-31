@@ -2321,42 +2321,71 @@ def page_dashboard():
             st.subheader("📋 Detail Satker")
 
             # ===============================
-            # PILIH PERIODE (DETAIL SATKER)
+            # PASTIKAN DATA ADA
             # ===============================
-            if "selected_period" not in st.session_state:
-                st.session_state.selected_period = all_periods[0]
+            if not st.session_state.get("data_storage"):
+                st.warning("⚠️ Belum ada data yang diunggah. Silakan unggah data melalui halaman Admin.")
+                return
 
-            selected_period = st.selectbox(
-                "Pilih Periode",
-                options=all_periods,
-                format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-                index=all_periods.index(st.session_state.selected_period)
-                if st.session_state.selected_period in all_periods else 0,
-                key="select_period_detail_satker"
+            # ===============================
+            # SIAPKAN OPSI BULAN & TAHUN
+            # ===============================
+            available_periods = list(st.session_state.data_storage.keys())
+            available_years = sorted(
+                {int(y) for (_, y) in available_periods},
+                reverse=True
             )
 
-            st.session_state.selected_period = selected_period
+            # default tahun terbaru
+            selected_year = st.selectbox(
+                "Pilih Tahun",
+                options=available_years,
+                index=0,
+                key="detail_satker_year"
+            )
+
+            # bulan tersedia untuk tahun terpilih
+            months_for_year = [
+                m for (m, y) in available_periods if int(y) == selected_year
+            ]
+
+            if not months_for_year:
+                st.info(f"Tidak ada data untuk tahun {selected_year}.")
+                return
+
+            months_for_year = sorted(
+                months_for_year,
+                key=lambda m: MONTH_ORDER.get(m.upper(), 0)
+            )
+
+            selected_month = st.selectbox(
+                "Pilih Bulan",
+                options=months_for_year,
+                format_func=lambda x: x.capitalize(),
+                index=len(months_for_year) - 1,  # default bulan terakhir
+                key="detail_satker_month"
+            )
 
             # ===============================
-            # AMBIL DATA PERIODE AKTIF
+            # AMBIL DATA TERPILIH
             # ===============================
-            selected_period_key = st.session_state.selected_period
-            df = st.session_state.data_storage.get(selected_period_key, None)
+            selected_key = (selected_month, str(selected_year))
+            df = st.session_state.data_storage.get(selected_key, None)
 
             if df is None or df.empty:
-                st.info("Data untuk detail satker tidak tersedia untuk periode yang dipilih.")
+                st.info("Data untuk detail satker tidak tersedia.")
                 return
 
             df = df.copy()
 
             # ===============================
-            # NORMALISASI KODE BA (1x SAJA)
+            # NORMALISASI KODE BA
             # ===============================
             if 'Kode BA' in df.columns:
                 df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
 
             # ===============================
-            # APPLY FILTER BA (GLOBAL & AMAN)
+            # APPLY FILTER BA (GLOBAL)
             # ===============================
             df = apply_filter_ba(df)
 
@@ -2373,7 +2402,8 @@ def page_dashboard():
                     "Tampilan",
                     options=['aspek', 'komponen'],
                     format_func=lambda x: 'Berdasarkan Aspek' if x == 'aspek' else 'Berdasarkan Komponen',
-                    horizontal=True
+                    horizontal=True,
+                    key="detail_view_mode"
                 )
             with col2:
                 st.write("")
@@ -2417,7 +2447,6 @@ def page_dashboard():
                     component_cols +
                     ['Nilai Total', 'Dispensasi SPM (Pengurang)', 'Nilai Akhir (Nilai Total/Konversi Bobot)']
                 )
-
                 df_display = df_display[final_cols]
 
             # ===============================
@@ -2426,14 +2455,13 @@ def page_dashboard():
             search_query = st.text_input(
                 "🔎 Cari (ketik untuk filter di semua kolom)",
                 value="",
-                help="Cari teks pada semua kolom (case-insensitive).",
-                key='search_detail'
+                key="detail_satker_search"
             )
 
             if search_query:
-                q = str(search_query).strip().lower()
+                q = search_query.lower()
                 mask = df_display.apply(
-                    lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(),
+                    lambda r: r.astype(str).str.lower().str.contains(q, na=False).any(),
                     axis=1
                 )
                 df_display_filtered = df_display[mask].copy()
@@ -2447,7 +2475,7 @@ def page_dashboard():
                 if s.name == 'Peringkat':
                     return [
                         'background-color: gold; color: black; font-weight: 600'
-                        if (pd.to_numeric(v, errors='coerce') <= 3) else ''
+                        if pd.to_numeric(v, errors='coerce') <= 3 else ''
                         for v in s
                     ]
                 return ['' for _ in s]
