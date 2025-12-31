@@ -4485,8 +4485,17 @@ def main():
         st.session_state.data_storage_kppn = {}
 
     if not st.session_state.data_storage_kppn:
-        data_kppn = load_data_ikpa_kppn_from_github()
-        st.session_state.data_storage_kppn = data_kppn
+        st.session_state.data_storage_kppn = load_data_ikpa_kppn_from_github()
+
+    # ===============================
+    # NOTIF BERHASIL LOAD (SEKALI)
+    # ===============================
+    if st.session_state.data_storage_kppn and not st.session_state.get("_kppn_loaded_notif"):
+        st.success(
+            f"✅ IKPA KPPN berhasil dimuat dari GitHub "
+            f"({len(st.session_state.data_storage_kppn)} periode)"
+        )
+        st.session_state["_kppn_loaded_notif"] = True
 
     # ============================================================
     # 3️⃣ AUTO LOAD DATA DIPA (HASIL PROCESSING STREAMLIT)
