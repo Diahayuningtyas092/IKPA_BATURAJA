@@ -1762,6 +1762,34 @@ def page_dashboard():
     # -------------------------
     else:
         st.subheader("📋 Tabel Detail Satker")
+        st.markdown("""
+        <style>
+
+        /* =========================================================
+        DARK MODE ONLY
+        Ubah warna teks pada cell yang di-highlight
+        TANPA mengganggu cell lain
+        ========================================================= */
+
+        /* Deteksi dark mode Streamlit */
+        @media (prefers-color-scheme: dark) {
+
+            /* Cell dataframe yang memiliki background highlight */
+            div[data-testid="stDataFrame"] td[style*="background-color"] {
+                color: #000000 !important;   /* teks HITAM */
+                font-weight: 600;
+            }
+
+            /* Header tetap aman */
+            div[data-testid="stDataFrame"] th {
+                color: white !important;
+            }
+
+        }
+
+        </style>
+        """, unsafe_allow_html=True)
+
         
         # ===============================
         # 🔎 AMBIL FILTER KODE BA (DARI DASHBOARD UTAMA)
