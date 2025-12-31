@@ -1349,26 +1349,33 @@ def page_dashboard():
     
     st.markdown("""
     <style>
-    /* =========================================
-    DARK MODE – FIX STREAMLIT DATAFRAME
-    Cell highlight → teks hitam
-    ========================================= */
+    /* =====================================================
+    DARK MODE – STREAMLIT DATAFRAME (FINAL FIX)
+    1. Semua teks → PUTIH
+    2. Hanya cell highlight → HITAM
+    ===================================================== */
 
     @media (prefers-color-scheme: dark) {
 
-        /* TARGET UTAMA: cell dataframe streamlit */
-        div[data-testid="stDataFrame"] div[style*="background"] {
+        /* 1️⃣ BASELINE: semua teks dataframe PUTIH */
+        div[data-testid="stDataFrame"] * {
+            color: #ffffff !important;
+        }
+
+        /* 2️⃣ OVERRIDE: cell yang di-highlight */
+        div[data-testid="stDataFrame"] div[style*="background"] * {
             color: #000000 !important;
             font-weight: 600;
         }
 
-        /* Jaga header tetap putih */
-        div[data-testid="stDataFrame"] [role="columnheader"] {
-            color: white !important;
+        /* 3️⃣ Header kolom tetap putih */
+        div[data-testid="stDataFrame"] [role="columnheader"] * {
+            color: #ffffff !important;
         }
     }
     </style>
     """, unsafe_allow_html=True)
+
 
 
     # protect against missing data_storage
