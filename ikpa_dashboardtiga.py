@@ -2318,13 +2318,30 @@ def page_dashboard():
         # DETAIL SATKER (legacy table)
         # -------------------------
         else:
+            st.subheader("📋 Detail Satker")
+
+            # ===============================
+            # PILIH PERIODE (DETAIL SATKER)
+            # ===============================
+            if "selected_period" not in st.session_state:
+                st.session_state.selected_period = all_periods[0]
+
+            selected_period = st.selectbox(
+                "Pilih Periode",
+                options=all_periods,
+                format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+                index=all_periods.index(st.session_state.selected_period)
+                if st.session_state.selected_period in all_periods else 0,
+                key="select_period_detail_satker"
+            )
+
+            st.session_state.selected_period = selected_period
+
             # ===============================
             # AMBIL DATA PERIODE AKTIF
             # ===============================
-            df = st.session_state.data_storage.get(
-                st.session_state.get('selected_period', all_periods[0]),
-                None
-            )
+            selected_period_key = st.session_state.selected_period
+            df = st.session_state.data_storage.get(selected_period_key, None)
 
             if df is None or df.empty:
                 st.info("Data untuk detail satker tidak tersedia untuk periode yang dipilih.")
@@ -2347,7 +2364,9 @@ def page_dashboard():
                 st.info("Tidak ada data sesuai filter Kode BA.")
                 return
 
-
+            # ===============================
+            # MODE TAMPILAN
+            # ===============================
             col1, col2 = st.columns([2, 1])
             with col1:
                 view_mode = st.radio(
@@ -2360,47 +2379,87 @@ def page_dashboard():
                 st.write("")
 
             display_columns = ['Peringkat', 'Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS']
+
             if view_mode == 'aspek':
                 display_columns += [
                     'Kualitas Perencanaan Anggaran',
                     'Kualitas Pelaksanaan Anggaran',
                     'Kualitas Hasil Pelaksanaan Anggaran'
                 ]
-                df_display = df[display_columns + ['Nilai Total',
-                                                   'Dispensasi SPM (Pengurang)',
-                                                   'Nilai Akhir (Nilai Total/Konversi Bobot)']].copy()
+                df_display = df[
+                    display_columns + [
+                        'Nilai Total',
+                        'Dispensasi SPM (Pengurang)',
+                        'Nilai Akhir (Nilai Total/Konversi Bobot)'
+                    ]
+                ].copy()
+
             else:
                 component_cols = [
                     'Revisi DIPA', 'Deviasi Halaman III DIPA', 'Penyerapan Anggaran',
-                    'Belanja Kontraktual', 'Penyelesaian Tagihan', 
+                    'Belanja Kontraktual', 'Penyelesaian Tagihan',
                     'Pengelolaan UP dan TUP', 'Capaian Output'
                 ]
-                df_display = df[display_columns + ['Nilai Total',
-                                                   'Dispensasi SPM (Pengurang)',
-                                                   'Nilai Akhir (Nilai Total/Konversi Bobot)']].copy()
+
+                df_display = df[
+                    display_columns + [
+                        'Nilai Total',
+                        'Dispensasi SPM (Pengurang)',
+                        'Nilai Akhir (Nilai Total/Konversi Bobot)'
+                    ]
+                ].copy()
+
                 for col in component_cols:
                     df_display[col] = df.get(col, 0)
-                final_cols = display_columns + component_cols + ['Nilai Total',
-                                                                 'Dispensasi SPM (Pengurang)',
-                                                                 'Nilai Akhir (Nilai Total/Konversi Bobot)']
+
+                final_cols = (
+                    display_columns +
+                    component_cols +
+                    ['Nilai Total', 'Dispensasi SPM (Pengurang)', 'Nilai Akhir (Nilai Total/Konversi Bobot)']
+                )
+
                 df_display = df_display[final_cols]
 
-            # Search widget & styling
-            search_query = st.text_input("🔎 Cari (ketik untuk filter di semua kolom)", value="", help="Cari teks pada semua kolom (case-insensitive).", key='search_detail')
+            # ===============================
+            # SEARCH
+            # ===============================
+            search_query = st.text_input(
+                "🔎 Cari (ketik untuk filter di semua kolom)",
+                value="",
+                help="Cari teks pada semua kolom (case-insensitive).",
+                key='search_detail'
+            )
+
             if search_query:
                 q = str(search_query).strip().lower()
-                mask = df_display.apply(lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(), axis=1)
+                mask = df_display.apply(
+                    lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(),
+                    axis=1
+                )
                 df_display_filtered = df_display[mask].copy()
             else:
                 df_display_filtered = df_display.copy()
 
+            # ===============================
+            # HIGHLIGHT TOP 3
+            # ===============================
             def highlight_top(s):
                 if s.name == 'Peringkat':
-                    return ['background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else '' for v in s]
+                    return [
+                        'background-color: gold; color: black; font-weight: 600'
+                        if (pd.to_numeric(v, errors='coerce') <= 3) else ''
+                        for v in s
+                    ]
                 return ['' for _ in s]
 
+            # ===============================
+            # DISPLAY TABLE
+            # ===============================
             st.dataframe(
-                df_display_filtered.style.apply(highlight_top).format(precision=2),
+                df_display_filtered
+                .style
+                .apply(highlight_top)
+                .format(precision=2),
                 use_container_width=True,
                 height=600
             )
