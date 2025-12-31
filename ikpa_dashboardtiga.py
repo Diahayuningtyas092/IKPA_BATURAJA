@@ -1812,16 +1812,12 @@ def page_dashboard():
 
             # Radio button
             period_type = st.radio(
-            "Jenis Periode",
-            options=period_options,
-            format_func=lambda x: {
-                "quarterly": "Triwulan",
-                "monthly": "Bulanan",
-                "compare": "Perbandingan"
-            }.get(x, x),
-            horizontal=True,
-            index=period_index,
-            key="period_type_radio_v2"
+                "Jenis Periode",
+                options=period_options,
+                format_func=lambda x: {"quarterly": "Triwulan", "monthly": "Bulanan", "compare": "Perbandingan"}.get(x, x),
+                horizontal=True,
+                index=period_index,
+                key="period_type_radio_v2"
             )
             st.session_state.period_type = period_type
 
@@ -1845,17 +1841,14 @@ def page_dashboard():
             # -------------------------
             if period_type in ['monthly', 'quarterly']:
 
-                # ===============================
-                # 1. GABUNGKAN DATA PER TAHUN (TANPA FILTER BA)
-                # ===============================
+                # 1. Gabungkan data per tahun
                 dfs = []
-
                 for (mon, yr), df_period in st.session_state.data_storage.items():
                     try:
                         if int(yr) == int(selected_year):
                             temp = df_period.copy()
 
-                            # ambil kolom bulan
+                            # ambil kolom bulan apa pun namanya
                             if 'Bulan' in temp.columns:
                                 temp['Bulan_raw'] = temp['Bulan']
                             elif 'Nama Bulan' in temp.columns:
@@ -1864,8 +1857,7 @@ def page_dashboard():
                                 continue
 
                             dfs.append(temp)
-
-                    except Exception:
+                    except:
                         continue
 
                 if not dfs:
@@ -1873,7 +1865,7 @@ def page_dashboard():
                     st.stop()
 
                 df_year = pd.concat(dfs, ignore_index=True)
-
+                
                 # ===============================
                 # 2. NORMALISASI KODE BA
                 # ===============================
@@ -1885,9 +1877,9 @@ def page_dashboard():
                 # ===============================
                 df_year = apply_filter_ba(df_year)
 
-                # ===============================
-                # 4. NORMALISASI BULAN
-                # ===============================
+                # =========================================================
+                # 2. Normalisasi bulan (SUPER DEFENSIVE)
+                # =========================================================
                 MONTH_FIX = {
                     "JAN": "JANUARI", "JANUARI": "JANUARI",
                     "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
@@ -1910,18 +1902,14 @@ def page_dashboard():
                     .map(lambda x: MONTH_FIX.get(x, x))
                 )
 
-                # ===============================
-                # 5. PERIOD COLUMN
-                # ===============================
+                # =========================================================
+                # 3. Period Column & Order (INI KUNCI)
+                # =========================================================
                 if period_type == 'monthly':
                     df_year['Period_Column'] = df_year['Bulan_upper']
                     df_year['Period_Order'] = df_year['Bulan_upper'].map(MONTH_ORDER)
 
                 else:  # quarterly
-                    df_year = df_year[df_year['Bulan_upper'].isin(
-                        ['MARET', 'JUNI', 'SEPTEMBER', 'DESEMBER']
-                    )]
-
                     def to_quarter(m):
                         return {
                             'MARET': 'Tw I',
@@ -1934,23 +1922,41 @@ def page_dashboard():
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
 
-                # ===============================
-                # 6. PIVOT
-                # ===============================
+                # =========================================================
+                # 4. PIVOT LANGSUNG (FIXED)
+                # =========================================================
+
+                # --- pilih nama SATKER TERPENDEK per Kode Satker ---
+                name_map = (
+                    df_year
+                    .assign(name_len=df_year['Uraian Satker-RINGKAS'].astype(str).str.len())
+                    .sort_values('name_len')
+                    .groupby('Kode Satker')['Uraian Satker-RINGKAS']
+                    .first()
+                )
+
                 df_pivot = df_year[
-                    ['Kode BA','Kode Satker','Uraian Satker-RINGKAS','Period_Column', selected_indicator]
+                    [
+                        'Kode BA',
+                        'Kode Satker',
+                        'Period_Column',
+                        selected_indicator
+                    ]
                 ].copy()
 
                 df_wide = (
                     df_pivot
                     .pivot_table(
-                        index=['Kode BA','Kode Satker','Uraian Satker-RINGKAS'],
+                        index=['Kode BA','Kode Satker'],  # ❗ IDENTIFIER ONLY
                         columns='Period_Column',
                         values=selected_indicator,
                         aggfunc='last'
                     )
                     .reset_index()
                 )
+
+                # --- pasang kembali nama satker ---
+                df_wide['Uraian Satker-RINGKAS'] = df_wide['Kode Satker'].map(name_map)
 
                 # =========================================================
                 # 5. Urutkan kolom periode
