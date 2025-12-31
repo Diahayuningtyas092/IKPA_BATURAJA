@@ -3251,30 +3251,32 @@ def clean_dipa(df_raw):
 # ASSIGN JENIS SATKER
 # ======================================================================================
 def assign_jenis_satker(df):
-    """Klasifikasi satker berdasarkan Total Pagu"""
-    
+    """Klasifikasi satker berdasarkan Total Pagu (persentil)"""
+
     if df.empty or "Total Pagu" not in df.columns:
         df["Jenis Satker"] = "Satker Kecil"
         return df
-    
-    q70 = df["Total Pagu"].quantile(0.70)
+
+    # pastikan numerik
+    df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce")
+
     q40 = df["Total Pagu"].quantile(0.40)
-    
-    def classify(pagu):
-        if pagu >= q70: return "Satker Besar"
-        elif pagu >= q40: return "Satker Sedang"
-        else: return "Satker Kecil"
-    
-    df["Jenis Satker"] = df["Total Pagu"].apply(classify)
-    
-    # Reorder: Jenis Satker setelah Total Pagu
+    q70 = df["Total Pagu"].quantile(0.70)
+
+    df["Jenis Satker"] = pd.cut(
+        df["Total Pagu"],
+        bins=[-float("inf"), q40, q70, float("inf")],
+        labels=["Satker Kecil", "Satker Sedang", "Satker Besar"]
+    )
+
+    # rapikan posisi kolom
     cols = list(df.columns)
     if "Jenis Satker" in cols and "Total Pagu" in cols:
         cols.remove("Jenis Satker")
-        pagu_idx = cols.index("Total Pagu")
-        cols.insert(pagu_idx + 1, "Jenis Satker")
+        idx = cols.index("Total Pagu")
+        cols.insert(idx + 1, "Jenis Satker")
         df = df[cols]
-    
+
     return df
 
 
@@ -4323,6 +4325,7 @@ def page_admin():
                     return "Satker Kecil"
 
                 df["Jenis Satker"] = df["Total Pagu"].apply(klasifikasi)
+
 
             # Preview
             with st.expander("Preview Data"):
