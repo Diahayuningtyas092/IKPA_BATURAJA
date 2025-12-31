@@ -1219,7 +1219,7 @@ def create_satker_column(df):
     df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
     return df
 
-# BAGIAN 6 CHART DASHBOARD UTAMA
+# BAGIAN 4 CHART DASHBOARD UTAMA
 def safe_chart(
     df_part,
     jenis,
@@ -1252,47 +1252,15 @@ def safe_chart(
         return
 
     # ===============================
-    # NORMALISASI SATKER (WAJIB)
-    # ===============================
-    df_part = df_part.copy()
-
-    df_part["_SATKER_KEY"] = (
-        df_part["Satker"]
-        .astype(str)
-        .str.upper()
-        .str.strip()
-        .str.replace(r"\s+", " ", regex=True)
-    )
-
-    # ===============================
     # SORT DATA
     # ===============================
-    # Ambil 10 TERBAIK dulu
-    df_top = (
+    df_sorted = (
         df_part
-        .sort_values(nilai_col, ascending=False)
+        .sort_values(nilai_col, ascending=not top)
         .head(10)
+        .sort_values(nilai_col, ascending=True)
+        .copy()
     )
-
-    if top:
-        df_sorted = (
-            df_top
-            .sort_values(nilai_col, ascending=True)
-            .copy()
-        )
-    else:
-        # ❌ EXCLUDE pakai SATKER_KEY
-        df_sisa = df_part[
-            ~df_part["_SATKER_KEY"].isin(df_top["_SATKER_KEY"])
-        ]
-
-        df_sorted = (
-            df_sisa
-            .sort_values(nilai_col, ascending=True)
-            .head(10)
-            .copy()
-        )
-
 
     # ===============================
     # 🔐 PROTEKSI PLOTLY (INI YANG HILANG)
@@ -1336,39 +1304,6 @@ def safe_chart(
 
     st.plotly_chart(fig, use_container_width=True)
     
-def hitung_jumlah_satker(df_part, top=True, limit=10):
-    if df_part is None or df_part.empty:
-        return 0
-
-    kandidat_ikpa = [
-        "Nilai Akhir (Nilai Total/Konversi Bobot)",
-        "Nilai Total/Konversi Bobot",
-        "Nilai Total"
-    ]
-
-    nilai_col = next((c for c in kandidat_ikpa if c in df_part.columns), None)
-    if nilai_col is None:
-        return 0
-
-    df = df_part.copy()
-
-    # Normalisasi SATKER (HARUS SAMA DENGAN safe_chart)
-    df["_SATKER_KEY"] = (
-        df["Satker"]
-        .astype(str)
-        .str.upper()
-        .str.strip()
-        .str.replace(r"\s+", " ", regex=True)
-    )
-
-    # Ambil TOP dulu
-    df_top = df.sort_values(nilai_col, ascending=False).head(limit)
-
-    if top:
-        return len(df_top)
-    else:
-        df_sisa = df[~df["_SATKER_KEY"].isin(df_top["_SATKER_KEY"])]
-        return min(limit, len(df_sisa))
 
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
@@ -1710,32 +1645,31 @@ def page_dashboard():
         c1, c2, c3 = st.columns(3)
 
         with c1:
-            jumlah = hitung_jumlah_satker(df_kecil, top=True)
             st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Kecil Terbaik</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terbaik</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_kecil, "KECIL", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
         with c2:
-            jumlah = hitung_jumlah_satker(df_sedang, top=True)
             st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Sedang Terbaik</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terbaik</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_sedang, "SEDANG", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
         with c3:
-            jumlah = hitung_jumlah_satker(df_besar, top=True)
             st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Besar Terbaik</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terbaik</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_besar, "BESAR", top=True, color="Greens",
                     y_min=y_min, y_max=y_max)
 
+        # ⬇️ JARAK ANTAR BARIS (rapat tapi aman)
+        st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
 
         # =========================
         # BARIS 2 – TERENDAH
@@ -1743,35 +1677,34 @@ def page_dashboard():
         c4, c5, c6 = st.columns(3)
 
         with c4:
-            jumlah = hitung_jumlah_satker(df_kecil, top=False)
             st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Kecil Terendah</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Kecil Terendah</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_kecil, "KECIL", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
         with c5:
-            jumlah = hitung_jumlah_satker(df_sedang, top=False)
             st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Sedang Terendah</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Sedang Terendah</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_sedang, "SEDANG", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
         with c6:
-            jumlah = hitung_jumlah_satker(df_besar, top=False)
             st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>{jumlah} Satker Besar Terendah</b></div>",
+                "<div style='margin-top:2px; margin-bottom:6px'><b>10 Satker Besar Terendah</b></div>",
                 unsafe_allow_html=True
             )
             safe_chart(df_besar, "BESAR", top=False, color="Reds",
                     y_min=y_min, y_max=y_max)
 
+
   
         # Satker dengan masalah (Deviasi Hal 3 DIPA)
         st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
+
         # -----------------------------
         # Slider
         # -----------------------------
@@ -1955,9 +1888,6 @@ def page_dashboard():
                 # ===============================
                 # 4. NORMALISASI BULAN
                 # ===============================
-                # ===============================
-                # 4. NORMALISASI BULAN (FINAL)
-                # ===============================
                 MONTH_FIX = {
                     "JAN": "JANUARI", "JANUARI": "JANUARI",
                     "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
@@ -1977,23 +1907,17 @@ def page_dashboard():
                     .astype(str)
                     .str.upper()
                     .str.strip()
-                    .map(lambda x: MONTH_FIX.get(x, None))
+                    .map(lambda x: MONTH_FIX.get(x, x))
                 )
 
-                # 🚨 INI KUNCI: BUANG BULAN TIDAK VALID
-                df_year = df_year[df_year['Bulan_upper'].isin(MONTH_ORDER.keys())]
-
-
-                # ===============================
-                # 5. PERIOD COLUMN
-                # ===============================
                 # ===============================
                 # 5. PERIOD COLUMN
                 # ===============================
                 if period_type == 'monthly':
                     df_year['Period_Column'] = df_year['Bulan_upper']
                     df_year['Period_Order'] = df_year['Bulan_upper'].map(MONTH_ORDER)
-                else:
+
+                else:  # quarterly
                     df_year = df_year[df_year['Bulan_upper'].isin(
                         ['MARET', 'JUNI', 'SEPTEMBER', 'DESEMBER']
                     )]
@@ -2009,7 +1933,6 @@ def page_dashboard():
                     quarter_order = {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
                     df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
                     df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
-
 
                 # ===============================
                 # 6. PIVOT
@@ -2030,34 +1953,18 @@ def page_dashboard():
                 )
 
                 # =========================================================
-                # 5. URUTKAN KOLOM PERIODE (FIX TOTAL)
+                # 5. Urutkan kolom periode
                 # =========================================================
                 if period_type == 'monthly':
-
-                    # 1️⃣ Bulan yang BENAR-BENAR ada datanya (untuk ranking)
                     ordered_periods = sorted(
-                        [
-                            c for c in df_wide.columns
-                            if c in MONTH_ORDER and df_wide[c].notna().any()
-                        ],
+                        [c for c in df_wide.columns if c in MONTH_ORDER],
                         key=lambda x: MONTH_ORDER[x]
                     )
-
-                    # 2️⃣ Paksa semua bulan Jan–Des ada sebagai kolom
-                    for m in MONTH_ORDER:
-                        if m not in df_wide.columns:
-                            df_wide[m] = pd.NA
-
-                    # 3️⃣ Bulan yang DITAMPILKAN (selalu Jan–Des)
-                    display_months = list(MONTH_ORDER.keys())
-
                 else:
                     ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
-                    display_months = ordered_periods
-
 
                 # =========================================================
-                # 6. RANKING (AMAN, TIDAK BISA NameError)
+                # 6. Ranking 
                 # =========================================================
                 if ordered_periods:
                     last = ordered_periods[-1]
@@ -2067,36 +1974,22 @@ def page_dashboard():
                         .rank(ascending=False, method='dense')
                         .astype('Int64')
                     )
-                else:
-                    df_wide['Peringkat'] = pd.NA
 
                 df_wide = df_wide.sort_values('Peringkat')
 
-
                 # =========================================================
-                # 7. DISPLAY (PASTI RAPI)
+                # 7. DISPLAY 
                 # =========================================================
-                display_cols = [
-                    'Peringkat',
-                    'Kode BA',
-                    'Kode Satker',
-                    'Uraian Satker-RINGKAS'
-                ] + display_months
-
+                display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + ordered_periods
                 df_display = df_wide[display_cols].copy()
 
-                # Rename bulan untuk tampilan
                 if period_type == 'monthly':
-                    df_display.rename(
-                        columns={m: m.capitalize() for m in display_months},
-                        inplace=True
-                    )
-                    display_period_cols = [m.capitalize() for m in display_months]
+                    df_display.rename(columns={m: m.capitalize() for m in ordered_periods}, inplace=True)
+                    display_period_cols = [m.capitalize() for m in ordered_periods]
                 else:
-                    display_period_cols = display_months
+                    display_period_cols = ordered_periods
 
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
-
 
 
                 # =============================
@@ -2122,6 +2015,7 @@ def page_dashboard():
                 def color_trend(row):
                     styles = []
 
+                    # ambil hanya nilai numerik (buang "–", NaN, dll)
                     vals = []
                     for c in display_period_cols:
                         try:
@@ -2131,13 +2025,14 @@ def page_dashboard():
                         except (ValueError, TypeError):
                             continue
 
+                    # default: tidak ada warna
                     color = ''
 
                     if len(vals) >= 2:
                         if vals[-1] > vals[-2]:
-                            color = 'background-color: #c6efce; color: black'
+                            color = 'background-color: #c6efce'  # hijau
                         elif vals[-1] < vals[-2]:
-                            color = 'background-color: #f8d7da; color: black'
+                            color = 'background-color: #f8d7da'  # merah
 
                     for c in row.index:
                         if display_period_cols and c == display_period_cols[-1]:
@@ -2147,16 +2042,13 @@ def page_dashboard():
 
                     return styles
 
-
                 def highlight_top(s):
                     if s.name == 'Peringkat':
                         return [
-                            'background-color: gold; color: black'
-                            if (pd.to_numeric(v, errors='coerce') <= 3) else ''
+                            'background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else ''
                             for v in s
                         ]
                     return ['' for _ in s]
-
 
                 styler = df_display_filtered.style.format(precision=2, na_rep='–')
                 if display_period_cols:
@@ -2416,191 +2308,95 @@ def page_dashboard():
 
 
         # -------------------------
-        # DETAIL SATKER (legacy table) + PILIH BULAN & TAHUN
+        # DETAIL SATKER (legacy table)
         # -------------------------
         else:
-            st.subheader("📋 Detail Satker")
-
-            # ======================================================
-            # 1. PILIH BULAN & TAHUN (KHUSUS DETAIL SATKER)
-            # ======================================================
-            all_periods = list(st.session_state.data_storage.keys())
-            # format key: ('JANUARI','2025')
-
-            if not all_periods:
-                st.info("Belum ada data periode.")
-                return
-
-            # pisahkan bulan & tahun
-            available_years = sorted(
-                {int(y) for (_, y) in all_periods},
-                reverse=True
+            # ===============================
+            # AMBIL DATA PERIODE AKTIF
+            # ===============================
+            df = st.session_state.data_storage.get(
+                st.session_state.get('selected_period', all_periods[0]),
+                None
             )
-
-            col_p1, col_p2 = st.columns(2)
-
-            with col_p1:
-                selected_year_detail = st.selectbox(
-                    "Pilih Tahun",
-                    options=available_years,
-                    index=0,
-                    key="detail_year_select"
-                )
-
-            # bulan untuk tahun terpilih
-            months_for_year = [
-                m for (m, y) in all_periods if int(y) == int(selected_year_detail)
-            ]
-
-            # urutkan bulan sesuai MONTH_ORDER
-            months_for_year = sorted(
-                months_for_year,
-                key=lambda m: MONTH_ORDER.get(m, 99)
-            )
-
-            with col_p2:
-                selected_month_detail = st.selectbox(
-                    "Pilih Bulan",
-                    options=months_for_year,
-                    index=len(months_for_year) - 1,
-                    key="detail_month_select"
-                )
-
-            selected_period_detail = (selected_month_detail, str(selected_year_detail))
-
-            # ======================================================
-            # 2. AMBIL DATA SESUAI BULAN & TAHUN TERPILIH
-            # ======================================================
-            df = st.session_state.data_storage.get(selected_period_detail, None)
 
             if df is None or df.empty:
-                st.info(f"Data untuk periode {selected_month_detail} {selected_year_detail} tidak tersedia.")
+                st.info("Data untuk detail satker tidak tersedia untuk periode yang dipilih.")
                 return
 
             df = df.copy()
 
-            # ======================================================
-            # 3. NORMALISASI & FILTER GLOBAL
-            # ======================================================
+            # ===============================
+            # NORMALISASI KODE BA (1x SAJA)
+            # ===============================
             if 'Kode BA' in df.columns:
                 df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
 
+            # ===============================
+            # APPLY FILTER BA (GLOBAL & AMAN)
+            # ===============================
             df = apply_filter_ba(df)
 
             if df.empty:
                 st.info("Tidak ada data sesuai filter Kode BA.")
                 return
 
-            # ======================================================
-            # 4. PILIH MODE TAMPILAN
-            # ======================================================
+
             col1, col2 = st.columns([2, 1])
             with col1:
                 view_mode = st.radio(
                     "Tampilan",
                     options=['aspek', 'komponen'],
                     format_func=lambda x: 'Berdasarkan Aspek' if x == 'aspek' else 'Berdasarkan Komponen',
-                    horizontal=True,
-                    key="detail_view_mode"
+                    horizontal=True
                 )
             with col2:
                 st.write("")
 
-            # ======================================================
-            # 5. SUSUN KOLOM TABEL
-            # ======================================================
-            base_cols = ['Peringkat', 'Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS']
-
+            display_columns = ['Peringkat', 'Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS']
             if view_mode == 'aspek':
-                aspek_cols = [
+                display_columns += [
                     'Kualitas Perencanaan Anggaran',
                     'Kualitas Pelaksanaan Anggaran',
                     'Kualitas Hasil Pelaksanaan Anggaran'
                 ]
-
-                df_display = df[
-                    base_cols + aspek_cols + [
-                        'Nilai Total',
-                        'Dispensasi SPM (Pengurang)',
-                        'Nilai Akhir (Nilai Total/Konversi Bobot)'
-                    ]
-                ].copy()
-
+                df_display = df[display_columns + ['Nilai Total',
+                                                   'Dispensasi SPM (Pengurang)',
+                                                   'Nilai Akhir (Nilai Total/Konversi Bobot)']].copy()
             else:
                 component_cols = [
-                    'Revisi DIPA',
-                    'Deviasi Halaman III DIPA',
-                    'Penyerapan Anggaran',
-                    'Belanja Kontraktual',
-                    'Penyelesaian Tagihan',
-                    'Pengelolaan UP dan TUP',
-                    'Capaian Output'
+                    'Revisi DIPA', 'Deviasi Halaman III DIPA', 'Penyerapan Anggaran',
+                    'Belanja Kontraktual', 'Penyelesaian Tagihan', 
+                    'Pengelolaan UP dan TUP', 'Capaian Output'
                 ]
-
-                df_display = df[
-                    base_cols + [
-                        'Nilai Total',
-                        'Dispensasi SPM (Pengurang)',
-                        'Nilai Akhir (Nilai Total/Konversi Bobot)'
-                    ]
-                ].copy()
-
+                df_display = df[display_columns + ['Nilai Total',
+                                                   'Dispensasi SPM (Pengurang)',
+                                                   'Nilai Akhir (Nilai Total/Konversi Bobot)']].copy()
                 for col in component_cols:
                     df_display[col] = df.get(col, 0)
+                final_cols = display_columns + component_cols + ['Nilai Total',
+                                                                 'Dispensasi SPM (Pengurang)',
+                                                                 'Nilai Akhir (Nilai Total/Konversi Bobot)']
+                df_display = df_display[final_cols]
 
-                df_display = df_display[
-                    base_cols + component_cols + [
-                        'Nilai Total',
-                        'Dispensasi SPM (Pengurang)',
-                        'Nilai Akhir (Nilai Total/Konversi Bobot)'
-                    ]
-                ]
-
-            # ======================================================
-            # 6. SEARCH
-            # ======================================================
-            search_query = st.text_input(
-                "🔎 Cari (Detail Satker)",
-                value="",
-                help="Cari teks pada semua kolom (case-insensitive).",
-                key="search_detail"
-            )
-
+            # Search widget & styling
+            search_query = st.text_input("🔎 Cari (ketik untuk filter di semua kolom)", value="", help="Cari teks pada semua kolom (case-insensitive).", key='search_detail')
             if search_query:
                 q = str(search_query).strip().lower()
-                mask = df_display.apply(
-                    lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(),
-                    axis=1
-                )
+                mask = df_display.apply(lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(), axis=1)
                 df_display_filtered = df_display[mask].copy()
             else:
                 df_display_filtered = df_display.copy()
 
-            # ======================================================
-            # 7. HIGHLIGHT PERINGKAT
-            # ======================================================
             def highlight_top(s):
                 if s.name == 'Peringkat':
-                    return [
-                        'background-color: gold; color: black'
-                        if (pd.to_numeric(v, errors='coerce') <= 3)
-                        else ''
-                        for v in s
-                    ]
+                    return ['background-color: gold' if (pd.to_numeric(v, errors='coerce') <= 3) else '' for v in s]
                 return ['' for _ in s]
 
-            # ======================================================
-            # 8. TAMPILKAN TABEL
-            # ======================================================
             st.dataframe(
-                df_display_filtered
-                .style
-                .apply(highlight_top)
-                .format(precision=2),
+                df_display_filtered.style.apply(highlight_top).format(precision=2),
                 use_container_width=True,
                 height=600
             )
-
 
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
