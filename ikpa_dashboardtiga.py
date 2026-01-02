@@ -46,20 +46,40 @@ TEMPLATE_PATH = r"C:\Users\KEMENKEU\Desktop\INDIKATOR PELAKSANAAN ANGGARAN.xlsx"
 # ================================
 # INIT SESSION STATE 
 # ================================
+# ================================
+# INIT SESSION STATE (FINAL)
+# ================================
+
+# Storage utama IKPA
 if "data_storage" not in st.session_state:
     st.session_state.data_storage = {}
 
+# Storage IKPA per KPPN
 if "data_storage_kppn" not in st.session_state:
     st.session_state.data_storage_kppn = {}
 
+# Storage DIPA per tahun
 if "DATA_DIPA_by_year" not in st.session_state:
     st.session_state.DATA_DIPA_by_year = {}
 
+# Flag merge IKPA–DIPA
 if "ikpa_dipa_merged" not in st.session_state:
     st.session_state.ikpa_dipa_merged = False
 
-if 'activity_log' not in st.session_state:
-    st.session_state.activity_log = [] 
+# Log aktivitas
+if "activity_log" not in st.session_state:
+    st.session_state.activity_log = []
+
+# ================================
+# AUTO LOAD DATA IKPA (ON START)
+# ================================
+if not st.session_state.data_storage:
+    try:
+        load_data_from_github()
+    except Exception:
+        # Jangan hentikan app jika gagal load
+        pass
+
 
 
 # -------------------------
