@@ -670,9 +670,13 @@ def parse_dipa(df_raw):
     )
 
     # Jenis Satker (auto berdasarkan pagu)
-    out["Jenis Satker"] = out["Total Pagu"].apply(
-        lambda x: "Satker Besar" if x >= 10_000_000_000 
-        else ("Satker Sedang" if x >= 1_000_000_000 else "Satker Kecil")
+    p40 = out["Total Pagu"].quantile(0.40)
+    p70 = out["Total Pagu"].quantile(0.70)
+
+    out["Jenis Satker"] = pd.cut(
+        out["Total Pagu"],
+        bins=[-float("inf"), p40, p70, float("inf")],
+        labels=["Satker Kecil", "Satker Sedang", "Satker Besar"]
     )
 
     out = out.dropna(subset=["Kode Satker"])
