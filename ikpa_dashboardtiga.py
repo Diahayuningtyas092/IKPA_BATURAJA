@@ -67,8 +67,8 @@ if "ikpa_dipa_merged" not in st.session_state:
 if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
 
-if "data_ready" not in st.session_state:
-    st.session_state.data_ready = False
+if "data_loaded_once" not in st.session_state:
+    st.session_state.data_loaded_once = False
 
 # -------------------------
 # standardize_dipa
@@ -1455,12 +1455,9 @@ def page_dashboard():
     # ===============================
     # VALIDASI & PILIH PERIODE
     # ===============================
-
-    data_storage = st.session_state.get("data_storage", {})
-
-    if not isinstance(data_storage, dict) or len(data_storage) == 0:
-        st.warning("⚠️ Data IKPA belum tersedia.")
-        return
+    if not st.session_state.get("data_loaded_once"):
+        st.info("⏳ Menyiapkan data IKPA...")
+        st.stop()
 
     # Ambil & urutkan semua periode (bulan, tahun)
     try:
@@ -4594,6 +4591,18 @@ def page_admin():
 # MAIN APP
 # ===============================
 def main():
+    # ===============================
+    # AUTO LOAD DATA (HARD FIX)
+    # ===============================
+    if not st.session_state.data_loaded_once:
+        with st.spinner("⏳ Memuat data IKPA dari GitHub..."):
+            try:
+                load_data_from_github()
+                st.session_state.data_loaded_once = True
+                st.rerun()   # ⬅️ INI KUNCI UTAMA
+            except Exception as e:
+                st.error("Gagal memuat data IKPA.")
+                st.stop()
 
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
@@ -4627,16 +4636,6 @@ def main():
                     'Kode BA': [], 'K/L': [], 'Kode Satker': [],
                     'Uraian Satker-SINGKAT': [], 'Uraian Satker-LENGKAP': []
                 })
-
-    # ===============================
-    # AUTO LOAD DATA (BLOCKING LOGIC)
-    # ===============================
-    if not st.session_state.get("data_ready"):
-        try:
-            load_data_from_github()
-            st.session_state.data_ready = True
-        except Exception as e:
-            st.session_state.data_ready = False
 
     # ============================================================
     # 2️⃣ AUTO LOAD DATA IKPA
