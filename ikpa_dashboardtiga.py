@@ -1450,12 +1450,16 @@ def page_dashboard():
     </style>
     """, unsafe_allow_html=True)
 
-    # protect against missing data_storage
-    if not st.session_state.get('data_storage'):
-        st.warning("⚠️ Belum ada data yang diunggah. Silakan unggah data melalui halaman Admin.")
+    # ===============================
+    # VALIDASI & PILIH PERIODE (FINAL)
+    # ===============================
+
+    # Pastikan data IKPA ada
+    if not st.session_state.get("data_storage"):
+        st.warning("⚠️ Data IKPA belum tersedia.")
         return
 
-    # Dapatkan data terbaru
+    # Ambil & urutkan semua periode (bulan, tahun)
     try:
         all_periods = sorted(
             st.session_state.data_storage.keys(),
@@ -1463,28 +1467,35 @@ def page_dashboard():
             reverse=True
         )
     except Exception:
-        st.warning("⚠️ Format periode pada data tidak sesuai. Periksa struktur data di session_state.data_storage.")
+        st.warning("⚠️ Format periode pada data tidak sesuai. Periksa data di session_state.data_storage.")
         return
 
     if not all_periods:
-        st.warning("⚠️ Belum ada data yang tersedia.")
+        st.warning("⚠️ Belum ada data periode yang tersedia.")
         return
 
-    # ---------------------------
-    # Ensure a selected_period and df exist BEFORE any branch uses df
-    # ---------------------------
-    if "selected_period" not in st.session_state:
-        st.session_state.selected_period = all_periods[0]
+    # Pilih periode (default: periode terbaru)
+    selected_period = st.selectbox(
+        "Pilih Periode",
+        options=all_periods,
+        index=0,
+        format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+        key="dashboard_selected_period"
+    )
 
-    # safe fetch of df for the selected_period (always a tuple key like ('JANUARI','2025'))
-    selected_period_key = st.session_state.get("selected_period", all_periods[0])
-    df = st.session_state.data_storage.get(selected_period_key, None)
+    # Simpan (opsional, tapi rapi)
+    st.session_state.selected_period = selected_period
 
-    if df is None:
-        st.warning(f"⚠️ Data untuk periode {selected_period_key} tidak ditemukan. Periksa st.session_state.data_storage keys.")
-        # show available keys to help debugging (optional - remove if sensitive)
-        st.write("Periode yang tersedia:", list(st.session_state.data_storage.keys()))
+    # Ambil data periode terpilih
+    df = st.session_state.data_storage.get(selected_period)
+
+    if df is None or df.empty:
+        st.warning(f"⚠️ Data untuk periode {selected_period[0]} {selected_period[1]} tidak ditemukan.")
         return
+
+    # Salin agar aman diproses
+    df = df.copy()
+
 
     # ensure main_tab state exists
     if "main_tab" not in st.session_state:
