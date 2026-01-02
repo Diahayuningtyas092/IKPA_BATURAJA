@@ -1395,6 +1395,7 @@ MONTH_ABBR = {
     "SEPTEMBER": "Sep",
     "OKTOBER": "Okt",
     "NOVEMBER": "Nov",
+    "NOPEMBER": "Nov",
     "DESEMBER": "Des"
 }
 
