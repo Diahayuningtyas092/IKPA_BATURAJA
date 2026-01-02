@@ -669,15 +669,8 @@ def parse_dipa(df_raw):
         if col_stamp else "0000000000000000"
     )
 
-    # Jenis Satker (auto berdasarkan pagu)
-    p40 = out["Total Pagu"].quantile(0.40)
-    p70 = out["Total Pagu"].quantile(0.70)
-
-    out["Jenis Satker"] = pd.cut(
-        out["Total Pagu"],
-        bins=[-float("inf"), p40, p70, float("inf")],
-        labels=["Satker Kecil", "Satker Sedang", "Satker Besar"]
-    )
+    # Jenis Satker TIDAK ditentukan di parser
+    out["Jenis Satker"] = None
 
     out = out.dropna(subset=["Kode Satker"])
     out["Kode Satker"] = out["Kode Satker"].astype(str).str.zfill(6)
@@ -1606,6 +1599,13 @@ def page_dashboard():
             df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
         
         df = apply_filter_ba(df)
+        
+        # ===============================
+        #  PASTIKAN KOLOM JENIS SATKER ADA
+        # ===============================
+        if "Jenis Satker" not in df.columns:
+            df["Jenis Satker"] = "TIDAK TERKLASIFIKASI"
+
 
         # ===============================
         # PAKSA KOLOM SATKER (1x SAJA)
@@ -1614,12 +1614,22 @@ def page_dashboard():
             df = create_satker_column(df)
 
         # ===============================
-        # Pastikan kolom Jenis Satker ada
+        # HITUNG JENIS SATKER (JIKA ADA TOTAL PAGU)
         # ===============================
-        if 'Jenis Satker' not in df.columns:
-            df['Jenis Satker'] = 'TIDAK TERKLASIFIKASI'
+        if "Total Pagu" in df.columns:
+            df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0)
+
+            p40 = df["Total Pagu"].quantile(0.40)
+            p70 = df["Total Pagu"].quantile(0.70)
+
+            df["Jenis Satker"] = pd.cut(
+                df["Total Pagu"],
+                bins=[-float("inf"), p40, p70, float("inf")],
+                labels=["KECIL", "SEDANG", "BESAR"]
+            ).astype(str)
         else:
-            df['Jenis Satker'] = df['Jenis Satker'].fillna('TIDAK TERKLASIFIKASI')
+            st.warning("⚠️ Kolom Total Pagu tidak tersedia. Jenis Satker tidak dihitung ulang.")
+
 
         # ===============================
         # NORMALISASI JENIS SATKER
