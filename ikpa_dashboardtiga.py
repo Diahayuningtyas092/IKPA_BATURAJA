@@ -46,9 +46,6 @@ TEMPLATE_PATH = r"C:\Users\KEMENKEU\Desktop\INDIKATOR PELAKSANAAN ANGGARAN.xlsx"
 # ================================
 # INIT SESSION STATE 
 # ================================
-# ================================
-# INIT SESSION STATE (FINAL)
-# ================================
 
 # Storage utama IKPA
 if "data_storage" not in st.session_state:
@@ -1383,6 +1380,33 @@ def dynamic_title(ukuran, kategori, df):
     jumlah = len(df)
     return f"{jumlah} Satker {ukuran} {kategori}"    
 
+# ===============================
+# FORMAT TAMPILAN IKPA
+# ===============================
+MONTH_ABBR = {
+    "JANUARI": "Jan",
+    "FEBRUARI": "Feb",
+    "MARET": "Mar",
+    "APRIL": "Apr",
+    "MEI": "Mei",
+    "JUNI": "Jun",
+    "JULI": "Jul",
+    "AGUSTUS": "Agu",
+    "SEPTEMBER": "Sep",
+    "OKTOBER": "Okt",
+    "NOVEMBER": "Nov",
+    "DESEMBER": "Des"
+}
+
+def format_ikpa_display(x):
+    try:
+        x = float(x)
+        if round(x, 2) == 100:
+            return "100"
+        return f"{x:.2f}"
+    except:
+        return x
+
 # HALAMAN 1: DASHBOARD UTAMA (REVISED)
 def page_dashboard():
     
@@ -2116,13 +2140,17 @@ def page_dashboard():
                 display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + ordered_periods
                 df_display = df_wide[display_cols].copy()
 
+                # --- Singkat nama bulan ---
                 if period_type == 'monthly':
-                    df_display.rename(columns={m: m.capitalize() for m in ordered_periods}, inplace=True)
-                    display_period_cols = [m.capitalize() for m in ordered_periods]
+                    rename_map = {m: MONTH_ABBR.get(m.upper(), m) for m in ordered_periods}
+                    df_display.rename(columns=rename_map, inplace=True)
+                    display_period_cols = list(rename_map.values())
                 else:
                     display_period_cols = ordered_periods
 
+                # --- Ganti NaN ---
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
+
 
 
                 # =============================
@@ -2183,7 +2211,7 @@ def page_dashboard():
                     return ['' for _ in s]
 
 
-                styler = df_display_filtered.style.format(precision=2, na_rep='–')
+                styler = df_display_filtered.style.format(format_ikpa_display, na_rep='–')
                 if display_period_cols:
                     styler = styler.apply(color_trend, axis=1)
                 styler = styler.apply(highlight_top)
