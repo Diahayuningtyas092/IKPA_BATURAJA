@@ -70,17 +70,6 @@ if "ikpa_dipa_merged" not in st.session_state:
 if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
 
-# ================================
-# AUTO LOAD DATA IKPA (ON START)
-# ================================
-if not st.session_state.data_storage:
-    try:
-        load_data_from_github()
-    except Exception:
-        # Jangan hentikan app jika gagal load
-        pass
-
-
 
 # -------------------------
 # standardize_dipa
@@ -1619,12 +1608,6 @@ def page_dashboard():
             df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
         
         df = apply_filter_ba(df)
-        
-        # ===============================
-        #  PASTIKAN KOLOM JENIS SATKER ADA
-        # ===============================
-        if "Jenis Satker" not in df.columns:
-            df["Jenis Satker"] = "TIDAK TERKLASIFIKASI"
 
 
         # ===============================
@@ -1632,6 +1615,12 @@ def page_dashboard():
         # ===============================
         if 'Satker' not in df.columns:
             df = create_satker_column(df)
+
+        # ===============================
+        #  PASTIKAN KOLOM JENIS SATKER ADA
+        # ===============================
+        if "Jenis Satker" not in df.columns:
+            df["Jenis Satker"] = "TIDAK TERKLASIFIKASI"
 
         # ===============================
         # HITUNG JENIS SATKER (JIKA ADA TOTAL PAGU)
