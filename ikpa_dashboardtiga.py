@@ -1414,62 +1414,37 @@ def format_ikpa_display(x):
 def page_dashboard():
     
     # ===============================
-    # LOAD & MAP BA (WAJIB DI SINI)
+    # VALIDASI BOOTSTRAP (WAJIB)
     # ===============================
-    df_ref_ba = load_reference_ba()
-    BA_MAP = get_ba_map(df_ref_ba)
-
-    # ===============================
-    # SOLUSI 3 — DELAY RENDER SETELAH UPLOAD
-    # ===============================
-    if st.session_state.get("_just_uploaded"):
-        st.session_state["_just_uploaded"] = False
-        st.info("🔄 Data baru dimuat, mempersiapkan grafik...")
-        st.rerun()
-
-    st.title("📊 Dashboard Utama IKPA Satker Mitra KPPN Baturaja")
-    
-    st.markdown("""
-    <style>
-    /* Warna tombol popover */
-    div[data-testid="stPopover"] button {
-        background-color: #FFF9E6 !important;
-        border: 1px solid #E6C200 !important;
-        color: #664400 !important;
-    }
-    div[data-testid="stPopover"] button:hover {
-        background-color: #FFE4B5 !important;
-        color: black !important;
-    }
-    button[data-testid="baseButton"][kind="popover"] {
-        background-color: #FFF9E6 !important;
-        border: 1px solid #E6C200 !important;
-        color: #664400 !important;
-    }
-    button[data-testid="baseButton"][kind="popover"]:hover {
-        background-color: #FFE4B5 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # ===============================
-    # VALIDASI & PILIH PERIODE 
-    # ===============================
-    if not st.session_state.get("data_loaded_once"):
-        st.info("⏳ Menyiapkan data IKPA...")
+    if not st.session_state.get("_bootstrapped", False):
+        st.info("⏳ Menyiapkan data aplikasi...")
         st.stop()
 
-    # ⬇️ INI YANG BENAR
+    # ===============================
+    # AMBIL DATA UTAMA (READ ONLY)
+    # ===============================
     data_storage = st.session_state.get("data_storage", {})
-
     if not data_storage:
         st.warning("⚠️ Data IKPA belum tersedia.")
         st.stop()
 
-    # -------------------------------
-    # Ambil hanya key periode VALID
-    # format: (BULAN, TAHUN)
-    # -------------------------------
+    # ===============================
+    # LOAD REFERENSI BA (AMAN)
+    # ===============================
+    try:
+        df_ref_ba = load_reference_ba()
+        BA_MAP = get_ba_map(df_ref_ba)
+    except Exception:
+        BA_MAP = {}
+
+    # ===============================
+    # JUDUL
+    # ===============================
+    st.title("📊 Dashboard Utama IKPA Satker Mitra KPPN Baturaja")
+
+    # ===============================
+    # AMBIL PERIODE VALID
+    # ===============================
     valid_periods = []
 
     for k in data_storage.keys():
@@ -1491,118 +1466,43 @@ def page_dashboard():
         st.warning("⚠️ Tidak ditemukan periode IKPA yang valid.")
         st.stop()
 
-    # -------------------------------
-    # Urutkan periode (terbaru dulu)
-    # -------------------------------
+    # urutkan terbaru
     all_periods = sorted(
         valid_periods,
         key=lambda x: (int(x[1]), MONTH_ORDER[x[0]]),
         reverse=True
     )
 
-    # -------------------------------
-    # Pilih periode
-    # -------------------------------
+    # ===============================
+    # PILIH PERIODE (SATU KALI SAJA)
+    # ===============================
     selected_period = st.selectbox(
         "Pilih Periode",
         options=all_periods,
-        index=0,
         format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
         key="dashboard_selected_period"
     )
 
     df = data_storage.get(selected_period)
-
     if df is None or df.empty:
-        st.warning(
-            f"⚠️ Data IKPA untuk periode {selected_period[0]} {selected_period[1]} tidak tersedia."
-        )
+        st.warning(f"⚠️ Data IKPA untuk {selected_period[0]} {selected_period[1]} tidak tersedia.")
         st.stop()
 
     df = df.copy()
 
-
-
-
-    # ensure main_tab state exists
-    if "main_tab" not in st.session_state:
-        st.session_state.main_tab = "🎯 Highlights"
-
-    st.markdown("""
-    <style>
-
-    /* =================================================
-    1. KECILKAN HANYA FILTER KODE BA
-    ================================================= */
-    .filter-ba h3 {
-        font-size: 15px !important;
-        margin-bottom: 4px !important;
-    }
-
-    .filter-ba label {
-        font-size: 12px !important;
-        margin-bottom: 2px !important;
-    }
-
-    .filter-ba div[data-baseweb="select"] {
-        font-size: 12px !important;
-        min-height: 30px !important;
-        margin-bottom: 6px !important;
-    }
-
-    .filter-ba div[data-baseweb="tag"] span {
-        font-size: 11px !important;
-        padding: 2px 6px !important;
-    }
-
-
-    /* =================================================
-    2. BESARKAN RADIO PILIH BAGIAN DASHBOARD
-    (SETARA ## HEADING)
-    ================================================= */
-    div[role="radiogroup"] {
-        margin-top: 6px !important;
-    }
-
-    div[role="radiogroup"] > label {
-        font-size: 24px !important;
-        font-weight: 700 !important;
-        margin-bottom: 6px !important;
-    }
-
-    div[role="radiogroup"] label p {
-        font-size: 24px !important;
-        font-weight: 600 !important;
-        margin: 0 16px 0 0 !important;
-    }
-
-
-    /* =================================================
-    3. KUNCI SELECTBOX PERIODE (NOVEMBER 2025)
-    AGAR TIDAK PERNAH MENGECIL
-    ================================================= */
-    div[data-testid="stSelectbox"] div[data-baseweb="select"] {
-        font-size: 16px !important;
-        min-height: 38px !important;
-        line-height: 1.4 !important;
-    }
-
-    </style>
-    """, unsafe_allow_html=True)
-
-    
     # ===============================
-    # FILTER KODE BA
+    # NORMALISASI KODE BA
     # ===============================
-    st.markdown('<div class="filter-ba">', unsafe_allow_html=True)
+    if "Kode BA" in df.columns:
+        df["Kode BA"] = df["Kode BA"].apply(normalize_kode_ba)
 
-    st.markdown("🔎 Filter Kode BA")  
+    # ===============================
+    # FILTER BA
+    # ===============================
+    st.markdown("### 🔎 Filter Kode BA")
 
-    if 'Kode BA' in df.columns:
-
-        df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
-
-        ba_codes = sorted(df['Kode BA'].dropna().unique())
+    if "Kode BA" in df.columns:
+        ba_codes = sorted(df["Kode BA"].dropna().unique())
         ba_options = ["SEMUA BA"] + ba_codes
 
         def format_ba(code):
@@ -1610,108 +1510,75 @@ def page_dashboard():
                 return "SEMUA BA"
             return f"{code} – {BA_MAP.get(code, 'Nama BA tidak ditemukan')}"
 
-        st.multiselect(
+        selected_ba = st.multiselect(
             "Pilih Kode BA",
             options=ba_options,
             format_func=format_ba,
             default=st.session_state.get("filter_ba_main", ["SEMUA BA"]),
             key="filter_ba_main"
         )
-    else:
-        st.warning("Kolom Kode BA tidak tersedia.")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # ⬅️ PENTING: tutup div
-
+        if "SEMUA BA" not in selected_ba:
+            df = df[df["Kode BA"].isin(selected_ba)]
 
     # ===============================
-    # RADIO PILIH BAGIAN DASHBOARD
+    # KOLOM SATKER (PASTI ADA)
+    # ===============================
+    if "Satker" not in df.columns:
+        df = create_satker_column(df)
+
+    # ===============================
+    # JENIS SATKER (HITUNG SEKALI)
+    # ===============================
+    if "Total Pagu" in df.columns:
+        df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0)
+
+        p40 = df["Total Pagu"].quantile(0.40)
+        p70 = df["Total Pagu"].quantile(0.70)
+
+        df["Jenis Satker"] = pd.cut(
+            df["Total Pagu"],
+            bins=[-float("inf"), p40, p70, float("inf")],
+            labels=["KECIL", "SEDANG", "BESAR"]
+        ).astype(str)
+    else:
+        df["Jenis Satker"] = "TIDAK TERKLASIFIKASI"
+
+    # ===============================
+    # NORMALISASI JENIS SATKER
+    # ===============================
+    df["Jenis Satker"] = (
+        df["Jenis Satker"]
+        .str.upper()
+        .str.replace("SATKER ", "", regex=False)
+        .str.strip()
+    )
+
+    # ===============================
+    # PILIH MODE DASHBOARD
     # ===============================
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
         ["🎯 Highlights", "📋 Data Detail Satker"],
-        key="main_tab_choice",
-        horizontal=True
+        horizontal=True,
+        key="main_tab_choice"
     )
 
-    st.session_state["main_tab"] = main_tab
-
-    
-    # -------------------------
+    # ===============================
     # HIGHLIGHTS
-    # -------------------------
+    # ===============================
     if main_tab == "🎯 Highlights":
         st.markdown("## 🎯 Highlights Kinerja Satker")
+        st.write(f"Periode: **{selected_period[0].capitalize()} {selected_period[1]}**")
 
-        # -------------------------
-        # Pilih Periode
-        # -------------------------
-        selected_period = st.selectbox(
-            "Pilih Periode",
-            options=all_periods,
-            index=0,
-            format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-            key="select_period_main"
-        )
-
-        df = st.session_state.data_storage.get(selected_period)
-
-        # ===============================
-        # VALIDASI DF (PALING AWAL)
-        # ===============================
-        if df is None or df.empty:
-            st.warning("Data IKPA belum tersedia.")
+        nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+        if nilai_col not in df.columns:
+            st.warning("Kolom nilai IKPA tidak ditemukan.")
             st.stop()
 
-        df = df.copy()
+        st.metric("📋 Total Satker", len(df))
+        st.metric("📈 Rata-rata Nilai", f"{df[nilai_col].mean():.2f}")
 
-        # ===============================
-        # NORMALISASI KODE BA (1x SAJA)
-        # ===============================
-        if 'Kode BA' in df.columns:
-            df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
-        
-        df = apply_filter_ba(df)
-
-
-        # ===============================
-        # PAKSA KOLOM SATKER (1x SAJA)
-        # ===============================
-        if 'Satker' not in df.columns:
-            df = create_satker_column(df)
-
-        # ===============================
-        #  PASTIKAN KOLOM JENIS SATKER ADA
-        # ===============================
-        if "Jenis Satker" not in df.columns:
-            df["Jenis Satker"] = "TIDAK TERKLASIFIKASI"
-
-        # ===============================
-        # HITUNG JENIS SATKER (JIKA ADA TOTAL PAGU)
-        # ===============================
-        if "Total Pagu" in df.columns:
-            df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0)
-
-            p40 = df["Total Pagu"].quantile(0.40)
-            p70 = df["Total Pagu"].quantile(0.70)
-
-            df["Jenis Satker"] = pd.cut(
-                df["Total Pagu"],
-                bins=[-float("inf"), p40, p70, float("inf")],
-                labels=["KECIL", "SEDANG", "BESAR"]
-            ).astype(str)
-        else:
-            st.warning("⚠️ Kolom Total Pagu tidak tersedia. Jenis Satker tidak dihitung ulang.")
-
-
-        # ===============================
-        # NORMALISASI JENIS SATKER
-        # ===============================
-        df['Jenis Satker'] = (
-            df['Jenis Satker']
-            .str.upper()
-            .str.replace('SATKER ', '', regex=False)
-            .str.strip()
-        )
 
         # ===============================
         # Filter Satker
@@ -1944,7 +1811,6 @@ def page_dashboard():
             st.plotly_chart(fig_dev, use_container_width=True)
         else:
             st.success("✅ Semua satker sudah optimal untuk Deviasi Hal 3 DIPA")
-
 
 
     # -------------------------
@@ -3726,7 +3592,7 @@ def page_admin():
                 load_data_from_github()
                 merge_ikpa_dipa_auto()
             st.success("✅ Proses selesai")
-            st.rerun()
+
 
         # Reset hanya muncul kalau data ada tapi merge gagal
         if st.session_state.get("data_storage") or st.session_state.get("DATA_DIPA_by_year"):
@@ -3734,7 +3600,6 @@ def page_admin():
                 if st.button(" Reset Status Merge"):
                     st.session_state.ikpa_dipa_merged = False
                     st.warning(" Status merge direset. Data akan diproses ulang.")
-                    st.rerun()
 
 
     # ===============================
@@ -4623,18 +4488,6 @@ def page_admin():
 # MAIN APP
 # ===============================
 def main():
-    # ===============================
-    # AUTO LOAD DATA (HARD FIX)
-    # ===============================
-    if not st.session_state.data_loaded_once:
-        with st.spinner("⏳ Memuat data IKPA dari GitHub..."):
-            try:
-                load_data_from_github()
-                st.session_state.data_loaded_once = True
-                st.rerun()   # ⬅️ INI KUNCI UTAMA
-            except Exception as e:
-                st.error("Gagal memuat data IKPA.")
-                st.stop()
 
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
@@ -4668,73 +4521,37 @@ def main():
                     'Kode BA': [], 'K/L': [], 'Kode Satker': [],
                     'Uraian Satker-SINGKAT': [], 'Uraian Satker-LENGKAP': []
                 })
-
-    # ============================================================
-    # 2️⃣ AUTO LOAD DATA IKPA
-    # ============================================================
-    if not st.session_state.data_storage:
-        with st.spinner("🔄 Memuat data IKPA..."):
-            load_data_from_github()
-
+    
     # ===============================
-    # LOAD IKPA KPPN DARI GITHUB
+    # BOOTSTRAP DATA (SEKALI SAJA)
     # ===============================
-    if "data_storage_kppn" not in st.session_state:
-        st.session_state.data_storage_kppn = {}
+    if not st.session_state.get("_bootstrapped", False):
+        with st.spinner("⏳ Memuat seluruh data aplikasi..."):
 
-    if not st.session_state.data_storage_kppn:
-        st.session_state.data_storage_kppn = load_data_ikpa_kppn_from_github()
+            # IKPA Satker
+            if "data_storage" not in st.session_state:
+                st.session_state.data_storage = {}
+            if not st.session_state.data_storage:
+                load_data_from_github()
 
-    # ===============================
-    # NOTIF BERHASIL LOAD (SEKALI)
-    # ===============================
-    if st.session_state.data_storage_kppn and not st.session_state.get("_kppn_loaded_notif"):
-        st.success(
-            f"✅ IKPA KPPN berhasil dimuat dari GitHub "
-            f"({len(st.session_state.data_storage_kppn)} periode)"
-        )
-        st.session_state["_kppn_loaded_notif"] = True
+            # IKPA KPPN
+            if "data_storage_kppn" not in st.session_state:
+                st.session_state.data_storage_kppn = load_data_ikpa_kppn_from_github()
 
-    # ============================================================
-    # 3️⃣ AUTO LOAD DATA DIPA (HASIL PROCESSING STREAMLIT)
-    # ============================================================
-    if not st.session_state.DATA_DIPA_by_year:
-        with st.spinner("🔄 Memuat data DIPA..."):
-            load_DATA_DIPA_from_github()
+            # DIPA
+            if "DATA_DIPA_by_year" not in st.session_state:
+                load_DATA_DIPA_from_github()
 
-    # ============================================================
-    # 4️⃣ FINALISASI DATA DIPA (AMAN)
-    # ============================================================
-    if st.session_state.DATA_DIPA_by_year:
-        for tahun, df in st.session_state.DATA_DIPA_by_year.items():
-            df = df.copy()
-            if "Uraian Satker" in df.columns:
-                df["Uraian Satker-RINGKAS"] = (
-                    df["Uraian Satker"]
-                    .fillna("-")
-                    .astype(str)
-                    .str[:30]
-                )
-            else:
-                df["Uraian Satker-RINGKAS"] = "-"
-            st.session_state.DATA_DIPA_by_year[tahun] = df
+            # Merge (SATU KALI)
+            if (
+                st.session_state.data_storage and
+                st.session_state.DATA_DIPA_by_year and
+                not st.session_state.get("ikpa_dipa_merged", False)
+            ):
+                merge_ikpa_dipa_auto()
+                st.session_state.ikpa_dipa_merged = True
 
-    # ============================================================
-    # 5️⃣ AUTO MERGE IKPA + DIPA 
-    # ============================================================
-    if (
-        st.session_state.data_storage and
-        st.session_state.DATA_DIPA_by_year and
-        not st.session_state.ikpa_dipa_merged
-    ):
-        with st.spinner("🔄 Menggabungkan data IKPA & DIPA..."):
-            merge_ikpa_dipa_auto()
-            
-    # ============================================================
-    # NOTIF GLOBAL STATUS DATA (MUNCUL SAAT APP DIBUKA)
-    # ============================================================
-    if st.session_state.get("ikpa_dipa_merged", False):
-        st.success(" Data IKPA & DIPA berhasil dimuat dan siap digunakan")
+        st.session_state._bootstrapped = True
 
 
     # ============================================================
