@@ -1451,30 +1451,31 @@ def page_dashboard():
     """, unsafe_allow_html=True)
 
     # ===============================
-    # VALIDASI & PILIH PERIODE (FINAL)
+    # VALIDASI & PILIH PERIODE
     # ===============================
 
-    # Pastikan data IKPA ada
-    if not st.session_state.get("data_storage"):
+    data_storage = st.session_state.get("data_storage", {})
+
+    if not isinstance(data_storage, dict) or len(data_storage) == 0:
         st.warning("⚠️ Data IKPA belum tersedia.")
         return
 
     # Ambil & urutkan semua periode (bulan, tahun)
     try:
         all_periods = sorted(
-            st.session_state.data_storage.keys(),
+            data_storage.keys(),
             key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)),
             reverse=True
         )
     except Exception:
-        st.warning("⚠️ Format periode pada data tidak sesuai. Periksa data di session_state.data_storage.")
+        st.warning("⚠️ Format periode pada data tidak sesuai.")
         return
 
     if not all_periods:
-        st.warning("⚠️ Belum ada data periode yang tersedia.")
+        st.warning("⚠️ Belum ada data periode IKPA yang valid.")
         return
 
-    # Pilih periode (default: periode terbaru)
+    # Pilih periode
     selected_period = st.selectbox(
         "Pilih Periode",
         options=all_periods,
@@ -1483,17 +1484,12 @@ def page_dashboard():
         key="dashboard_selected_period"
     )
 
-    # Simpan (opsional, tapi rapi)
-    st.session_state.selected_period = selected_period
-
-    # Ambil data periode terpilih
-    df = st.session_state.data_storage.get(selected_period)
+    df = data_storage.get(selected_period)
 
     if df is None or df.empty:
-        st.warning(f"⚠️ Data untuk periode {selected_period[0]} {selected_period[1]} tidak ditemukan.")
+        st.warning(f"⚠️ Data IKPA untuk periode {selected_period[0]} {selected_period[1]} kosong.")
         return
 
-    # Salin agar aman diproses
     df = df.copy()
 
 
