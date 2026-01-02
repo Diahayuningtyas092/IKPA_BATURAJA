@@ -1453,28 +1453,55 @@ def page_dashboard():
     """, unsafe_allow_html=True)
 
     # ===============================
-    # VALIDASI & PILIH PERIODE
+    # VALIDASI & PILIH PERIODE (AMAN)
     # ===============================
     if not st.session_state.get("data_loaded_once"):
         st.info("⏳ Menyiapkan data IKPA...")
         st.stop()
 
-    # Ambil & urutkan semua periode (bulan, tahun)
-    try:
-        all_periods = sorted(
-            data_storage.keys(),
-            key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)),
-            reverse=True
-        )
-    except Exception:
-        st.warning("⚠️ Format periode pada data tidak sesuai.")
-        return
+    data_storage = st.session_state.get("data_storage", {})
 
-    if not all_periods:
-        st.warning("⚠️ Belum ada data periode IKPA yang valid.")
-        return
+    if not data_storage:
+        st.warning("⚠️ Data IKPA belum tersedia.")
+        st.stop()
 
+    # -------------------------------
+    # Ambil hanya key periode VALID
+    # format: (BULAN, TAHUN)
+    # -------------------------------
+    valid_periods = []
+
+    for k in data_storage.keys():
+        if not isinstance(k, tuple) or len(k) != 2:
+            continue
+
+        bulan, tahun = k
+
+        if not str(tahun).isdigit():
+            continue
+
+        bulan = str(bulan).upper()
+        if bulan not in MONTH_ORDER:
+            continue
+
+        valid_periods.append((bulan, str(tahun)))
+
+    if not valid_periods:
+        st.warning("⚠️ Tidak ditemukan periode IKPA yang valid.")
+        st.stop()
+
+    # -------------------------------
+    # Urutkan periode (terbaru dulu)
+    # -------------------------------
+    all_periods = sorted(
+        valid_periods,
+        key=lambda x: (int(x[1]), MONTH_ORDER[x[0]]),
+        reverse=True
+    )
+
+    # -------------------------------
     # Pilih periode
+    # -------------------------------
     selected_period = st.selectbox(
         "Pilih Periode",
         options=all_periods,
@@ -1486,10 +1513,13 @@ def page_dashboard():
     df = data_storage.get(selected_period)
 
     if df is None or df.empty:
-        st.warning(f"⚠️ Data IKPA untuk periode {selected_period[0]} {selected_period[1]} kosong.")
-        return
+        st.warning(
+            f"⚠️ Data IKPA untuk periode {selected_period[0]} {selected_period[1]} tidak tersedia."
+        )
+        st.stop()
 
     df = df.copy()
+
 
 
     # ensure main_tab state exists
