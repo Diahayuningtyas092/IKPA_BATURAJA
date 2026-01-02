@@ -1453,12 +1453,13 @@ def page_dashboard():
     """, unsafe_allow_html=True)
 
     # ===============================
-    # VALIDASI & PILIH PERIODE (AMAN)
+    # VALIDASI & PILIH PERIODE 
     # ===============================
     if not st.session_state.get("data_loaded_once"):
         st.info("⏳ Menyiapkan data IKPA...")
         st.stop()
 
+    # ⬇️ INI YANG BENAR
     data_storage = st.session_state.get("data_storage", {})
 
     if not data_storage:
@@ -1519,6 +1520,7 @@ def page_dashboard():
         st.stop()
 
     df = df.copy()
+
 
 
 
