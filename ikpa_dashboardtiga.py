@@ -3360,14 +3360,14 @@ def assign_jenis_satker(df):
         return df
 
     # pastikan numerik
-    df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce")
+    df["Total Pagu"] = pd.to_numeric(out["Total Pagu"], errors="coerce")
 
-    q40 = df["Total Pagu"].quantile(0.40)
-    q70 = df["Total Pagu"].quantile(0.70)
+    p40 = df["Total Pagu"].quantile(0.40)
+    p70 = df["Total Pagu"].quantile(0.70)
 
     df["Jenis Satker"] = pd.cut(
         df["Total Pagu"],
-        bins=[-float("inf"), q40, q70, float("inf")],
+        bins=[-float("inf"), p40, p70, float("inf")],
         labels=["Satker Kecil", "Satker Sedang", "Satker Besar"]
     )
 
@@ -4418,15 +4418,14 @@ def page_admin():
 
             # Klasifikasi Satker
             if "Total Pagu" in df.columns:
-                q40 = df["Total Pagu"].quantile(0.40)
-                q70 = df["Total Pagu"].quantile(0.70)
+                p40 = df["Total Pagu"].quantile(0.40)
+                p70 = df["Total Pagu"].quantile(0.70)
 
-                def klasifikasi(x):
-                    if x >= q70: return "Satker Besar"
-                    elif x >= q40: return "Satker Sedang"
-                    return "Satker Kecil"
-
-                df["Jenis Satker"] = df["Total Pagu"].apply(klasifikasi)
+                df["Jenis Satker"] = pd.cut(
+                    df["Total Pagu"],
+                    bins=[-float("inf"), p40, p70, float("inf")],
+                    labels=["Satker Kecil", "Satker Sedang", "Satker Besar"]
+                )
 
 
             # Preview
