@@ -67,6 +67,8 @@ if "ikpa_dipa_merged" not in st.session_state:
 if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
 
+if "data_ready" not in st.session_state:
+    st.session_state.data_ready = False
 
 # -------------------------
 # standardize_dipa
@@ -4625,6 +4627,16 @@ def main():
                     'Kode BA': [], 'K/L': [], 'Kode Satker': [],
                     'Uraian Satker-SINGKAT': [], 'Uraian Satker-LENGKAP': []
                 })
+
+    # ===============================
+    # AUTO LOAD DATA (BLOCKING LOGIC)
+    # ===============================
+    if not st.session_state.get("data_ready"):
+        try:
+            load_data_from_github()
+            st.session_state.data_ready = True
+        except Exception as e:
+            st.session_state.data_ready = False
 
     # ============================================================
     # 2️⃣ AUTO LOAD DATA IKPA
