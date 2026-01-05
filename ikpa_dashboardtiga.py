@@ -769,7 +769,7 @@ def save_file_to_github(content_bytes, filename, folder):
 # ============================
 #  LOAD DATA IKPA DARI GITHUB
 # ============================
-@st.cache_data
+@st.cache_data(ttl=3600)
 def load_data_from_github():
     """
     Load IKPA Satker dari GitHub (/data).
@@ -793,10 +793,6 @@ def load_data_from_github():
     except Exception:
         st.warning("📁 Folder 'data' belum ada di GitHub.")
         return
-
-    # JANGAN RESET data_storage
-    if "data_storage" not in st.session_state:
-        st.session_state.data_storage = {}
 
     REQUIRED_COLUMNS = [
         "No", "Kode KPPN", "Kode BA", "Kode Satker", "Uraian Satker",
