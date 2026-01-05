@@ -523,7 +523,13 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         df = df.sort_values("Nilai Akhir", ascending=False).reset_index(drop=True)
         df["Peringkat"] = df.index + 1
 
+        # ===============================
+        # 🔁 STANDARISASI KOMPATIBILITAS
+        # ===============================
+        df["Nilai Akhir (Nilai Total/Konversi Bobot)"] = df["Nilai Akhir"]
+
         return df, month, year
+
 
     except Exception as e:
         st.error(f"❌ Error memproses IKPA KPPN: {e}")
