@@ -432,54 +432,20 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         import pandas as pd
 
         # ===============================
-        # 1️⃣ BULAN (PRIORITAS DARI UI)
+        # 1️⃣ BULAN (WAJIB DARI UI)
         # ===============================
-        if detected_month and detected_month != "UNKNOWN":
-            month = detected_month
-        else:
-            month = "UNKNOWN"
+        month = detected_month if detected_month and detected_month != "UNKNOWN" else "UNKNOWN"
 
         # ===============================
-        # HELPER AMAN AKSES INDEX
+        # HELPER SAFE INDEX
         # ===============================
         def safe(row, idx):
-            return row[idx] if idx < len(row) and pd.notna(row[idx]) else 0
+            return row[idx] if idx < len(row) and pd.notna(row[idx]) else None
 
         # ===============================
         # BACA FILE RAW
         # ===============================
         df_raw = pd.read_excel(uploaded_file, header=None)
-
-        # ===============================
-        # FALLBACK DETEKSI BULAN (AMAN)
-        # ===============================
-        if month == "UNKNOWN" and df_raw.shape[0] > 1:
-            text = " ".join(
-                df_raw.iloc[:6, :5]
-                .astype(str)
-                .values
-                .flatten()
-            ).upper()
-
-            MONTH_MAP = {
-                "JAN": "JANUARI", "JANUARI": "JANUARI",
-                "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
-                "MAR": "MARET", "MARET": "MARET",
-                "APR": "APRIL", "APRIL": "APRIL",
-                "MEI": "MEI",
-                "JUN": "JUNI", "JUNI": "JUNI",
-                "JUL": "JULI", "JULI": "JULI",
-                "AGT": "AGUSTUS", "AGS": "AGUSTUS", "AGUSTUS": "AGUSTUS",
-                "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
-                "OKT": "OKTOBER", "OKTOBER": "OKTOBER",
-                "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
-                "DES": "DESEMBER", "DESEMBER": "DESEMBER"
-            }
-
-            for k, v in MONTH_MAP.items():
-                if k in text:
-                    month = v
-                    break
 
         # ===============================
         # DATA DIMULAI BARIS KE-5
@@ -488,14 +454,12 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         df_data.columns = range(len(df_data.columns))
 
         # ===============================
-        # DETEKSI INDEX KOLOM NILAI AKHIR (DEFENSIVE)
+        # DETEKSI KOLOM NILAI AKHIR (SUPER DEFENSIVE)
         # ===============================
         nilai_akhir_idx = None
+        max_scan_rows = min(6, df_raw.shape[0])
 
-        # scan beberapa baris teratas yang ADA
-        max_header_rows = min(6, df_raw.shape[0])
-
-        for r in range(max_header_rows):
+        for r in range(max_scan_rows):
             for c in range(df_raw.shape[1]):
                 cell = str(df_raw.iloc[r, c]).upper()
                 if any(k in cell for k in ["NILAI AKHIR", "NILAI IKPA", "SKOR"]):
@@ -505,27 +469,27 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
                 break
 
         if nilai_akhir_idx is None:
-            raise ValueError("Kolom 'Nilai Akhir' tidak ditemukan di file IKPA KPPN.")
+            raise ValueError("Kolom Nilai Akhir tidak ditemukan")
 
+        # ===============================
+        # PARSING POLA 4 BARIS IKPA KPPN
+        # ===============================
         processed_rows = []
         i = 0
 
         while i + 3 < len(df_data):
             nilai_row = df_data.iloc[i]
-            nilai_aspek_row = df_data.iloc[i + 3]
+            aspek_row = df_data.iloc[i + 3]
 
-            row_data = {
-                # IDENTITAS
+            row = {
                 "No": safe(nilai_row, 0),
                 "Kode KPPN": str(safe(nilai_row, 1)).replace("'", "").strip(),
                 "Nama KPPN": safe(nilai_row, 2),
 
-                # KUALITAS (NILAI ASPEK)
-                "Kualitas Perencanaan Anggaran": safe(nilai_aspek_row, 4),
-                "Kualitas Pelaksanaan Anggaran": safe(nilai_aspek_row, 6),
-                "Kualitas Hasil Pelaksanaan Anggaran": safe(nilai_aspek_row, 10),
+                "Kualitas Perencanaan Anggaran": safe(aspek_row, 4),
+                "Kualitas Pelaksanaan Anggaran": safe(aspek_row, 6),
+                "Kualitas Hasil Pelaksanaan Anggaran": safe(aspek_row, 10),
 
-                # INDIKATOR
                 "Revisi DIPA": safe(nilai_row, 4),
                 "Deviasi Halaman III DIPA": safe(nilai_row, 5),
                 "Penyerapan Anggaran": safe(nilai_row, 6),
@@ -534,49 +498,29 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
                 "Pengelolaan UP dan TUP": safe(nilai_row, 9),
                 "Capaian Output": safe(nilai_row, 10),
 
-                # NILAI AKHIR (IKPA KPPN)
                 "Nilai Akhir": safe(nilai_row, nilai_akhir_idx),
 
-                # METADATA
                 "Bulan": month,
                 "Tahun": year,
                 "Source": "Upload"
             }
 
-            processed_rows.append(row_data)
-            i += 4  # pola IKPA KPPN
+            processed_rows.append(row)
+            i += 4
 
         df = pd.DataFrame(processed_rows)
 
         # ===============================
         # CAST NUMERIK
         # ===============================
-        numeric_cols = [
-            "Kualitas Perencanaan Anggaran",
-            "Kualitas Pelaksanaan Anggaran",
-            "Kualitas Hasil Pelaksanaan Anggaran",
-            "Revisi DIPA",
-            "Deviasi Halaman III DIPA",
-            "Penyerapan Anggaran",
-            "Belanja Kontraktual",
-            "Penyelesaian Tagihan",
-            "Pengelolaan UP dan TUP",
-            "Capaian Output",
-            "Nilai Akhir"
-        ]
-
-        for col in numeric_cols:
-            if col in df.columns:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
+        numeric_cols = [c for c in df.columns if c not in ["Nama KPPN", "Bulan", "Source"]]
+        for c in numeric_cols:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
 
         # ===============================
         # RANKING
         # ===============================
-        df = df.sort_values(
-            "Nilai Akhir",
-            ascending=False
-        ).reset_index(drop=True)
-
+        df = df.sort_values("Nilai Akhir", ascending=False).reset_index(drop=True)
         df["Peringkat"] = df.index + 1
 
         return df, month, year
@@ -584,7 +528,6 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
     except Exception as e:
         st.error(f"❌ Error memproses IKPA KPPN: {e}")
         return None, None, None
-
 
 
 # ============================================================
