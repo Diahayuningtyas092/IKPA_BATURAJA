@@ -1472,12 +1472,10 @@ def page_dashboard():
    # ===============================
     # AMBIL DF AKTIF (GLOBAL)
     # ===============================
-    df = None
-
-    selected_period = st.session_state.get("selected_period")
-
-    if selected_period is not None:
-        df = st.session_state.data_storage.get(selected_period)
+    if "selected_period" not in st.session_state:
+        st.session_state.selected_period = all_periods[0]
+    
+    df = st.session_state.data_storage.get(st.session_state.selected_period)
 
     if df is not None:
         df = df.copy()
@@ -1601,27 +1599,20 @@ def page_dashboard():
     if main_tab == "🎯 Highlights":
         st.markdown("## 🎯 Highlights Kinerja Satker")
 
-        # -------------------------
-        # Pilih Periode
-        # -------------------------
-        if main_tab == "🎯 Highlights":
-    
-            st.session_state.setdefault("selected_period", all_periods[0])
+        st.selectbox(
+            "Pilih Periode",
+            options=all_periods,
+            format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+            key="selected_period"
+        )
 
-            st.selectbox(
-                "Pilih Periode",
-                options=all_periods,
-                format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-                key="selected_period"
-            )
+        df = st.session_state.data_storage.get(st.session_state.selected_period)
 
-            df = st.session_state.data_storage.get(st.session_state.selected_period)
+        if df is None or df.empty:
+            st.warning("Data IKPA belum tersedia.")
+            st.stop()
 
-            if df is None or df.empty:
-                st.warning("Data IKPA belum tersedia.")
-                st.stop()
-
-            df = df.copy()
+        df = df.copy()
 
 
         # ===============================
