@@ -418,10 +418,19 @@ def reprocess_all_ikpa_satker():
         st.session_state.ikpa_dipa_merged = False
 
 
-def process_excel_file_kppn(uploaded_file, year):
+def process_excel_file_kppn(uploaded_file, year, detected_month=None):
     try:
         import pandas as pd
 
+        # ===============================
+        # 1️⃣ BULAN (PRIORITAS DARI UI)
+        # ===============================
+        if detected_month and detected_month != "UNKNOWN":
+            month = detected_month
+        else:
+            month = "UNKNOWN"  # fallback terakhir
+
+        
         # ===============================
         # HELPER AMAN AKSES INDEX
         # ===============================
@@ -434,11 +443,11 @@ def process_excel_file_kppn(uploaded_file, year):
         df_raw = pd.read_excel(uploaded_file, header=None)
 
         # ===============================
-        # DETEKSI BULAN
+        # DETEKSI BULAN (FALLBACK AMAN)
         # ===============================
-        month = "UNKNOWN"
-        if df_raw.shape[0] > 1:
+        if month == "UNKNOWN" and df_raw.shape[0] > 1:
             text = str(df_raw.iloc[1, 0]).upper()
+
             MONTH_MAP = {
                 "JAN": "JANUARI", "JANUARI": "JANUARI",
                 "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
@@ -453,6 +462,7 @@ def process_excel_file_kppn(uploaded_file, year):
                 "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER",
                 "DES": "DESEMBER", "DESEMBER": "DESEMBER"
             }
+
             for k, v in MONTH_MAP.items():
                 if k in text:
                     month = v
@@ -4026,8 +4036,10 @@ def page_admin():
 
                     df_processed, month, year = process_excel_file_kppn(
                         uploaded_file_kppn,
-                        upload_year_kppn
+                        upload_year_kppn,
+                        month_preview   
                     )
+
 
                     if df_processed is None:
                         st.error(" Gagal memproses file IKPA KPPN.")
