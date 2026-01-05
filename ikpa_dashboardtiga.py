@@ -3872,6 +3872,7 @@ def page_admin():
         
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
+
         # ===============================
         # 📅 PILIH TAHUN
         # ===============================
@@ -3930,7 +3931,7 @@ def page_admin():
                     .str.replace(r"\s+", " ", regex=True)
                 )
 
-                #  SALAH FILE: IKPA SATKER
+                # SALAH FILE: IKPA SATKER
                 if "Nama Satker" in df_check.columns:
                     st.error(
                         "GAGAL UPLOAD!\n\n"
@@ -3940,12 +3941,11 @@ def page_admin():
                     st.stop()
 
                 # ===============================
-                # 🔍 DETEKSI BULAN (HEADER ATAS)
+                # 🔍 DETEKSI BULAN (HEADER + FILENAME)
                 # ===============================
                 uploaded_file_kppn.seek(0)
                 df_info = pd.read_excel(uploaded_file_kppn, header=None)
 
-                month_preview = "UNKNOWN"
                 MONTH_MAP = {
                     "JAN": "JANUARI", "JANUARI": "JANUARI",
                     "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
@@ -3961,21 +3961,44 @@ def page_admin():
                     "DES": "DESEMBER", "DESEMBER": "DESEMBER"
                 }
 
-                if df_info.shape[0] > 1:
-                    text = str(df_info.iloc[1, 0]).upper()
+                month_preview = None
+
+                # 1️⃣ Cari bulan di header (baris & kolom awal)
+                for r in range(min(6, df_info.shape[0])):
+                    for c in range(min(5, df_info.shape[1])):
+                        cell = str(df_info.iloc[r, c]).upper()
+                        for k, v in MONTH_MAP.items():
+                            if k in cell:
+                                month_preview = v
+                                break
+                        if month_preview:
+                            break
+                    if month_preview:
+                        break
+
+                # 2️⃣ Fallback: cari di nama file
+                if not month_preview:
+                    fname = uploaded_file_kppn.name.upper()
                     for k, v in MONTH_MAP.items():
-                        if k in text:
+                        if k in fname:
                             month_preview = v
                             break
 
+                # 3️⃣ Final fallback
+                if not month_preview:
+                    month_preview = "UNKNOWN"
+
                 period_key_preview = (month_preview, str(upload_year_kppn))
 
+                # ===============================
+                # ℹ️ INFO / KONFIRMASI
+                # ===============================
                 if period_key_preview in st.session_state.data_storage_kppn:
                     st.warning(
-                        f" Data IKPA KPPN **{month_preview} {upload_year_kppn}** sudah ada."
+                        f"Data IKPA KPPN **{month_preview} {upload_year_kppn}** sudah ada."
                     )
                     confirm_replace = st.checkbox(
-                        " Ganti data yang sudah ada",
+                        "Ganti data yang sudah ada",
                         key=f"confirm_replace_kppn_{month_preview}_{upload_year_kppn}"
                     )
                 else:
@@ -3986,8 +4009,9 @@ def page_admin():
                     )
 
             except Exception as e:
-                st.error(f" Gagal membaca file: {e}")
+                st.error(f"Gagal membaca file: {e}")
                 confirm_replace = False
+
 
             # ===============================
             # 🔄 PROSES DATA
