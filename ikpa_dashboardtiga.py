@@ -4622,12 +4622,15 @@ def main():
     # ============================================================
     #  AUTO LOAD DATA IKPA
     # ============================================================
-    if "data_storage" not in st.session_state:
-        st.session_state.data_storage = {}
-
     if not st.session_state.data_storage:
         with st.spinner("🔄 Memuat data IKPA..."):
             st.session_state.data_storage = load_data_from_github()
+
+    if st.session_state.data_storage:
+        st.success(f"✅ {len(st.session_state.data_storage)} periode IKPA berhasil dimuat")
+    else:
+        st.warning("⚠️ Data IKPA belum tersedia")
+
 
     # ===============================
     # LOAD IKPA KPPN DARI GITHUB
