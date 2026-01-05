@@ -437,9 +437,8 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         if detected_month and detected_month != "UNKNOWN":
             month = detected_month
         else:
-            month = "UNKNOWN"  # fallback terakhir
+            month = "UNKNOWN"
 
-        
         # ===============================
         # HELPER AMAN AKSES INDEX
         # ===============================
@@ -447,18 +446,16 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
             return row[idx] if idx < len(row) and pd.notna(row[idx]) else 0
 
         # ===============================
-        # BACA FILE
+        # BACA FILE RAW
         # ===============================
         df_raw = pd.read_excel(uploaded_file, header=None)
 
         # ===============================
-        # DETEKSI BULAN (FALLBACK AMAN)
+        # FALLBACK DETEKSI BULAN (AMAN)
         # ===============================
         if month == "UNKNOWN" and df_raw.shape[0] > 1:
-
-            # Gabungkan teks dari area header (lebih toleran)
             text = " ".join(
-                df_raw.iloc[:6, :5]       
+                df_raw.iloc[:6, :5]
                 .astype(str)
                 .values
                 .flatten()
@@ -485,7 +482,7 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
                     break
 
         # ===============================
-        # DATA MULAI BARIS KE-5
+        # DATA DIMULAI BARIS KE-5
         # ===============================
         df_data = df_raw.iloc[4:].reset_index(drop=True)
         df_data.columns = range(len(df_data.columns))
@@ -503,7 +500,7 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
                 "Kode KPPN": str(safe(nilai_row, 1)).replace("'", "").strip(),
                 "Nama KPPN": safe(nilai_row, 2),
 
-                # KUALITAS (DARI NILAI ASPEK)
+                # KUALITAS (NILAI ASPEK)
                 "Kualitas Perencanaan Anggaran": safe(nilai_aspek_row, 4),
                 "Kualitas Pelaksanaan Anggaran": safe(nilai_aspek_row, 6),
                 "Kualitas Hasil Pelaksanaan Anggaran": safe(nilai_aspek_row, 10),
@@ -517,11 +514,8 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
                 "Pengelolaan UP dan TUP": safe(nilai_row, 9),
                 "Capaian Output": safe(nilai_row, 10),
 
-                # NILAI AKHIR
-                "Nilai Total": safe(nilai_row, 11),
-                "Konversi Bobot": safe(nilai_row, 12),
-                "Dispensasi SPM (Pengurang)": safe(nilai_row, 13),
-                "Nilai Akhir (Nilai Total/Konversi Bobot)": safe(nilai_row, 14),
+                # NILAI AKHIR (IKPA KPPN)
+                "Nilai Akhir": safe(nilai_row, 11),
 
                 # METADATA
                 "Bulan": month,
@@ -530,12 +524,12 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
             }
 
             processed_rows.append(row_data)
-            i += 4  # 🔑 POLA IKPA (Nilai, Bobot, Nilai Akhir, Nilai Aspek)
+            i += 4  # pola IKPA KPPN
 
         df = pd.DataFrame(processed_rows)
 
         # ===============================
-        # NUMERIC CAST
+        # CAST NUMERIK
         # ===============================
         numeric_cols = [
             "Kualitas Perencanaan Anggaran",
@@ -548,10 +542,7 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
             "Penyelesaian Tagihan",
             "Pengelolaan UP dan TUP",
             "Capaian Output",
-            "Nilai Total",
-            "Konversi Bobot",
-            "Dispensasi SPM (Pengurang)",
-            "Nilai Akhir (Nilai Total/Konversi Bobot)"
+            "Nilai Akhir"
         ]
 
         for col in numeric_cols:
@@ -562,7 +553,7 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         # RANKING
         # ===============================
         df = df.sort_values(
-            "Nilai Akhir (Nilai Total/Konversi Bobot)",
+            "Nilai Akhir",
             ascending=False
         ).reset_index(drop=True)
 
@@ -573,6 +564,7 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
     except Exception as e:
         st.error(f"❌ Error memproses IKPA KPPN: {e}")
         return None, None, None
+
 
 
 # ============================================================
