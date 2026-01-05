@@ -2130,7 +2130,31 @@ def page_dashboard():
                 display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + ordered_periods
                 df_display = df_wide[display_cols].copy()
 
-                # --- Singkat nama bulan ---
+                # -------------------------
+                # FIX FORMAT KODE & RANK
+                # -------------------------
+                df_display['Peringkat'] = (
+                    pd.to_numeric(df_display['Peringkat'], errors='coerce')
+                    .astype('Int64')
+                    .astype(str)
+                )
+
+                df_display['Kode BA'] = (
+                    df_display['Kode BA']
+                    .astype(str)
+                    .str.replace(r'\.0$', '', regex=True)
+                )
+
+                df_display['Kode Satker'] = (
+                    df_display['Kode Satker']
+                    .astype(str)
+                    .str.replace(r'\.0$', '', regex=True)
+                    .str.zfill(6)  # jaga 0 di depan
+                )
+
+                # -------------------------
+                # SINGKAT NAMA BULAN
+                # -------------------------
                 if period_type == 'monthly':
                     rename_map = {m: MONTH_ABBR.get(m.upper(), m) for m in ordered_periods}
                     df_display.rename(columns=rename_map, inplace=True)
@@ -2138,9 +2162,7 @@ def page_dashboard():
                 else:
                     display_period_cols = ordered_periods
 
-                # --- Ganti NaN ---
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
-
 
 
                 # =============================
