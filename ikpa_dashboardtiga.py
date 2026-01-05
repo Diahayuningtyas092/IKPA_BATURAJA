@@ -488,14 +488,20 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         df_data.columns = range(len(df_data.columns))
 
         # ===============================
-        # DETEKSI INDEX KOLOM NILAI AKHIR (IKPA KPPN)
+        # DETEKSI INDEX KOLOM NILAI AKHIR (DEFENSIVE)
         # ===============================
         nilai_akhir_idx = None
 
-        for col_idx in range(len(df_raw.columns)):
-            col_text = str(df_raw.iloc[3, col_idx]).upper()  # baris header nilai
-            if any(k in col_text for k in ["NILAI AKHIR", "NILAI IKPA", "SKOR"]):
-                nilai_akhir_idx = col_idx
+        # scan beberapa baris teratas yang ADA
+        max_header_rows = min(6, df_raw.shape[0])
+
+        for r in range(max_header_rows):
+            for c in range(df_raw.shape[1]):
+                cell = str(df_raw.iloc[r, c]).upper()
+                if any(k in cell for k in ["NILAI AKHIR", "NILAI IKPA", "SKOR"]):
+                    nilai_akhir_idx = c
+                    break
+            if nilai_akhir_idx is not None:
                 break
 
         if nilai_akhir_idx is None:
