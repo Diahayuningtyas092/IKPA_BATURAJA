@@ -325,17 +325,21 @@ def register_ikpa_satker(df_final, month, year, source="Manual"):
 
     st.session_state.data_storage[key] = df
 
-def find_header_row_by_keyword(uploaded_file, keyword, max_rows=10):
+def find_header_row_by_keywords(uploaded_file, keywords, max_rows=15):
     """
-    Mencari baris header Excel berdasarkan keyword kolom
-    (contoh: 'Nama KPPN', 'Nama Satker')
+    Mencari baris header Excel berdasarkan BANYAK keyword kolom
+    (contoh: 'Nama KPPN', 'KPPN', 'Nama Kantor', dll)
     """
+    import pandas as pd
+
     uploaded_file.seek(0)
     preview = pd.read_excel(
         uploaded_file,
         header=None,
         nrows=max_rows
     )
+
+    keywords = [k.upper() for k in keywords]
 
     for i in range(preview.shape[0]):
         row_values = (
@@ -344,10 +348,15 @@ def find_header_row_by_keyword(uploaded_file, keyword, max_rows=10):
             .str.upper()
             .str.strip()
         )
-        if any(keyword.upper() in v for v in row_values):
+
+        if any(
+            any(k in cell for cell in row_values)
+            for k in keywords
+        ):
             return i
 
     return None
+
 
 # ===============================
 # PARSER IKPA SATKER (INI KUNCI)
@@ -446,7 +455,14 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         # DETEKSI BULAN (FALLBACK AMAN)
         # ===============================
         if month == "UNKNOWN" and df_raw.shape[0] > 1:
-            text = str(df_raw.iloc[1, 0]).upper()
+
+            # Gabungkan teks dari area header (lebih toleran)
+            text = " ".join(
+                df_raw.iloc[:6, :5]       
+                .astype(str)
+                .values
+                .flatten()
+            ).upper()
 
             MONTH_MAP = {
                 "JAN": "JANUARI", "JANUARI": "JANUARI",
@@ -3727,20 +3743,6 @@ def page_admin():
 
 
     # ===============================
-    # 🔍 SIDEBAR DEBUG
-    # ===============================
-    with st.sidebar:
-        st.markdown("### 🔍 Debug DIPA")
-        if st.button("Cek Status DIPA"):
-            if "DATA_DIPA_by_year" in st.session_state:
-                for tahun, df in st.session_state.DATA_DIPA_by_year.items():
-                    st.write(f"**{tahun}:** {len(df)} baris")
-                    st.write(f"- Kode Satker kosong: {df['Kode Satker'].eq('').sum()}")
-                    st.write(f"- Total Pagu = 0: {df['Total Pagu'].eq(0).sum()}")
-            else:
-                st.warning("DATA_DIPA_by_year belum dimuat")
-
-    # ===============================
     # 📌 TAB MENU
     # ===============================
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -3914,9 +3916,14 @@ def page_admin():
         if uploaded_file_kppn is not None:
             try:
                 # Cari baris header otomatis
-                header_row = find_header_row_by_keyword(
+                header_row = find_header_row_by_keywords(
                     uploaded_file_kppn,
-                    keyword="Nama KPPN"
+                    keywords=[
+                        "Nama KPPN",
+                        "KPPN",
+                        "Nama Kantor",
+                        "Kantor Pelayanan"
+                    ]
                 )
 
                 if header_row is None:
@@ -3942,7 +3949,7 @@ def page_admin():
                 )
 
                 # SALAH FILE: IKPA SATKER
-                if "Nama Satker" in df_check.columns:
+                if any(col.lower().startswith("nama satker") for col in df_check.columns):
                     st.error(
                         "GAGAL UPLOAD!\n\n"
                         "File yang Anda upload adalah **IKPA SATKER**.\n"
