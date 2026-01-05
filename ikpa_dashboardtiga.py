@@ -419,6 +419,40 @@ def process_excel_file(uploaded_file, upload_year):
     return df_final, month, upload_year
 
 # ===============================
+# PARSER IKPA KPPN (RINGKAS)
+# ===============================
+def process_kppn_ringkas(uploaded_file, year, detected_month):
+    uploaded_file.seek(0)
+    df = pd.read_excel(uploaded_file)
+
+    df.columns = (
+        df.columns.astype(str)
+        .str.strip()
+        .str.replace(r"\s+", " ", regex=True)
+    )
+
+    required = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    if required not in df.columns:
+        raise ValueError("File IKPA KPPN tidak valid")
+
+    df = df.applymap(
+        lambda x: str(x).replace(",", ".") if isinstance(x, str) else x
+    )
+
+    for col in df.columns:
+        if col not in ["Nama KPPN", "Bulan", "Tahun", "Source"]:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    df["Bulan"] = detected_month
+    df["Tahun"] = year
+    df["Source"] = "Upload"
+
+    df = df.sort_values(required, ascending=False).reset_index(drop=True)
+    df["Peringkat"] = df.index + 1
+
+    return df, detected_month, year
+
+# ===============================
 # REPROCESS ALL IKPA SATKER
 # ===============================
 def reprocess_all_ikpa_satker():
@@ -437,103 +471,69 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         month = detected_month if detected_month and detected_month != "UNKNOWN" else "UNKNOWN"
 
         # ===============================
-        # HELPER SAFE INDEX
+        # 2️⃣ BACA FILE (FORMAT RINGKAS)
         # ===============================
-        def safe(row, idx):
-            return row[idx] if idx < len(row) and pd.notna(row[idx]) else None
-
-        # ===============================
-        # BACA FILE RAW
-        # ===============================
-        df_raw = pd.read_excel(uploaded_file, header=None)
+        uploaded_file.seek(0)
+        df = pd.read_excel(uploaded_file)
 
         # ===============================
-        # DATA DIMULAI BARIS KE-5
+        # 3️⃣ NORMALISASI NAMA KOLOM
         # ===============================
-        df_data = df_raw.iloc[4:].reset_index(drop=True)
-        df_data.columns = range(len(df_data.columns))
-
-        # ===============================
-        # DETEKSI KOLOM NILAI AKHIR (SUPER DEFENSIVE)
-        # ===============================
-        nilai_akhir_idx = None
-        max_scan_rows = min(6, df_raw.shape[0])
-
-        for r in range(max_scan_rows):
-            for c in range(df_raw.shape[1]):
-                cell = str(df_raw.iloc[r, c]).upper()
-                if any(k in cell for k in ["NILAI AKHIR", "NILAI IKPA", "SKOR"]):
-                    nilai_akhir_idx = c
-                    break
-            if nilai_akhir_idx is not None:
-                break
-
-        if nilai_akhir_idx is None:
-            raise ValueError("Kolom Nilai Akhir tidak ditemukan")
+        df.columns = (
+            df.columns.astype(str)
+            .str.strip()
+            .str.replace(r"\s+", " ", regex=True)
+        )
 
         # ===============================
-        # PARSING POLA 4 BARIS IKPA KPPN
+        # 4️⃣ VALIDASI KOLOM WAJIB
         # ===============================
-        processed_rows = []
-        i = 0
-
-        while i + 3 < len(df_data):
-            nilai_row = df_data.iloc[i]
-            aspek_row = df_data.iloc[i + 3]
-
-            row = {
-                "No": safe(nilai_row, 0),
-                "Kode KPPN": str(safe(nilai_row, 1)).replace("'", "").strip(),
-                "Nama KPPN": safe(nilai_row, 2),
-
-                "Kualitas Perencanaan Anggaran": safe(aspek_row, 4),
-                "Kualitas Pelaksanaan Anggaran": safe(aspek_row, 6),
-                "Kualitas Hasil Pelaksanaan Anggaran": safe(aspek_row, 10),
-
-                "Revisi DIPA": safe(nilai_row, 4),
-                "Deviasi Halaman III DIPA": safe(nilai_row, 5),
-                "Penyerapan Anggaran": safe(nilai_row, 6),
-                "Belanja Kontraktual": safe(nilai_row, 7),
-                "Penyelesaian Tagihan": safe(nilai_row, 8),
-                "Pengelolaan UP dan TUP": safe(nilai_row, 9),
-                "Capaian Output": safe(nilai_row, 10),
-
-                "Nilai Akhir": safe(nilai_row, nilai_akhir_idx),
-
-                "Bulan": month,
-                "Tahun": year,
-                "Source": "Upload"
-            }
-
-            processed_rows.append(row)
-            i += 4
-
-        df = pd.DataFrame(processed_rows)
+        REQUIRED_COL = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+        if REQUIRED_COL not in df.columns:
+            raise ValueError(
+                "File IKPA KPPN tidak valid.\n"
+                "Kolom 'Nilai Akhir (Nilai Total/Konversi Bobot)' tidak ditemukan."
+            )
 
         # ===============================
-        # CAST NUMERIK
+        # 5️⃣ KONVERSI DESIMAL (KOMA → TITIK)
         # ===============================
-        numeric_cols = [c for c in df.columns if c not in ["Nama KPPN", "Bulan", "Source"]]
-        for c in numeric_cols:
-            df[c] = pd.to_numeric(df[c], errors="coerce")
+        df = df.applymap(
+            lambda x: str(x).replace(",", ".") if isinstance(x, str) else x
+        )
 
         # ===============================
-        # RANKING
+        # 6️⃣ CAST NUMERIK (AMAN)
         # ===============================
-        df = df.sort_values("Nilai Akhir", ascending=False).reset_index(drop=True)
+        NON_NUMERIC = ["Nama KPPN", "Bulan", "Tahun", "Source"]
+
+        for col in df.columns:
+            if col not in NON_NUMERIC:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+
+        # ===============================
+        # 7️⃣ METADATA
+        # ===============================
+        df["Bulan"] = month
+        df["Tahun"] = year
+        df["Source"] = "Upload"
+
+        # ===============================
+        # 8️⃣ RANKING
+        # ===============================
+        df = df.sort_values(
+            REQUIRED_COL,
+            ascending=False
+        ).reset_index(drop=True)
+
         df["Peringkat"] = df.index + 1
 
-        # ===============================
-        # 🔁 STANDARISASI KOMPATIBILITAS
-        # ===============================
-        df["Nilai Akhir (Nilai Total/Konversi Bobot)"] = df["Nilai Akhir"]
-
         return df, month, year
-
 
     except Exception as e:
         st.error(f"❌ Error memproses IKPA KPPN: {e}")
         return None, None, None
+
 
 
 # ============================================================
