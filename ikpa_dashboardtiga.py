@@ -487,6 +487,20 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         df_data = df_raw.iloc[4:].reset_index(drop=True)
         df_data.columns = range(len(df_data.columns))
 
+        # ===============================
+        # DETEKSI INDEX KOLOM NILAI AKHIR (IKPA KPPN)
+        # ===============================
+        nilai_akhir_idx = None
+
+        for col_idx in range(len(df_raw.columns)):
+            col_text = str(df_raw.iloc[3, col_idx]).upper()  # baris header nilai
+            if any(k in col_text for k in ["NILAI AKHIR", "NILAI IKPA", "SKOR"]):
+                nilai_akhir_idx = col_idx
+                break
+
+        if nilai_akhir_idx is None:
+            raise ValueError("Kolom 'Nilai Akhir' tidak ditemukan di file IKPA KPPN.")
+
         processed_rows = []
         i = 0
 
@@ -515,7 +529,7 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
                 "Capaian Output": safe(nilai_row, 10),
 
                 # NILAI AKHIR (IKPA KPPN)
-                "Nilai Akhir": safe(nilai_row, 11),
+                "Nilai Akhir": safe(nilai_row, nilai_akhir_idx),
 
                 # METADATA
                 "Bulan": month,
