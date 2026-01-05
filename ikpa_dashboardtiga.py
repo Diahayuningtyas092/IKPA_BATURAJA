@@ -1468,22 +1468,19 @@ def page_dashboard():
         st.warning("⚠️ Belum ada data periode IKPA yang valid.")
         return
 
-    # Pilih periode
-    selected_period = st.selectbox(
-        "Pilih Periode",
-        options=all_periods,
-        index=0,
-        format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-        key="dashboard_selected_period"
-    )
 
-    df = data_storage.get(selected_period)
+   # ===============================
+    # AMBIL DF AKTIF (GLOBAL)
+    # ===============================
+    df = None
 
-    if df is None or df.empty:
-        st.warning(f"⚠️ Data IKPA untuk periode {selected_period[0]} {selected_period[1]} kosong.")
-        return
+    selected_period = st.session_state.get("selected_period")
 
-    df = df.copy()
+    if selected_period is not None:
+        df = st.session_state.data_storage.get(selected_period)
+
+    if df is not None:
+        df = df.copy()
 
 
     # ensure main_tab state exists
@@ -1560,7 +1557,7 @@ def page_dashboard():
 
     st.markdown("🔎 Filter Kode BA")  
 
-    if 'Kode BA' in df.columns:
+    if df is not None and 'Kode BA' in df.columns:
 
         df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
 
@@ -1607,24 +1604,25 @@ def page_dashboard():
         # -------------------------
         # Pilih Periode
         # -------------------------
-        selected_period = st.selectbox(
-            "Pilih Periode",
-            options=all_periods,
-            index=0,
-            format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-            key="select_period_main"
-        )
+        if main_tab == "🎯 Highlights":
+    
+            st.session_state.setdefault("selected_period", all_periods[0])
 
-        df = st.session_state.data_storage.get(selected_period)
+            st.selectbox(
+                "Pilih Periode",
+                options=all_periods,
+                format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+                key="selected_period"
+            )
 
-        # ===============================
-        # VALIDASI DF (PALING AWAL)
-        # ===============================
-        if df is None or df.empty:
-            st.warning("Data IKPA belum tersedia.")
-            st.stop()
+            df = st.session_state.data_storage.get(st.session_state.selected_period)
 
-        df = df.copy()
+            if df is None or df.empty:
+                st.warning("Data IKPA belum tersedia.")
+                st.stop()
+
+            df = df.copy()
+
 
         # ===============================
         # NORMALISASI KODE BA (1x SAJA)
