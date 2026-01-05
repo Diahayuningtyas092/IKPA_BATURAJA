@@ -774,16 +774,16 @@ def load_data_from_github():
     """
     Load IKPA Satker dari GitHub (/data).
     HANYA file hasil proses (df_final) yang diterima.
-    Data manual TIDAK akan ditimpa.
+    Mengembalikan dict: {(BULAN, TAHUN): DataFrame}
     """
+
+    data_storage = {}
 
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
     if not token or not repo_name:
-        st.error("❌ Gagal mengakses GitHub: token/repo tidak ditemukan.")
-        st.stop()
-        return
+        return data_storage
 
     g = Github(auth=Auth.Token(token))
     repo = g.get_repo(repo_name)
@@ -791,8 +791,7 @@ def load_data_from_github():
     try:
         contents = repo.get_contents("data")
     except Exception:
-        st.warning("📁 Folder 'data' belum ada di GitHub.")
-        return
+        return data_storage
 
     REQUIRED_COLUMNS = [
         "No", "Kode KPPN", "Kode BA", "Kode Satker", "Uraian Satker",
@@ -815,8 +814,6 @@ def load_data_from_github():
         "SEPTEMBER": 9, "OKTOBER": 10, "NOVEMBER": 11, "DESEMBER": 12
     }
 
-    loaded_count = 0
-
     for file in contents:
         if not file.name.endswith(".xlsx"):
             continue
@@ -825,7 +822,7 @@ def load_data_from_github():
             decoded = base64.b64decode(file.content)
             df = pd.read_excel(io.BytesIO(decoded))
 
-            # VALIDASI HASIL PROSES
+            # Validasi kolom wajib
             if not all(col in df.columns for col in REQUIRED_COLUMNS):
                 continue
 
@@ -833,14 +830,11 @@ def load_data_from_github():
             year = str(df["Tahun"].iloc[0])
             key = (month, year)
 
-            # ❗ JIKA SUDAH ADA (MANUAL), LEWATI
-            if key in st.session_state.data_storage:
-                continue
-
-            # NORMALISASI
+            # Normalisasi kolom waktu
             df["Bulan"] = month
             df["Tahun"] = year
 
+            # Normalisasi kode satker
             if "Kode Satker" in df.columns:
                 df["Kode Satker"] = (
                     df["Kode Satker"]
@@ -848,6 +842,7 @@ def load_data_from_github():
                     .apply(normalize_kode_satker)
                 )
 
+            # Optional enrichment
             try:
                 df = apply_reference_short_names(df)
             except:
@@ -858,6 +853,7 @@ def load_data_from_github():
             except:
                 pass
 
+            # Pastikan numerik
             numeric_cols = [
                 "Nilai Akhir (Nilai Total/Konversi Bobot)",
                 "Nilai Total", "Konversi Bobot",
@@ -880,6 +876,7 @@ def load_data_from_github():
             df["Period"] = f"{month} {year}"
             df["Period_Sort"] = f"{int(year):04d}-{month_num:02d}"
 
+            # Buat peringkat jika belum ada
             if "Peringkat" not in df.columns:
                 df = df.sort_values(
                     "Nilai Akhir (Nilai Total/Konversi Bobot)",
@@ -887,13 +884,13 @@ def load_data_from_github():
                 ).reset_index(drop=True)
                 df["Peringkat"] = range(1, len(df) + 1)
 
-            st.session_state.data_storage[key] = df
-            loaded_count += 1
+            data_storage[key] = df
 
-        except Exception as e:
-            st.error(f"❌ Gagal memuat {file.name}: {e}")
+        except Exception:
+            continue
 
-    st.success(f"✅ {loaded_count} file IKPA Satker dimuat dari GitHub.")
+    return data_storage
+
 
 
 from github import Github, Auth
@@ -4623,11 +4620,14 @@ def main():
                 })
 
     # ============================================================
-    # 2️⃣ AUTO LOAD DATA IKPA
+    #  AUTO LOAD DATA IKPA
     # ============================================================
+    if "data_storage" not in st.session_state:
+        st.session_state.data_storage = {}
+
     if not st.session_state.data_storage:
         with st.spinner("🔄 Memuat data IKPA..."):
-            load_data_from_github()
+            st.session_state.data_storage = load_data_from_github()
 
     # ===============================
     # LOAD IKPA KPPN DARI GITHUB
