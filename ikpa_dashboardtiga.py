@@ -2223,12 +2223,18 @@ def page_dashboard():
                     return ['' for _ in s]
 
 
-                styler = df_display_filtered.style.format(format_ikpa_display, na_rep='–')
+                format_cols = display_period_cols
+
+                styler = df_display_filtered.style.format(
+                    {c: format_ikpa_display for c in format_cols},
+                    na_rep='–'
+                )
+
                 if display_period_cols:
                     styler = styler.apply(color_trend, axis=1)
+
                 styler = styler.apply(highlight_top)
 
-                
                 st.dataframe(styler, use_container_width=True, height=600)
 
 
