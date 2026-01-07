@@ -2577,28 +2577,24 @@ def page_dashboard():
 
 
         # -------------------------
-        # DETAIL SATKER (legacy table)
+        # DETAIL SATKER (AgGrid FINAL)
         # -------------------------
         else:
             st.subheader("📋 Detail Satker")
 
             # ===============================
-            # PASTIKAN DATA ADA
+            # VALIDASI DATA
             # ===============================
             if not st.session_state.get("data_storage"):
-                st.warning("⚠️ Belum ada data yang diunggah. Silakan unggah data melalui halaman Admin.")
+                st.warning("⚠️ Belum ada data IKPA.")
                 return
 
             # ===============================
-            # SIAPKAN OPSI BULAN & TAHUN
+            # PILIH TAHUN & BULAN
             # ===============================
             available_periods = list(st.session_state.data_storage.keys())
-            available_years = sorted(
-                {int(y) for (_, y) in available_periods},
-                reverse=True
-            )
+            available_years = sorted({int(y) for (_, y) in available_periods}, reverse=True)
 
-            # default tahun terbaru
             selected_year = st.selectbox(
                 "Pilih Tahun",
                 options=available_years,
@@ -2606,7 +2602,6 @@ def page_dashboard():
                 key="detail_satker_year"
             )
 
-            # bulan tersedia untuk tahun terpilih
             months_for_year = [
                 m for (m, y) in available_periods if int(y) == selected_year
             ]
@@ -2624,92 +2619,89 @@ def page_dashboard():
                 "Pilih Bulan",
                 options=months_for_year,
                 format_func=lambda x: x.capitalize(),
-                index=len(months_for_year) - 1,  # default bulan terakhir
+                index=len(months_for_year) - 1,
                 key="detail_satker_month"
             )
 
-            # ===============================
-            # AMBIL DATA TERPILIH
-            # ===============================
             selected_key = (selected_month, str(selected_year))
-            df = st.session_state.data_storage.get(selected_key, None)
+            df = st.session_state.data_storage.get(selected_key)
 
             if df is None or df.empty:
-                st.info("Data untuk detail satker tidak tersedia.")
+                st.info("Data detail satker tidak tersedia.")
                 return
 
             df = df.copy()
 
             # ===============================
-            # NORMALISASI KODE BA
+            # NORMALISASI & FILTER BA
             # ===============================
-            if 'Kode BA' in df.columns:
-                df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
+            if "Kode BA" in df.columns:
+                df["Kode BA"] = df["Kode BA"].apply(normalize_kode_ba)
 
-            # ===============================
-            # APPLY FILTER BA (GLOBAL)
-            # ===============================
             df = apply_filter_ba(df)
 
             if df.empty:
-                st.info("Tidak ada data sesuai filter Kode BA.")
+                st.info("Tidak ada data sesuai filter BA.")
                 return
 
             # ===============================
             # MODE TAMPILAN
             # ===============================
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                view_mode = st.radio(
-                    "Tampilan",
-                    options=['aspek', 'komponen'],
-                    format_func=lambda x: 'Berdasarkan Aspek' if x == 'aspek' else 'Berdasarkan Komponen',
-                    horizontal=True,
-                    key="detail_view_mode"
-                )
-            with col2:
-                st.write("")
+            view_mode = st.radio(
+                "Tampilan",
+                options=["aspek", "komponen"],
+                format_func=lambda x: "Berdasarkan Aspek" if x == "aspek" else "Berdasarkan Komponen",
+                horizontal=True,
+                key="detail_view_mode"
+            )
 
-            display_columns = ['Peringkat', 'Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS']
+            # ===============================
+            # KOLOM IDENTITAS (WAJIB)
+            # ===============================
+            base_cols = [
+                "Uraian Satker-RINGKAS",
+                "Kode Satker",
+                "Peringkat",
+                "Kode BA"
+            ]
 
-            if view_mode == 'aspek':
-                display_columns += [
-                    'Kualitas Perencanaan Anggaran',
-                    'Kualitas Pelaksanaan Anggaran',
-                    'Kualitas Hasil Pelaksanaan Anggaran'
+            if view_mode == "aspek":
+                value_cols = [
+                    "Kualitas Perencanaan Anggaran",
+                    "Kualitas Pelaksanaan Anggaran",
+                    "Kualitas Hasil Pelaksanaan Anggaran",
+                    "Nilai Total",
+                    "Dispensasi SPM (Pengurang)",
+                    "Nilai Akhir (Nilai Total/Konversi Bobot)"
                 ]
-                df_display = df[
-                    display_columns + [
-                        'Nilai Total',
-                        'Dispensasi SPM (Pengurang)',
-                        'Nilai Akhir (Nilai Total/Konversi Bobot)'
-                    ]
-                ].copy()
+
+                df_display = df[base_cols + value_cols].copy()
 
             else:
                 component_cols = [
-                    'Revisi DIPA', 'Deviasi Halaman III DIPA', 'Penyerapan Anggaran',
-                    'Belanja Kontraktual', 'Penyelesaian Tagihan',
-                    'Pengelolaan UP dan TUP', 'Capaian Output'
+                    "Revisi DIPA",
+                    "Deviasi Halaman III DIPA",
+                    "Penyerapan Anggaran",
+                    "Belanja Kontraktual",
+                    "Penyelesaian Tagihan",
+                    "Pengelolaan UP dan TUP",
+                    "Capaian Output"
                 ]
 
-                df_display = df[
-                    display_columns + [
-                        'Nilai Total',
-                        'Dispensasi SPM (Pengurang)',
-                        'Nilai Akhir (Nilai Total/Konversi Bobot)'
-                    ]
-                ].copy()
-
-                for col in component_cols:
-                    df_display[col] = df.get(col, 0)
-
-                final_cols = (
-                    display_columns +
+                value_cols = (
                     component_cols +
-                    ['Nilai Total', 'Dispensasi SPM (Pengurang)', 'Nilai Akhir (Nilai Total/Konversi Bobot)']
+                    [
+                        "Nilai Total",
+                        "Dispensasi SPM (Pengurang)",
+                        "Nilai Akhir (Nilai Total/Konversi Bobot)"
+                    ]
                 )
-                df_display = df_display[final_cols]
+
+                for c in component_cols:
+                    if c not in df.columns:
+                        df[c] = 0
+
+                df_display = df[base_cols + value_cols].copy()
 
             # ===============================
             # SEARCH
@@ -2726,33 +2718,29 @@ def page_dashboard():
                     lambda r: r.astype(str).str.lower().str.contains(q, na=False).any(),
                     axis=1
                 )
-                df_display_filtered = df_display[mask].copy()
-            else:
-                df_display_filtered = df_display.copy()
+                df_display = df_display[mask].copy()
 
             # ===============================
-            # HIGHLIGHT TOP 3
+            # FORMAT KODE
             # ===============================
-            def highlight_top(s):
-                if s.name == 'Peringkat':
-                    return [
-                        'background-color: gold; color: black; font-weight: 600'
-                        if pd.to_numeric(v, errors='coerce') <= 3 else ''
-                        for v in s
-                    ]
-                return ['' for _ in s]
-
-            # ===============================
-            # DISPLAY TABLE
-            # ===============================
-            st.dataframe(
-                df_display_filtered
-                .style
-                .apply(highlight_top)
-                .format(precision=2),
-                use_container_width=True,
-                height=600
+            df_display["Kode Satker"] = (
+                df_display["Kode Satker"]
+                .astype(str)
+                .str.replace(r"\.0$", "", regex=True)
+                .str.zfill(6)
             )
+
+            df_display["Kode BA"] = (
+                df_display["Kode BA"]
+                .astype(str)
+                .str.replace(r"\.0$", "", regex=True)
+            )
+
+            # ===============================
+            # TAMPILKAN DENGAN AGGRID
+            # ===============================
+            render_table_aggrid_satker(df_display)
+
 
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
