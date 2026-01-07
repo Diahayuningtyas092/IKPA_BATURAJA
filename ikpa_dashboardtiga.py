@@ -16,48 +16,37 @@ from github import Auth
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-def render_table_pin_satker(df, height=500):
+from st_aggrid import AgGrid, GridOptionsBuilder
+
+def render_table_pin_satker(df):
     gb = GridOptionsBuilder.from_dataframe(df)
 
-    # 🔒 Auto pin kolom Uraian Satker
     gb.configure_column(
         "Uraian Satker-RINGKAS",
-        header_name="Uraian Satker",
         pinned="left",
-        lockPinned=True,
-        lockPosition=True,
-        width=260
-    )
-
-    # Optional: pin juga peringkat
-    gb.configure_column(
-        "Peringkat",
-        pinned="left",
-        width=90
-    )
-
-    gb.configure_default_column(
-        sortable=True,
-        filter=True,
-        resizable=True
+        width=260,
+        wrapText=True,
+        autoHeight=True
     )
 
     gb.configure_grid_options(
-        suppressHorizontalScroll=False,
-        alwaysShowHorizontalScroll=True
+        enableRangeSelection=True,
+        domLayout="normal"
     )
 
-    gridOptions = gb.build()
+    gb.configure_default_column(
+        filter=True,
+        sortable=True,
+        resizable=True
+    )
 
     AgGrid(
         df,
-        gridOptions=gridOptions,
-        height=height,
-        fit_columns_on_grid_load=False,
-        allow_unsafe_jscode=True,
-        theme="alpine"
+        gridOptions=gb.build(),
+        height=600,
+        theme="alpine",
+        fit_columns_on_grid_load=False
     )
-
 
 
 # =========================
@@ -2250,7 +2239,8 @@ def page_dashboard():
                 # =========================================================
                 # 7. DISPLAY 
                 # =========================================================
-                display_cols = ['Peringkat','Kode BA','Kode Satker','Uraian Satker-RINGKAS'] + ordered_periods
+                display_cols = ['Uraian Satker-RINGKAS','Kode Satker','Peringkat','Kode BA'] + ordered_periods
+
                 df_display = df_wide[display_cols].copy()
 
                 # -------------------------
@@ -2307,8 +2297,6 @@ def page_dashboard():
                 else:
                     df_display_filtered = df_display.copy()
                 
-                render_table_pin_satker(df_display_filtered)
-
 
                 def color_trend(row):
                     styles = []
@@ -2361,7 +2349,8 @@ def page_dashboard():
 
                 styler = styler.apply(highlight_top)
 
-                st.dataframe(styler, use_container_width=True, height=600)
+                render_table_pin_satker(df_display_filtered)
+
 
 
             # ===============================
