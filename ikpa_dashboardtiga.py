@@ -2206,20 +2206,6 @@ def page_dashboard():
 
                 # --- pasang kembali nama satker ---
                 df_wide['Uraian Satker-RINGKAS'] = df_wide['Kode Satker'].map(name_map)
-                
-                # ===============================
-                # URUTKAN KOLOM (WAJIB SEBELUM AGGRID)
-                # ===============================
-                fixed_cols = [
-                    "Uraian Satker-RINGKAS",
-                    "Peringkat",
-                    "Kode BA",
-                    "Kode Satker"
-                ]
-
-                month_cols = [c for c in df_wide.columns if c not in fixed_cols]
-
-                df_wide = df_wide[fixed_cols + month_cols]
 
 
                 # =========================================================
@@ -2246,6 +2232,20 @@ def page_dashboard():
                     )
 
                 df_wide = df_wide.sort_values('Peringkat')
+                
+                # ===============================
+                # URUTKAN KOLOM (WAJIB SEBELUM AGGRID)
+                # ===============================
+                fixed_cols = [
+                    "Uraian Satker-RINGKAS",
+                    "Peringkat",
+                    "Kode BA",
+                    "Kode Satker"
+                ]
+
+                month_cols = [c for c in df_wide.columns if c not in fixed_cols]
+                df_wide = df_wide[fixed_cols + month_cols]
+
 
                 # =========================================================
                 # 7. DISPLAY 
