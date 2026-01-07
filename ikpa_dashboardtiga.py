@@ -46,7 +46,6 @@ TEMPLATE_PATH = r"C:\Users\KEMENKEU\Desktop\INDIKATOR PELAKSANAAN ANGGARAN.xlsx"
 # ================================
 # INIT SESSION STATE 
 # ================================
-
 # Storage utama IKPA
 if "data_storage" not in st.session_state:
     st.session_state.data_storage = {}
@@ -3624,26 +3623,38 @@ def merge_ikpa_dipa_auto():
     for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
 
         dipa = st.session_state.DATA_DIPA_by_year.get(int(tahun))
-        if dipa is None:
+        if dipa is None or dipa.empty:
             continue
 
         df_final = df_ikpa.copy()
         dipa_latest = get_latest_dipa(dipa)
 
-        # NORMALISASI KUNCI (WAJIB)
+        # NORMALISASI KODE SATKER
         df_final["Kode Satker"] = df_final["Kode Satker"].astype(str).str.zfill(6)
         dipa_latest["Kode Satker"] = dipa_latest["Kode Satker"].astype(str).str.zfill(6)
 
-        dipa_selected = dipa_latest[['Kode Satker', 'Total Pagu', 'Jenis Satker']]
+        # 🔴 AMBIL TOTAL PAGU SAJA (TANPA JENIS SATKER)
+        dipa_selected = dipa_latest[['Kode Satker', 'Total Pagu']]
 
+        # HAPUS TOTAL PAGU & JENIS SATKER LAMA
         df_final = df_final.drop(columns=['Total Pagu', 'Jenis Satker'], errors='ignore')
 
+        # MERGE
         df_merged = pd.merge(
             df_final,
             dipa_selected,
             on='Kode Satker',
             how='left'
         )
+
+        # AMANKAN TOTAL PAGU
+        df_merged["Total Pagu"] = pd.to_numeric(
+            df_merged["Total Pagu"],
+            errors="coerce"
+        ).fillna(0)
+
+        # 🔑 KLASIFIKASI SETELAH MERGE (INI YANG HILANG)
+        df_merged = classify_jenis_satker(df_merged)
 
         st.session_state.data_storage[(bulan, tahun)] = df_merged
 
