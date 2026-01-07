@@ -871,8 +871,14 @@ def load_data_from_github():
                 ).reset_index(drop=True)
                 df["Peringkat"] = range(1, len(df) + 1)
 
+            # 🔗 MERGE IKPA + DIPA (WAJIB SEBELUM KLASIFIKASI)
+            df = merge_ikpa_with_dipa(df)
+
+            # 🔑 BARU KLASIFIKASI
             df = classify_jenis_satker(df)
+
             data_storage[key] = df
+
 
         except Exception:
             continue
@@ -1239,16 +1245,14 @@ def create_satker_column(df):
     return df
 
 
-def merge_ikpa_with_dipa(df_ikpa):
+def merge_ikpa_with_dipa(df):
     """
-    Merge IKPA Satker dengan DIPA berdasarkan:
-    - Kode Satker
-    - Tahun
+    Merge IKPA Satker dengan DIPA berdasarkan Kode Satker + Tahun
     """
-    df = df_ikpa.copy()
+    df = df.copy()
 
-    # pastikan kolom ada
-    if "Tahun" not in df.columns or "Kode Satker" not in df.columns:
+    if "Kode Satker" not in df.columns or "Tahun" not in df.columns:
+        df["Total Pagu"] = 0
         return df
 
     tahun = int(df["Tahun"].iloc[0])
@@ -1260,7 +1264,6 @@ def merge_ikpa_with_dipa(df_ikpa):
         df["Total Pagu"] = 0
         return df
 
-    # ambil kolom penting saja
     df_dipa_small = (
         df_dipa[["Kode Satker", "Total Pagu"]]
         .drop_duplicates("Kode Satker")
@@ -1273,11 +1276,11 @@ def merge_ikpa_with_dipa(df_ikpa):
     )
 
     df["Total Pagu"] = pd.to_numeric(
-        df["Total Pagu"],
-        errors="coerce"
+        df["Total Pagu"], errors="coerce"
     ).fillna(0)
 
     return df
+
 
 
 def classify_jenis_satker(df):
@@ -1540,6 +1543,13 @@ def page_dashboard():
 
     if df is not None:
         df = df.copy()
+        
+    st.write(
+        "DEBUG JENIS SATKER",
+        df[['Kode Satker', 'Total Pagu', 'Jenis Satker']]
+        .sort_values('Total Pagu', ascending=False)
+        .head(15)
+    )
 
 
     # ensure main_tab state exists
@@ -1692,31 +1702,14 @@ def page_dashboard():
             df = create_satker_column(df)
 
         # ===============================
-        #  PASTIKAN KOLOM JENIS SATKER ADA
+        # GUNAKAN JENIS SATKER DARI LOADER
         # ===============================
-        if "Jenis Satker" not in df.columns:
-            df["Jenis Satker"] = "TIDAK TERKLASIFIKASI"
+        df['Jenis Satker'] = df['Jenis Satker'].astype(str)
 
-
-
-        # ===============================
-        # NORMALISASI JENIS SATKER
-        # ===============================
-        df['Jenis Satker'] = (
-            df['Jenis Satker']
-            .str.upper()
-            .str.replace('SATKER ', '', regex=False)
-            .str.strip()
-        )
-
-        # ===============================
-        # Filter Satker
-        # ===============================
-        VALID_JENIS = ['KECIL', 'SEDANG', 'BESAR']
-        df = df[df['Jenis Satker'].isin(VALID_JENIS)]
         df_kecil  = df[df['Jenis Satker'] == 'KECIL']
         df_sedang = df[df['Jenis Satker'] == 'SEDANG']
         df_besar  = df[df['Jenis Satker'] == 'BESAR']
+
 
         # ===============================
         # METRIK UTAMA
