@@ -16,37 +16,38 @@ from github import Auth
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-from st_aggrid import AgGrid, GridOptionsBuilder
-
 def render_table_pin_satker(df):
     gb = GridOptionsBuilder.from_dataframe(df)
 
+    # 🔒 PIN NAMA SATKER
     gb.configure_column(
         "Uraian Satker-RINGKAS",
         pinned="left",
-        width=260,
-        wrapText=True,
-        autoHeight=True
+        header_name="Uraian Satker",
+        minWidth=260,          
+        maxWidth=360,
+        wrapText=False
     )
 
-    gb.configure_grid_options(
-        enableRangeSelection=True,
-        domLayout="normal"
-    )
-
+    # Default kolom lain
     gb.configure_default_column(
+        resizable=True,
         filter=True,
         sortable=True,
-        resizable=True
+        minWidth=110          
     )
+
+    gridOptions = gb.build()
 
     AgGrid(
         df,
-        gridOptions=gb.build(),
-        height=600,
-        theme="alpine",
+        gridOptions=gridOptions,
+        height=650,           
+        width="100%",          
+        theme="streamlit",
         fit_columns_on_grid_load=False
     )
+
 
 
 # =========================
