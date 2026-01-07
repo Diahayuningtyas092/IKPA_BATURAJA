@@ -14,6 +14,33 @@ from datetime import datetime
 from github import Github
 from github import Auth
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
+from st_aggrid import AgGrid, GridOptionsBuilder
+
+def render_table_pin_satker(df):
+    gb = GridOptionsBuilder.from_dataframe(df)
+
+    gb.configure_default_column(
+        resizable=True,
+        sortable=True,
+        filter=True
+    )
+
+    # PIN kolom identitas
+    gb.configure_column("Kode BA", pinned="left", width=90)
+    gb.configure_column("Kode Satker", pinned="left", width=120)
+    gb.configure_column("Uraian Satker-RINGKAS", pinned="left", width=240)
+
+    grid_options = gb.build()
+
+    AgGrid(
+        df,
+        gridOptions=grid_options,
+        height=520,
+        theme="streamlit",
+        fit_columns_on_grid_load=False,
+        allow_unsafe_jscode=True
+    )
+
 
 # =========================
 # AMBIL PASSWORD DARI SECRETS
@@ -2161,23 +2188,6 @@ def page_dashboard():
 
                 # --- pasang kembali nama satker ---
                 df_wide['Uraian Satker-RINGKAS'] = df_wide['Kode Satker'].map(name_map)
-
-                # ===============================
-                # URUTKAN KOLOM (BIAR RAPI)
-                # ===============================
-                fixed_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS']
-                month_cols = [c for c in df_wide.columns if c not in fixed_cols]
-
-                df_wide = df_wide[fixed_cols + sorted(month_cols)]
-
-                # ===============================
-                # TAMPILKAN TABEL (PIN OTOMATIS AKTIF)
-                # ===============================
-                st.dataframe(
-                    df_wide,
-                    width="stretch",
-                    height=500
-                )
 
 
                 # =========================================================
