@@ -67,6 +67,7 @@ if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
 
 
+
 # -------------------------
 # standardize_dipa
 # -------------------------
@@ -1511,6 +1512,34 @@ def page_dashboard():
     """, unsafe_allow_html=True)
 
     # ===============================
+    # 🔒 CSS STICKY KOLOM SATKER (1x SAJA)
+    # ===============================
+    st.markdown("""
+    <style>
+    /* Sticky kolom Kode Satker */
+    div[data-testid="stDataFrame"] table tbody tr td:nth-child(2),
+    div[data-testid="stDataFrame"] table thead tr th:nth-child(2) {
+        position: sticky;
+        left: 0;
+        background: white;
+        z-index: 4;
+        min-width: 110px;
+    }
+
+    /* Sticky kolom Nama Satker */
+    div[data-testid="stDataFrame"] table tbody tr td:nth-child(3),
+    div[data-testid="stDataFrame"] table thead tr th:nth-child(3) {
+        position: sticky;
+        left: 110px;
+        background: white;
+        z-index: 3;
+        min-width: 220px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+
+    # ===============================
     # VALIDASI & PILIH PERIODE (FINAL)
     # ===============================
 
@@ -1546,13 +1575,6 @@ def page_dashboard():
 
     if df is not None:
         df = df.copy()
-        
-    st.write(
-        "DEBUG JENIS SATKER",
-        df[['Kode Satker', 'Total Pagu', 'Jenis Satker']]
-        .sort_values('Total Pagu', ascending=False)
-        .head(15)
-    )
 
 
     # ensure main_tab state exists
@@ -2139,6 +2161,24 @@ def page_dashboard():
 
                 # --- pasang kembali nama satker ---
                 df_wide['Uraian Satker-RINGKAS'] = df_wide['Kode Satker'].map(name_map)
+
+                # ===============================
+                # URUTKAN KOLOM (BIAR RAPI)
+                # ===============================
+                fixed_cols = ['Kode BA', 'Kode Satker', 'Uraian Satker-RINGKAS']
+                month_cols = [c for c in df_wide.columns if c not in fixed_cols]
+
+                df_wide = df_wide[fixed_cols + sorted(month_cols)]
+
+                # ===============================
+                # TAMPILKAN TABEL (PIN OTOMATIS AKTIF)
+                # ===============================
+                st.dataframe(
+                    df_wide,
+                    width="stretch",
+                    height=500
+                )
+
 
                 # =========================================================
                 # 5. Urutkan kolom periode
