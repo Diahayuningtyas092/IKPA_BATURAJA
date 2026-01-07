@@ -1282,23 +1282,21 @@ def merge_ikpa_with_dipa(df):
     return df
 
 
-
 def classify_jenis_satker(df):
     """
-    Menentukan Jenis Satker sebagai IDENTITAS
+    Menentukan Jenis Satker sebagai IDENTITAS (FINAL)
     """
     df = df.copy()
 
-    # AMAN: pastikan kolom ada
-    if "Total Pagu" not in df.columns:
-        df["Total Pagu"] = 0
-
     df["Total Pagu"] = pd.to_numeric(
-        df["Total Pagu"],
+        df.get("Total Pagu", 0),
         errors="coerce"
     ).fillna(0)
 
-    # Kalau semua nol → set default
+    # 🚨 PAKSA RESET
+    df["Jenis Satker"] = None
+
+    # kalau semua nol (harusnya sudah tidak)
     if df["Total Pagu"].sum() == 0:
         df["Jenis Satker"] = "SEDANG"
         return df
@@ -1310,7 +1308,9 @@ def classify_jenis_satker(df):
         df["Total Pagu"],
         bins=[-float("inf"), p40, p70, float("inf")],
         labels=["KECIL", "SEDANG", "BESAR"]
-    ).astype(str)
+    )
+
+    df["Jenis Satker"] = df["Jenis Satker"].astype(str)
 
     return df
 
