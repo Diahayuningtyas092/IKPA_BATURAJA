@@ -1654,19 +1654,22 @@ def page_dashboard():
         #  PASTIKAN KOLOM JENIS SATKER ADA
         # ===============================
         if "Jenis Satker" not in df.columns:
-            df["Jenis Satker"] = "TIDAK TERKLASIFIKASI"
-
+            df["Jenis Satker"] = "SEDANG"
 
 
         # ===============================
         # NORMALISASI JENIS SATKER
         # ===============================
+
         df['Jenis Satker'] = (
             df['Jenis Satker']
+            .astype(str)
             .str.upper()
-            .str.replace('SATKER ', '', regex=False)
             .str.strip()
         )
+
+        df.loc[df['Jenis Satker'].isin(['NAN', 'NONE', '']), 'Jenis Satker'] = 'SEDANG'
+
 
         # ===============================
         # Filter Satker
