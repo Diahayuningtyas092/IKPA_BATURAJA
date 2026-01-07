@@ -1239,6 +1239,47 @@ def create_satker_column(df):
     return df
 
 
+def merge_ikpa_with_dipa(df_ikpa):
+    """
+    Merge IKPA Satker dengan DIPA berdasarkan:
+    - Kode Satker
+    - Tahun
+    """
+    df = df_ikpa.copy()
+
+    # pastikan kolom ada
+    if "Tahun" not in df.columns or "Kode Satker" not in df.columns:
+        return df
+
+    tahun = int(df["Tahun"].iloc[0])
+
+    dipa_map = st.session_state.get("DATA_DIPA_by_year", {})
+    df_dipa = dipa_map.get(tahun)
+
+    if df_dipa is None or df_dipa.empty:
+        df["Total Pagu"] = 0
+        return df
+
+    # ambil kolom penting saja
+    df_dipa_small = (
+        df_dipa[["Kode Satker", "Total Pagu"]]
+        .drop_duplicates("Kode Satker")
+    )
+
+    df = df.merge(
+        df_dipa_small,
+        on="Kode Satker",
+        how="left"
+    )
+
+    df["Total Pagu"] = pd.to_numeric(
+        df["Total Pagu"],
+        errors="coerce"
+    ).fillna(0)
+
+    return df
+
+
 def classify_jenis_satker(df):
     """
     Menentukan Jenis Satker sebagai IDENTITAS
@@ -1654,22 +1695,19 @@ def page_dashboard():
         #  PASTIKAN KOLOM JENIS SATKER ADA
         # ===============================
         if "Jenis Satker" not in df.columns:
-            df["Jenis Satker"] = "SEDANG"
+            df["Jenis Satker"] = "TIDAK TERKLASIFIKASI"
+
 
 
         # ===============================
         # NORMALISASI JENIS SATKER
         # ===============================
-
         df['Jenis Satker'] = (
             df['Jenis Satker']
-            .astype(str)
             .str.upper()
+            .str.replace('SATKER ', '', regex=False)
             .str.strip()
         )
-
-        df.loc[df['Jenis Satker'].isin(['NAN', 'NONE', '']), 'Jenis Satker'] = 'SEDANG'
-
 
         # ===============================
         # Filter Satker
