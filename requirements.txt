@@ -6,5 +6,6 @@ requests
 PyGithub
 openpyxl
 xlsxwriter
-st-aggrid
+st-aggrid==0.3.4.post3
+
 
