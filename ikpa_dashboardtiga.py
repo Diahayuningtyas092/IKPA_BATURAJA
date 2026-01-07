@@ -871,6 +871,7 @@ def load_data_from_github():
                 ).reset_index(drop=True)
                 df["Peringkat"] = range(1, len(df) + 1)
 
+            df = classify_jenis_satker(df)
             data_storage[key] = df
 
         except Exception:
@@ -1237,6 +1238,31 @@ def create_satker_column(df):
     # Keep backward compatible column
     df['Uraian Satker Final'] = df['Uraian Satker-RINGKAS']
     return df
+
+
+def classify_jenis_satker(df):
+    """
+    Menentukan Jenis Satker sebagai IDENTITAS, bukan statistik dinamis
+    """
+    df = df.copy()
+
+    # pastikan Total Pagu numerik
+    df["Total Pagu"] = pd.to_numeric(
+        df.get("Total Pagu", 0),
+        errors="coerce"
+    ).fillna(0)
+
+    p40 = df["Total Pagu"].quantile(0.40)
+    p70 = df["Total Pagu"].quantile(0.70)
+
+    df["Jenis Satker"] = pd.cut(
+        df["Total Pagu"],
+        bins=[-float("inf"), p40, p70, float("inf")],
+        labels=["KECIL", "SEDANG", "BESAR"]
+    )
+
+    return df
+
 
 # BAGIAN 4 CHART DASHBOARD UTAMA
 def safe_chart(
@@ -1623,22 +1649,6 @@ def page_dashboard():
         if "Jenis Satker" not in df.columns:
             df["Jenis Satker"] = "TIDAK TERKLASIFIKASI"
 
-        # ===============================
-        # HITUNG JENIS SATKER (JIKA ADA TOTAL PAGU)
-        # ===============================
-        if "Total Pagu" in df.columns:
-            df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0)
-
-            p40 = df["Total Pagu"].quantile(0.40)
-            p70 = df["Total Pagu"].quantile(0.70)
-
-            df["Jenis Satker"] = pd.cut(
-                df["Total Pagu"],
-                bins=[-float("inf"), p40, p70, float("inf")],
-                labels=["KECIL", "SEDANG", "BESAR"]
-            ).astype(str)
-        else:
-            st.warning("⚠️ Kolom Total Pagu tidak tersedia. Jenis Satker tidak dihitung ulang.")
 
 
         # ===============================
