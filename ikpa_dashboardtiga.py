@@ -2773,7 +2773,8 @@ def page_dashboard():
             # ===============================
             # TAMPILKAN DENGAN AGGRID
             # ===============================
-            render_table_aggrid_satker(df_display)
+            render_table_pin_satker(df_display)
+
 
 
 
