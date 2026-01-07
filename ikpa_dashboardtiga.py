@@ -19,33 +19,67 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 def render_table_pin_satker(df):
     gb = GridOptionsBuilder.from_dataframe(df)
 
-    # 🔒 PIN NAMA SATKER
-    gb.configure_column(
-        "Uraian Satker-RINGKAS",
-        pinned="left",
-        header_name="Uraian Satker",
-        minWidth=260,          
-        maxWidth=360,
-        wrapText=False
-    )
-
-    # Default kolom lain
+    # ===============================
+    # DEFAULT SEMUA KOLOM
+    # ===============================
     gb.configure_default_column(
         resizable=True,
         filter=True,
         sortable=True,
-        minWidth=110          
+        minWidth=110
+    )
+
+    # ===============================
+    # 🔒 PIN NAMA SATKER (SAJA)
+    # ===============================
+    if "Uraian Satker-RINGKAS" in df.columns:
+        gb.configure_column(
+            "Uraian Satker-RINGKAS",
+            headerName="Uraian Satker",
+            pinned="left",
+            width=260,
+            suppressSizeToFit=True
+        )
+
+    # ===============================
+    # OPSIONAL: KODE SATKER LEBIH RINGKAS
+    # ===============================
+    if "Kode Satker" in df.columns:
+        gb.configure_column(
+            "Kode Satker",
+            width=120,
+            suppressSizeToFit=True
+        )
+
+    if "Kode BA" in df.columns:
+        gb.configure_column(
+            "Kode BA",
+            width=90,
+            suppressSizeToFit=True
+        )
+
+    # ===============================
+    # GRID OPTION GLOBAL
+    # ===============================
+    gb.configure_grid_options(
+        domLayout="normal",
+        suppressHorizontalScroll=False,
+        alwaysShowHorizontalScroll=True
     )
 
     gridOptions = gb.build()
 
+    # ===============================
+    # RENDER
+    # ===============================
     AgGrid(
         df,
         gridOptions=gridOptions,
-        height=650,           
-        width="100%",          
+        height=650,
+        width="100%",
         theme="streamlit",
-        fit_columns_on_grid_load=False
+        fit_columns_on_grid_load=False,
+        allow_unsafe_jscode=True
     )
 
 
