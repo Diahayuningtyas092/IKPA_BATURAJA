@@ -873,6 +873,10 @@ def load_data_from_github():
 
             # 🔗 MERGE IKPA + DIPA (WAJIB SEBELUM KLASIFIKASI)
             df = merge_ikpa_with_dipa(df)
+            
+            #  PAKSA HAPUS NILAI LAMA DARI DIPA
+            if "Jenis Satker" in df.columns:
+                df = df.drop(columns=["Jenis Satker"])
 
             # 🔑 BARU KLASIFIKASI
             df = classify_jenis_satker(df)
