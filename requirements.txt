@@ -6,4 +6,5 @@ requests
 PyGithub
 openpyxl
 xlsxwriter
-streamlit-aggrid
+st-aggrid
+
