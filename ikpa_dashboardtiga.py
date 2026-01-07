@@ -1545,33 +1545,6 @@ def page_dashboard():
     </style>
     """, unsafe_allow_html=True)
 
-    # ===============================
-    # 🔒 CSS STICKY KOLOM SATKER (1x SAJA)
-    # ===============================
-    st.markdown("""
-    <style>
-    /* Sticky kolom Kode Satker */
-    div[data-testid="stDataFrame"] table tbody tr td:nth-child(2),
-    div[data-testid="stDataFrame"] table thead tr th:nth-child(2) {
-        position: sticky;
-        left: 0;
-        background: white;
-        z-index: 4;
-        min-width: 110px;
-    }
-
-    /* Sticky kolom Nama Satker */
-    div[data-testid="stDataFrame"] table tbody tr td:nth-child(3),
-    div[data-testid="stDataFrame"] table thead tr th:nth-child(3) {
-        position: sticky;
-        left: 110px;
-        background: white;
-        z-index: 3;
-        min-width: 220px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
 
     # ===============================
     # VALIDASI & PILIH PERIODE (FINAL)
