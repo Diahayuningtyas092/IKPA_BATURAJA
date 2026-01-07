@@ -16,30 +16,48 @@ from github import Auth
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from st_aggrid import AgGrid, GridOptionsBuilder
 
-def render_table_pin_satker(df):
+def render_table_pin_satker(df, height=500):
     gb = GridOptionsBuilder.from_dataframe(df)
 
-    gb.configure_default_column(
-        resizable=True,
-        sortable=True,
-        filter=True
+    # 🔒 Auto pin kolom Uraian Satker
+    gb.configure_column(
+        "Uraian Satker-RINGKAS",
+        header_name="Uraian Satker",
+        pinned="left",
+        lockPinned=True,
+        lockPosition=True,
+        width=260
     )
 
-    # PIN kolom identitas
-    gb.configure_column("Kode BA", pinned="left", width=90)
-    gb.configure_column("Kode Satker", pinned="left", width=120)
-    gb.configure_column("Uraian Satker-RINGKAS", pinned="left", width=240)
+    # Optional: pin juga peringkat
+    gb.configure_column(
+        "Peringkat",
+        pinned="left",
+        width=90
+    )
 
-    grid_options = gb.build()
+    gb.configure_default_column(
+        sortable=True,
+        filter=True,
+        resizable=True
+    )
+
+    gb.configure_grid_options(
+        suppressHorizontalScroll=False,
+        alwaysShowHorizontalScroll=True
+    )
+
+    gridOptions = gb.build()
 
     AgGrid(
         df,
-        gridOptions=grid_options,
-        height=520,
-        theme="streamlit",
+        gridOptions=gridOptions,
+        height=height,
         fit_columns_on_grid_load=False,
-        allow_unsafe_jscode=True
+        allow_unsafe_jscode=True,
+        theme="alpine"
     )
+
 
 
 # =========================
@@ -2188,6 +2206,20 @@ def page_dashboard():
 
                 # --- pasang kembali nama satker ---
                 df_wide['Uraian Satker-RINGKAS'] = df_wide['Kode Satker'].map(name_map)
+                
+                # ===============================
+                # URUTKAN KOLOM (WAJIB SEBELUM AGGRID)
+                # ===============================
+                fixed_cols = [
+                    "Uraian Satker-RINGKAS",
+                    "Peringkat",
+                    "Kode BA",
+                    "Kode Satker"
+                ]
+
+                month_cols = [c for c in df_wide.columns if c not in fixed_cols]
+
+                df_wide = df_wide[fixed_cols + month_cols]
 
 
                 # =========================================================
@@ -2274,6 +2306,9 @@ def page_dashboard():
                     df_display_filtered = df_display[mask].copy()
                 else:
                     df_display_filtered = df_display.copy()
+                
+                render_table_pin_satker(df_display_filtered)
+
 
                 def color_trend(row):
                     styles = []
