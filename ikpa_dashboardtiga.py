@@ -880,7 +880,6 @@ def load_data_from_github():
     return data_storage
 
 
-
 from github import Github, Auth
 import base64
 import io
@@ -1242,15 +1241,23 @@ def create_satker_column(df):
 
 def classify_jenis_satker(df):
     """
-    Menentukan Jenis Satker sebagai IDENTITAS, bukan statistik dinamis
+    Menentukan Jenis Satker sebagai IDENTITAS
     """
     df = df.copy()
 
-    # pastikan Total Pagu numerik
+    # AMAN: pastikan kolom ada
+    if "Total Pagu" not in df.columns:
+        df["Total Pagu"] = 0
+
     df["Total Pagu"] = pd.to_numeric(
-        df.get("Total Pagu", 0),
+        df["Total Pagu"],
         errors="coerce"
     ).fillna(0)
+
+    # Kalau semua nol → set default
+    if df["Total Pagu"].sum() == 0:
+        df["Jenis Satker"] = "SEDANG"
+        return df
 
     p40 = df["Total Pagu"].quantile(0.40)
     p70 = df["Total Pagu"].quantile(0.70)
@@ -1259,7 +1266,7 @@ def classify_jenis_satker(df):
         df["Total Pagu"],
         bins=[-float("inf"), p40, p70, float("inf")],
         labels=["KECIL", "SEDANG", "BESAR"]
-    )
+    ).astype(str)
 
     return df
 
