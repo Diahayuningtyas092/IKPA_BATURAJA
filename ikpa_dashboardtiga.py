@@ -17,10 +17,10 @@ from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid import JsCode
 
-
-from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
-
 def render_table_pin_satker(df):
+    # 🔑 DETEKSI DARK MODE LANGSUNG DARI STREAMLIT
+    is_dark_mode = st.get_option("theme.base") == "dark"
+
     gb = GridOptionsBuilder.from_dataframe(df)
 
     # ===============================
@@ -65,7 +65,7 @@ def render_table_pin_satker(df):
         )
 
     # ===============================
-    # 📆 KOLOM BULAN DIPERSEMPIT
+    # 📆 KOLOM BULAN / TRIWULAN
     # ===============================
     bulan_cols = [
         "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
@@ -83,42 +83,29 @@ def render_table_pin_satker(df):
             )
 
     # ===============================
-    # ZEBRA ROW STYLE 
+    # 🎨 ZEBRA ROW STYLE (PAKAI CONTEXT)
     # ===============================
     zebra_row_style = JsCode("""
     function(params) {
 
-        // 🔥 DETEKSI DARK MODE STREAMLIT (PALING AMAN)
-        const isDark =
-            document.documentElement.classList.contains('dark') ||
-            document.documentElement.getAttribute('data-theme') === 'dark' ||
-            document.querySelector('.stApp[data-theme="dark"]');
-
+        const isDark = params.context && params.context.isDark;
         const isEven = params.node.rowIndex % 2 === 0;
 
-        // ===============================
         // 🌞 LIGHT MODE
-        // ===============================
         if (!isDark) {
             return {
-                backgroundColor: isEven ? '#EAF2FF' : '#FFFFFF', // biru muda & putih
+                backgroundColor: isEven ? '#EAF2FF' : '#FFFFFF',
                 color: '#111111'
             };
         }
 
-        // ===============================
-        // 🌙 DARK MODE (FIXED)
-        // ===============================
+        // 🌙 DARK MODE
         return {
-            backgroundColor: isEven
-                ? '#2F2F2F'   // abu terang
-                : '#1C1C1C',  // hitam
-            color: '#FFFFFF' // font putih
+            backgroundColor: isEven ? '#2F2F2F' : '#1C1C1C',
+            color: '#FFFFFF'
         };
     }
     """)
-
-
 
     # ===============================
     # GRID OPTION GLOBAL
@@ -127,7 +114,8 @@ def render_table_pin_satker(df):
         domLayout="autoHeight",
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
-        getRowStyle=zebra_row_style
+        getRowStyle=zebra_row_style,
+        context={"isDark": is_dark_mode}   # 🔥 KUNCI UTAMA
     )
 
     gridOptions = gb.build()
@@ -141,7 +129,7 @@ def render_table_pin_satker(df):
         width="100%",
         theme="streamlit",
         fit_columns_on_grid_load=False,
-        allow_unsafe_jscode=True   # 🔑 WAJIB
+        allow_unsafe_jscode=True
     )
 
 
