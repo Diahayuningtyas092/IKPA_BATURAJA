@@ -87,31 +87,31 @@ def render_table_pin_satker(df):
     # ===============================
     zebra_row_style = JsCode("""
     function(params) {
+
         const isDark =
             window.matchMedia &&
             window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-        // ===============================
-        // LIGHT MODE COLORS
-        // ===============================
-        const lightEven = '#EAF2FF';   // biru muda
-        const lightOdd  = '#FFFFFF';   // putih
-        const lightText = '#111111';
-
-        // ===============================
-        // DARK MODE COLORS
-        // ===============================
-        const darkEven  = 'rgba(80, 130, 255, 0.20)';  // biru gelap transparan
-        const darkOdd   = 'rgba(255, 255, 255, 0.04)'; // abu gelap
-        const darkText  = '#E6E6E6';
-
         const isEven = params.node.rowIndex % 2 === 0;
 
+        // ===============================
+        // LIGHT MODE
+        // ===============================
+        if (!isDark) {
+            return {
+                backgroundColor: isEven ? '#EAF2FF' : '#FFFFFF',  // biru muda / putih
+                color: '#111111'
+            };
+        }
+
+        // ===============================
+        // DARK MODE
+        // ===============================
         return {
-            backgroundColor: isDark
-                ? (isEven ? darkEven : darkOdd)
-                : (isEven ? lightEven : lightOdd),
-            color: isDark ? darkText : lightText
+            backgroundColor: isEven
+                ? '#2A2A2A'   // abu gelap (row genap)
+                : '#1E1E1E',  // hitam (row ganjil)
+            color: '#FFFFFF' // font putih
         };
     }
     """)
@@ -124,7 +124,7 @@ def render_table_pin_satker(df):
         domLayout="autoHeight",
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
-        getRowStyle=zebra_row_style   # 🔑 INI KUNCINYA
+        getRowStyle=zebra_row_style
     )
 
     gridOptions = gb.build()
