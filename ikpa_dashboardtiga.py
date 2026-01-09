@@ -2437,6 +2437,23 @@ def page_dashboard():
                     styler = styler.apply(color_trend, axis=1)
 
                 styler = styler.apply(highlight_top)
+                
+                # =========================================================
+                # FINAL SORT 
+                # =========================================================
+                df_display_filtered["_rank_num"] = (
+                    pd.to_numeric(df_display_filtered["Peringkat"], errors="coerce")
+                )
+
+                df_display_filtered = (
+                    df_display_filtered
+                    .sort_values(
+                        by=["_rank_num", "Uraian Satker-RINGKAS"],
+                        ascending=[True, True]
+                    )
+                    .drop(columns="_rank_num")
+                    .reset_index(drop=True)
+                )
 
                 render_table_pin_satker(df_display_filtered)
 
