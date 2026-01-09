@@ -16,6 +16,39 @@ from github import Auth
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from st_aggrid import AgGrid, GridOptionsBuilder
 
+st.markdown("""
+<style>
+/* ============================= */
+/*  AGGRID ZEBRA ROWS (LIGHT)    */
+/* ============================= */
+.ag-theme-streamlit .ag-row:nth-child(even) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.ag-theme-streamlit .ag-row:nth-child(odd) {
+    background-color: rgba(0, 0, 0, 0.00);
+}
+
+/* ============================= */
+/*  DARK MODE DETECTION          */
+/* ============================= */
+@media (prefers-color-scheme: dark) {
+    .ag-theme-streamlit .ag-row:nth-child(even) {
+        background-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .ag-theme-streamlit .ag-row:nth-child(odd) {
+        background-color: rgba(255, 255, 255, 0.02);
+    }
+
+    .ag-theme-streamlit {
+        color: #e6e6e6;
+    }
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 def render_table_pin_satker(df):
     gb = GridOptionsBuilder.from_dataframe(df)
 
