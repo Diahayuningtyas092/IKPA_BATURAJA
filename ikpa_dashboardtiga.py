@@ -17,57 +17,8 @@ from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid import JsCode
 
-zebra_row_style = JsCode("""
-function(params) {
-    const isDark =
-        window.matchMedia &&
-        window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-    if (params.node.rowIndex % 2 === 0) {
-        return {
-            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
-            color: isDark ? '#e6e6e6' : '#111'
-        };
-    }
-    return {
-        backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
-        color: isDark ? '#e6e6e6' : '#111'
-    };
-}
-""")
-
-st.markdown("""
-<style>
-/* ============================= */
-/*  AGGRID ZEBRA ROWS (LIGHT)    */
-/* ============================= */
-.ag-theme-streamlit .ag-row:nth-child(even) {
-    background-color: rgba(0, 0, 0, 0.02);
-}
-
-.ag-theme-streamlit .ag-row:nth-child(odd) {
-    background-color: rgba(0, 0, 0, 0.00);
-}
-
-/* ============================= */
-/*  DARK MODE DETECTION          */
-/* ============================= */
-@media (prefers-color-scheme: dark) {
-    .ag-theme-streamlit .ag-row:nth-child(even) {
-        background-color: rgba(255, 255, 255, 0.06);
-    }
-
-    .ag-theme-streamlit .ag-row:nth-child(odd) {
-        background-color: rgba(255, 255, 255, 0.02);
-    }
-
-    .ag-theme-streamlit {
-        color: #e6e6e6;
-    }
-}
-</style>
-""", unsafe_allow_html=True)
-
+from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
 
 def render_table_pin_satker(df):
     gb = GridOptionsBuilder.from_dataframe(df)
@@ -83,7 +34,7 @@ def render_table_pin_satker(df):
     )
 
     # ===============================
-    # 🔒 PIN NAMA SATKER (SAJA)
+    # 🔒 PIN NAMA SATKER
     # ===============================
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
@@ -95,7 +46,7 @@ def render_table_pin_satker(df):
         )
 
     # ===============================
-    # OPSIONAL: KODE SATKER LEBIH RINGKAS
+    # 🔒 PIN KODE SATKER
     # ===============================
     if "Kode Satker" in df.columns:
         gb.configure_column(
@@ -114,11 +65,12 @@ def render_table_pin_satker(df):
         )
 
     # ===============================
-    # 📆 KOLOM BULAN (JAN–DES) DIPERSEMPIT
+    # 📆 KOLOM BULAN DIPERSEMPIT
     # ===============================
     bulan_cols = [
         "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
-        "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+        "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
+        "Tw I", "Tw II", "Tw III", "Tw IV"
     ]
 
     for col in bulan_cols:
@@ -131,12 +83,41 @@ def render_table_pin_satker(df):
             )
 
     # ===============================
+    # 🎨 ZEBRA ROW STYLE (LIGHT + DARK)
+    # ===============================
+    zebra_row_style = JsCode("""
+    function(params) {
+        const isDark =
+            window.matchMedia &&
+            window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        // warna dasar zebra
+        let bgColor;
+        if (params.node.rowIndex % 2 === 0) {
+            bgColor = isDark
+                ? 'rgba(255,255,255,0.06)'
+                : 'rgba(0,0,0,0.03)';
+        } else {
+            bgColor = isDark
+                ? 'rgba(255,255,255,0.02)'
+                : '#ffffff';
+        }
+
+        return {
+            backgroundColor: bgColor,
+            color: isDark ? '#e6e6e6' : '#111'
+        };
+    }
+    """)
+
+    # ===============================
     # GRID OPTION GLOBAL
     # ===============================
     gb.configure_grid_options(
         domLayout="autoHeight",
         suppressHorizontalScroll=False,
-        alwaysShowHorizontalScroll=True
+        alwaysShowHorizontalScroll=True,
+        getRowStyle=zebra_row_style   # 🔑 INI KUNCINYA
     )
 
     gridOptions = gb.build()
@@ -150,7 +131,7 @@ def render_table_pin_satker(df):
         width="100%",
         theme="streamlit",
         fit_columns_on_grid_load=False,
-        allow_unsafe_jscode=True
+        allow_unsafe_jscode=True   # 🔑 WAJIB
     )
 
 
