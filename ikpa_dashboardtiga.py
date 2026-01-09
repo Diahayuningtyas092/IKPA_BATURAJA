@@ -2269,25 +2269,46 @@ def page_dashboard():
                 else:
                     ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
 
+
                 # =========================================================
-                # 6. RANKING PERIODIK (FINAL & BENAR)
+                # RANKING PERIODIK (ATURAN FINAL)
                 # =========================================================
                 if ordered_periods:
                     # pastikan numerik
                     for c in ordered_periods:
                         df_wide[c] = pd.to_numeric(df_wide[c], errors='coerce')
 
-                    # 🔑 nilai acuan ranking = nilai TERENDAH dari SEMUA periode
-                    df_wide['Nilai_Ranking'] = df_wide[ordered_periods].min(axis=1)
+                    # nilai terendah dari semua periode
+                    df_wide['Nilai_Min'] = df_wide[ordered_periods].min(axis=1)
 
-                    # dense ranking
-                    df_wide = df_wide.sort_values('Nilai_Ranking', ascending=False)
+                    # flag sempurna (100 semua)
+                    df_wide['IsPerfect'] = df_wide['Nilai_Min'] == 100
 
-                    df_wide['Peringkat'] = (
-                        df_wide['Nilai_Ranking']
-                        .rank(method='dense', ascending=False)
-                        .astype('Int64')
-                    )
+                    # ===============================
+                    # 1️⃣ Peringkat 1: HANYA YANG SEMPURNA
+                    # ===============================
+                    df_wide['Peringkat'] = pd.NA
+                    df_wide.loc[df_wide['IsPerfect'], 'Peringkat'] = 1
+
+                    # ===============================
+                    # 2️⃣ Ranking sisanya (mulai dari 2)
+                    # ===============================
+                    df_rest = df_wide.loc[~df_wide['IsPerfect']].copy()
+
+                    if not df_rest.empty:
+                        df_rest = df_rest.sort_values('Nilai_Min', ascending=False)
+
+                        df_rest['Peringkat'] = (
+                            df_rest['Nilai_Min']
+                            .rank(method='dense', ascending=False)
+                            .astype(int)
+                            + 1   # ⬅️ mulai dari 2
+                        )
+
+                        # gabungkan kembali
+                        df_wide.loc[df_rest.index, 'Peringkat'] = df_rest['Peringkat']
+
+                    df_wide['Peringkat'] = df_wide['Peringkat'].astype('Int64')
 
                 
                 # ===============================
