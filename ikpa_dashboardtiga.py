@@ -88,11 +88,11 @@ def render_table_pin_satker(df):
     zebra_row_style = JsCode("""
     function(params) {
 
-        // 🔑 DETEKSI DARK MODE STREAMLIT (BENAR)
-        const body = document.body;
+        // 🔥 DETEKSI DARK MODE STREAMLIT (PALING AMAN)
         const isDark =
-            body.classList.contains('dark') ||
-            body.getAttribute('data-theme') === 'dark';
+            document.documentElement.classList.contains('dark') ||
+            document.documentElement.getAttribute('data-theme') === 'dark' ||
+            document.querySelector('.stApp[data-theme="dark"]');
 
         const isEven = params.node.rowIndex % 2 === 0;
 
@@ -101,22 +101,23 @@ def render_table_pin_satker(df):
         // ===============================
         if (!isDark) {
             return {
-                backgroundColor: isEven ? '#EAF2FF' : '#FFFFFF',
+                backgroundColor: isEven ? '#EAF2FF' : '#FFFFFF', // biru muda & putih
                 color: '#111111'
             };
         }
 
         // ===============================
-        // 🌙 DARK MODE
+        // 🌙 DARK MODE (FIXED)
         // ===============================
         return {
             backgroundColor: isEven
-                ? '#2B2B2B'   // abu terang
-                : '#1E1E1E',  // hitam
-            color: '#FFFFFF'
+                ? '#2F2F2F'   // abu terang
+                : '#1C1C1C',  // hitam
+            color: '#FFFFFF' // font putih
         };
     }
     """)
+
 
 
     # ===============================
