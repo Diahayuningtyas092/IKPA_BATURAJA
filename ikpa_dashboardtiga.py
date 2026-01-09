@@ -15,6 +15,26 @@ from github import Github
 from github import Auth
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid import JsCode
+
+zebra_row_style = JsCode("""
+function(params) {
+    const isDark =
+        window.matchMedia &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (params.node.rowIndex % 2 === 0) {
+        return {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+            color: isDark ? '#e6e6e6' : '#111'
+        };
+    }
+    return {
+        backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : '#ffffff',
+        color: isDark ? '#e6e6e6' : '#111'
+    };
+}
+""")
 
 st.markdown("""
 <style>
@@ -132,7 +152,6 @@ def render_table_pin_satker(df):
         fit_columns_on_grid_load=False,
         allow_unsafe_jscode=True
     )
-
 
 
 # =========================
