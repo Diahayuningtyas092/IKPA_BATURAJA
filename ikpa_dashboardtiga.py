@@ -404,14 +404,27 @@ def register_ikpa_satker(df_final, month, year, source="Manual"):
     }
     df["Period_Sort"] = f"{int(year):04d}-{MONTH_ORDER.get(month, 0):02d}"
 
-    if "Peringkat" not in df.columns:
-        df = df.sort_values(
-            "Nilai Akhir (Nilai Total/Konversi Bobot)",
-            ascending=False
-        ).reset_index(drop=True)
-        df["Peringkat"] = range(1, len(df) + 1)
+    # ===============================
+    # 🔑 PERBAIKAN RANKING (DENSE)
+    # ===============================
+    nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+
+    if nilai_col in df.columns:
+        # pastikan numerik
+        df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce").fillna(0)
+
+        # urutkan DESC
+        df = df.sort_values(nilai_col, ascending=False)
+
+        # DENSE RANKING → 1,1,1,2,3,4,...
+        df["Peringkat"] = (
+            df[nilai_col]
+            .rank(method="dense", ascending=False)
+            .astype(int)
+        )
 
     st.session_state.data_storage[key] = df
+
 
 def find_header_row_by_keywords(uploaded_file, keywords, max_rows=15):
     """
@@ -519,26 +532,38 @@ def process_kppn_ringkas(uploaded_file, year, detected_month):
         .str.replace(r"\s+", " ", regex=True)
     )
 
-    required = "Nilai Akhir (Nilai Total/Konversi Bobot)"
-    if required not in df.columns:
+    nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    if nilai_col not in df.columns:
         raise ValueError("File IKPA KPPN tidak valid")
 
+    # Normalisasi desimal
     df = df.applymap(
         lambda x: str(x).replace(",", ".") if isinstance(x, str) else x
     )
 
+    # Cast numerik
     for col in df.columns:
         if col not in ["Nama KPPN", "Bulan", "Tahun", "Source"]:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
+    # Metadata
     df["Bulan"] = detected_month
     df["Tahun"] = year
     df["Source"] = "Upload"
 
-    df = df.sort_values(required, ascending=False).reset_index(drop=True)
-    df["Peringkat"] = df.index + 1
+    # ===============================
+    # 🔑 DENSE RANKING (1,1,1,2,3,…)
+    # ===============================
+    df = df.sort_values(nilai_col, ascending=False)
+
+    df["Peringkat"] = (
+        df[nilai_col]
+        .rank(method="dense", ascending=False)
+        .astype(int)
+    )
 
     return df, detected_month, year
+
 
 # ===============================
 # REPROCESS ALL IKPA SATKER
@@ -576,8 +601,8 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         # ===============================
         # 4️⃣ VALIDASI KOLOM WAJIB
         # ===============================
-        REQUIRED_COL = "Nilai Akhir (Nilai Total/Konversi Bobot)"
-        if REQUIRED_COL not in df.columns:
+        nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+        if nilai_col not in df.columns:
             raise ValueError(
                 "File IKPA KPPN tidak valid.\n"
                 "Kolom 'Nilai Akhir (Nilai Total/Konversi Bobot)' tidak ditemukan."
@@ -597,7 +622,7 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
 
         for col in df.columns:
             if col not in NON_NUMERIC:
-                df[col] = pd.to_numeric(df[col], errors="coerce")
+                df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
         # ===============================
         # 7️⃣ METADATA
@@ -607,21 +632,21 @@ def process_excel_file_kppn(uploaded_file, year, detected_month=None):
         df["Source"] = "Upload"
 
         # ===============================
-        # 8️⃣ RANKING
+        # 🔑 8️⃣ DENSE RANKING (FINAL & BENAR)
         # ===============================
-        df = df.sort_values(
-            REQUIRED_COL,
-            ascending=False
-        ).reset_index(drop=True)
+        df = df.sort_values(nilai_col, ascending=False)
 
-        df["Peringkat"] = df.index + 1
+        df["Peringkat"] = (
+            df[nilai_col]
+            .rank(method="dense", ascending=False)
+            .astype(int)
+        )
 
         return df, month, year
 
     except Exception as e:
         st.error(f"❌ Error memproses IKPA KPPN: {e}")
         return None, None, None
-
 
 
 # ============================================================
@@ -950,14 +975,24 @@ def load_data_from_github():
             df["Source"] = "GitHub"
             df["Period"] = f"{month} {year}"
             df["Period_Sort"] = f"{int(year):04d}-{month_num:02d}"
+            
+            
+            # ===============================
+            # 🔑 PERBAIKI RANKING (DENSE, FINAL)
+            # ===============================
+            nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
 
-            # Buat peringkat jika belum ada
-            if "Peringkat" not in df.columns:
-                df = df.sort_values(
-                    "Nilai Akhir (Nilai Total/Konversi Bobot)",
-                    ascending=False
-                ).reset_index(drop=True)
-                df["Peringkat"] = range(1, len(df) + 1)
+            if nilai_col in df.columns:
+                df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce").fillna(0)
+
+                df = df.sort_values(nilai_col, ascending=False)
+
+                df["Peringkat"] = (
+                    df[nilai_col]
+                    .rank(method="dense", ascending=False)
+                    .astype(int)
+                )
+
 
             # 🔗 MERGE IKPA + DIPA (WAJIB SEBELUM KLASIFIKASI)
             df = merge_ikpa_with_dipa(df)
