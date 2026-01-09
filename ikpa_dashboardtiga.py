@@ -81,7 +81,7 @@ def render_table_pin_satker(df):
     # GRID OPTION GLOBAL
     # ===============================
     gb.configure_grid_options(
-        domLayout="normal",
+        domLayout="autoHeight",
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True
     )
@@ -94,7 +94,6 @@ def render_table_pin_satker(df):
     AgGrid(
         df,
         gridOptions=gridOptions,
-        height=650,
         width="100%",
         theme="streamlit",
         fit_columns_on_grid_load=False,
