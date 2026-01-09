@@ -2278,39 +2278,20 @@ def page_dashboard():
                     for c in ordered_periods:
                         df_wide[c] = pd.to_numeric(df_wide[c], errors='coerce')
 
-                    # nilai terendah semua periode
-                    df_wide['Nilai_Min'] = df_wide[ordered_periods].min(axis=1)
+                    # kolom periode TERAKHIR (kanan)
+                    last_col = ordered_periods[-1]
 
-                    # flag sempurna
-                    df_wide['IsPerfect'] = df_wide['Nilai_Min'] == 100
+                    # nilai acuan ranking
+                    df_wide['Latest_Value'] = df_wide[last_col]
 
-                    # ===============================
-                    # 1️⃣ SEMUA SEMPURNA = RANK 1
-                    # ===============================
-                    df_wide['Peringkat'] = pd.NA
-                    df_wide.loc[df_wide['IsPerfect'], 'Peringkat'] = 1
-
-                    # ===============================
-                    # 2️⃣ SISANYA → DENSE RANK MULAI DARI 2
-                    # ===============================
-                    df_rest = df_wide.loc[~df_wide['IsPerfect']].copy()
-
-                    if not df_rest.empty:
-                        df_rest = df_rest.sort_values('Nilai_Min', ascending=False)
-
-                        # ⚠️ PENTING: reset konteks ranking
-                        df_rest['Peringkat'] = (
-                            df_rest['Nilai_Min']
-                            .rank(method='dense', ascending=False)
-                            .astype(int)
-                            + 1
-                        )
-
-                        df_wide.loc[df_rest.index, 'Peringkat'] = df_rest['Peringkat']
-
-                    df_wide['Peringkat'] = df_wide['Peringkat'].astype('Int64')
-
-                
+                    # dense ranking (1 = nilai tertinggi)
+                    df_wide['Peringkat'] = (
+                        df_wide['Latest_Value']
+                        .rank(method='dense', ascending=False)
+                        .astype('Int64')
+                    )
+                    
+                                
                 # ===============================
                 # URUTKAN KOLOM (WAJIB SEBELUM AGGRID)
                 # ===============================
