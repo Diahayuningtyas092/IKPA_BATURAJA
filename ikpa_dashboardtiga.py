@@ -2259,7 +2259,7 @@ def page_dashboard():
 
 
                 # =========================================================
-                # 5. Urutkan kolom periode
+                # 5. URUTKAN KOLOM PERIODE 
                 # =========================================================
                 if period_type == 'monthly':
                     ordered_periods = sorted(
@@ -2267,34 +2267,37 @@ def page_dashboard():
                         key=lambda x: MONTH_ORDER[x]
                     )
                 else:
-                    ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
+                    ordered_periods = [
+                        c for c in ['Tw I', 'Tw II', 'Tw III', 'Tw IV']
+                        if c in df_wide.columns
+                    ]
 
 
                 # =========================================================
-                # RANKING PERIODIK 
+                # 6. RANKING PERIODIK (BERDASARKAN PERIODE TERAKHIR)
                 # =========================================================
                 if ordered_periods:
                     # pastikan numerik
                     for c in ordered_periods:
                         df_wide[c] = pd.to_numeric(df_wide[c], errors='coerce')
 
-                    # kolom periode TERAKHIR (kanan)
+                    # kolom periode TERAKHIR (AMAN: BELUM DI-RENAME)
                     last_col = ordered_periods[-1]
 
                     # nilai acuan ranking
                     df_wide['Latest_Value'] = df_wide[last_col]
 
-                    # dense ranking (1 = nilai tertinggi)
+                    # dense ranking (nilai sama = peringkat sama)
                     df_wide['Peringkat'] = (
                         df_wide['Latest_Value']
                         .rank(method='dense', ascending=False)
                         .astype('Int64')
                     )
-                    
-                                
-                # ===============================
-                # URUTKAN KOLOM (WAJIB SEBELUM AGGRID)
-                # ===============================
+
+
+                # =========================================================
+                # 7. SUSUN KOLOM DASAR
+                # =========================================================
                 fixed_cols = [
                     "Uraian Satker-RINGKAS",
                     "Peringkat",
@@ -2302,26 +2305,23 @@ def page_dashboard():
                     "Kode Satker"
                 ]
 
-                month_cols = [c for c in df_wide.columns if c not in fixed_cols]
+                month_cols = [c for c in ordered_periods]
                 df_wide = df_wide[fixed_cols + month_cols]
 
 
                 # =========================================================
-                # 7. DISPLAY 
+                # 8. DISPLAY DATAFRAME
                 # =========================================================
-                display_cols = ['Uraian Satker-RINGKAS','Kode Satker','Peringkat','Kode BA'] + ordered_periods
+                df_display = df_wide.copy()
 
-                df_display = df_wide[display_cols].copy()
-
-                # -------------------------
-                # FIX FORMAT KODE & RANK
-                # -------------------------
+                # --- format peringkat ---
                 df_display['Peringkat'] = (
                     pd.to_numeric(df_display['Peringkat'], errors='coerce')
                     .astype('Int64')
                     .astype(str)
                 )
 
+                # --- format kode ---
                 df_display['Kode BA'] = (
                     df_display['Kode BA']
                     .astype(str)
@@ -2332,12 +2332,13 @@ def page_dashboard():
                     df_display['Kode Satker']
                     .astype(str)
                     .str.replace(r'\.0$', '', regex=True)
-                    .str.zfill(6)  # jaga 0 di depan
+                    .str.zfill(6)
                 )
 
-                # -------------------------
-                # SINGKAT NAMA BULAN
-                # -------------------------
+
+                # =========================================================
+                # 9. RENAME BULAN (KHUSUS DISPLAY, AMAN)
+                # =========================================================
                 if period_type == 'monthly':
                     rename_map = {m: MONTH_ABBR.get(m.upper(), m) for m in ordered_periods}
                     df_display.rename(columns=rename_map, inplace=True)
@@ -2348,17 +2349,17 @@ def page_dashboard():
                 df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
 
 
-                # =============================
-                # SEARCH & STYLING 
-                # =============================
+                # =========================================================
+                # 10. SEARCH
+                # =========================================================
                 search_query = st.text_input(
                     "🔎 Cari (Periodik) – ketik untuk filter di semua kolom",
                     value="",
-                    key='tab_periodik_search'
+                    key="tab_periodik_search"
                 )
 
                 if search_query:
-                    q = str(search_query).strip().lower()
+                    q = search_query.strip().lower()
                     mask = df_display.apply(
                         lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(),
                         axis=1
@@ -2366,64 +2367,13 @@ def page_dashboard():
                     df_display_filtered = df_display[mask].copy()
                 else:
                     df_display_filtered = df_display.copy()
-                
-
-                def color_trend(row):
-                    styles = []
-                    vals = []
-
-                    for c in display_period_cols:
-                        try:
-                            v = float(row[c])
-                            if not pd.isna(v):
-                                vals.append(v)
-                        except (ValueError, TypeError):
-                            continue
-
-                    color = ''
-
-                    if len(vals) >= 2:
-                        if vals[-1] > vals[-2]:
-                            color = 'background-color: #c6efce; color: black; font-weight: 600'
-                        elif vals[-1] < vals[-2]:
-                            color = 'background-color: #f8d7da; color: black; font-weight: 600'
-
-                    for c in row.index:
-                        if display_period_cols and c == display_period_cols[-1]:
-                            styles.append(color)
-                        else:
-                            styles.append('')
-
-                    return styles
 
 
-                def highlight_top(s):
-                    if s.name == 'Peringkat':
-                        return [
-                            'background-color: gold; color: black; font-weight: 600'
-                            if (pd.to_numeric(v, errors='coerce') <= 3) else ''
-                            for v in s
-                        ]
-                    return ['' for _ in s]
-
-
-                format_cols = display_period_cols
-
-                styler = df_display_filtered.style.format(
-                    {c: format_ikpa_display for c in format_cols},
-                    na_rep='–'
-                )
-
-                if display_period_cols:
-                    styler = styler.apply(color_trend, axis=1)
-
-                styler = styler.apply(highlight_top)
-                
                 # =========================================================
-                # FINAL SORT 
+                # 11. FINAL SORT (WAJIB SEBELUM AGGRID)
                 # =========================================================
-                df_display_filtered["_rank_num"] = (
-                    pd.to_numeric(df_display_filtered["Peringkat"], errors="coerce")
+                df_display_filtered["_rank_num"] = pd.to_numeric(
+                    df_display_filtered["Peringkat"], errors="coerce"
                 )
 
                 df_display_filtered = (
@@ -2436,8 +2386,11 @@ def page_dashboard():
                     .reset_index(drop=True)
                 )
 
-                render_table_pin_satker(df_display_filtered)
 
+                # =========================================================
+                # 12. RENDER
+                # =========================================================
+                render_table_pin_satker(df_display_filtered)
 
 
             # ===============================
