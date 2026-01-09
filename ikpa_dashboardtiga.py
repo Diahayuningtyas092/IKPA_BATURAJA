@@ -83,7 +83,7 @@ def render_table_pin_satker(df):
             )
 
     # ===============================
-    # 🎨 ZEBRA ROW STYLE (LIGHT + DARK)
+    # ZEBRA ROW STYLE 
     # ===============================
     zebra_row_style = JsCode("""
     function(params) {
@@ -91,24 +91,31 @@ def render_table_pin_satker(df):
             window.matchMedia &&
             window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-        // warna dasar zebra
-        let bgColor;
-        if (params.node.rowIndex % 2 === 0) {
-            bgColor = isDark
-                ? 'rgba(255,255,255,0.06)'
-                : 'rgba(0,0,0,0.03)';
-        } else {
-            bgColor = isDark
-                ? 'rgba(255,255,255,0.02)'
-                : '#ffffff';
-        }
+        // ===============================
+        // LIGHT MODE COLORS
+        // ===============================
+        const lightEven = '#EAF2FF';   // biru muda
+        const lightOdd  = '#FFFFFF';   // putih
+        const lightText = '#111111';
+
+        // ===============================
+        // DARK MODE COLORS
+        // ===============================
+        const darkEven  = 'rgba(80, 130, 255, 0.20)';  // biru gelap transparan
+        const darkOdd   = 'rgba(255, 255, 255, 0.04)'; // abu gelap
+        const darkText  = '#E6E6E6';
+
+        const isEven = params.node.rowIndex % 2 === 0;
 
         return {
-            backgroundColor: bgColor,
-            color: isDark ? '#e6e6e6' : '#111'
+            backgroundColor: isDark
+                ? (isEven ? darkEven : darkOdd)
+                : (isEven ? lightEven : lightOdd),
+            color: isDark ? darkText : lightText
         };
     }
     """)
+
 
     # ===============================
     # GRID OPTION GLOBAL
