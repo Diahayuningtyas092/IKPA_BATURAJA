@@ -2271,18 +2271,25 @@ def page_dashboard():
                     ordered_periods = [c for c in ['Tw I','Tw II','Tw III','Tw IV'] if c in df_wide.columns]
 
                 # =========================================================
-                # 6. Ranking 
+                # 6. RANKING PERIODIK (FINAL & BENAR)
                 # =========================================================
                 if ordered_periods:
-                    last = ordered_periods[-1]
-                    df_wide['Latest_Value'] = pd.to_numeric(df_wide[last], errors='coerce')
+                    # pastikan numerik
+                    for c in ordered_periods:
+                        df_wide[c] = pd.to_numeric(df_wide[c], errors='coerce')
+
+                    # 🔑 nilai acuan ranking = nilai TERENDAH dari SEMUA periode
+                    df_wide['Nilai_Ranking'] = df_wide[ordered_periods].min(axis=1)
+
+                    # dense ranking
+                    df_wide = df_wide.sort_values('Nilai_Ranking', ascending=False)
+
                     df_wide['Peringkat'] = (
-                        df_wide['Latest_Value']
-                        .rank(ascending=False, method='dense')
+                        df_wide['Nilai_Ranking']
+                        .rank(method='dense', ascending=False)
                         .astype('Int64')
                     )
 
-                df_wide = df_wide.sort_values('Peringkat')
                 
                 # ===============================
                 # URUTKAN KOLOM (WAJIB SEBELUM AGGRID)
