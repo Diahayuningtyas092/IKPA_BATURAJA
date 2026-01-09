@@ -88,30 +88,32 @@ def render_table_pin_satker(df):
     zebra_row_style = JsCode("""
     function(params) {
 
+        // 🔑 DETEKSI DARK MODE STREAMLIT (BENAR)
+        const body = document.body;
         const isDark =
-            window.matchMedia &&
-            window.matchMedia('(prefers-color-scheme: dark)').matches;
+            body.classList.contains('dark') ||
+            body.getAttribute('data-theme') === 'dark';
 
         const isEven = params.node.rowIndex % 2 === 0;
 
         // ===============================
-        // LIGHT MODE
+        // 🌞 LIGHT MODE
         // ===============================
         if (!isDark) {
             return {
-                backgroundColor: isEven ? '#EAF2FF' : '#FFFFFF',  // biru muda / putih
+                backgroundColor: isEven ? '#EAF2FF' : '#FFFFFF',
                 color: '#111111'
             };
         }
 
         // ===============================
-        // DARK MODE
+        // 🌙 DARK MODE
         // ===============================
         return {
             backgroundColor: isEven
-                ? '#2A2A2A'   // abu gelap (row genap)
-                : '#1E1E1E',  // hitam (row ganjil)
-            color: '#FFFFFF' // font putih
+                ? '#2B2B2B'   // abu terang
+                : '#1E1E1E',  // hitam
+            color: '#FFFFFF'
         };
     }
     """)
