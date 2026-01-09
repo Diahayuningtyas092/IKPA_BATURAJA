@@ -26,7 +26,7 @@ def render_table_pin_satker(df):
         resizable=True,
         filter=True,
         sortable=True,
-        minWidth=110
+        minWidth=80
     )
 
     # ===============================
@@ -49,16 +49,33 @@ def render_table_pin_satker(df):
             "Kode Satker",
             headerName="Kode Satker",
             pinned="left",
-            width=90,
+            width=70,
             suppressSizeToFit=True
         )
 
     if "Kode BA" in df.columns:
         gb.configure_column(
             "Kode BA",
-            width=70,
+            width=50,
             suppressSizeToFit=True
         )
+
+    # ===============================
+    # 📆 KOLOM BULAN (JAN–DES) DIPERSEMPIT
+    # ===============================
+    bulan_cols = [
+        "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
+        "Jul", "Agu", "Sep", "Okt", "Nov", "Des"
+    ]
+
+    for col in bulan_cols:
+        if col in df.columns:
+            gb.configure_column(
+                col,
+                width=65,
+                type=["numericColumn"],
+                cellStyle={"textAlign": "center"}
+            )
 
     # ===============================
     # GRID OPTION GLOBAL
@@ -78,7 +95,7 @@ def render_table_pin_satker(df):
         df,
         gridOptions=gridOptions,
         height=650,
-        width="80%",
+        width="100%",
         theme="streamlit",
         fit_columns_on_grid_load=False,
         allow_unsafe_jscode=True
