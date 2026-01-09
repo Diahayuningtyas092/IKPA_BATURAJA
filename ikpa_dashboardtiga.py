@@ -35,9 +35,9 @@ def render_table_pin_satker(df):
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
             "Uraian Satker-RINGKAS",
-            headerName="Uraian Satker",
+            headerName="Nama Satker",
             pinned="left",
-            width=260,
+            width=150,
             suppressSizeToFit=True
         )
 
@@ -47,14 +47,16 @@ def render_table_pin_satker(df):
     if "Kode Satker" in df.columns:
         gb.configure_column(
             "Kode Satker",
-            width=120,
+            headerName="Kode Satker",
+            pinned="left",
+            width=90,
             suppressSizeToFit=True
         )
 
     if "Kode BA" in df.columns:
         gb.configure_column(
             "Kode BA",
-            width=90,
+            width=70,
             suppressSizeToFit=True
         )
 
@@ -76,7 +78,7 @@ def render_table_pin_satker(df):
         df,
         gridOptions=gridOptions,
         height=650,
-        width="100%",
+        width="80%",
         theme="streamlit",
         fit_columns_on_grid_load=False,
         allow_unsafe_jscode=True
