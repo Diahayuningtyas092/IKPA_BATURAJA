@@ -18,9 +18,6 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid import JsCode
 
 def render_table_pin_satker(df):
-    # 🔑 DETEKSI DARK MODE LANGSUNG DARI STREAMLIT
-    is_dark_mode = st.get_option("theme.base") == "dark"
-
     gb = GridOptionsBuilder.from_dataframe(df)
 
     # ===============================
@@ -34,7 +31,7 @@ def render_table_pin_satker(df):
     )
 
     # ===============================
-    # 🔒 PIN NAMA SATKER
+    # PIN KOLOM
     # ===============================
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
@@ -45,27 +42,19 @@ def render_table_pin_satker(df):
             suppressSizeToFit=True
         )
 
-    # ===============================
-    # 🔒 PIN KODE SATKER
-    # ===============================
     if "Kode Satker" in df.columns:
         gb.configure_column(
             "Kode Satker",
-            headerName="Kode Satker",
             pinned="left",
             width=70,
             suppressSizeToFit=True
         )
 
     if "Kode BA" in df.columns:
-        gb.configure_column(
-            "Kode BA",
-            width=50,
-            suppressSizeToFit=True
-        )
+        gb.configure_column("Kode BA", width=50)
 
     # ===============================
-    # 📆 KOLOM BULAN / TRIWULAN
+    # KOLOM BULAN / TRIWULAN
     # ===============================
     bulan_cols = [
         "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
@@ -83,46 +72,27 @@ def render_table_pin_satker(df):
             )
 
     # ===============================
-    # 🎨 ZEBRA ROW STYLE (PAKAI CONTEXT)
+    # 🔥 PAKSA DARK MODE (HITAM + ABU)
     # ===============================
-    zebra_row_style = JsCode("""
+    zebra_dark = JsCode("""
     function(params) {
-
-        const isDark = params.context && params.context.isDark;
         const isEven = params.node.rowIndex % 2 === 0;
-
-        // 🌞 LIGHT MODE
-        if (!isDark) {
-            return {
-                backgroundColor: isEven ? '#EAF2FF' : '#FFFFFF',
-                color: '#111111'
-            };
-        }
-
-        // 🌙 DARK MODE
         return {
-            backgroundColor: isEven ? '#2F2F2F' : '#1C1C1C',
+            backgroundColor: isEven ? '#2B2B2B' : '#1C1C1C',
             color: '#FFFFFF'
         };
     }
     """)
 
-    # ===============================
-    # GRID OPTION GLOBAL
-    # ===============================
     gb.configure_grid_options(
         domLayout="autoHeight",
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
-        getRowStyle=zebra_row_style,
-        context={"isDark": is_dark_mode}   # 🔥 KUNCI UTAMA
+        getRowStyle=zebra_dark
     )
 
     gridOptions = gb.build()
 
-    # ===============================
-    # RENDER
-    # ===============================
     AgGrid(
         df,
         gridOptions=gridOptions,
