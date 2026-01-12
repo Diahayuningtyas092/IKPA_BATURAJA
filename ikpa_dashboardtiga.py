@@ -2847,33 +2847,33 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # PILIH PERIODE & METRIK
-    # (KOLOM DI SINI AMAN – TIDAK PENGARUHI LEBAR GRAFIK)
+    # ANALISIS TREN
     # ======================================================
+    st.subheader("📈 Analisis Tren")
+
     available_periods = sorted(df_all['Period_Sort'].unique())
 
+    # ===== KONTROL ATAS (TETAP SEPERTI SEBELUMNYA) =====
     c1, c2, c3 = st.columns([1, 1, 2])
     with c1:
         start_period = st.selectbox("Periode Awal", available_periods, index=0)
     with c2:
         end_period = st.selectbox("Periode Akhir", available_periods, index=len(available_periods) - 1)
     with c3:
-        selected_metric = st.selectbox(
-            "Metrik yang Ditampilkan",
-            [
-                'Nilai Akhir (Nilai Total/Konversi Bobot)',
-                'Kualitas Perencanaan Anggaran',
-                'Kualitas Pelaksanaan Anggaran',
-                'Kualitas Hasil Pelaksanaan Anggaran',
-                'Revisi DIPA',
-                'Deviasi Halaman III DIPA',
-                'Penyerapan Anggaran',
-                'Belanja Kontraktual',
-                'Penyelesaian Tagihan',
-                'Pengelolaan UP dan TUP',
-                'Capaian Output'
-            ]
-        )
+        metric_options = [
+            'Nilai Akhir (Nilai Total/Konversi Bobot)',
+            'Kualitas Perencanaan Anggaran',
+            'Kualitas Pelaksanaan Anggaran',
+            'Kualitas Hasil Pelaksanaan Anggaran',
+            'Revisi DIPA',
+            'Deviasi Halaman III DIPA',
+            'Penyerapan Anggaran',
+            'Belanja Kontraktual',
+            'Penyelesaian Tagihan',
+            'Pengelolaan UP dan TUP',
+            'Capaian Output'
+        ]
+        selected_metric = st.selectbox("Metrik yang Ditampilkan", metric_options)
 
     if start_period > end_period:
         st.warning("⚠️ Periode awal tidak boleh lebih besar dari periode akhir.")
@@ -2892,21 +2892,17 @@ def menu_ews_satker():
         return
 
     # ======================================================
-    # NAMA SATKER RINGKAS
+    # KOLOM SATKER
     # ======================================================
     df_trend['Satker'] = (
-        df_trend['Uraian Satker']
-        .astype(str)
-        .str.split()
-        .str[:4]
-        .str.join(' ')
+        df_trend['Uraian Satker'].astype(str)
         + " ("
         + df_trend['Kode Satker'].astype(str)
         + ")"
     )
 
     # ======================================================
-    # AMBIL 5 SATKER NILAI TERKECIL (PERIODE TERAKHIR)
+    # DEFAULT: 5 SATKER DENGAN NILAI TERKECIL (PERIODE TERAKHIR)
     # ======================================================
     latest_period = df_trend['Period_Sort'].max()
 
@@ -2917,11 +2913,27 @@ def menu_ews_satker():
         .sort_values(selected_metric, ascending=True)
     )
 
-    worst_5_satker = df_latest_metric.head(5)['Satker'].tolist()
-    df_plot = df_trend[df_trend['Satker'].isin(worst_5_satker)]
+    default_satker = df_latest_metric.head(5)['Satker'].tolist()
 
     # ======================================================
-    # LABEL PERIODE
+    # MULTISELECT (USER MASIH BISA UBAH)
+    # ======================================================
+    all_satker = sorted(df_trend['Satker'].unique())
+
+    selected_satker = st.multiselect(
+        "Pilih Satker",
+        options=all_satker,
+        default=default_satker
+    )
+
+    if not selected_satker:
+        st.warning("Pilih minimal satu satker.")
+        return
+
+    df_plot = df_trend[df_trend['Satker'].isin(selected_satker)]
+
+    # ======================================================
+    # LABEL PERIODE (X-AXIS)
     # ======================================================
     MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
     df_plot['Periode_Label'] = df_plot.apply(
@@ -2935,19 +2947,11 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # DAFTAR 5 SATKER (TEKS SAJA – TIDAK MENGUNCI LEBAR)
-    # ======================================================
-    st.markdown("### ⚠️ 5 Satker dengan Nilai Terendah (Periode Terakhir)")
-    st.markdown(", ".join([f"**{s}**" for s in worst_5_satker]))
-
-    st.markdown("---")
-
-    # ======================================================
-    # GRAFIK FULL LEBAR (KE SAMPING)
+    # GRAFIK (FULL LEBAR)
     # ======================================================
     fig = go.Figure()
 
-    for satker in worst_5_satker:
+    for satker in selected_satker:
         d = df_plot[df_plot['Satker'] == satker].sort_values('Period_Sort')
         fig.add_trace(go.Scatter(
             x=pd.Categorical(
@@ -2961,7 +2965,7 @@ def menu_ews_satker():
         ))
 
     fig.update_layout(
-        title=f"Tren {selected_metric} – 5 Satker Terendah",
+        title=f"Tren {selected_metric}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
         height=550,
@@ -2976,14 +2980,13 @@ def menu_ews_satker():
         )
     )
 
-    # 🔥 INI YANG MEMBUAT FULL LEBAR
     st.plotly_chart(fig, use_container_width=True)
 
     # ======================================================
     # EARLY WARNING: TREN MENURUN
     # ======================================================
     warnings = []
-    for satker in worst_5_satker:
+    for satker in selected_satker:
         d = df_plot[df_plot['Satker'] == satker].sort_values('Period_Sort')
         if len(d) >= 2 and d[selected_metric].iloc[-1] < d[selected_metric].iloc[-2]:
             warnings.append(
@@ -2995,7 +2998,7 @@ def menu_ews_satker():
         for w in warnings:
             st.markdown(f"- {w}")
     else:
-        st.success("✅ Tidak ada tren menurun pada 5 satker terendah")
+        st.success("✅ Tidak ada satker dengan tren menurun pada periode yang dipilih")
 
         
 #HIGHLIGHTS
