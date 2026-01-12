@@ -2845,6 +2845,101 @@ def menu_ews_satker():
     df_all['Period_Sort'] = df_all.apply(
         lambda x: f"{x['Tahun_Int']:04d}-{x['Month_Num']:02d}", axis=1
     )
+    
+    st.markdown("---")
+    st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
+
+    # 🎚️ Pengaturan Sumbu Y
+    st.markdown("###### Atur Skala Nilai (Sumbu Y)")
+    col_min, col_max = st.columns(2)
+    with col_min:
+        y_min_int = st.slider(
+            "Nilai Minimum (Y-Axis)",
+            min_value=0,
+            max_value=50,
+            value=50,
+            step=1,
+            key="ymin_internal"
+        )
+    with col_max:
+        y_max_int = st.slider(
+            "Nilai Maksimum (Y-Axis)",
+            min_value=51,
+            max_value=110,
+            value=110,
+            step=1,
+            key="ymax_internal"
+        )
+
+    # 📊 Highlights Kinerja Satker yang Perlu Perhatian Khusus
+    col1, col2 = st.columns(2)
+
+    with col1:
+    # ===============================
+    # JUDUL INDIKATOR
+    # ===============================
+        st.markdown(
+            """
+            <div style="margin-bottom:6px;">
+                <span style="font-size:16px; font-weight:600;">
+                    ⚠️ Pengelolaan UP dan TUP
+                </span><br>
+                <span style="font-size:13px; color:#666;">
+                    Pengelolaan UP dan TUP Belum Optimal (&lt; 100)
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        fig_up = create_problem_chart(
+            df_latest,
+            'Pengelolaan UP dan TUP',
+            100,
+            "Pengelolaan UP dan TUP Belum Optimal (< 100)",
+            'less',
+            y_min=y_min_int,
+            y_max=y_max_int,
+            show_yaxis=True
+        )
+
+        if fig_up:
+            st.plotly_chart(fig_up, use_container_width=True)
+        else:
+            st.success("✅ Semua satker sudah optimal untuk Pengelolaan UP dan TUP")
+
+
+    with col2:
+        st.markdown(
+            """
+            <div style="margin-bottom:6px;">
+                <span style="font-size:16px; font-weight:600;">
+                    ⚠️ Capaian Output
+                </span><br>
+                <span style="font-size:13px; color:#666;">
+                    Capaian Output Belum Optimal (&lt; 100)
+                </span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        fig_output = create_problem_chart(
+            df_latest,
+            'Capaian Output',
+            100,
+            "Capaian Output Belum Optimal (< 100)",
+            'less',
+            y_min=y_min_int,
+            y_max=y_max_int,
+            show_yaxis=False
+        )
+
+        if fig_output:
+            st.plotly_chart(fig_output, use_container_width=True)
+        else:
+            st.success("✅ Semua satker sudah optimal untuk Capaian Output")
+            
 
     # ======================================================
     # ANALISIS TREN
