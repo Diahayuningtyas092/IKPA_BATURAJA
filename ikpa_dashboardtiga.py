@@ -153,6 +153,35 @@ if "ikpa_dipa_merged" not in st.session_state:
 # Log aktivitas
 if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
+    
+def clean_invalid_satker_rows(df):
+    df = df.copy()
+
+    # Kode Satker valid = 6 digit & bukan 000000
+    df = df[
+        df["Kode Satker"].notna() &
+        df["Kode Satker"].astype(str).str.match(r"^\d{6}$") &
+        (df["Kode Satker"] != "000000")
+    ]
+
+    # Nama satker tidak boleh kosong
+    df = df[
+        df["Uraian Satker"].notna() &
+        (df["Uraian Satker"].astype(str).str.strip() != "")
+    ]
+
+    return df.reset_index(drop=True)
+
+
+def fix_missing_month(df):
+    df = df.copy()
+
+    if df["Bulan"].isna().all() or (df["Bulan"] == "NAN").all():
+        df["Bulan"] = "JULI"   # atau ambil dari UI
+
+    df["Bulan"] = df["Bulan"].astype(str).str.upper()
+    return df
+
 
 # -------------------------
 # standardize_dipa
@@ -3955,7 +3984,6 @@ def page_admin():
     # TAB 1: UPLOAD DATA (IKPA, DIPA, Referensi)
     # ============================================================
     with tab1:
-        # Upload Data IKPA Satker
         st.subheader("📤 Upload Data IKPA Satker")
 
         upload_year = st.selectbox(
@@ -3980,20 +4008,17 @@ def page_admin():
 
                 with st.spinner("Memproses semua file IKPA Satker..."):
 
+                    need_merge = False
+
                     for uploaded_file in uploaded_files:
                         try:
                             # ======================
-                            # 🔄 PROSES FILE 
+                            # 1️⃣ PARSER MENTAH (TETAP)
                             # ======================
                             uploaded_file.seek(0)
                             df_final, month, year = process_excel_file(
                                 uploaded_file,
                                 upload_year
-                            )
-                            
-                            df_final = post_process_ikpa_satker(
-                                df_final,
-                                source="Manual"
                             )
 
                             if df_final is None or month == "UNKNOWN":
@@ -4004,7 +4029,25 @@ def page_admin():
                                 continue
 
                             # ======================
-                            # NORMALISASI KODE SATKER
+                            # 2️⃣ BUANG BARIS PALSU
+                            # ======================
+                            df_final = clean_invalid_satker_rows(df_final)
+
+                            # ======================
+                            # 3️⃣ PERBAIKI BULAN NaN
+                            # ======================
+                            df_final = fix_missing_month(df_final, month)
+
+                            # ======================
+                            # 4️⃣ POST PROCESS UTAMA
+                            # ======================
+                            df_final = post_process_ikpa_satker(
+                                df_final,
+                                source="Manual"
+                            )
+
+                            # ======================
+                            # 5️⃣ NORMALISASI KODE SATKER
                             # ======================
                             if "Kode Satker" in df_final.columns:
                                 df_final["Kode Satker"] = (
@@ -4014,20 +4057,20 @@ def page_admin():
                                 )
 
                             # ======================
-                            # 🔐 NORMALISASI NAMA SATKER (WAJIB)
+                            # 6️⃣ NORMALISASI NAMA SATKER
                             # ======================
                             df_final = apply_reference_short_names(df_final)
                             df_final = create_satker_column(df_final)
 
                             # ======================
-                            # OVERRIDE JIKA BULAN SAMA
+                            # 7️⃣ OVERRIDE DATA LAMA
                             # ======================
                             st.session_state.data_storage.pop(
                                 (month, str(year)), None
                             )
 
                             # ======================
-                            # REGISTRASI KE SISTEM (KUNCI)
+                            # 8️⃣ REGISTRASI KE SISTEM
                             # ======================
                             register_ikpa_satker(
                                 df_final,
@@ -4036,12 +4079,11 @@ def page_admin():
                                 source="Manual"
                             )
 
-                            # tandai perlu merge ulang
                             need_merge = True
                             st.session_state.ikpa_dipa_merged = False
 
                             # ======================
-                            # 💾 SIMPAN KE GITHUB
+                            # 9️⃣ SIMPAN KE GITHUB
                             # ======================
                             excel_bytes = io.BytesIO()
                             with pd.ExcelWriter(
@@ -4076,13 +4118,17 @@ def page_admin():
                         except Exception as e:
                             st.error(f"❌ Error {uploaded_file.name}: {e}")
 
+                    # ======================
+                    # 🔗 MERGE IKPA + DIPA
+                    # ======================
                     if need_merge and st.session_state.DATA_DIPA_by_year:
                         with st.spinner("🔄 Menggabungkan IKPA & DIPA..."):
                             merge_ikpa_dipa_auto()
                             st.session_state.ikpa_dipa_merged = True
-                    
+
                     st.session_state["_just_uploaded"] = True
                     st.rerun()
+
 
         
         # Submenu Upload Data IKPA KPPN
