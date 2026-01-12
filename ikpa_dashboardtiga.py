@@ -1195,75 +1195,92 @@ def safe_chart(df, title, top=True, color="Greens", y_min=0, y_max=110):
     if fig:
         st.plotly_chart(fig, use_container_width=True)
 
-# ============================================================
-# Problem Chart untuk Dashboard Internal
-# ============================================================
-def create_problem_chart(df, column, threshold, title, comparison='less', y_min=None, y_max=None, show_yaxis=True):
 
+def create_problem_chart(
+    df,
+    column,
+    threshold,
+    title,
+    comparison='less',
+    y_min=None,
+    y_max=None,
+    show_yaxis=True,
+    limit=5
+):
+    # ===============================
+    # FILTER DATA
+    # ===============================
     if comparison == 'less':
-        df_filtered = df[df[column] < threshold]
+        df_f = df[df[column] < threshold]
     elif comparison == 'greater':
-        df_filtered = df[df[column] > threshold]
+        df_f = df[df[column] > threshold]
     else:
-        df_filtered = df.copy()
+        df_f = df.copy()
 
-    # Jika hasil filter kosong → Cegah error
-    if df_filtered.empty:
-        df_filtered = df.head(1)
+    if df_f.empty:
+        return None
 
-    df_filtered = df_filtered.sort_values(by=column, ascending=False)
-
-    # Ambil nilai range untuk colormap
-    min_val = df_filtered[column].min()
-    max_val = df_filtered[column].max()
-
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=df_filtered['Satker'],
-        y=df_filtered[column],
-        marker=dict(
-            color=df_filtered[column],
-            colorscale='OrRd_r',
-            showscale=True,
-            cmin=min_val,
-            cmax=max_val,
-        ),
-        text=df_filtered[column].round(2),
-        textposition='outside',
-        textangle=0,
-        textfont=dict(family="Arial Black", size=12), 
-        hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
-    ))
-
-    # Garis target threshold (tidak berubah)
-    fig.add_hline(
-        y=threshold,
-        line_dash="dash",
-        line_color="red",
-        annotation_text=f"Target: {threshold}",
-        annotation_position="top right"
+    # ===============================
+    # AMBIL 5 NILAI TERBURUK
+    # ===============================
+    df_f = (
+        df_f.sort_values(column, ascending=True)
+            .head(limit)
+            .copy()
     )
 
-    # Bold judul dan label axis
+    # Proteksi kolom Satker
+    df_f["Satker"] = df_f["Satker"].astype(str).str.strip()
+    df_f = df_f[df_f["Satker"] != ""]
+
+    if df_f.empty:
+        return None
+
+    # ===============================
+    # BAR HORIZONTAL (KUNCI)
+    # ===============================
+    fig = px.bar(
+        df_f,
+        x=column,
+        y="Satker",
+        orientation="h",
+        color=column,
+        color_continuous_scale="OrRd_r",
+        text=column
+    )
+
+    fig.update_traces(
+        texttemplate="%{text:.2f}",
+        textposition="outside",
+        cliponaxis=False
+    )
+
+    # ===============================
+    # GARIS TARGET
+    # ===============================
+    fig.add_vline(
+        x=threshold,
+        line_dash="dash",
+        line_color="red",
+        annotation_text=f"Target {threshold}",
+        annotation_position="top"
+    )
+
     fig.update_layout(
-        xaxis=dict(
-        tickangle=-45,
-        tickmode='linear',
-        tickfont=dict(family="Arial Black", size=10),
-        automargin=True
-    ),
-    yaxis=dict(
-        tickfont=dict(family="Arial Black", size=11)
-        ),
-        height=600,
-        margin=dict(l=50, r=20, t=80, b=200),
-        showlegend=False,
+        height=350,
+        margin=dict(l=10, r=10, t=30, b=10),
+        xaxis_title="Nilai",
+        yaxis_title=None,
+        xaxis=dict(range=[y_min, y_max]),
+        coloraxis_showscale=False,
+        showlegend=False
     )
 
     if not show_yaxis:
         fig.update_yaxes(showticklabels=False)
 
     return fig
+
 # ===============================================
 # Helper to apply reference short names (Simplified)
 # ===============================================
