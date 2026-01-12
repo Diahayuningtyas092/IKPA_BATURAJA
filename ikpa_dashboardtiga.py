@@ -3080,8 +3080,10 @@ def menu_ews_satker():
     st.subheader("📈 Analisis Tren")
 
     # ======================================================
-    # VALIDASI BULAN & TAHUN (PAKAI df_all – TIDAK DIUBAH)
+    # VALIDASI BULAN & TAHUN (PAKAI df_all)
     # ======================================================
+    df_all = df_all.copy()
+
     df_all["Month_Num"] = (
         df_all["Bulan"]
         .astype(str)
@@ -3095,9 +3097,11 @@ def menu_ews_satker():
         st.stop()
 
     df_all["Tahun_Int"] = df_all["Tahun"].astype(int)
-    df_all["Period_Sort"] = df_all.apply(
-        lambda x: f"{x['Tahun_Int']:04d}-{x['Month_Num']:02d}",
-        axis=1
+
+    df_all["Period_Sort"] = (
+        df_all["Tahun_Int"].astype(str)
+        + "-"
+        + df_all["Month_Num"].astype(int).astype(str).str.zfill(2)
     )
 
     # ======================================================
@@ -3108,11 +3112,7 @@ def menu_ews_satker():
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        start_period = st.selectbox(
-            "Periode Awal",
-            available_periods,
-            index=0
-        )
+        start_period = st.selectbox("Periode Awal", available_periods, index=0)
 
     with col2:
         end_period = st.selectbox(
@@ -3135,10 +3135,7 @@ def menu_ews_satker():
             "Pengelolaan UP dan TUP",
             "Capaian Output",
         ]
-        selected_metric = st.selectbox(
-            "Metrik yang Ditampilkan",
-            metric_options
-        )
+        selected_metric = st.selectbox("Metrik yang Ditampilkan", metric_options)
 
     if start_period > end_period:
         st.warning("⚠️ Periode awal tidak boleh lebih besar dari periode akhir.")
@@ -3157,7 +3154,7 @@ def menu_ews_satker():
         st.stop()
 
     # ======================================================
-    # KOLOM SATKER (AMAN)
+    # KOLOM SATKER
     # ======================================================
     df_trend["Satker"] = (
         df_trend["Uraian Satker"].astype(str)
@@ -3167,7 +3164,7 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # 🔼 PILIH SATKER (DIPINDAH KE ATAS)
+    # PILIH SATKER
     # ======================================================
     all_satker = sorted(df_trend["Satker"].unique())
 
@@ -3181,59 +3178,37 @@ def menu_ews_satker():
         st.warning("Pilih minimal satu satker.")
         st.stop()
 
+    df_selected = df_trend[df_trend["Satker"].isin(selected_satker)]
+
     # ======================================================
-    # 🔽 AMBIL NILAI TERKECIL PER PERIODE (MIN)
+    # 🔽 NILAI TERKECIL PER PERIODE (WORST CASE) — AMAN
     # ======================================================
-    df_plot = (
-        df_trend[df_trend["Satker"].isin(selected_satker)]
-        .groupby(["Period_Sort", "Periode_Label"], as_index=False)[selected_metric]
+    df_min = (
+        df_selected
+        .groupby("Period_Sort", as_index=False)[selected_metric]
         .min()
+        .sort_values("Period_Sort")
     )
 
-    # label tunggal
-    df_plot["Satker"] = "Nilai Terendah (Worst Case)"
-
     # ======================================================
-    # LABEL PERIODE (UNTUK X-AXIS)
+    # LABEL PERIODE (SETELAH GROUPBY — AMAN)
     # ======================================================
     MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
 
-    df_plot["Periode_Label"] = df_plot.apply(
+    df_min["Tahun_Int"] = df_min["Period_Sort"].str[:4].astype(int)
+    df_min["Month_Num"] = df_min["Period_Sort"].str[5:].astype(int)
+
+    df_min["Periode_Label"] = df_min.apply(
         lambda x: f"{MONTH_REVERSE[x['Month_Num']]} {x['Tahun_Int']}",
         axis=1
     )
 
-    ordered_periods = (
-        df_plot[["Period_Sort", "Periode_Label"]]
-        .drop_duplicates()
-        .sort_values("Period_Sort")["Periode_Label"]
-    )
+    ordered_periods = df_min["Periode_Label"].tolist()
 
     # ======================================================
     # 📊 PLOT GRAFIK
     # ======================================================
     fig = go.Figure()
-    
-    # ======================================================
-    # PASTIKAN Periode_Label ADA
-    # ======================================================
-    MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
-
-    if "Periode_Label" not in df_plot.columns:
-        df_plot["Periode_Label"] = df_plot.apply(
-            lambda x: f"{MONTH_REVERSE[x['Month_Num']]} {x['Tahun_Int']}",
-            axis=1
-        )
-
-    # ======================================================
-    # 🔽 NILAI TERKECIL PER PERIODE (WORST CASE)
-    # ======================================================
-    df_min = (
-        df_plot
-        .groupby(["Period_Sort", "Periode_Label"], as_index=False)[selected_metric]
-        .min()
-        .sort_values("Period_Sort")
-    )
 
     fig.add_trace(
         go.Scatter(
@@ -3250,17 +3225,13 @@ def menu_ews_satker():
         )
     )
 
-    # ======================================================
-    # 🎨 LAYOUT GRAFIK
-    # ======================================================
     fig.update_layout(
-        title=f"Tren {selected_metric}",
+        title=f"Tren {selected_metric} (Nilai Terendah)",
         xaxis_title="Periode",
         yaxis_title="Nilai",
         height=600,
         hovermode="x unified",
 
-        # 🔼 LEGEND DI ATAS (HORIZONTAL)
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -3269,12 +3240,11 @@ def menu_ews_satker():
             x=0.5
         ),
 
-        margin=dict(
-            t=120  # ruang ekstra untuk legend di atas
-        )
+        margin=dict(t=120)
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
 
 
     # ======================================================
