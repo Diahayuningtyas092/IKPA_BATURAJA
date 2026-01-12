@@ -102,10 +102,6 @@ def render_table_pin_satker(df):
         allow_unsafe_jscode=True
     )
 
-st.set_page_config(
-    page_title="EWS Kinerja Satker",
-    layout="wide"
-)
 
 # =========================
 # AMBIL PASSWORD DARI SECRETS
@@ -1195,55 +1191,47 @@ def safe_chart(df, title, top=True, color="Greens", y_min=0, y_max=110):
     if fig:
         st.plotly_chart(fig, use_container_width=True)
 
+# ============================================================
+# Problem Chart untuk Dashboard Internal
+# ============================================================
+def create_problem_chart(df, column, threshold, title, comparison='less', y_min=None, y_max=None, show_yaxis=True):
 
-def create_problem_chart(
-    df,
-    indicator_col,
-    threshold,
-    title,
-    comparison='less',
-    y_min=50,
-    y_max=110,
-    show_yaxis=True,
-    max_satker=15
-):
-    # ===============================
-    # FILTER SESUAI KRITERIA
-    # ===============================
     if comparison == 'less':
-        df_f = df[df[indicator_col] < threshold].copy()
+        df_filtered = df[df[column] < threshold]
     elif comparison == 'greater':
-        df_f = df[df[indicator_col] > threshold].copy()
+        df_filtered = df[df[column] > threshold]
     else:
-        df_f = df.copy()
+        df_filtered = df.copy()
 
-    if df_f.empty:
-        return None
+    # Jika hasil filter kosong → Cegah error
+    if df_filtered.empty:
+        df_filtered = df.head(1)
 
-    # ===============================
-    # BATASI JUMLAH SATKER (KUNCI UTAMA)
-    # ===============================
-    df_f = (
-        df_f.sort_values(indicator_col, ascending=False)
-            .tail(max_satker)
-            .sort_values(indicator_col)
-    )
+    df_filtered = df_filtered.sort_values(by=column, ascending=False)
 
-    # ===============================
-    # BAR CHART VERTIKAL (PERSIS GAMBAR)
-    # ===============================
-    fig = px.bar(
-        df_f,
-        x="Satker",
-        y=indicator_col,
-        color=indicator_col,
-        color_continuous_scale="OrRd",
-        range_y=[y_min, y_max]
-    )
+    # Ambil nilai range untuk colormap
+    min_val = df_filtered[column].min()
+    max_val = df_filtered[column].max()
 
-    # ===============================
-    # GARIS TARGET 100
-    # ===============================
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        x=df_filtered['Satker'],
+        y=df_filtered[column],
+        marker=dict(
+            color=df_filtered[column],
+            colorscale='OrRd_r',
+            showscale=True,
+            cmin=min_val,
+            cmax=max_val,
+        ),
+        text=df_filtered[column].round(2),
+        textposition='outside',
+        textangle=0,
+        textfont=dict(family="Arial Black", size=12), 
+        hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
+    ))
+
+    # Garis target threshold (tidak berubah)
     fig.add_hline(
         y=threshold,
         line_dash="dash",
@@ -1252,32 +1240,26 @@ def create_problem_chart(
         annotation_position="top right"
     )
 
-    # ===============================
-    # TAMPILAN & LAYOUT
-    # ===============================
+    # Bold judul dan label axis
     fig.update_layout(
-        height=420,
-        margin=dict(l=50, r=20, t=30, b=120),
-        xaxis_title=None,
-        yaxis_title="Nilai" if show_yaxis else None,
-        coloraxis_colorbar=dict(
-            thickness=18,
-            title=""
+        xaxis=dict(
+        tickangle=-45,
+        tickmode='linear',
+        tickfont=dict(family="Arial Black", size=10),
+        automargin=True
+    ),
+    yaxis=dict(
+        tickfont=dict(family="Arial Black", size=11)
         ),
-        showlegend=False
-    )
-
-    fig.update_xaxes(
-        tickangle=-90,
-        tickfont=dict(size=10)
+        height=600,
+        margin=dict(l=50, r=20, t=80, b=200),
+        showlegend=False,
     )
 
     if not show_yaxis:
         fig.update_yaxes(showticklabels=False)
 
     return fig
-
-
 # ===============================================
 # Helper to apply reference short names (Simplified)
 # ===============================================
@@ -2834,39 +2816,27 @@ def menu_ews_satker():
     if "data_storage" not in st.session_state or not st.session_state.data_storage:
         st.warning("⚠️ Belum ada data historis yang tersedia.")
         return
-
-    # ======================================================
-    # GABUNGKAN SEMUA DATA
-    # ======================================================
+    
+    # Gabungkan semua data
     all_data = []
     for period, df in st.session_state.data_storage.items():
         df_copy = df.copy()
+        # ensure Period & Period_Sort exist
         df_copy['Period'] = f"{period[0]} {period[1]}"
+        df_copy['Period_Sort'] = f"{period[1]}-{period[0]}"
         all_data.append(df_copy)
-
+    
+    if not all_data:
+        st.warning("⚠️ Belum ada data historis yang tersedia.")
+        return
+    
     df_all = pd.concat(all_data, ignore_index=True)
     
-    # ======================================================
-    # DATA PERIODE TERKINI (UNTUK CHART ATAS)
-    # ======================================================
-    latest_period = df_all['Period_Sort'].max()
-    df_latest = df_all[df_all['Period_Sort'] == latest_period].copy()
+    # Analisis tren dan Early Warning System
+    # Gunakan data periode terkini
+    latest_period = sorted(st.session_state.data_storage.keys(), key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)), reverse=True)[0]
+    df_latest = st.session_state.data_storage[latest_period]
 
-
-    # ======================================================
-    # VALIDASI BULAN & TAHUN
-    # ======================================================
-    df_all['Month_Num'] = df_all['Bulan'].str.strip().str.upper().map(MONTH_ORDER)
-
-    if df_all['Month_Num'].isna().any():
-        st.error("❌ Ditemukan nama bulan tidak valid.")
-        return
-
-    df_all['Tahun_Int'] = df_all['Tahun'].astype(int)
-    df_all['Period_Sort'] = df_all.apply(
-        lambda x: f"{x['Tahun_Int']:04d}-{x['Month_Num']:02d}", axis=1
-    )
-    
     st.markdown("---")
     st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
 
@@ -2960,22 +2930,44 @@ def menu_ews_satker():
             st.plotly_chart(fig_output, use_container_width=True)
         else:
             st.success("✅ Semua satker sudah optimal untuk Capaian Output")
-            
 
-    # ======================================================
-    # ANALISIS TREN
-    # ======================================================
+    
+    warnings = []
+    
+    # ===============================
+    # 📈 ANALISIS TREN
+    # ===============================
     st.subheader("📈 Analisis Tren")
 
+    # ======================================================
+    # VALIDASI BULAN & TAHUN (PAKAI df_all – TIDAK DIUBAH)
+    # ======================================================
+    df_all['Month_Num'] = df_all['Bulan'].str.strip().str.upper().map(MONTH_ORDER)
+
+    if df_all['Month_Num'].isna().any():
+        st.error("❌ Ditemukan nama bulan tidak valid.")
+        st.stop()
+
+    df_all['Tahun_Int'] = df_all['Tahun'].astype(int)
+    df_all['Period_Sort'] = df_all.apply(
+        lambda x: f"{x['Tahun_Int']:04d}-{x['Month_Num']:02d}",
+        axis=1
+    )
+
+    # ======================================================
+    # PILIH PERIODE
+    # ======================================================
     available_periods = sorted(df_all['Period_Sort'].unique())
 
-    # ===== KONTROL ATAS (TETAP SEPERTI SEBELUMNYA) =====
-    c1, c2, c3 = st.columns([1, 1, 2])
-    with c1:
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
         start_period = st.selectbox("Periode Awal", available_periods, index=0)
-    with c2:
+
+    with col2:
         end_period = st.selectbox("Periode Akhir", available_periods, index=len(available_periods) - 1)
-    with c3:
+
+    with col3:
         metric_options = [
             'Nilai Akhir (Nilai Total/Konversi Bobot)',
             'Kualitas Perencanaan Anggaran',
@@ -2993,10 +2985,10 @@ def menu_ews_satker():
 
     if start_period > end_period:
         st.warning("⚠️ Periode awal tidak boleh lebih besar dari periode akhir.")
-        return
+        st.stop()
 
     # ======================================================
-    # FILTER PERIODE
+    # FILTER PERIODE (INI KUNCI)
     # ======================================================
     df_trend = df_all[
         (df_all['Period_Sort'] >= start_period) &
@@ -3005,10 +2997,10 @@ def menu_ews_satker():
 
     if df_trend.empty:
         st.warning("⚠️ Tidak ada data pada periode yang dipilih.")
-        return
+        st.stop()
 
     # ======================================================
-    # KOLOM SATKER
+    # KOLOM SATKER (AMAN)
     # ======================================================
     df_trend['Satker'] = (
         df_trend['Uraian Satker'].astype(str)
@@ -3018,42 +3010,30 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # DEFAULT: 5 SATKER DENGAN NILAI TERKECIL (PERIODE TERAKHIR)
-    # ======================================================
-    latest_period = df_trend['Period_Sort'].max()
-
-    df_latest_metric = (
-        df_trend[df_trend['Period_Sort'] == latest_period]
-        [['Satker', selected_metric]]
-        .dropna()
-        .sort_values(selected_metric, ascending=True)
-    )
-
-    default_satker = df_latest_metric.head(5)['Satker'].tolist()
-
-    # ======================================================
-    # MULTISELECT (USER MASIH BISA UBAH)
+    # PILIH SATKER
     # ======================================================
     all_satker = sorted(df_trend['Satker'].unique())
 
     selected_satker = st.multiselect(
         "Pilih Satker",
         options=all_satker,
-        default=default_satker
+        default=all_satker[:5]
     )
 
     if not selected_satker:
         st.warning("Pilih minimal satu satker.")
-        return
+        st.stop()
 
     df_plot = df_trend[df_trend['Satker'].isin(selected_satker)]
 
     # ======================================================
-    # LABEL PERIODE (X-AXIS)
+    # LABEL PERIODE (UNTUK X-AXIS)
     # ======================================================
     MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
+
     df_plot['Periode_Label'] = df_plot.apply(
-        lambda x: f"{MONTH_REVERSE[x['Month_Num']]} {x['Tahun_Int']}", axis=1
+        lambda x: f"{MONTH_REVERSE[x['Month_Num']]} {x['Tahun_Int']}",
+        axis=1
     )
 
     ordered_periods = (
@@ -3063,12 +3043,13 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # GRAFIK (FULL LEBAR)
+    # PLOT GRAFIK
     # ======================================================
     fig = go.Figure()
 
     for satker in selected_satker:
         d = df_plot[df_plot['Satker'] == satker].sort_values('Period_Sort')
+
         fig.add_trace(go.Scatter(
             x=pd.Categorical(
                 d['Periode_Label'],
@@ -3084,38 +3065,51 @@ def menu_ews_satker():
         title=f"Tren {selected_metric}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
-        height=550,
-        hovermode="x unified",
-        margin=dict(l=30, r=30, t=60, b=40),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="center",
-            x=0.5
-        )
+        height=600,
+        hovermode='x unified'
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-    # ======================================================
-    # EARLY WARNING: TREN MENURUN
-    # ======================================================
-    warnings = []
+
+    # Early Warning Satker Tren Menurun
+    warnings = []  # Initialize warnings list
+    
     for satker in selected_satker:
-        d = df_plot[df_plot['Satker'] == satker].sort_values('Period_Sort')
-        if len(d) >= 2 and d[selected_metric].iloc[-1] < d[selected_metric].iloc[-2]:
-            warnings.append(
-                f"**{satker}** : {d[selected_metric].iloc[-2]:.2f} ➜ {d[selected_metric].iloc[-1]:.2f}"
-            )
-
+        df_satker = df_plot[df_plot['Satker'] == satker].sort_values('Period_Sort')
+        
+        if len(df_satker) >= 2:
+            values = df_satker[selected_metric].values
+            
+            # Cek tren menurun (2 periode terakhir)
+            if len(values) >= 2:
+                last_value = values[-1]
+                prev_value = values[-2]
+                
+                if last_value < prev_value:
+                    decrease = prev_value - last_value
+                    warnings.append({
+                        'Satker': satker,
+                        'Metrik': selected_metric,
+                        'Nilai Sebelumnya': prev_value,
+                        'Nilai Terkini': last_value,
+                        'Penurunan': decrease
+                    })
+    
     if warnings:
-        st.warning("⚠️ Satker dengan tren menurun:")
+        st.warning(f"⚠️ Ditemukan {len(warnings)} satker dengan tren menurun!")
+        
         for w in warnings:
-            st.markdown(f"- {w}")
+            st.markdown(f"""
+            **{w['Satker']}**  
+            - Metrik: {w['Metrik']}
+            - Nilai sebelumnya: {w['Nilai Sebelumnya']:.2f}
+            - Nilai terkini: {w['Nilai Terkini']:.2f}
+            - Penurunan: {w['Penurunan']:.2f} poin
+            """)
+            st.markdown("---")
     else:
-        st.success("✅ Tidak ada satker dengan tren menurun pada periode yang dipilih")
-
+        st.success("✅ Tidak ada satker dengan tren menurun pada periode yang dipilih!")
         
 #HIGHLIGHTS
 def menu_highlights():
