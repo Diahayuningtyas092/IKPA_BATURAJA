@@ -517,6 +517,75 @@ def process_excel_file(uploaded_file, upload_year):
     df_final = pd.DataFrame(processed_rows)
     return df_final, month, upload_year
 
+
+def post_process_ikpa_satker(df, source="Upload"):
+    df = df.copy()
+
+    # =========================
+    # 1. NORMALISASI NUMERIK
+    # =========================
+    non_numeric = [
+        "Uraian Satker", "Bulan", "Tahun"
+    ]
+
+    for col in df.columns:
+        if col not in non_numeric:
+            df[col] = (
+                df[col]
+                .astype(str)
+                .str.replace(",", ".", regex=False)
+            )
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    # =========================
+    # 2. RANKING (DENSE)
+    # =========================
+    nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+
+    df = df.sort_values(nilai_col, ascending=False)
+
+    df["Peringkat"] = (
+        df[nilai_col]
+        .rank(method="dense", ascending=False)
+        .astype(int)
+    )
+
+    # =========================
+    # 3. METADATA PERIOD
+    # =========================
+    df["Source"] = source
+    df["Period"] = df["Bulan"] + " " + df["Tahun"].astype(str)
+
+    MONTH_ORDER = {
+        "JANUARI": 1, "FEBRUARI": 2, "MARET": 3, "APRIL": 4,
+        "MEI": 5, "JUNI": 6, "JULI": 7, "AGUSTUS": 8,
+        "SEPTEMBER": 9, "OKTOBER": 10, "NOVEMBER": 11, "DESEMBER": 12
+    }
+
+    df["Period_Sort"] = (
+        df["Tahun"].astype(int).astype(str)
+        + "-"
+        + df["Bulan"].map(MONTH_ORDER).fillna(0).astype(int).astype(str).str.zfill(2)
+    )
+
+    # =========================
+    # 4. MERGE DIPA → PAGU
+    # =========================
+    try:
+        df = merge_ikpa_with_dipa(df)
+    except Exception:
+        df["Total Pagu"] = 0
+
+    # =========================
+    # 5. KLASIFIKASI JENIS SATKER
+    # =========================
+    try:
+        df = classify_jenis_satker(df)
+    except Exception:
+        df["Jenis Satker"] = "SEDANG"
+
+    return df
+
 # ===============================
 # PARSER IKPA KPPN (RINGKAS)
 # ===============================
@@ -3920,6 +3989,11 @@ def page_admin():
                             df_final, month, year = process_excel_file(
                                 uploaded_file,
                                 upload_year
+                            )
+                            
+                            df_final = post_process_ikpa_satker(
+                                df_final,
+                                source="Manual"
                             )
 
                             if df_final is None or month == "UNKNOWN":
