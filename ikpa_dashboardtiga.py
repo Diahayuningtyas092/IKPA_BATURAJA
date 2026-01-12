@@ -3223,18 +3223,27 @@ def menu_ews_satker():
             )
         )
 
-    fig.update_layout(
+        fig.update_layout(
         title=f"Tren {selected_metric}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
         height=600,
         hovermode="x unified",
+
+        # 🔼 LEGEND PINDAH KE ATAS (HORIZONTAL)
         legend=dict(
-            orientation="v",
-            x=1.02,
-            y=1
+            orientation="h",
+            yanchor="bottom",
+            y=1.12,
+            xanchor="center",
+            x=0.5
+        ),
+
+        margin=dict(
+            t=120  # ruang ekstra untuk legend di atas
         )
     )
+
 
     st.plotly_chart(fig, use_container_width=True)
 
