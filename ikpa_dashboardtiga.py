@@ -3248,44 +3248,34 @@ def menu_ews_satker():
 
 
     # ======================================================
-    # 🚨 EARLY WARNING – TREN MENURUN
+    # 🚨 EARLY WARNING – NILAI PALING KECIL (AGREGAT)
     # ======================================================
     warnings = []
 
-    for satker in selected_satker:
-        df_satker = (
-            df_plot[df_plot["Satker"] == satker]
-            .sort_values("Period_Sort")
-        )
+    if len(df_plot) >= 2:
+        last_value = df_plot[selected_metric].iloc[-1]
+        prev_value = df_plot[selected_metric].iloc[-2]
 
-        if len(df_satker) >= 2:
-            values = df_satker[selected_metric].values
-            last_value = values[-1]
-            prev_value = values[-2]
-
-            if last_value < prev_value:
-                warnings.append({
-                    "Satker": satker,
-                    "Metrik": selected_metric,
-                    "Nilai Sebelumnya": prev_value,
-                    "Nilai Terkini": last_value,
-                    "Penurunan": prev_value - last_value
-                })
+        if last_value < prev_value:
+            warnings.append({
+                "Metrik": selected_metric,
+                "Nilai Sebelumnya": prev_value,
+                "Nilai Terkini": last_value,
+                "Penurunan": prev_value - last_value
+            })
 
     if warnings:
-        st.warning(f"⚠️ Ditemukan {len(warnings)} satker dengan tren menurun!")
+        st.warning("⚠️ Terdapat penurunan nilai TERKECIL pada periode terakhir!")
 
         for w in warnings:
             st.markdown(f"""
-    **{w['Satker']}**  
-    - Metrik: {w['Metrik']}  
+    **Metrik:** {w['Metrik']}  
     - Nilai sebelumnya: {w['Nilai Sebelumnya']:.2f}  
     - Nilai terkini: {w['Nilai Terkini']:.2f}  
     - Penurunan: {w['Penurunan']:.2f} poin
     """)
-            st.markdown("---")
     else:
-        st.success("✅ Tidak ada satker dengan tren menurun pada periode yang dipilih!")
+        st.success("✅ Tidak ada penurunan pada nilai paling kecil (worst case).")
 
         
 #HIGHLIGHTS
