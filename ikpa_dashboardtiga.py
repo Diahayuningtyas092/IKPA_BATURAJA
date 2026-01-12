@@ -3182,16 +3182,6 @@ def menu_ews_satker():
         st.stop()
 
     # ======================================================
-    # 🔽 AMBIL NILAI PALING KECIL PER PERIODE (WORST CASE)
-    # ======================================================
-    df_plot = (
-        df_trend[df_trend["Satker"].isin(selected_satker)]
-        .groupby("Period_Sort", as_index=False)[selected_metric]
-        .min()
-        .sort_values("Period_Sort")
-    )
-
-    # ======================================================
     # LABEL PERIODE (AMAN)
     # ======================================================
     # ======================================================
@@ -3211,15 +3201,11 @@ def menu_ews_satker():
         .sort_values("Period_Sort")["Periode_Label"]
     )
 
-
     # ======================================================
-    # 📊 PLOT GRAFIK (SATKER + WORST CASE)
+    # 📊 PLOT GRAFIK TREN PER SATKER (STABIL)
     # ======================================================
     fig = go.Figure()
 
-    # ===============================
-    # 1️⃣ GARIS PER SATKER (SEPERTI DULU)
-    # ===============================
     for satker in selected_satker:
         d = (
             df_trend[df_trend["Satker"] == satker]
@@ -3231,106 +3217,68 @@ def menu_ews_satker():
 
         fig.add_trace(
             go.Scatter(
-                x=pd.Categorical(
-                    d["Periode_Label"],
-                    categories=ordered_periods,
-                    ordered=True
-                ),
+                x=d["Periode_Label"],
                 y=d[selected_metric],
                 mode="lines+markers",
-                name=satker,
-                line=dict(width=1),
-                opacity=0.6
+                name=satker
             )
         )
 
-    # ===============================
-    # 2️⃣ GARIS WORST CASE (TERKECIL)
-    # ===============================
-    df_worst = (
-        df_trend[df_trend["Satker"].isin(selected_satker)]
-        .groupby("Period_Sort", as_index=False)[selected_metric]
-        .min()
-        .sort_values("Period_Sort")
-    )
-
-    # Label periode aman
-    df_worst["Tahun_Int"] = df_worst["Period_Sort"].str[:4].astype(int)
-    df_worst["Month_Num"] = df_worst["Period_Sort"].str[5:].astype(int)
-
-    MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
-    df_worst["Periode_Label"] = df_worst.apply(
-        lambda x: f"{MONTH_REVERSE.get(x['Month_Num'], '')} {x['Tahun_Int']}",
-        axis=1
-    )
-
-    fig.add_trace(
-        go.Scatter(
-            x=pd.Categorical(
-                df_worst["Periode_Label"],
-                categories=ordered_periods,
-                ordered=True
-            ),
-            y=df_worst[selected_metric],
-            mode="lines+markers",
-            name="⚠️ Nilai Paling Kecil (Worst Case)",
-            line=dict(width=4, color="red"),
-            marker=dict(size=8),
-        )
-    )
-
-    # ===============================
-    # 🎨 LAYOUT
-    # ===============================
     fig.update_layout(
-        title=f"Tren {selected_metric} (Satker + Nilai Paling Kecil)",
+        title=f"Tren {selected_metric}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
-        height=650,
-        hovermode="x unified",
-
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.15,
-            xanchor="center",
-            x=0.5
-        ),
-
-        margin=dict(t=140)
+        height=600,
+        hovermode="x unified"
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-   # ======================================================
-    # 🚨 EARLY WARNING – WORST CASE TURUN
+    # ======================================================
+    # 🚨 EARLY WARNING – SATKER DENGAN TREN MENURUN
     # ======================================================
     warnings = []
 
-    if len(df_worst) >= 2:
-        last_value = df_worst[selected_metric].iloc[-1]
-        prev_value = df_worst[selected_metric].iloc[-2]
+    for satker in selected_satker:
+        df_satker = (
+            df_trend[df_trend["Satker"] == satker]
+            .sort_values("Period_Sort")
+        )
+
+        if len(df_satker) < 2:
+            continue
+
+        values = df_satker[selected_metric].values
+        last_value = values[-1]
+        prev_value = values[-2]
 
         if last_value < prev_value:
             warnings.append({
+                "Satker": satker,
                 "Metrik": selected_metric,
                 "Nilai Sebelumnya": prev_value,
                 "Nilai Terkini": last_value,
                 "Penurunan": prev_value - last_value
             })
 
+    # ======================================================
+    # TAMPILKAN HASIL
+    # ======================================================
     if warnings:
-        st.error("🚨 **PERINGATAN DINI! Terdapat Satker yang Mengalami Penurunan**")
+        st.warning(f"⚠️ Ditemukan {len(warnings)} satker dengan tren menurun!")
 
         for w in warnings:
             st.markdown(f"""
-    **Metrik:** {w['Metrik']}  
-    - Nilai sebelumnya: {w['Nilai Sebelumnya']:.2f}  
-    - Nilai terkini: {w['Nilai Terkini']:.2f}  
+    **{w['Satker']}**  
+    - Metrik: {w['Metrik']}  
+    - Nilai sebelumnya: **{w['Nilai Sebelumnya']:.2f}**  
+    - Nilai terkini: **{w['Nilai Terkini']:.2f}**  
     - Penurunan: **{w['Penurunan']:.2f} poin**
     """)
+            st.markdown("---")
     else:
-        st.success("✅ Nilai stabil / membaik pada periode terakhir")
+        st.success("✅ Tidak ada satker dengan tren menurun pada periode yang dipilih!")
+
 
         
 #HIGHLIGHTS
