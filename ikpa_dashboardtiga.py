@@ -1198,22 +1198,22 @@ def safe_chart(df, title, top=True, color="Greens", y_min=0, y_max=110):
 
 def create_problem_chart(
     df,
-    column,
+    indicator_col,
     threshold,
     title,
     comparison='less',
-    y_min=None,
-    y_max=None,
+    y_min=50,
+    y_max=110,
     show_yaxis=True,
-    limit=5
+    max_satker=15
 ):
     # ===============================
-    # FILTER DATA
+    # FILTER SESUAI KRITERIA
     # ===============================
     if comparison == 'less':
-        df_f = df[df[column] < threshold]
+        df_f = df[df[indicator_col] < threshold].copy()
     elif comparison == 'greater':
-        df_f = df[df[column] > threshold]
+        df_f = df[df[indicator_col] > threshold].copy()
     else:
         df_f = df.copy()
 
@@ -1221,65 +1221,62 @@ def create_problem_chart(
         return None
 
     # ===============================
-    # AMBIL 5 NILAI TERBURUK
+    # BATASI JUMLAH SATKER (KUNCI UTAMA)
     # ===============================
     df_f = (
-        df_f.sort_values(column, ascending=True)
-            .head(limit)
-            .copy()
+        df_f.sort_values(indicator_col, ascending=False)
+            .tail(max_satker)
+            .sort_values(indicator_col)
     )
 
-    # Proteksi kolom Satker
-    df_f["Satker"] = df_f["Satker"].astype(str).str.strip()
-    df_f = df_f[df_f["Satker"] != ""]
-
-    if df_f.empty:
-        return None
-
     # ===============================
-    # BAR HORIZONTAL (KUNCI)
+    # BAR CHART VERTIKAL (PERSIS GAMBAR)
     # ===============================
     fig = px.bar(
         df_f,
-        x=column,
-        y="Satker",
-        orientation="h",
-        color=column,
-        color_continuous_scale="OrRd_r",
-        text=column
-    )
-
-    fig.update_traces(
-        texttemplate="%{text:.2f}",
-        textposition="outside",
-        cliponaxis=False
+        x="Satker",
+        y=indicator_col,
+        color=indicator_col,
+        color_continuous_scale="OrRd",
+        range_y=[y_min, y_max]
     )
 
     # ===============================
-    # GARIS TARGET
+    # GARIS TARGET 100
     # ===============================
-    fig.add_vline(
-        x=threshold,
+    fig.add_hline(
+        y=threshold,
         line_dash="dash",
         line_color="red",
-        annotation_text=f"Target {threshold}",
-        annotation_position="top"
+        annotation_text=f"Target: {threshold}",
+        annotation_position="top right"
     )
 
+    # ===============================
+    # TAMPILAN & LAYOUT
+    # ===============================
     fig.update_layout(
-        height=350,
-        margin=dict(l=10, r=10, t=30, b=10),
-        xaxis_title="Nilai",
-        yaxis_title=None,
-        xaxis=dict(range=[y_min, y_max]),
-        coloraxis_showscale=False,
+        height=420,
+        margin=dict(l=50, r=20, t=30, b=120),
+        xaxis_title=None,
+        yaxis_title="Nilai" if show_yaxis else None,
+        coloraxis_colorbar=dict(
+            thickness=18,
+            title=""
+        ),
         showlegend=False
+    )
+
+    fig.update_xaxes(
+        tickangle=-90,
+        tickfont=dict(size=10)
     )
 
     if not show_yaxis:
         fig.update_yaxes(showticklabels=False)
 
     return fig
+
 
 # ===============================================
 # Helper to apply reference short names (Simplified)
