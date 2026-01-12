@@ -3194,17 +3194,23 @@ def menu_ews_satker():
     # ======================================================
     # LABEL PERIODE (AMAN)
     # ======================================================
+    # ======================================================
+    # 🏷️ BUAT LABEL PERIODE (WAJIB UNTUK PLOT)
+    # ======================================================
     MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
 
-    df_plot["Tahun_Int"] = df_plot["Period_Sort"].str[:4].astype(int)
-    df_plot["Month_Num"] = df_plot["Period_Sort"].str[5:].astype(int)
-
-    df_plot["Periode_Label"] = df_plot.apply(
-        lambda x: f"{MONTH_REVERSE[x['Month_Num']]} {x['Tahun_Int']}",
+    df_trend["Periode_Label"] = df_trend.apply(
+        lambda x: f"{MONTH_REVERSE.get(x['Month_Num'], '')} {x['Tahun_Int']}",
         axis=1
     )
 
-    ordered_periods = df_plot["Periode_Label"].tolist()
+    # urutan periode untuk sumbu X
+    ordered_periods = (
+        df_trend[["Period_Sort", "Periode_Label"]]
+        .drop_duplicates()
+        .sort_values("Period_Sort")["Periode_Label"]
+    )
+
 
     # ======================================================
     # 📊 PLOT GRAFIK (SATKER + WORST CASE)
