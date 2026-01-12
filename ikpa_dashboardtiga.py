@@ -2831,6 +2831,13 @@ def menu_ews_satker():
         all_data.append(df_copy)
 
     df_all = pd.concat(all_data, ignore_index=True)
+    
+    # ======================================================
+    # DATA PERIODE TERKINI (UNTUK CHART ATAS)
+    # ======================================================
+    latest_period = df_all['Period_Sort'].max()
+    df_latest = df_all[df_all['Period_Sort'] == latest_period].copy()
+
 
     # ======================================================
     # VALIDASI BULAN & TAHUN
