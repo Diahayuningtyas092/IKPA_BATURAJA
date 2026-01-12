@@ -3231,36 +3231,37 @@ def menu_ews_satker():
     # 🎨 LAYOUT (LEGEND PINDAH KE ATAS KANAN)
     # ======================================================
     fig.update_layout(
-        title=dict(
-            text=f"Tren {selected_metric}",
-            x=0.01,
-            y=0.95,
-            xanchor="left",
-            yanchor="top"
-        ),
-        xaxis_title="Periode",
-        yaxis_title="Nilai",
-        height=600,
-        hovermode="x unified",
+    title=dict(
+        text=f"Tren {selected_metric}",
+        x=0.01,
+        y=0.98,
+        xanchor="left",
+        yanchor="top"
+    ),
+    xaxis_title="Periode",
+    yaxis_title="Nilai",
+    height=600,
+    hovermode="x unified",
 
-        # 🔑 LEGEND DI ATAS KANAN
-        legend=dict(
-            orientation="v",
-            x=1.02,
-            y=1.0,
-            xanchor="left",
-            yanchor="top",
-            font=dict(size=12)
-        ),
+    # 🔑 LEGEND PINDAH KE ATAS (SEJAJAR JUDUL)
+    legend=dict(
+        orientation="h",     # WAJIB horizontal
+        yanchor="bottom",
+        y=1.08,              # NAIK KE ATAS
+        xanchor="left",
+        x=0.25,              # geser ke kanan dari judul
+        font=dict(size=12)
+    ),
 
-        # 🔑 RUANG TAMBAHAN AGAR CHART FULL LEBAR
-        margin=dict(
-            l=60,
-            r=300,
-            t=80,
-            b=60
+    # 🔑 RUANG ATAS DITAMBAH
+    margin=dict(
+        l=60,
+        r=40,
+        t=140,   # INI KUNCINYA
+        b=60
         )
     )
+
 
     st.plotly_chart(fig, use_container_width=True)
 
