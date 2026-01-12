@@ -3181,7 +3181,17 @@ def menu_ews_satker():
         st.warning("Pilih minimal satu satker.")
         st.stop()
 
-    df_plot = df_trend[df_trend["Satker"].isin(selected_satker)].copy()
+    # ======================================================
+    # 🔽 AMBIL NILAI TERKECIL PER PERIODE (MIN)
+    # ======================================================
+    df_plot = (
+        df_trend[df_trend["Satker"].isin(selected_satker)]
+        .groupby(["Period_Sort", "Periode_Label"], as_index=False)[selected_metric]
+        .min()
+    )
+
+    # label tunggal
+    df_plot["Satker"] = "Nilai Terendah (Worst Case)"
 
     # ======================================================
     # LABEL PERIODE (UNTUK X-AXIS)
@@ -3204,33 +3214,42 @@ def menu_ews_satker():
     # ======================================================
     fig = go.Figure()
 
-    for satker in selected_satker:
-        d = (
-            df_plot[df_plot["Satker"] == satker]
-            .sort_values("Period_Sort")
-        )
+    # ======================================================
+    # 🔽 NILAI TERKECIL PER PERIODE (WORST CASE)
+    # ======================================================
+    df_min = (
+        df_plot
+        .groupby(["Period_Sort", "Periode_Label"], as_index=False)[selected_metric]
+        .min()
+        .sort_values("Period_Sort")
+    )
 
-        fig.add_trace(
-            go.Scatter(
-                x=pd.Categorical(
-                    d["Periode_Label"],
-                    categories=ordered_periods,
-                    ordered=True
-                ),
-                y=d[selected_metric],
-                mode="lines+markers",
-                name=satker
-            )
+    fig.add_trace(
+        go.Scatter(
+            x=pd.Categorical(
+                df_min["Periode_Label"],
+                categories=ordered_periods,
+                ordered=True
+            ),
+            y=df_min[selected_metric],
+            mode="lines+markers",
+            name="Nilai Terendah (Worst Case)",
+            line=dict(width=3),
+            marker=dict(size=7)
         )
+    )
 
-        fig.update_layout(
+    # ======================================================
+    # 🎨 LAYOUT GRAFIK
+    # ======================================================
+    fig.update_layout(
         title=f"Tren {selected_metric}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
         height=600,
         hovermode="x unified",
 
-        # 🔼 LEGEND PINDAH KE ATAS (HORIZONTAL)
+        # 🔼 LEGEND DI ATAS (HORIZONTAL)
         legend=dict(
             orientation="h",
             yanchor="bottom",
@@ -3244,8 +3263,8 @@ def menu_ews_satker():
         )
     )
 
-
     st.plotly_chart(fig, use_container_width=True)
+
 
     # ======================================================
     # 🚨 EARLY WARNING – TREN MENURUN
