@@ -3207,54 +3207,103 @@ def menu_ews_satker():
     ordered_periods = df_plot["Periode_Label"].tolist()
 
     # ======================================================
-    # 📊 PLOT GRAFIK (NILAI PALING KECIL)
+    # 📊 PLOT GRAFIK (SATKER + WORST CASE)
     # ======================================================
     fig = go.Figure()
+
+    # ===============================
+    # 1️⃣ GARIS PER SATKER (SEPERTI DULU)
+    # ===============================
+    for satker in selected_satker:
+        d = (
+            df_trend[df_trend["Satker"] == satker]
+            .sort_values("Period_Sort")
+        )
+
+        if d.empty:
+            continue
+
+        fig.add_trace(
+            go.Scatter(
+                x=pd.Categorical(
+                    d["Periode_Label"],
+                    categories=ordered_periods,
+                    ordered=True
+                ),
+                y=d[selected_metric],
+                mode="lines+markers",
+                name=satker,
+                line=dict(width=1),
+                opacity=0.6
+            )
+        )
+
+    # ===============================
+    # 2️⃣ GARIS WORST CASE (TERKECIL)
+    # ===============================
+    df_worst = (
+        df_trend[df_trend["Satker"].isin(selected_satker)]
+        .groupby("Period_Sort", as_index=False)[selected_metric]
+        .min()
+        .sort_values("Period_Sort")
+    )
+
+    # Label periode aman
+    df_worst["Tahun_Int"] = df_worst["Period_Sort"].str[:4].astype(int)
+    df_worst["Month_Num"] = df_worst["Period_Sort"].str[5:].astype(int)
+
+    MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
+    df_worst["Periode_Label"] = df_worst.apply(
+        lambda x: f"{MONTH_REVERSE.get(x['Month_Num'], '')} {x['Tahun_Int']}",
+        axis=1
+    )
 
     fig.add_trace(
         go.Scatter(
             x=pd.Categorical(
-                df_plot["Periode_Label"],
+                df_worst["Periode_Label"],
                 categories=ordered_periods,
                 ordered=True
             ),
-            y=df_plot[selected_metric],
+            y=df_worst[selected_metric],
             mode="lines+markers",
-            name="Nilai Paling Kecil (Worst Case)",
-            line=dict(width=3),
-            marker=dict(size=7)
+            name="⚠️ Nilai Paling Kecil (Worst Case)",
+            line=dict(width=4, color="red"),
+            marker=dict(size=8),
         )
     )
 
+    # ===============================
+    # 🎨 LAYOUT
+    # ===============================
     fig.update_layout(
-        title=f"Tren {selected_metric} (Nilai Paling Kecil)",
+        title=f"Tren {selected_metric} (Satker + Nilai Paling Kecil)",
         xaxis_title="Periode",
         yaxis_title="Nilai",
-        height=600,
+        height=650,
         hovermode="x unified",
 
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=1.12,
+            y=1.15,
             xanchor="center",
             x=0.5
         ),
 
-        margin=dict(t=120)
+        margin=dict(t=140)
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
-
-    # ======================================================
-    # 🚨 EARLY WARNING – NILAI PALING KECIL (AGREGAT)
+   # ======================================================
+    # 🚨 EARLY WARNING – WORST CASE TURUN
     # ======================================================
     warnings = []
 
-    if len(df_plot) >= 2:
-        last_value = df_plot[selected_metric].iloc[-1]
-        prev_value = df_plot[selected_metric].iloc[-2]
+    if len(df_worst) >= 2:
+        last_value = df_worst[selected_metric].iloc[-1]
+        prev_value = df_worst[selected_metric].iloc[-2]
 
         if last_value < prev_value:
             warnings.append({
@@ -3265,17 +3314,17 @@ def menu_ews_satker():
             })
 
     if warnings:
-        st.warning("⚠️ Terdapat penurunan nilai TERKECIL pada periode terakhir!")
+        st.error("🚨 **PERINGATAN DINI! Terdapat Satker yang Mengalami Penurunan**")
 
         for w in warnings:
             st.markdown(f"""
     **Metrik:** {w['Metrik']}  
     - Nilai sebelumnya: {w['Nilai Sebelumnya']:.2f}  
     - Nilai terkini: {w['Nilai Terkini']:.2f}  
-    - Penurunan: {w['Penurunan']:.2f} poin
+    - Penurunan: **{w['Penurunan']:.2f} poin**
     """)
     else:
-        st.success("✅ Tidak ada penurunan pada nilai paling kecil (worst case).")
+        st.success("✅ Nilai stabil / membaik pada periode terakhir")
 
         
 #HIGHLIGHTS
