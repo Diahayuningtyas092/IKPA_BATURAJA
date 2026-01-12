@@ -546,6 +546,25 @@ def process_excel_file(uploaded_file, upload_year):
     df_final = pd.DataFrame(processed_rows)
     return df_final, month, upload_year
 
+VALID_MONTHS = {
+    "JANUARI": "JANUARI",
+    "FEBRUARI": "FEBRUARI",
+    "PEBRUARI": "FEBRUARI",
+    "MARET": "MARET",
+    "APRIL": "APRIL",
+    "MEI": "MEI",
+    "JUNI": "JUNI",
+    "JULI": "JULI",
+    "JULY": "JULI",
+    "AGUSTUS": "AGUSTUS",
+    "AGUSTUSS": "AGUSTUS",
+    "SEPTEMBER": "SEPTEMBER",
+    "SEPT": "SEPTEMBER",
+    "OKTOBER": "OKTOBER",
+    "NOVEMBER": "NOVEMBER",
+    "NOPEMBER": "NOVEMBER",
+    "DESEMBER": "DESEMBER",
+}
 
 def post_process_ikpa_satker(df, source="Upload"):
     df = df.copy()
@@ -553,9 +572,7 @@ def post_process_ikpa_satker(df, source="Upload"):
     # =========================
     # 1. NORMALISASI NUMERIK
     # =========================
-    non_numeric = [
-        "Uraian Satker", "Bulan", "Tahun"
-    ]
+    non_numeric = ["Uraian Satker", "Bulan", "Tahun"]
 
     for col in df.columns:
         if col not in non_numeric:
@@ -567,7 +584,21 @@ def post_process_ikpa_satker(df, source="Upload"):
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
     # =========================
-    # 2. RANKING (DENSE)
+    # 🔤 2. NORMALISASI BULAN (FIX UTAMA)
+    # =========================
+    if "Bulan" in df.columns:
+        df["Bulan"] = (
+            df["Bulan"]
+            .astype(str)
+            .str.upper()
+            .map(VALID_MONTHS)
+        )
+
+        # fallback terakhir (jangan biarkan NaN)
+        df["Bulan"] = df["Bulan"].fillna("JULI")
+
+    # =========================
+    # 3. RANKING (DENSE)
     # =========================
     nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
 
@@ -580,7 +611,7 @@ def post_process_ikpa_satker(df, source="Upload"):
     )
 
     # =========================
-    # 3. METADATA PERIOD
+    # 4. METADATA PERIOD
     # =========================
     df["Source"] = source
     df["Period"] = df["Bulan"] + " " + df["Tahun"].astype(str)
@@ -594,11 +625,11 @@ def post_process_ikpa_satker(df, source="Upload"):
     df["Period_Sort"] = (
         df["Tahun"].astype(int).astype(str)
         + "-"
-        + df["Bulan"].map(MONTH_ORDER).fillna(0).astype(int).astype(str).str.zfill(2)
+        + df["Bulan"].map(MONTH_ORDER).astype(int).astype(str).str.zfill(2)
     )
 
     # =========================
-    # 4. MERGE DIPA → PAGU
+    # 5. MERGE DIPA → PAGU
     # =========================
     try:
         df = merge_ikpa_with_dipa(df)
@@ -606,7 +637,7 @@ def post_process_ikpa_satker(df, source="Upload"):
         df["Total Pagu"] = 0
 
     # =========================
-    # 5. KLASIFIKASI JENIS SATKER
+    # 6. KLASIFIKASI JENIS SATKER
     # =========================
     try:
         df = classify_jenis_satker(df)
@@ -614,6 +645,7 @@ def post_process_ikpa_satker(df, source="Upload"):
         df["Jenis Satker"] = "SEDANG"
 
     return df
+
 
 # ===============================
 # PARSER IKPA KPPN (RINGKAS)
@@ -632,24 +664,34 @@ def process_kppn_ringkas(uploaded_file, year, detected_month):
     if nilai_col not in df.columns:
         raise ValueError("File IKPA KPPN tidak valid")
 
-    # Normalisasi desimal
+    # =========================
+    # NORMALISASI DESIMAL
+    # =========================
     df = df.applymap(
         lambda x: str(x).replace(",", ".") if isinstance(x, str) else x
     )
 
-    # Cast numerik
     for col in df.columns:
         if col not in ["Nama KPPN", "Bulan", "Tahun", "Source"]:
             df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
-    # Metadata
+    # =========================
+    # NORMALISASI BULAN
+    # =========================
+    detected_month = (
+        str(detected_month)
+        .upper()
+    )
+
+    detected_month = VALID_MONTHS.get(detected_month, "JULI")
+
     df["Bulan"] = detected_month
     df["Tahun"] = year
     df["Source"] = "Upload"
 
-    # ===============================
-    # 🔑 DENSE RANKING (1,1,1,2,3,…)
-    # ===============================
+    # =========================
+    # DENSE RANKING
+    # =========================
     df = df.sort_values(nilai_col, ascending=False)
 
     df["Peringkat"] = (
@@ -3040,57 +3082,74 @@ def menu_ews_satker():
     # ======================================================
     # VALIDASI BULAN & TAHUN (PAKAI df_all – TIDAK DIUBAH)
     # ======================================================
-    df_all['Month_Num'] = df_all['Bulan'].str.strip().str.upper().map(MONTH_ORDER)
+    df_all["Month_Num"] = (
+        df_all["Bulan"]
+        .astype(str)
+        .str.strip()
+        .str.upper()
+        .map(MONTH_ORDER)
+    )
 
-    if df_all['Month_Num'].isna().any():
+    if df_all["Month_Num"].isna().any():
         st.error("❌ Ditemukan nama bulan tidak valid.")
         st.stop()
 
-    df_all['Tahun_Int'] = df_all['Tahun'].astype(int)
-    df_all['Period_Sort'] = df_all.apply(
+    df_all["Tahun_Int"] = df_all["Tahun"].astype(int)
+    df_all["Period_Sort"] = df_all.apply(
         lambda x: f"{x['Tahun_Int']:04d}-{x['Month_Num']:02d}",
         axis=1
     )
 
     # ======================================================
-    # PILIH PERIODE
+    # PILIH PERIODE & METRIK
     # ======================================================
-    available_periods = sorted(df_all['Period_Sort'].unique())
+    available_periods = sorted(df_all["Period_Sort"].unique())
 
     col1, col2, col3 = st.columns(3)
 
     with col1:
-        start_period = st.selectbox("Periode Awal", available_periods, index=0)
+        start_period = st.selectbox(
+            "Periode Awal",
+            available_periods,
+            index=0
+        )
 
     with col2:
-        end_period = st.selectbox("Periode Akhir", available_periods, index=len(available_periods) - 1)
+        end_period = st.selectbox(
+            "Periode Akhir",
+            available_periods,
+            index=len(available_periods) - 1
+        )
 
     with col3:
         metric_options = [
-            'Nilai Akhir (Nilai Total/Konversi Bobot)',
-            'Kualitas Perencanaan Anggaran',
-            'Kualitas Pelaksanaan Anggaran',
-            'Kualitas Hasil Pelaksanaan Anggaran',
-            'Revisi DIPA',
-            'Deviasi Halaman III DIPA',
-            'Penyerapan Anggaran',
-            'Belanja Kontraktual',
-            'Penyelesaian Tagihan',
-            'Pengelolaan UP dan TUP',
-            'Capaian Output'
+            "Nilai Akhir (Nilai Total/Konversi Bobot)",
+            "Kualitas Perencanaan Anggaran",
+            "Kualitas Pelaksanaan Anggaran",
+            "Kualitas Hasil Pelaksanaan Anggaran",
+            "Revisi DIPA",
+            "Deviasi Halaman III DIPA",
+            "Penyerapan Anggaran",
+            "Belanja Kontraktual",
+            "Penyelesaian Tagihan",
+            "Pengelolaan UP dan TUP",
+            "Capaian Output",
         ]
-        selected_metric = st.selectbox("Metrik yang Ditampilkan", metric_options)
+        selected_metric = st.selectbox(
+            "Metrik yang Ditampilkan",
+            metric_options
+        )
 
     if start_period > end_period:
         st.warning("⚠️ Periode awal tidak boleh lebih besar dari periode akhir.")
         st.stop()
 
     # ======================================================
-    # FILTER PERIODE (INI KUNCI)
+    # FILTER PERIODE
     # ======================================================
     df_trend = df_all[
-        (df_all['Period_Sort'] >= start_period) &
-        (df_all['Period_Sort'] <= end_period)
+        (df_all["Period_Sort"] >= start_period) &
+        (df_all["Period_Sort"] <= end_period)
     ].copy()
 
     if df_trend.empty:
@@ -3100,20 +3159,20 @@ def menu_ews_satker():
     # ======================================================
     # KOLOM SATKER (AMAN)
     # ======================================================
-    df_trend['Satker'] = (
-        df_trend['Uraian Satker'].astype(str)
+    df_trend["Satker"] = (
+        df_trend["Uraian Satker"].astype(str)
         + " ("
-        + df_trend['Kode Satker'].astype(str)
+        + df_trend["Kode Satker"].astype(str)
         + ")"
     )
 
     # ======================================================
-    # PILIH SATKER
+    # 🔼 PILIH SATKER (DIPINDAH KE ATAS)
     # ======================================================
-    all_satker = sorted(df_trend['Satker'].unique())
+    all_satker = sorted(df_trend["Satker"].unique())
 
     selected_satker = st.multiselect(
-        "Pilih Satker",
+        "Pilih Satker (disarankan max. 5)",
         options=all_satker,
         default=all_satker[:5]
     )
@@ -3122,92 +3181,103 @@ def menu_ews_satker():
         st.warning("Pilih minimal satu satker.")
         st.stop()
 
-    df_plot = df_trend[df_trend['Satker'].isin(selected_satker)]
+    df_plot = df_trend[df_trend["Satker"].isin(selected_satker)].copy()
 
     # ======================================================
     # LABEL PERIODE (UNTUK X-AXIS)
     # ======================================================
     MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
 
-    df_plot['Periode_Label'] = df_plot.apply(
+    df_plot["Periode_Label"] = df_plot.apply(
         lambda x: f"{MONTH_REVERSE[x['Month_Num']]} {x['Tahun_Int']}",
         axis=1
     )
 
     ordered_periods = (
-        df_plot[['Period_Sort', 'Periode_Label']]
+        df_plot[["Period_Sort", "Periode_Label"]]
         .drop_duplicates()
-        .sort_values('Period_Sort')['Periode_Label']
+        .sort_values("Period_Sort")["Periode_Label"]
     )
 
     # ======================================================
-    # PLOT GRAFIK
+    # 📊 PLOT GRAFIK
     # ======================================================
     fig = go.Figure()
 
     for satker in selected_satker:
-        d = df_plot[df_plot['Satker'] == satker].sort_values('Period_Sort')
+        d = (
+            df_plot[df_plot["Satker"] == satker]
+            .sort_values("Period_Sort")
+        )
 
-        fig.add_trace(go.Scatter(
-            x=pd.Categorical(
-                d['Periode_Label'],
-                categories=ordered_periods,
-                ordered=True
-            ),
-            y=d[selected_metric],
-            mode='lines+markers',
-            name=satker
-        ))
+        fig.add_trace(
+            go.Scatter(
+                x=pd.Categorical(
+                    d["Periode_Label"],
+                    categories=ordered_periods,
+                    ordered=True
+                ),
+                y=d[selected_metric],
+                mode="lines+markers",
+                name=satker
+            )
+        )
 
     fig.update_layout(
         title=f"Tren {selected_metric}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
         height=600,
-        hovermode='x unified'
+        hovermode="x unified",
+        legend=dict(
+            orientation="v",
+            x=1.02,
+            y=1
+        )
     )
 
     st.plotly_chart(fig, use_container_width=True)
 
+    # ======================================================
+    # 🚨 EARLY WARNING – TREN MENURUN
+    # ======================================================
+    warnings = []
 
-    # Early Warning Satker Tren Menurun
-    warnings = []  # Initialize warnings list
-    
     for satker in selected_satker:
-        df_satker = df_plot[df_plot['Satker'] == satker].sort_values('Period_Sort')
-        
+        df_satker = (
+            df_plot[df_plot["Satker"] == satker]
+            .sort_values("Period_Sort")
+        )
+
         if len(df_satker) >= 2:
             values = df_satker[selected_metric].values
-            
-            # Cek tren menurun (2 periode terakhir)
-            if len(values) >= 2:
-                last_value = values[-1]
-                prev_value = values[-2]
-                
-                if last_value < prev_value:
-                    decrease = prev_value - last_value
-                    warnings.append({
-                        'Satker': satker,
-                        'Metrik': selected_metric,
-                        'Nilai Sebelumnya': prev_value,
-                        'Nilai Terkini': last_value,
-                        'Penurunan': decrease
-                    })
-    
+            last_value = values[-1]
+            prev_value = values[-2]
+
+            if last_value < prev_value:
+                warnings.append({
+                    "Satker": satker,
+                    "Metrik": selected_metric,
+                    "Nilai Sebelumnya": prev_value,
+                    "Nilai Terkini": last_value,
+                    "Penurunan": prev_value - last_value
+                })
+
     if warnings:
         st.warning(f"⚠️ Ditemukan {len(warnings)} satker dengan tren menurun!")
-        
+
         for w in warnings:
             st.markdown(f"""
-            **{w['Satker']}**  
-            - Metrik: {w['Metrik']}
-            - Nilai sebelumnya: {w['Nilai Sebelumnya']:.2f}
-            - Nilai terkini: {w['Nilai Terkini']:.2f}
-            - Penurunan: {w['Penurunan']:.2f} poin
-            """)
+    **{w['Satker']}**  
+    - Metrik: {w['Metrik']}  
+    - Nilai sebelumnya: {w['Nilai Sebelumnya']:.2f}  
+    - Nilai terkini: {w['Nilai Terkini']:.2f}  
+    - Penurunan: {w['Penurunan']:.2f} poin
+    """)
             st.markdown("---")
     else:
         st.success("✅ Tidak ada satker dengan tren menurun pada periode yang dipilih!")
+
         
 #HIGHLIGHTS
 def menu_highlights():
