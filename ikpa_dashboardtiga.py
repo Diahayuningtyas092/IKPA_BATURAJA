@@ -3213,6 +3213,17 @@ def menu_ews_satker():
     # 📊 PLOT GRAFIK
     # ======================================================
     fig = go.Figure()
+    
+    # ======================================================
+    # PASTIKAN Periode_Label ADA
+    # ======================================================
+    MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
+
+    if "Periode_Label" not in df_plot.columns:
+        df_plot["Periode_Label"] = df_plot.apply(
+            lambda x: f"{MONTH_REVERSE[x['Month_Num']]} {x['Tahun_Int']}",
+            axis=1
+        )
 
     # ======================================================
     # 🔽 NILAI TERKECIL PER PERIODE (WORST CASE)
