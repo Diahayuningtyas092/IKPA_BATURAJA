@@ -3266,7 +3266,7 @@ def menu_ews_satker():
         title=dict(
             text=f"Tren {selected_metric}",
             x=0.01,
-            y=0.98,
+            y=0.97,            # 🔑 judul sedikit turun
             xanchor="left",
             yanchor="top"
         ),
@@ -3280,25 +3280,25 @@ def menu_ews_satker():
             categoryarray=ordered_periods
         ),
 
-        # 🔑 LEGEND BENAR-BENAR DI LUAR PLOT (DI ATAS CHART)
+        # 🔑 LEGEND TEPAT DI BAWAH JUDUL
         legend=dict(
             orientation="h",
             x=0.01,
             xanchor="left",
-            y=1.02,          # 🔑 DI LUAR AREA PLOT
+            y=1.005,           # 🔑 sangat dekat ke chart
             yanchor="bottom",
-            font=dict(size=12),
-            tracegroupgap=10
+            font=dict(size=12)
         ),
 
-        # 🔑 RUANG ATAS WAJIB BESAR
+        # 🔑 MARGIN ATAS DIPERKECIL
         margin=dict(
             l=60,
             r=40,
-            t=220,           # 🔑 INI YANG PALING PENTING
+            t=135,             # 🔑 INI KUNCI JARAK
             b=60
         )
     )
+
 
     st.plotly_chart(fig, use_container_width=True)
 
