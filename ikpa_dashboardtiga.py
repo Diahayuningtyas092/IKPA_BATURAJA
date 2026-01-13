@@ -3148,6 +3148,11 @@ def menu_ews_satker():
         st.warning("⚠️ Tidak ada data pada periode yang dipilih.")
         st.stop()
 
+    # ======================================================
+    # 🔑 PAKSA SATKER RINGKAS (WAJIB)
+    # ======================================================
+    df_trend = apply_reference_short_names(df_trend)
+    df_trend = create_satker_column(df_trend)
 
     # ======================================================
     # LABEL PERIODE (UNTUK X AXIS)
@@ -3253,7 +3258,7 @@ def menu_ews_satker():
                 x=d["Periode_Label"],
                 y=d[selected_metric],
                 mode="lines+markers",
-                name=satker_map.get(kode, kode)
+                name=f"{satker_map.get(kode, kode)} ({kode})"
             )
         )
 
