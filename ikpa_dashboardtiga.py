@@ -3280,9 +3280,9 @@ def menu_ews_satker():
 
         legend=dict(
             orientation="v",
-            xanchor="left",
+            xanchor="right",
             x=1.02,
-            yanchor="middle",
+            yanchor="top",
             y=0.5,
             font=dict(size=12)
         ),
