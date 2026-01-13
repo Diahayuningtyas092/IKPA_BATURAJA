@@ -3197,6 +3197,23 @@ def menu_ews_satker():
     # ======================================================
     # MULTISELECT SATKER (KEY = KODE, LABEL = RINGKAS)
     # ======================================================
+    # ======================================================
+    # MULTISELECT SATKER (KEY = KODE, LABEL = RINGKAS)
+    # ======================================================
+
+    # 1️⃣ PASTIKAN df_trend ADA
+    all_kode_satker = sorted(
+        df_trend["Kode Satker"]
+        .astype(str)
+        .unique()
+    )
+
+    # 2️⃣ DEFAULT 5 TERENDAH (AMAN)
+    default_kode = [k for k in bottom_5_kode if k in all_kode_satker]
+    if not default_kode:
+        default_kode = all_kode_satker[:5]
+
+    # 3️⃣ MULTISELECT (INI BARU DIPANGGIL)
     selected_kode_satker = st.multiselect(
         "Pilih Satker",
         options=all_kode_satker,
