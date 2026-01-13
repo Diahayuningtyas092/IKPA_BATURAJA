@@ -3157,6 +3157,16 @@ def menu_ews_satker():
         st.stop()
 
     # ======================================================
+    # 🏷️ BUAT LABEL PERIODE (WAJIB SEBELUM PLOT)
+    # ======================================================
+    MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
+
+    df_trend["Periode_Label"] = df_trend.apply(
+        lambda x: f"{MONTH_REVERSE.get(x['Month_Num'], '')} {x['Tahun_Int']}",
+        axis=1
+    )
+
+    # ======================================================
     # KOLOM SATKER (AMAN)
     # ======================================================
     df_trend["Satker"] = (
