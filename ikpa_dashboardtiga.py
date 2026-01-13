@@ -3272,21 +3272,27 @@ def menu_ews_satker():
         yaxis_title="Nilai",
         height=600,
         hovermode="x unified",
-        
+
         xaxis=dict(
             categoryorder="array",
             categoryarray=ordered_periods
         ),
-        
+
         legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.08,
+            orientation="v",
             xanchor="left",
-            x=0.25,
+            x=1.02,
+            yanchor="middle",
+            y=0.5,
             font=dict(size=12)
         ),
-        margin=dict(l=60, r=40, t=140, b=60)
+
+        margin=dict(
+            l=60,
+            r=280,
+            t=120,
+            b=60
+        )
     )
 
     st.plotly_chart(fig, use_container_width=True)
