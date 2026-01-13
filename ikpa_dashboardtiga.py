@@ -3147,6 +3147,13 @@ def menu_ews_satker():
         st.warning("⚠️ Tidak ada data pada periode yang dipilih.")
         st.stop()
 
+    # 🔎 DEBUG: CEK APAKAH NAMA RINGKAS ADA
+    st.write(
+        df_trend[
+            [c for c in ["Uraian Satker", "Uraian Satker-RINGKAS"] if c in df_trend.columns]
+        ].head(10)
+    )
+
     # ======================================================
     # LABEL PERIODE (UNTUK X AXIS)
     # ======================================================
