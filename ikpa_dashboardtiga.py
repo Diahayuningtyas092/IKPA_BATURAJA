@@ -3255,7 +3255,7 @@ def menu_ews_satker():
                 x=d["Periode_Label"],
                 y=d[selected_metric],
                 mode="lines+markers",
-                name=f"{satker_map.get(kode, kode)} ({kode})"
+                name=satker_map.get(kode, kode)
             )
         )
 
