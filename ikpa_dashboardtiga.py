@@ -3280,21 +3280,22 @@ def menu_ews_satker():
             categoryarray=ordered_periods
         ),
 
-        # 🔑 LEGEND DI ATAS CHART (DI LUAR AREA PLOT)
+        # 🔑 LEGEND BENAR-BENAR DI LUAR PLOT (DI ATAS CHART)
         legend=dict(
             orientation="h",
             x=0.01,
             xanchor="left",
-            y=1.12,          # 🔑 DI ATAS AREA CHART
-            yanchor="top",
-            font=dict(size=12)
+            y=1.02,          # 🔑 DI LUAR AREA PLOT
+            yanchor="bottom",
+            font=dict(size=12),
+            tracegroupgap=10
         ),
 
-        # 🔑 TAMBAH RUANG ATAS
+        # 🔑 RUANG ATAS WAJIB BESAR
         margin=dict(
             l=60,
             r=40,
-            t=190,           # 🔑 WAJIB LEBIH BESAR
+            t=220,           # 🔑 INI YANG PALING PENTING
             b=60
         )
     )
