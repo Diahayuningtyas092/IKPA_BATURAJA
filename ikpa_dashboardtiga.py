@@ -3265,8 +3265,10 @@ def menu_ews_satker():
     fig.update_layout(
         title=dict(
             text=f"Tren {selected_metric}",
-            x=0.01, y=0.98,
-            xanchor="left", yanchor="top"
+            x=0.01,
+            y=0.98,
+            xanchor="left",
+            yanchor="top"
         ),
         xaxis_title="Periode",
         yaxis_title="Nilai",
@@ -3278,26 +3280,24 @@ def menu_ews_satker():
             categoryarray=ordered_periods
         ),
 
+        #  LEGEND DI ANTARA JUDUL & CHART
         legend=dict(
-            orientation="v",
-            x=0.99,              # 🔑 DI DALAM CHART
-            xanchor="right",
-            y=0.5,
-            yanchor="middle",
-            bgcolor="rgba(255,255,255,0.75)",  # 🔑 transparan
-            bordercolor="rgba(0,0,0,0.1)",
-            borderwidth=1,
+            orientation="h",
+            x=0.01,          # sejajar judul (kiri)
+            xanchor="left",
+            y=0.92,          #  DI BAWAH JUDUL
+            yanchor="top",
             font=dict(size=12)
         ),
 
+        # 🔑 RUANG ATAS DITAMBAH
         margin=dict(
             l=60,
-            r=40,    # 🔑 TETAP KECIL → CHART FULL
-            t=120,
+            r=40,
+            t=160,  
             b=60
         )
     )
-
 
     st.plotly_chart(fig, use_container_width=True)
 
