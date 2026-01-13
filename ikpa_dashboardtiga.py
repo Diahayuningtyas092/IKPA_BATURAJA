@@ -1334,8 +1334,19 @@ def safe_chart(df, title, top=True, color="Greens", y_min=0, y_max=110):
 # ============================================================
 # Problem Chart untuk Dashboard Internal
 # ============================================================
-def create_problem_chart(df, column, threshold, title, comparison='less', y_min=None, y_max=None, show_yaxis=True):
-
+def create_problem_chart(
+    df,
+    column,
+    threshold,
+    title,
+    comparison='less',
+    y_min=None,
+    y_max=None,
+    show_yaxis=True
+):
+    # -------------------------------
+    # FILTER DATA SESUAI KRITERIA
+    # -------------------------------
     if comparison == 'less':
         df_filtered = df[df[column] < threshold]
     elif comparison == 'greater':
@@ -1343,53 +1354,93 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
     else:
         df_filtered = df.copy()
 
-    # Jika hasil filter kosong → Cegah error
+    # Jika kosong → ambil 1 baris agar chart tidak error
     if df_filtered.empty:
-        df_filtered = df.head(1)
+        df_filtered = df.head(1).copy()
 
     df_filtered = df_filtered.sort_values(by=column, ascending=False)
 
-    # Ambil nilai range untuk colormap
+    # -------------------------------
+    # PASTIKAN KODE SATKER STRING
+    # -------------------------------
+    if "Kode Satker" in df_filtered.columns:
+        df_filtered["Kode Satker"] = df_filtered["Kode Satker"].astype(str)
+    else:
+        df_filtered["Kode Satker"] = ""
+
+    # -------------------------------
+    # NAMA SATKER RINGKAS (FINAL)
+    # -------------------------------
+    if "Uraian Satker-RINGKAS" in df_filtered.columns:
+        df_filtered["Nama_Satker_Display"] = df_filtered["Uraian Satker-RINGKAS"].astype(str)
+    else:
+        df_filtered["Nama_Satker_Display"] = df_filtered["Uraian Satker"].astype(str)
+
+    # -------------------------------
+    # RANGE WARNA
+    # -------------------------------
     min_val = df_filtered[column].min()
     max_val = df_filtered[column].max()
 
+    # -------------------------------
+    # PLOT BAR CHART
+    # -------------------------------
     fig = go.Figure()
-    fig.add_trace(go.Bar(
-        x=df_filtered['Satker'],
-        y=df_filtered[column],
-        marker=dict(
-            color=df_filtered[column],
-            colorscale='OrRd_r',
-            showscale=True,
-            cmin=min_val,
-            cmax=max_val,
-        ),
-        text=df_filtered[column].round(2),
-        textposition='outside',
-        textangle=0,
-        textfont=dict(family="Arial Black", size=12), 
-        hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
-    ))
 
-    # Garis target threshold (tidak berubah)
+    fig.add_trace(
+        go.Bar(
+            x=df_filtered["Nama_Satker_Display"],
+            y=df_filtered[column],
+            marker=dict(
+                color=df_filtered[column],
+                colorscale="OrRd_r",
+                showscale=True,
+                cmin=min_val,
+                cmax=max_val,
+            ),
+            text=df_filtered[column].round(2),
+            textposition="outside",
+            textfont=dict(family="Arial Black", size=12),
+            customdata=df_filtered["Kode Satker"],
+            hovertemplate=(
+                "<b>%{x}</b><br>"
+                "Kode Satker: %{customdata}<br>"
+                "Nilai: %{y:.2f}"
+                "<extra></extra>"
+            ),
+        )
+    )
+
+    # -------------------------------
+    # GARIS TARGET
+    # -------------------------------
     fig.add_hline(
         y=threshold,
         line_dash="dash",
         line_color="red",
         annotation_text=f"Target: {threshold}",
-        annotation_position="top right"
+        annotation_position="top right",
     )
 
-    # Bold judul dan label axis
+    # -------------------------------
+    # LAYOUT
+    # -------------------------------
     fig.update_layout(
+        title=dict(
+            text=title,
+            x=0.01,
+            y=0.95,
+            xanchor="left",
+            yanchor="top",
+        ),
         xaxis=dict(
-        tickangle=-45,
-        tickmode='linear',
-        tickfont=dict(family="Arial Black", size=10),
-        automargin=True
-    ),
-    yaxis=dict(
-        tickfont=dict(family="Arial Black", size=11)
+            tickangle=-45,
+            tickfont=dict(family="Arial Black", size=10),
+            automargin=True,
+        ),
+        yaxis=dict(
+            tickfont=dict(family="Arial Black", size=11),
+            range=[y_min, y_max] if y_min is not None and y_max is not None else None,
         ),
         height=600,
         margin=dict(l=50, r=20, t=80, b=200),
@@ -1400,6 +1451,8 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
         fig.update_yaxes(showticklabels=False)
 
     return fig
+
+
 # ===============================================
 # Helper to apply reference short names (Simplified)
 # ===============================================
