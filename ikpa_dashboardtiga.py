@@ -3160,6 +3160,17 @@ def menu_ews_satker():
     )
 
     # ======================================================
+    # URUTAN PERIODE KRONOLOGIS (UNTUK X AXIS)
+    # ======================================================
+    ordered_periods = (
+        df_trend
+        .sort_values("Period_Sort")
+        .drop_duplicates("Period_Sort")
+        ["Periode_Label"]
+        .tolist()
+    )
+
+    # ======================================================
     # NAMA SATKER (RINGKAS JIKA ADA)
     # ======================================================
     df_trend["Kode Satker"] = df_trend["Kode Satker"].astype(str)
@@ -3258,6 +3269,12 @@ def menu_ews_satker():
         yaxis_title="Nilai",
         height=600,
         hovermode="x unified",
+        
+        xaxis=dict(
+            categoryorder="array",
+            categoryarray=ordered_periods
+        ),
+        
         legend=dict(
             orientation="h",
             yanchor="bottom",
