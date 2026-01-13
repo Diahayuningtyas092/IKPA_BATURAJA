@@ -3206,35 +3206,33 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # MULTISELECT SATKER (KEY = KODE, LABEL = RINGKAS)
+    # MULTISELECT SATKER 
     # ======================================================
-    # ======================================================
-    # MULTISELECT SATKER (KEY = KODE, LABEL = RINGKAS)
-    # ======================================================
-
-    # 1️⃣ PASTIKAN df_trend ADA
-    all_kode_satker = sorted(
+    # OPTIONS HARUS KODE SATKER
+    all_kode_satker = (
         df_trend["Kode Satker"]
         .astype(str)
         .unique()
+        .tolist()
     )
 
-    # 2️⃣ DEFAULT 5 TERENDAH (AMAN)
+    # DEFAULT (AMAN)
     default_kode = [k for k in bottom_5_kode if k in all_kode_satker]
     if not default_kode:
         default_kode = all_kode_satker[:5]
 
-    # 3️⃣ MULTISELECT (INI BARU DIPANGGIL)
+    # MULTISELECT
     selected_kode_satker = st.multiselect(
         "Pilih Satker",
-        options=all_kode_satker,
+        options=all_kode_satker,                 # ← KODE, BUKAN NAMA
         default=default_kode,
-        format_func=lambda k: satker_map.get(k, k)
+        format_func=lambda k: satker_map.get(k, k)  # ← NAMA RINGKAS
     )
 
     if not selected_kode_satker:
         st.warning("Pilih minimal satu satker.")
         st.stop()
+
 
     # ======================================================
     # 📊 PLOT GRAFIK TREN
