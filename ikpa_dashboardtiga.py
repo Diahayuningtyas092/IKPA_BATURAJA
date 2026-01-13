@@ -3147,12 +3147,6 @@ def menu_ews_satker():
         st.warning("⚠️ Tidak ada data pada periode yang dipilih.")
         st.stop()
 
-    # 🔎 DEBUG: CEK APAKAH NAMA RINGKAS ADA
-    st.write(
-        df_trend[
-            [c for c in ["Uraian Satker", "Uraian Satker-RINGKAS"] if c in df_trend.columns]
-        ].head(10)
-    )
 
     # ======================================================
     # LABEL PERIODE (UNTUK X AXIS)
@@ -3209,11 +3203,12 @@ def menu_ews_satker():
         default_kode = all_kode_satker[:5]
 
     selected_kode_satker = st.multiselect(
-        "Pilih Satker (disarankan max. 5)",
+        "Pilih Satker",
         options=all_kode_satker,
         default=default_kode,
-        format_func=lambda k: f"{satker_map.get(k, k)} ({k})"
+        format_func=lambda k: satker_map.get(k, k)
     )
+
 
     if not selected_kode_satker:
         st.warning("Pilih minimal satu satker.")
