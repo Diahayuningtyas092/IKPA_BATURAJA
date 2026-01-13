@@ -3167,43 +3167,53 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # 🔼 PILIH SATKER (DIPINDAH KE ATAS)
+    # PILIH SATKER (DEFAULT: 5 TERENDAH PERIODE TERBARU)
     # ======================================================
+
+    # Ambil periode TERBARU dari seluruh data
+    latest_period = max(df_all["Period_Sort"])
+
+    df_latest = df_all[df_all["Period_Sort"] == latest_period].copy()
+
+    # Buat kolom Satker (konsisten)
+    df_latest["Satker"] = (
+        df_latest["Uraian Satker"].astype(str)
+        + " ("
+        + df_latest["Kode Satker"].astype(str)
+        + ")"
+    )
+
+    # Ambil 5 satker dengan NILAI AKHIR TERENDAH
+    DEFAULT_METRIC = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+
+    bottom_5_satker = (
+        df_latest
+        .sort_values(DEFAULT_METRIC, ascending=True)
+        .head(5)["Satker"]
+        .tolist()
+    )
+
+    # Semua satker yang tersedia di rentang periode
     all_satker = sorted(df_trend["Satker"].unique())
+
+    # Pastikan default hanya yang memang ada di df_trend
+    default_satker = [s for s in bottom_5_satker if s in all_satker]
+
+    # Fallback aman (jika data aneh)
+    if not default_satker:
+        default_satker = all_satker[:5]
 
     selected_satker = st.multiselect(
         "Pilih Satker (disarankan max. 5)",
         options=all_satker,
-        default=all_satker[:5]
+        default=default_satker
     )
 
     if not selected_satker:
         st.warning("Pilih minimal satu satker.")
         st.stop()
 
-    # ======================================================
-    # LABEL PERIODE (AMAN)
-    # ======================================================
-    # ======================================================
-    # 🏷️ BUAT LABEL PERIODE (WAJIB UNTUK PLOT)
-    # ======================================================
-    MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
 
-    df_trend["Periode_Label"] = df_trend.apply(
-        lambda x: f"{MONTH_REVERSE.get(x['Month_Num'], '')} {x['Tahun_Int']}",
-        axis=1
-    )
-
-    # urutan periode untuk sumbu X
-    ordered_periods = (
-        df_trend[["Period_Sort", "Periode_Label"]]
-        .drop_duplicates()
-        .sort_values("Period_Sort")["Periode_Label"]
-    )
-
-    # ======================================================
-    # 📊 PLOT GRAFIK TREN PER SATKER (STABIL)
-    # ======================================================
     # ======================================================
     # 📊 PLOT GRAFIK TREN PER SATKER (STABIL)
     # ======================================================
