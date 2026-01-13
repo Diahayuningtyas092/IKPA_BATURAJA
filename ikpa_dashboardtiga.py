@@ -3280,21 +3280,21 @@ def menu_ews_satker():
             categoryarray=ordered_periods
         ),
 
-        #  LEGEND DI ANTARA JUDUL & CHART
+        # 🔑 LEGEND DI ATAS CHART (DI LUAR AREA PLOT)
         legend=dict(
             orientation="h",
-            x=0.01,          # sejajar judul (kiri)
+            x=0.01,
             xanchor="left",
-            y=0.92,          #  DI BAWAH JUDUL
+            y=1.12,          # 🔑 DI ATAS AREA CHART
             yanchor="top",
             font=dict(size=12)
         ),
 
-        # 🔑 RUANG ATAS DITAMBAH
+        # 🔑 TAMBAH RUANG ATAS
         margin=dict(
             l=60,
             r=40,
-            t=160,  
+            t=190,           # 🔑 WAJIB LEBIH BESAR
             b=60
         )
     )
