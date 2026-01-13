@@ -3280,20 +3280,24 @@ def menu_ews_satker():
 
         legend=dict(
             orientation="v",
+            x=0.99,              # 🔑 DI DALAM CHART
             xanchor="right",
-            x=1.02,
-            yanchor="top",
             y=0.5,
+            yanchor="middle",
+            bgcolor="rgba(255,255,255,0.75)",  # 🔑 transparan
+            bordercolor="rgba(0,0,0,0.1)",
+            borderwidth=1,
             font=dict(size=12)
         ),
 
         margin=dict(
             l=60,
-            r=280,
+            r=40,    # 🔑 TETAP KECIL → CHART FULL
             t=120,
             b=60
         )
     )
+
 
     st.plotly_chart(fig, use_container_width=True)
 
