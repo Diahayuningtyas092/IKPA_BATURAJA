@@ -3167,14 +3167,20 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # KOLOM SATKER (AMAN)
+    # KOLOM SATKER (PAKAI NAMA RINGKAS JIKA ADA)
     # ======================================================
+    if "Uraian Satker-RINGKAS" in df_trend.columns:
+        nama_satker = df_trend["Uraian Satker-RINGKAS"].astype(str)
+    else:
+        nama_satker = df_trend["Uraian Satker"].astype(str)
+
     df_trend["Satker"] = (
-        df_trend["Uraian Satker"].astype(str)
+        nama_satker
         + " ("
         + df_trend["Kode Satker"].astype(str)
         + ")"
     )
+
 
     # ======================================================
     # PILIH SATKER (DEFAULT: 5 TERENDAH PERIODE TERBARU)
