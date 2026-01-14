@@ -4251,41 +4251,12 @@ def page_admin():
                                 continue
 
                             # ======================
-                            # 2️⃣ BUANG BARIS PALSU
-                            # ======================
-                            df_final = clean_invalid_satker_rows(df_final)
-
-                            # ======================
-                            # 3️⃣ PERBAIKI BULAN NaN
-                            # ======================
-                            df_final = fix_missing_month(df_final, month)
-
-                            # ======================
-                            # 4️⃣ POST PROCESS UTAMA
-                            # ======================
-                            # ======================
                             # 2️⃣ NORMALISASI FINAL (SATU-SATUNYA)
                             # ======================
                             df_final = normalize_ikpa_satker_final(
                                 df_final,
                                 source="Manual"
                             )
-
-                            # ======================
-                            # 5️⃣ NORMALISASI KODE SATKER
-                            # ======================
-                            if "Kode Satker" in df_final.columns:
-                                df_final["Kode Satker"] = (
-                                    df_final["Kode Satker"]
-                                    .astype(str)
-                                    .apply(normalize_kode_satker)
-                                )
-
-                            # ======================
-                            # 6️⃣ NORMALISASI NAMA SATKER
-                            # ======================
-                            df_final = apply_reference_short_names(df_final)
-                            df_final = create_satker_column(df_final)
 
                             # ======================
                             # 7️⃣ OVERRIDE DATA LAMA
