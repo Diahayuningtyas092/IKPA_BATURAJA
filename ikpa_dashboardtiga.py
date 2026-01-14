@@ -4207,15 +4207,18 @@ def page_admin():
                             # ======================
                             # 1️⃣ PARSER MENTAH (TETAP)
                             # ======================
-                            try:
-                                df_final, month, year = process_excel_file_safe(
-                                    uploaded_file,
-                                    upload_year
-                                )
+                            df_final, month, year = process_excel_file_auto(
+                                uploaded_file,
+                                upload_year
+                            )
 
-                            except Exception as e:
-                                st.error(f"❌ {uploaded_file.name}: {e}")
+                            if df_final is None or df_final.empty:
+                                st.error(f"❌ {uploaded_file.name} gagal diproses")
                                 continue
+
+                            if month == "UNKNOWN":
+                                st.warning(f"⚠️ {uploaded_file.name}: bulan tidak terdeteksi")
+
 
                             # ======================
                             # 2️⃣ BUANG BARIS PALSU
