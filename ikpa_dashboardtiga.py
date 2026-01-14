@@ -4088,7 +4088,12 @@ def process_excel_file_auto(uploaded_file, upload_year):
 
     return df, month, upload_year
 
-
+def process_excel_file_safe(uploaded_file, upload_year):
+    try:
+        return process_excel_file(uploaded_file, upload_year)
+    except Exception:
+        return None, "UNKNOWN", upload_year
+    
 # ============================================================
 #  Menu Admin
 # ============================================================
@@ -4166,11 +4171,6 @@ def page_admin():
         "🕓 Riwayat Aktivitas"
     ])
 
-def process_excel_file_safe(uploaded_file, upload_year):
-    try:
-        return process_excel_file(uploaded_file, upload_year)
-    except Exception:
-        return None, "UNKNOWN", upload_year
 
     # ============================================================
     # TAB 1: UPLOAD DATA (IKPA, DIPA, Referensi)
