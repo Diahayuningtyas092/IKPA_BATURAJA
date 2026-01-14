@@ -4166,6 +4166,12 @@ def page_admin():
         "🕓 Riwayat Aktivitas"
     ])
 
+def process_excel_file_safe(uploaded_file, upload_year):
+    try:
+        return process_excel_file(uploaded_file, upload_year)
+    except Exception:
+        return None, "UNKNOWN", upload_year
+
     # ============================================================
     # TAB 1: UPLOAD DATA (IKPA, DIPA, Referensi)
     # ============================================================
@@ -4202,14 +4208,14 @@ def page_admin():
                             # 1️⃣ PARSER MENTAH (TETAP)
                             # ======================
                             try:
-                                df_final, month, year = process_excel_file_auto(
+                                df_final, month, year = process_excel_file_safe(
                                     uploaded_file,
                                     upload_year
                                 )
+
                             except Exception as e:
                                 st.error(f"❌ {uploaded_file.name}: {e}")
                                 continue
-
 
                             # ======================
                             # 2️⃣ BUANG BARIS PALSU
