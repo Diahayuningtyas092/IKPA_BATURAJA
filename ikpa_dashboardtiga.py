@@ -647,97 +647,6 @@ def post_process_ikpa_satker(df, source="Upload"):
 
     return df
 
-def normalize_ikpa_satker_final(df, source="Upload"):
-    df = df.copy()
-
-    # =============================
-    # 1. KOLOM WAJIB (PAKSA ADA)
-    # =============================
-    REQUIRED_COLS = [
-        "No","Kode KPPN","Kode BA","Kode Satker","Uraian Satker",
-        "Kualitas Perencanaan Anggaran",
-        "Kualitas Pelaksanaan Anggaran",
-        "Kualitas Hasil Pelaksanaan Anggaran",
-        "Revisi DIPA","Deviasi Halaman III DIPA",
-        "Penyerapan Anggaran","Belanja Kontraktual",
-        "Penyelesaian Tagihan","Pengelolaan UP dan TUP",
-        "Capaian Output","Nilai Total","Konversi Bobot",
-        "Dispensasi SPM (Pengurang)",
-        "Nilai Akhir (Nilai Total/Konversi Bobot)",
-        "Bulan","Tahun"
-    ]
-
-    for c in REQUIRED_COLS:
-        if c not in df.columns:
-            df[c] = 0
-
-    # =============================
-    # 2. NUMERIK AMAN
-    # =============================
-    for c in df.columns:
-        if c not in ["Uraian Satker","Bulan","Tahun"]:
-            df[c] = (
-                df[c].astype(str)
-                .str.replace(",", ".", regex=False)
-                .astype(float)
-                .fillna(0)
-            )
-
-    # =============================
-    # 3. BULAN + PERIOD
-    # =============================
-    df["Bulan"] = df["Bulan"].astype(str).str.upper()
-    df["Source"] = source
-    df["Period"] = df["Bulan"] + " " + df["Tahun"].astype(str)
-
-    MONTH_ORDER = {
-        "JANUARI":1,"FEBRUARI":2,"MARET":3,"APRIL":4,
-        "MEI":5,"JUNI":6,"JULI":7,"AGUSTUS":8,
-        "SEPTEMBER":9,"OKTOBER":10,"NOVEMBER":11,"DESEMBER":12
-    }
-
-    df["Period_Sort"] = (
-        df["Tahun"].astype(int).astype(str)
-        + "-"
-        + df["Bulan"].map(MONTH_ORDER).fillna(0).astype(int).astype(str).str.zfill(2)
-    )
-
-    # =============================
-    # 4. RANKING FINAL (DENSE)
-    # =============================
-    nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
-    df = df.sort_values(nilai_col, ascending=False)
-    df["Peringkat"] = df[nilai_col].rank(method="dense", ascending=False).astype(int)
-
-    # =============================
-    # 5. ENRICHMENT
-    # =============================
-    df = apply_reference_short_names(df)
-    df = create_satker_column(df)
-    df = merge_ikpa_with_dipa(df)
-    df = classify_jenis_satker(df)
-
-    # =============================
-    # 6. URUTAN KOLOM FINAL
-    # =============================
-    FINAL_ORDER = [
-        "No","Kode KPPN","Kode BA","Kode Satker","Uraian Satker",
-        "Kualitas Perencanaan Anggaran",
-        "Kualitas Pelaksanaan Anggaran",
-        "Kualitas Hasil Pelaksanaan Anggaran",
-        "Revisi DIPA","Deviasi Halaman III DIPA",
-        "Penyerapan Anggaran","Belanja Kontraktual",
-        "Penyelesaian Tagihan","Pengelolaan UP dan TUP",
-        "Capaian Output","Nilai Total","Konversi Bobot",
-        "Dispensasi SPM (Pengurang)",
-        "Nilai Akhir (Nilai Total/Konversi Bobot)",
-        "Bulan","Tahun",
-        "Uraian Satker-RINGKAS","Uraian Satker Final","Satker",
-        "Source","Period","Period_Sort","Peringkat",
-        "Total Pagu","Jenis Satker"
-    ]
-
-    return df[FINAL_ORDER]
 
 # ===============================
 # PARSER IKPA KPPN (RINGKAS)
@@ -4125,6 +4034,63 @@ def detect_header_row(excel_file, keyword, max_rows=10):
             return i
     return None
 
+
+def process_excel_file_auto(uploaded_file, upload_year):
+    uploaded_file.seek(0)
+
+    # ======================
+    # COBA PARSER IKPA LAMA
+    # ======================
+    try:
+        df, month, year = process_excel_file(uploaded_file, upload_year)
+        if df is not None and not df.empty and month != "UNKNOWN":
+            return df, month, year, "IKPA_STANDAR"
+    except Exception:
+        pass
+
+    # ======================
+    # FALLBACK: PARSER MyIntress
+    # ======================
+    uploaded_file.seek(0)
+    df = pd.read_excel(uploaded_file)
+
+    df.columns = df.columns.astype(str).str.strip()
+
+    # validasi minimal MyIntress
+    required_cols = [
+        "Kode Satker",
+        "Uraian Satker",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    ]
+    if not all(c in df.columns for c in required_cols):
+        raise ValueError("Format file tidak dikenali (bukan IKPA standar / MyIntress)")
+
+    # deteksi bulan dari nama file
+    fname = uploaded_file.name.upper()
+    month_map = {
+        "JAN": "JANUARI", "FEB": "FEBRUARI", "MAR": "MARET",
+        "APR": "APRIL", "MEI": "MEI", "JUN": "JUNI",
+        "JUL": "JULI", "AGU": "AGUSTUS",
+        "SEP": "SEPTEMBER", "OKT": "OKTOBER",
+        "NOV": "NOVEMBER", "DES": "DESEMBER"
+    }
+
+    month = "UNKNOWN"
+    for k, v in month_map.items():
+        if k in fname:
+            month = v
+            break
+
+    if month == "UNKNOWN":
+        raise ValueError("Bulan tidak terdeteksi dari nama file")
+
+    df["Bulan"] = month
+    df["Tahun"] = upload_year
+
+    return df, month, upload_year, "MYINTRESS"
+
+
+
 # ============================================================
 #  Menu Admin
 # ============================================================
@@ -4202,38 +4168,6 @@ def page_admin():
         "🕓 Riwayat Aktivitas"
     ])
 
-def process_excel_file_auto(uploaded_file, upload_year):
-    try:
-        # coba parser IKPA lama
-        return process_excel_file(uploaded_file, upload_year)
-    except Exception:
-        pass
-
-    # =========================
-    # FALLBACK: FORMAT MyIntress
-    # =========================
-    df = pd.read_excel(uploaded_file)
-
-    # normalisasi kolom
-    df.columns = df.columns.astype(str).str.strip()
-
-    # deteksi bulan dari judul / nama kolom
-    month = "UNKNOWN"
-    for c in df.columns:
-        if "JULI" in c.upper():
-            month = "JULI"
-        elif "AGUSTUS" in c.upper():
-            month = "AGUSTUS"
-
-    if month == "UNKNOWN":
-        raise ValueError("Bulan tidak terdeteksi")
-
-    df["Bulan"] = month
-    df["Tahun"] = upload_year
-
-    return df, month, upload_year
-
-    
     # ============================================================
     # TAB 1: UPLOAD DATA (IKPA, DIPA, Referensi)
     # ============================================================
@@ -4267,38 +4201,63 @@ def process_excel_file_auto(uploaded_file, upload_year):
                     for uploaded_file in uploaded_files:
                         try:
                             # ======================
-                            # 1️⃣ PARSER MENTAH
+                            # 1️⃣ PARSER MENTAH (TETAP)
                             # ======================
-                            uploaded_file.seek(0)
-                            df_raw, month, year = process_excel_file(
-                                uploaded_file,
-                                upload_year
-                            )
-
-                            if df_raw is None or month == "UNKNOWN":
-                                st.warning(
-                                    f"⚠️ {uploaded_file.name} gagal diproses "
-                                    f"(bulan tidak terdeteksi)"
+                            try:
+                                df_final, month, year, file_type = process_excel_file_auto(
+                                    uploaded_file,
+                                    upload_year
                                 )
+                            except Exception as e:
+                                st.error(f"❌ {uploaded_file.name}: {e}")
                                 continue
 
+                            st.info(f"📘 Format terdeteksi: {file_type}")
+
+
                             # ======================
-                            # 2️⃣ NORMALISASI FINAL (SATU-SATUNYA)
+                            # 2️⃣ BUANG BARIS PALSU
                             # ======================
-                            df_final = normalize_ikpa_satker_final(
-                                df_raw,
+                            df_final = clean_invalid_satker_rows(df_final)
+
+                            # ======================
+                            # 3️⃣ PERBAIKI BULAN NaN
+                            # ======================
+                            df_final = fix_missing_month(df_final, month)
+
+                            # ======================
+                            # 4️⃣ POST PROCESS UTAMA
+                            # ======================
+                            df_final = post_process_ikpa_satker(
+                                df_final,
                                 source="Manual"
                             )
 
                             # ======================
-                            # 3️⃣ HAPUS DATA LAMA (PERIODE SAMA)
+                            # 5️⃣ NORMALISASI KODE SATKER
+                            # ======================
+                            if "Kode Satker" in df_final.columns:
+                                df_final["Kode Satker"] = (
+                                    df_final["Kode Satker"]
+                                    .astype(str)
+                                    .apply(normalize_kode_satker)
+                                )
+
+                            # ======================
+                            # 6️⃣ NORMALISASI NAMA SATKER
+                            # ======================
+                            df_final = apply_reference_short_names(df_final)
+                            df_final = create_satker_column(df_final)
+
+                            # ======================
+                            # 7️⃣ OVERRIDE DATA LAMA
                             # ======================
                             st.session_state.data_storage.pop(
                                 (month, str(year)), None
                             )
 
                             # ======================
-                            # 4️⃣ REGISTRASI KE SISTEM
+                            # 8️⃣ REGISTRASI KE SISTEM
                             # ======================
                             register_ikpa_satker(
                                 df_final,
@@ -4311,7 +4270,7 @@ def process_excel_file_auto(uploaded_file, upload_year):
                             st.session_state.ikpa_dipa_merged = False
 
                             # ======================
-                            # 5️⃣ SIMPAN KE GITHUB
+                            # 9️⃣ SIMPAN KE GITHUB
                             # ======================
                             excel_bytes = io.BytesIO()
                             with pd.ExcelWriter(
@@ -4331,9 +4290,6 @@ def process_excel_file_auto(uploaded_file, upload_year):
                                 folder="data"
                             )
 
-                            # ======================
-                            # 6️⃣ LOG AKTIVITAS
-                            # ======================
                             st.session_state.activity_log.append({
                                 "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "Aksi": "Upload IKPA Satker",
@@ -4360,9 +4316,11 @@ def process_excel_file_auto(uploaded_file, upload_year):
                     st.session_state["_just_uploaded"] = True
                     st.rerun()
 
+
         
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
+
         # ===============================
         # 📅 PILIH TAHUN
         # ===============================
