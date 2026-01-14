@@ -4302,9 +4302,8 @@ def page_admin():
                                 "Status": "✅ Sukses"
                             })
 
-                            st.success(
-                                f"✅ {uploaded_file.name} → "
-                                f"{month} {year} berhasil diproses"
+                            st.session_state["last_upload_success"] = (
+                                f"✅ {uploaded_file.name} → {month} {year} berhasil diproses"
                             )
 
                         except Exception as e:
