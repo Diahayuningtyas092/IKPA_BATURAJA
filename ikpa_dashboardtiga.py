@@ -4235,15 +4235,15 @@ def page_admin():
                     for uploaded_file in uploaded_files:
                         try:
                             # ======================
-                            # 1️⃣ PARSER MENTAH (TETAP)
+                            # 1️⃣ PARSER MENTAH
                             # ======================
                             uploaded_file.seek(0)
-                            df_final, month, year = process_excel_file(
+                            df_raw, month, year = process_excel_file(
                                 uploaded_file,
                                 upload_year
                             )
 
-                            if df_final is None or month == "UNKNOWN":
+                            if df_raw is None or month == "UNKNOWN":
                                 st.warning(
                                     f"⚠️ {uploaded_file.name} gagal diproses "
                                     f"(bulan tidak terdeteksi)"
@@ -4254,19 +4254,19 @@ def page_admin():
                             # 2️⃣ NORMALISASI FINAL (SATU-SATUNYA)
                             # ======================
                             df_final = normalize_ikpa_satker_final(
-                                df_final,
+                                df_raw,
                                 source="Manual"
                             )
 
                             # ======================
-                            # 7️⃣ OVERRIDE DATA LAMA
+                            # 3️⃣ HAPUS DATA LAMA (PERIODE SAMA)
                             # ======================
                             st.session_state.data_storage.pop(
                                 (month, str(year)), None
                             )
 
                             # ======================
-                            # 8️⃣ REGISTRASI KE SISTEM
+                            # 4️⃣ REGISTRASI KE SISTEM
                             # ======================
                             register_ikpa_satker(
                                 df_final,
@@ -4279,7 +4279,7 @@ def page_admin():
                             st.session_state.ikpa_dipa_merged = False
 
                             # ======================
-                            # 9️⃣ SIMPAN KE GITHUB
+                            # 5️⃣ SIMPAN KE GITHUB
                             # ======================
                             excel_bytes = io.BytesIO()
                             with pd.ExcelWriter(
@@ -4299,6 +4299,9 @@ def page_admin():
                                 folder="data"
                             )
 
+                            # ======================
+                            # 6️⃣ LOG AKTIVITAS
+                            # ======================
                             st.session_state.activity_log.append({
                                 "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "Aksi": "Upload IKPA Satker",
@@ -4325,11 +4328,9 @@ def page_admin():
                     st.session_state["_just_uploaded"] = True
                     st.rerun()
 
-
         
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
-
         # ===============================
         # 📅 PILIH TAHUN
         # ===============================
