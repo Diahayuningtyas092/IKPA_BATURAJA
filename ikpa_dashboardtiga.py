@@ -4039,12 +4039,12 @@ def process_excel_file_auto(uploaded_file, upload_year):
     uploaded_file.seek(0)
 
     # ======================
-    # COBA PARSER IKPA LAMA
+    # COBA PARSER IKPA STANDAR
     # ======================
     try:
         df, month, year = process_excel_file(uploaded_file, upload_year)
         if df is not None and not df.empty and month != "UNKNOWN":
-            return df, month, year, "IKPA_STANDAR"
+            return df, month, year
     except Exception:
         pass
 
@@ -4053,16 +4053,15 @@ def process_excel_file_auto(uploaded_file, upload_year):
     # ======================
     uploaded_file.seek(0)
     df = pd.read_excel(uploaded_file)
-
     df.columns = df.columns.astype(str).str.strip()
 
-    # validasi minimal MyIntress
-    required_cols = [
+    # validasi minimal
+    required = [
         "Kode Satker",
         "Uraian Satker",
         "Nilai Akhir (Nilai Total/Konversi Bobot)"
     ]
-    if not all(c in df.columns for c in required_cols):
+    if not all(c in df.columns for c in required):
         raise ValueError("Format file tidak dikenali (bukan IKPA standar / MyIntress)")
 
     # deteksi bulan dari nama file
@@ -4087,8 +4086,7 @@ def process_excel_file_auto(uploaded_file, upload_year):
     df["Bulan"] = month
     df["Tahun"] = upload_year
 
-    return df, month, upload_year, "MYINTRESS"
-
+    return df, month, upload_year
 
 
 # ============================================================
@@ -4204,15 +4202,13 @@ def page_admin():
                             # 1️⃣ PARSER MENTAH (TETAP)
                             # ======================
                             try:
-                                df_final, month, year, file_type = process_excel_file_auto(
+                                df_final, month, year = process_excel_file_auto(
                                     uploaded_file,
                                     upload_year
                                 )
                             except Exception as e:
                                 st.error(f"❌ {uploaded_file.name}: {e}")
                                 continue
-
-                            st.info(f"📘 Format terdeteksi: {file_type}")
 
 
                             # ======================
