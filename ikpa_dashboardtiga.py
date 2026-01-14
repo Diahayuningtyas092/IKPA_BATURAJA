@@ -153,6 +153,7 @@ if "ikpa_dipa_merged" not in st.session_state:
 # Log aktivitas
 if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
+
     
 def clean_invalid_satker_rows(df):
     df = df.copy()
@@ -646,6 +647,97 @@ def post_process_ikpa_satker(df, source="Upload"):
 
     return df
 
+def normalize_ikpa_satker_final(df, source="Upload"):
+    df = df.copy()
+
+    # =============================
+    # 1. KOLOM WAJIB (PAKSA ADA)
+    # =============================
+    REQUIRED_COLS = [
+        "No","Kode KPPN","Kode BA","Kode Satker","Uraian Satker",
+        "Kualitas Perencanaan Anggaran",
+        "Kualitas Pelaksanaan Anggaran",
+        "Kualitas Hasil Pelaksanaan Anggaran",
+        "Revisi DIPA","Deviasi Halaman III DIPA",
+        "Penyerapan Anggaran","Belanja Kontraktual",
+        "Penyelesaian Tagihan","Pengelolaan UP dan TUP",
+        "Capaian Output","Nilai Total","Konversi Bobot",
+        "Dispensasi SPM (Pengurang)",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)",
+        "Bulan","Tahun"
+    ]
+
+    for c in REQUIRED_COLS:
+        if c not in df.columns:
+            df[c] = 0
+
+    # =============================
+    # 2. NUMERIK AMAN
+    # =============================
+    for c in df.columns:
+        if c not in ["Uraian Satker","Bulan","Tahun"]:
+            df[c] = (
+                df[c].astype(str)
+                .str.replace(",", ".", regex=False)
+                .astype(float)
+                .fillna(0)
+            )
+
+    # =============================
+    # 3. BULAN + PERIOD
+    # =============================
+    df["Bulan"] = df["Bulan"].astype(str).str.upper()
+    df["Source"] = source
+    df["Period"] = df["Bulan"] + " " + df["Tahun"].astype(str)
+
+    MONTH_ORDER = {
+        "JANUARI":1,"FEBRUARI":2,"MARET":3,"APRIL":4,
+        "MEI":5,"JUNI":6,"JULI":7,"AGUSTUS":8,
+        "SEPTEMBER":9,"OKTOBER":10,"NOVEMBER":11,"DESEMBER":12
+    }
+
+    df["Period_Sort"] = (
+        df["Tahun"].astype(int).astype(str)
+        + "-"
+        + df["Bulan"].map(MONTH_ORDER).fillna(0).astype(int).astype(str).str.zfill(2)
+    )
+
+    # =============================
+    # 4. RANKING FINAL (DENSE)
+    # =============================
+    nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    df = df.sort_values(nilai_col, ascending=False)
+    df["Peringkat"] = df[nilai_col].rank(method="dense", ascending=False).astype(int)
+
+    # =============================
+    # 5. ENRICHMENT
+    # =============================
+    df = apply_reference_short_names(df)
+    df = create_satker_column(df)
+    df = merge_ikpa_with_dipa(df)
+    df = classify_jenis_satker(df)
+
+    # =============================
+    # 6. URUTAN KOLOM FINAL
+    # =============================
+    FINAL_ORDER = [
+        "No","Kode KPPN","Kode BA","Kode Satker","Uraian Satker",
+        "Kualitas Perencanaan Anggaran",
+        "Kualitas Pelaksanaan Anggaran",
+        "Kualitas Hasil Pelaksanaan Anggaran",
+        "Revisi DIPA","Deviasi Halaman III DIPA",
+        "Penyerapan Anggaran","Belanja Kontraktual",
+        "Penyelesaian Tagihan","Pengelolaan UP dan TUP",
+        "Capaian Output","Nilai Total","Konversi Bobot",
+        "Dispensasi SPM (Pengurang)",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)",
+        "Bulan","Tahun",
+        "Uraian Satker-RINGKAS","Uraian Satker Final","Satker",
+        "Source","Period","Period_Sort","Peringkat",
+        "Total Pagu","Jenis Satker"
+    ]
+
+    return df[FINAL_ORDER]
 
 # ===============================
 # PARSER IKPA KPPN (RINGKAS)
@@ -3266,7 +3358,7 @@ def menu_ews_satker():
         title=dict(
             text=f"Tren {selected_metric}",
             x=0.01,
-            y=0.97,            # 🔑 judul sedikit turun
+            y=0.97,            #  judul sedikit turun
             xanchor="left",
             yanchor="top"
         ),
@@ -3280,21 +3372,21 @@ def menu_ews_satker():
             categoryarray=ordered_periods
         ),
 
-        # 🔑 LEGEND TEPAT DI BAWAH JUDUL
+        #  LEGEND TEPAT DI BAWAH JUDUL
         legend=dict(
             orientation="h",
             x=0.01,
             xanchor="left",
-            y=1.005,           # 🔑 sangat dekat ke chart
+            y=1.005,           #  sangat dekat ke chart
             yanchor="bottom",
             font=dict(size=12)
         ),
 
-        # 🔑 MARGIN ATAS DIPERKECIL
+        #  MARGIN ATAS DIPERKECIL
         margin=dict(
             l=60,
             r=40,
-            t=135,             # 🔑 INI KUNCI JARAK
+            t=135,             #  INI KUNCI JARAK
             b=60
         )
     )
@@ -4171,7 +4263,10 @@ def page_admin():
                             # ======================
                             # 4️⃣ POST PROCESS UTAMA
                             # ======================
-                            df_final = post_process_ikpa_satker(
+                            # ======================
+                            # 2️⃣ NORMALISASI FINAL (SATU-SATUNYA)
+                            # ======================
+                            df_final = normalize_ikpa_satker_final(
                                 df_final,
                                 source="Manual"
                             )
