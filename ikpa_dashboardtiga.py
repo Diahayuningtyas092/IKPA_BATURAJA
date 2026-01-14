@@ -4259,7 +4259,6 @@ def page_admin():
                     st.session_state["_just_uploaded"] = True
                     st.rerun()
 
-
         
         # Submenu Upload Data IKPA KPPN
         st.subheader("📝 Upload Data IKPA KPPN")
