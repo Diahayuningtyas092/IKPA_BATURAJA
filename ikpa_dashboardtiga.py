@@ -4202,6 +4202,38 @@ def page_admin():
         "🕓 Riwayat Aktivitas"
     ])
 
+def process_excel_file_auto(uploaded_file, upload_year):
+    try:
+        # coba parser IKPA lama
+        return process_excel_file(uploaded_file, upload_year)
+    except Exception:
+        pass
+
+    # =========================
+    # FALLBACK: FORMAT MyIntress
+    # =========================
+    df = pd.read_excel(uploaded_file)
+
+    # normalisasi kolom
+    df.columns = df.columns.astype(str).str.strip()
+
+    # deteksi bulan dari judul / nama kolom
+    month = "UNKNOWN"
+    for c in df.columns:
+        if "JULI" in c.upper():
+            month = "JULI"
+        elif "AGUSTUS" in c.upper():
+            month = "AGUSTUS"
+
+    if month == "UNKNOWN":
+        raise ValueError("Bulan tidak terdeteksi")
+
+    df["Bulan"] = month
+    df["Tahun"] = upload_year
+
+    return df, month, upload_year
+
+    
     # ============================================================
     # TAB 1: UPLOAD DATA (IKPA, DIPA, Referensi)
     # ============================================================
