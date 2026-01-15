@@ -154,20 +154,24 @@ if "ikpa_dipa_merged" not in st.session_state:
 if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
     
+    
 def clean_invalid_satker_rows(df):
     df = df.copy()
 
-    # Kode Satker valid = 6 digit & bukan 000000
+    # Kode Satker wajib 6 digit & bukan 000000
     df = df[
         df["Kode Satker"].notna() &
         df["Kode Satker"].astype(str).str.match(r"^\d{6}$") &
         (df["Kode Satker"] != "000000")
     ]
 
-    # Nama satker tidak boleh kosong
+    # Uraian Satker tidak boleh NILAI / BOBOT / NILAI AKHIR
     df = df[
         df["Uraian Satker"].notna() &
-        (df["Uraian Satker"].astype(str).str.strip() != "")
+        (~df["Uraian Satker"]
+          .astype(str)
+          .str.upper()
+          .isin(["NILAI", "BOBOT", "NILAI AKHIR"]))
     ]
 
     return df.reset_index(drop=True)
@@ -492,19 +496,30 @@ def find_header_row_by_keywords(uploaded_file, keywords, max_rows=15):
 def process_excel_file(uploaded_file, upload_year):
     """
     PARSER IKPA SATKER — SATU-SATUNYA YANG BOLEH MEMBACA EXCEL MENTAH
+    (Sudah difilter baris invalid & bulan dinormalisasi)
     """
     df_raw = pd.read_excel(uploaded_file, header=None)
 
-    # Ambil bulan dari baris atas
-    month_text = str(df_raw.iloc[1, 0])
-    month = month_text.split(":")[-1].strip().upper()
+    # ===============================
+    # 1️⃣ AMBIL BULAN (AMAN)
+    # ===============================
+    try:
+        month_text = str(df_raw.iloc[1, 0])
+        month_raw = month_text.split(":")[-1].strip().upper()
+    except Exception:
+        month_raw = "JULI"
 
-    # Data mulai baris ke-5
+    month = VALID_MONTHS.get(month_raw, "JULI")
+
+    # ===============================
+    # 2️⃣ DATA MULAI BARIS KE-5
+    # ===============================
     df_data = df_raw.iloc[4:].reset_index(drop=True)
     df_data.columns = range(len(df_data.columns))
 
     processed_rows = []
     i = 0
+
     while i + 3 < len(df_data):
 
         nilai = df_data.iloc[i]
@@ -512,12 +527,27 @@ def process_excel_file(uploaded_file, upload_year):
         nilai_akhir = df_data.iloc[i + 2]
         nilai_aspek = df_data.iloc[i + 3]
 
+        # ===============================
+        # 🔴 FILTER AWAL (CEGAH NILAI/BOBOT)
+        # ===============================
+        kode_satker = str(nilai[3]).strip("'").strip()
+        uraian_satker = str(nilai[4]).strip()
+
+        if (
+            not kode_satker.isdigit()
+            or len(kode_satker) != 6
+            or kode_satker == "000000"
+            or uraian_satker.upper() in ["NILAI", "BOBOT", "NILAI AKHIR"]
+        ):
+            i += 4
+            continue
+
         row = {
             "No": nilai[0],
             "Kode KPPN": str(nilai[1]).strip("'"),
             "Kode BA": str(nilai[2]).strip("'"),
-            "Kode Satker": str(nilai[3]).strip("'"),
-            "Uraian Satker": nilai[4],
+            "Kode Satker": kode_satker,
+            "Uraian Satker": uraian_satker,
 
             "Kualitas Perencanaan Anggaran": nilai_aspek[6],
             "Kualitas Pelaksanaan Anggaran": nilai_aspek[8],
@@ -543,8 +573,13 @@ def process_excel_file(uploaded_file, upload_year):
         processed_rows.append(row)
         i += 4
 
+    # ===============================
+    # 3️⃣ DATAFRAME FINAL
+    # ===============================
     df_final = pd.DataFrame(processed_rows)
+
     return df_final, month, upload_year
+
 
 VALID_MONTHS = {
     "JANUARI": "JANUARI",
@@ -588,14 +623,12 @@ def post_process_ikpa_satker(df, source="Upload"):
     # =========================
     if "Bulan" in df.columns:
         df["Bulan"] = (
-            df["Bulan"]
-            .astype(str)
-            .str.upper()
-            .map(VALID_MONTHS)
-        )
+        df["Bulan"]
+        .astype(str)
+        .str.upper()
+        .apply(lambda x: VALID_MONTHS.get(x, x))
+    )
 
-        # fallback terakhir (jangan biarkan NaN)
-        df["Bulan"] = df["Bulan"].fillna("JULI")
 
     # =========================
     # 3. RANKING (DENSE)
@@ -643,6 +676,29 @@ def post_process_ikpa_satker(df, source="Upload"):
         df = classify_jenis_satker(df)
     except Exception:
         df["Jenis Satker"] = "SEDANG"
+        
+    # =========================
+    # 🔒 FINALISASI STRUKTUR KOLOM
+    # =========================
+    FINAL_COLUMNS = [
+        "No","Kode KPPN","Kode BA","Kode Satker","Uraian Satker",
+        "Kualitas Perencanaan Anggaran",
+        "Kualitas Pelaksanaan Anggaran",
+        "Kualitas Hasil Pelaksanaan Anggaran",
+        "Revisi DIPA","Deviasi Halaman III DIPA",
+        "Penyerapan Anggaran","Belanja Kontraktual",
+        "Penyelesaian Tagihan","Pengelolaan UP dan TUP",
+        "Capaian Output",
+        "Nilai Total","Konversi Bobot",
+        "Dispensasi SPM (Pengurang)",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)",
+        "Bulan","Tahun","Peringkat",
+        "Uraian Satker Final","Satker","Source",
+        "Uraian Satker-RINGKAS",
+        "Period","Period_Sort","Total Pagu","Jenis Satker"
+    ]
+
+    df = df[[c for c in FINAL_COLUMNS if c in df.columns]]
 
     return df
 
