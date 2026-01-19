@@ -1888,17 +1888,6 @@ def page_dashboard():
     if df is not None:
         df = df.copy()
 
-        # ===============================
-        # 🔍 CEK REFERENSI DI MEMORI
-        # ===============================
-        st.write("CEK REFERENSI DI MEMORI:")
-
-        st.write(
-            st.session_state.reference_df[
-                ["Kode Satker", "Uraian Satker-SINGKAT"]
-            ].head(10)
-        )
-
 
     # ensure main_tab state exists
     if "main_tab" not in st.session_state:
@@ -4623,26 +4612,28 @@ def page_admin():
                 new_ref = pd.read_excel(uploaded_ref)
                 new_ref.columns = [c.strip() for c in new_ref.columns]
 
-                required = ['Kode BA', 'K/L', 'Kode Satker', 'Uraian Satker-SINGKAT', 'Uraian Satker-LENGKAP']
+                required = [
+                    'Kode BA', 'K/L', 'Kode Satker',
+                    'Uraian Satker-SINGKAT', 'Uraian Satker-LENGKAP'
+                ]
                 if not all(col in new_ref.columns for col in required):
                     st.error("❌ Kolom wajib tidak lengkap dalam file referensi.")
                     st.stop()
 
+                # Normalisasi Kode Satker
                 new_ref['Kode Satker'] = new_ref['Kode Satker'].apply(normalize_kode_satker)
 
-                # Gabungkan atau buat baru
-                if 'reference_df' in st.session_state:
+                # ============================================================
+                # MERGE DENGAN REFERENSI LAMA
+                # ============================================================
+                if 'reference_df' in st.session_state and st.session_state.reference_df is not None:
                     old_ref = st.session_state.reference_df.copy()
 
-                    # 🔹 Normalize old reference too (critical!)
                     if 'Kode Satker' in old_ref.columns:
                         old_ref['Kode Satker'] = old_ref['Kode Satker'].apply(normalize_kode_satker)
 
-                    # 🔹 Combine and deduplicate
                     merged = pd.concat([old_ref, new_ref], ignore_index=True)
                     merged = merged.drop_duplicates(subset=['Kode Satker'], keep='last')
-
-                    # 🔹 Optional: enforce consistent string stripping
                     merged['Kode Satker'] = merged['Kode Satker'].astype(str).str.strip()
 
                     st.session_state.reference_df = merged
@@ -4651,26 +4642,40 @@ def page_admin():
                     st.session_state.reference_df = new_ref
                     st.success(f"✅ Data Referensi baru dimuat ({len(new_ref)} baris).")
 
-                st.dataframe(st.session_state.reference_df.tail(10), use_container_width=True)
+                # ============================================================
+                # 🔄 RE-APPLY REFERENSI KE SEMUA DATA IKPA (INI KUNCINYA)
+                # ============================================================
+                if "data_storage" in st.session_state:
+                    new_storage = {}
+                    for key, df in st.session_state.data_storage.items():
+                        df = apply_reference_short_names(df)
+                        df = create_satker_column(df)
+                        new_storage[key] = df
+                    st.session_state.data_storage = new_storage
 
-                # Save merged reference data permanently to GitHub
+                # ============================================================
+                # SIMPAN REFERENSI KE GITHUB
+                # ============================================================
                 try:
                     excel_bytes_ref = io.BytesIO()
                     with pd.ExcelWriter(excel_bytes_ref, engine='openpyxl') as writer:
                         st.session_state.reference_df.to_excel(
-                            writer, index=False, sheet_name='Data Referensi',
-                            startrow=0, startcol=0  # ✅ PERBAIKAN
+                            writer,
+                            index=False,
+                            sheet_name='Data Referensi'
                         )
-                        
-                        # Format header
+
                         workbook = writer.book
                         worksheet = writer.sheets['Data Referensi']
-                        
                         for cell in worksheet[1]:
                             cell.font = Font(bold=True, color="FFFFFF")
-                            cell.fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+                            cell.fill = PatternFill(
+                                start_color="366092",
+                                end_color="366092",
+                                fill_type="solid"
+                            )
                             cell.alignment = Alignment(horizontal="center", vertical="center")
-                    
+
                     excel_bytes_ref.seek(0)
 
                     save_file_to_github(
@@ -4682,8 +4687,15 @@ def page_admin():
                 except Exception as e:
                     st.error(f"❌ Gagal menyimpan Data Referensi ke GitHub: {e}")
 
+                # ============================================================
+                # 🔁 CLEAR CACHE & RERUN (WAJIB)
+                # ============================================================
+                st.cache_data.clear()
+                st.rerun()
+
             except Exception as e:
                 st.error(f"❌ Gagal memproses Data Referensi: {e}")
+
 
     # ============================================================
     # TAB 2: HAPUS DATA
