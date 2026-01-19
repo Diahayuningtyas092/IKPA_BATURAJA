@@ -18,6 +18,20 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid import JsCode
 
 def render_table_pin_satker(df):
+    # ==================================
+    # HELPER: HITUNG TINGGI GRID DINAMIS
+    # ==================================
+    def calc_grid_height(
+        df,
+        row_height=32,     # tinggi baris (theme streamlit)
+        header_height=40,  # tinggi header
+        max_height=900     # batas maksimum agar tidak berat
+    ):
+        return min(
+            header_height + len(df) * row_height,
+            max_height
+        )
+
     gb = GridOptionsBuilder.from_dataframe(df)
 
     # ===============================
@@ -85,50 +99,29 @@ def render_table_pin_satker(df):
     """)
 
     # ===============================
-    # GRID OPTIONS (AUTOHEIGHT)
+    # GRID OPTIONS (HEADER FREEZE)
     # ===============================
     gb.configure_grid_options(
-        domLayout="autoHeight",   
+        domLayout="normal",          # ⬅️ BUKAN autoHeight
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
-        getRowStyle=zebra_dark
+        getRowStyle=zebra_dark,
+        headerHeight=40
     )
 
     gridOptions = gb.build()
 
+    # ===============================
+    # RENDER AGGRID (DYNAMIC HEIGHT)
+    # ===============================
     AgGrid(
         df,
         gridOptions=gridOptions,
-        width="100%",             
+        height=calc_grid_height(df),  # ⬅️ KUNCI UTAMA
+        width="100%",
         theme="streamlit",
         fit_columns_on_grid_load=False,
         allow_unsafe_jscode=True
-    )
-
-st.markdown("""
-<style>
-.sticky-grid-header {
-    position: sticky;
-    top: 3.5rem;        /* sesuaikan dengan header Streamlit */
-    z-index: 1000;
-    background: #1C1C1C;
-    border-bottom: 1px solid #444;
-    padding: 6px 10px;
-    font-weight: 600;
-    color: white;
-    display: flex;
-    gap: 24px;
-    overflow-x: auto;
-    white-space: nowrap;
-}
-</style>
-""", unsafe_allow_html=True)
-
-def render_sticky_header(columns):
-    html = "".join(f"<span>{c}</span>" for c in columns)
-    st.markdown(
-        f'<div class="sticky-grid-header">{html}</div>',
-        unsafe_allow_html=True
     )
 
 
