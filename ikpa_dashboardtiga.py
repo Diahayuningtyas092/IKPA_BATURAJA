@@ -16,6 +16,7 @@ from github import Auth
 from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid import JsCode
+import time
 
 def render_table_pin_satker(df):
     # ==================================
@@ -1149,7 +1150,9 @@ def load_data_from_github(_cache_buster: int = 0):
             decoded = base64.b64decode(file.content)
             df = pd.read_excel(io.BytesIO(decoded))
 
-            # Validasi kolom wajib
+            # ===============================
+            # VALIDASI KOLOM WAJIB
+            # ===============================
             if not all(col in df.columns for col in REQUIRED_COLUMNS):
                 continue
 
@@ -1157,25 +1160,50 @@ def load_data_from_github(_cache_buster: int = 0):
             year = str(df["Tahun"].iloc[0])
             key = (month, year)
 
-            # Normalisasi kolom waktu
             df["Bulan"] = month
             df["Tahun"] = year
 
-            # Normalisasi kode satker
-            if "Kode Satker" in df.columns:
-                df["Kode Satker"] = (
-                    df["Kode Satker"]
-                    .astype(str)
-                    .apply(normalize_kode_satker)
-                )
+            # ===============================
+            # NORMALISASI KODE SATKER
+            # ===============================
+            df["Kode Satker"] = (
+                df["Kode Satker"]
+                .astype(str)
+                .apply(normalize_kode_satker)
+            )
 
-            # ===============================
-            # 🔑 NAMA RINGKAS (WAJIB)
-            # ===============================
+            # =====================================================
+            # 🔑 PAKSA URAIAN SATKER RINGKAS (FIX UTAMA)
+            # =====================================================
             df = apply_reference_short_names(df)
+
+            # jika hasil ringkas kosong / NaN → fallback
+            df["Uraian Satker-RINGKAS"] = (
+                df["Uraian Satker-RINGKAS"]
+                .replace("", pd.NA)
+                .fillna(df["Uraian Satker"])
+            )
+
+            # jika ringkas == nama panjang → auto-ringkas
+            mask = df["Uraian Satker-RINGKAS"] == df["Uraian Satker"]
+            df.loc[mask, "Uraian Satker-RINGKAS"] = (
+                df.loc[mask, "Uraian Satker-RINGKAS"]
+                .str.replace("KANTOR KEMENTERIAN AGAMA", "Kemenag", regex=False)
+                .str.replace("PENGADILAN AGAMA", "PA", regex=False)
+                .str.replace("RUMAH TAHANAN NEGARA", "Rutan", regex=False)
+                .str.replace("LEMBAGA PEMASYARAKATAN", "Lapas", regex=False)
+                .str.replace("BADAN PUSAT STATISTIK", "BPS", regex=False)
+                .str.replace("KANTOR PELAYANAN PERBENDAHARAAN NEGARA", "KPPN", regex=False)
+                .str.replace("KANTOR PELAYANAN PAJAK PRATAMA", "KPP Pratama", regex=False)
+                .str.replace("KABUPATEN", "Kab.", regex=False)
+                .str.replace("KOTA", "Kota", regex=False)
+            )
+
             df = create_satker_column(df)
 
-            # Pastikan numerik
+            # ===============================
+            # NORMALISASI NUMERIK
+            # ===============================
             numeric_cols = [
                 "Nilai Akhir (Nilai Total/Konversi Bobot)",
                 "Nilai Total", "Konversi Bobot",
@@ -1199,20 +1227,18 @@ def load_data_from_github(_cache_buster: int = 0):
             df["Period_Sort"] = f"{int(year):04d}-{month_num:02d}"
 
             # ===============================
-            # 🔑 RANKING DENSE
+            # RANKING DENSE
             # ===============================
             nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
-
-            if nilai_col in df.columns:
-                df = df.sort_values(nilai_col, ascending=False)
-                df["Peringkat"] = (
-                    df[nilai_col]
-                    .rank(method="dense", ascending=False)
-                    .astype(int)
-                )
+            df = df.sort_values(nilai_col, ascending=False)
+            df["Peringkat"] = (
+                df[nilai_col]
+                .rank(method="dense", ascending=False)
+                .astype(int)
+            )
 
             # ===============================
-            # 🔗 MERGE DIPA + KLASIFIKASI
+            # MERGE DIPA + JENIS SATKER
             # ===============================
             df = merge_ikpa_with_dipa(df)
 
@@ -5163,6 +5189,19 @@ def main():
                     'Uraian Satker-SINGKAT': [], 'Uraian Satker-LENGKAP': []
                 })
 
+    # ============================================================
+    # 🔄 REPROCESS IKPA SETELAH REFERENCE SIAP (1x)
+    # ============================================================
+    if st.session_state.get("_need_reprocess_ikpa", True):
+        with st.spinner("🔄 Menyelaraskan data IKPA dengan referensi terbaru..."):
+            load_data_from_github.clear()   # bersihkan cache
+            st.session_state.data_storage = load_data_from_github(
+                _cache_buster=int(time.time())
+            )
+            st.session_state.ikpa_dipa_merged = False
+            st.session_state["_need_reprocess_ikpa"] = False
+
+    
     # ============================================================
     #  AUTO LOAD DATA IKPA
     # ============================================================
