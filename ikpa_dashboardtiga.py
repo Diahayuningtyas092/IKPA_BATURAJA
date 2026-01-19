@@ -105,6 +105,31 @@ def render_table_pin_satker(df):
         allow_unsafe_jscode=True
     )
 
+st.markdown("""
+<style>
+.sticky-grid-header {
+    position: sticky;
+    top: 3.5rem;        /* sesuaikan dengan header Streamlit */
+    z-index: 1000;
+    background: #1C1C1C;
+    border-bottom: 1px solid #444;
+    padding: 6px 10px;
+    font-weight: 600;
+    color: white;
+    display: flex;
+    gap: 24px;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+</style>
+""", unsafe_allow_html=True)
+
+def render_sticky_header(columns):
+    html = "".join(f"<span>{c}</span>" for c in columns)
+    st.markdown(
+        f'<div class="sticky-grid-header">{html}</div>',
+        unsafe_allow_html=True
+    )
 
 
 # =========================
@@ -2611,7 +2636,9 @@ def page_dashboard():
                 # =========================================================
                 # 12. RENDER
                 # =========================================================
+                render_sticky_header(df_display_filtered.columns.tolist())
                 render_table_pin_satker(df_display_filtered)
+
 
 
             # ===============================
@@ -3026,7 +3053,9 @@ def page_dashboard():
             # ===============================
             # TAMPILKAN DENGAN AGGRID
             # ===============================
+            render_sticky_header(df_display.columns.tolist())
             render_table_pin_satker(df_display)
+
 
 
 
