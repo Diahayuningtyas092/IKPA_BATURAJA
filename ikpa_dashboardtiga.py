@@ -1068,7 +1068,7 @@ def save_file_to_github(content_bytes, filename, folder):
 #  LOAD DATA IKPA DARI GITHUB
 # ============================
 @st.cache_data(ttl=3600)
-def load_data_from_github():
+def load_data_from_github(_cache_buster: int = 0):
     """
     Load IKPA Satker dari GitHub (/data).
     HANYA file hasil proses (df_final) yang diterima.
@@ -1140,16 +1140,11 @@ def load_data_from_github():
                     .apply(normalize_kode_satker)
                 )
 
-            # Optional enrichment
-            try:
-                df = apply_reference_short_names(df)
-            except:
-                pass
-
-            try:
-                df = create_satker_column(df)
-            except:
-                pass
+            # ===============================
+            # 🔑 NAMA RINGKAS (WAJIB)
+            # ===============================
+            df = apply_reference_short_names(df)
+            df = create_satker_column(df)
 
             # Pastikan numerik
             numeric_cols = [
@@ -1173,37 +1168,31 @@ def load_data_from_github():
             df["Source"] = "GitHub"
             df["Period"] = f"{month} {year}"
             df["Period_Sort"] = f"{int(year):04d}-{month_num:02d}"
-            
-            
+
             # ===============================
-            # 🔑 PERBAIKI RANKING (DENSE, FINAL)
+            # 🔑 RANKING DENSE
             # ===============================
             nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
 
             if nilai_col in df.columns:
-                df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce").fillna(0)
-
                 df = df.sort_values(nilai_col, ascending=False)
-
                 df["Peringkat"] = (
                     df[nilai_col]
                     .rank(method="dense", ascending=False)
                     .astype(int)
                 )
 
-
-            # 🔗 MERGE IKPA + DIPA (WAJIB SEBELUM KLASIFIKASI)
+            # ===============================
+            # 🔗 MERGE DIPA + KLASIFIKASI
+            # ===============================
             df = merge_ikpa_with_dipa(df)
-            
-            #  PAKSA HAPUS NILAI LAMA DARI DIPA
+
             if "Jenis Satker" in df.columns:
                 df = df.drop(columns=["Jenis Satker"])
 
-            # 🔑 BARU KLASIFIKASI
             df = classify_jenis_satker(df)
 
             data_storage[key] = df
-
 
         except Exception:
             continue
