@@ -1717,14 +1717,16 @@ def safe_chart(
         return
 
     # ===============================
-    # 🔎 DEBUG DATA (TAMBAHKAN DI SINI)
+    # 🔧 PAKSA GUNAKAN NAMA RINGKAS
     # ===============================
-    st.subheader(f"DEBUG SAFE_CHART – {jenis}")
-    st.write(
-        df_part[
-            ["Uraian Satker", "Uraian Satker-RINGKAS", "Satker"]
-        ].head(10)
-    )
+    if "Uraian Satker-RINGKAS" in df_part.columns:
+        df_part = df_part.copy()
+        df_part["Satker"] = (
+            df_part["Uraian Satker-RINGKAS"].astype(str).str.strip()
+            + " ("
+            + df_part["Kode Satker"].astype(str).str.zfill(6)
+            + ")"
+        )
 
     # ===============================
     # PILIH KOLOM NILAI IKPA
