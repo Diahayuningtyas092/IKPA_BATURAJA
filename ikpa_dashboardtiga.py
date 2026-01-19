@@ -1694,7 +1694,9 @@ def classify_jenis_satker(df):
     return df
 
 
-# BAGIAN 4 CHART DASHBOARD UTAMA
+# ======================================================
+# BAGIAN 4 CHART DASHBOARD UTAMA (FINAL & ANTI BUG)
+# ======================================================
 def safe_chart(
     df_part,
     jenis,
@@ -1712,21 +1714,11 @@ def safe_chart(
         st.info("Tidak ada data.")
         return
 
-    if "Satker" not in df_part.columns:
-        st.warning("Kolom Satker belum siap.")
+    # WAJIB kolom ringkas & kode
+    required_cols = ["Uraian Satker-RINGKAS", "Kode Satker"]
+    if not all(c in df_part.columns for c in required_cols):
+        st.warning("Kolom nama ringkas belum siap.")
         return
-
-    # ===============================
-    # 🔧 PAKSA GUNAKAN NAMA RINGKAS
-    # ===============================
-    if "Uraian Satker-RINGKAS" in df_part.columns:
-        df_part = df_part.copy()
-        df_part["Satker"] = (
-            df_part["Uraian Satker-RINGKAS"].astype(str).str.strip()
-            + " ("
-            + df_part["Kode Satker"].astype(str).str.zfill(6)
-            + ")"
-        )
 
     # ===============================
     # PILIH KOLOM NILAI IKPA
@@ -1742,7 +1734,6 @@ def safe_chart(
         st.warning(f"Kolom IKPA tidak ditemukan untuk {jenis}")
         return
 
-
     # ===============================
     # SORT DATA
     # ===============================
@@ -1755,22 +1746,30 @@ def safe_chart(
     )
 
     # ===============================
-    # 🔐 PROTEKSI PLOTLY (INI YANG HILANG)
+    # 🔥 LABEL FINAL (ANTI NAMA PANJANG)
     # ===============================
-    df_sorted["Satker"] = df_sorted["Satker"].astype(str).str.strip()
-    df_sorted = df_sorted[df_sorted["Satker"] != ""]
+    df_sorted["LABEL_SATKER"] = (
+        df_sorted["Uraian Satker-RINGKAS"]
+        .astype(str)
+        .str.strip()
+        + " ("
+        + df_sorted["Kode Satker"].astype(str).str.zfill(6)
+        + ")"
+    )
+
+    df_sorted = df_sorted[df_sorted["LABEL_SATKER"].str.strip() != ""]
 
     if df_sorted.empty:
         st.info("Tidak ada data valid untuk ditampilkan.")
         return
 
     # ===============================
-    # PLOT
+    # PLOT (PAKAI LABEL_SATKER)
     # ===============================
     fig = px.bar(
         df_sorted,
         x=nilai_col,
-        y="Satker",
+        y="LABEL_SATKER",   # ⬅️ KUNCI UTAMA
         orientation="h",
         color=nilai_col,
         color_continuous_scale=color,
@@ -1795,6 +1794,7 @@ def safe_chart(
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
 
 def get_top_bottom_unique(
     df,
