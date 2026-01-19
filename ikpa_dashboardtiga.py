@@ -445,18 +445,8 @@ def extract_kode_from_satker_field(s, width=6):
 def register_ikpa_satker(df_final, month, year, source="Manual"):
     key = (month, str(year))
 
-    # ===============================
-    # COPY & NORMALISASI FINAL
-    # ===============================
     df = df_final.copy()
 
-    # 🔐 PAKSA SELALU PAKAI NAMA RINGKAS (KUNCI MASALAH)
-    df = apply_reference_short_names(df)
-    df = create_satker_column(df)
-
-    # ===============================
-    # METADATA
-    # ===============================
     df["Source"] = source
     df["Period"] = f"{month} {year}"
 
@@ -473,19 +463,19 @@ def register_ikpa_satker(df_final, month, year, source="Manual"):
     nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
 
     if nilai_col in df.columns:
+        # pastikan numerik
         df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce").fillna(0)
 
+        # urutkan DESC
         df = df.sort_values(nilai_col, ascending=False)
 
+        # DENSE RANKING → 1,1,1,2,3,4,...
         df["Peringkat"] = (
             df[nilai_col]
             .rank(method="dense", ascending=False)
             .astype(int)
         )
 
-    # ===============================
-    # SIMPAN KE STORAGE (FINAL)
-    # ===============================
     st.session_state.data_storage[key] = df
 
 
@@ -1374,25 +1364,20 @@ def get_top_bottom(df, n=10, top=True):
 
 
 def make_column_chart(data, title, color_scale, y_min, y_max):
-    if data is None or data.empty:
+    if data.empty:
         return None
 
-    # 🔥 WAJIB pakai data, BUKAN df global
-    plot_df = data.copy()
-
-    # 🔐 PROTEKSI FINAL: pastikan Satker dipakai
-    if "Satker" not in plot_df.columns:
-        return None
-
+    plot_df = df.copy()
     fig = px.bar(
         plot_df.sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)"),
         x="Nilai Akhir (Nilai Total/Konversi Bobot)",
-        y="Satker",  # ✅ SUDAH BENAR
+        y="Satker",
         orientation="h",
         color="Nilai Akhir (Nilai Total/Konversi Bobot)",
         color_continuous_scale=color_scale,
         title=title
     )
+
 
     fig.update_layout(
         xaxis_range=[y_min, y_max],
@@ -1694,9 +1679,7 @@ def classify_jenis_satker(df):
     return df
 
 
-# ======================================================
-# BAGIAN 4 CHART DASHBOARD UTAMA (FINAL & ANTI BUG)
-# ======================================================
+# BAGIAN 4 CHART DASHBOARD UTAMA
 def safe_chart(
     df_part,
     jenis,
@@ -1706,7 +1689,6 @@ def safe_chart(
     y_max=None,
     thin_bar=False
 ):
-
     # ===============================
     # PROTEKSI AWAL
     # ===============================
@@ -1714,15 +1696,10 @@ def safe_chart(
         st.info("Tidak ada data.")
         return
 
-    # WAJIB kolom ringkas & kode
-    required_cols = ["Uraian Satker-RINGKAS", "Kode Satker"]
-    if not all(c in df_part.columns for c in required_cols):
-        st.warning("Kolom nama ringkas belum siap.")
+    if "Satker" not in df_part.columns:
+        st.warning("Kolom Satker belum siap.")
         return
 
-    # ===============================
-    # PILIH KOLOM NILAI IKPA
-    # ===============================
     kandidat_ikpa = [
         "Nilai Akhir (Nilai Total/Konversi Bobot)",
         "Nilai Total/Konversi Bobot",
@@ -1746,30 +1723,22 @@ def safe_chart(
     )
 
     # ===============================
-    # 🔥 LABEL FINAL (ANTI NAMA PANJANG)
+    # 🔐 PROTEKSI PLOTLY (INI YANG HILANG)
     # ===============================
-    df_sorted["LABEL_SATKER"] = (
-        df_sorted["Uraian Satker-RINGKAS"]
-        .astype(str)
-        .str.strip()
-        + " ("
-        + df_sorted["Kode Satker"].astype(str).str.zfill(6)
-        + ")"
-    )
-
-    df_sorted = df_sorted[df_sorted["LABEL_SATKER"].str.strip() != ""]
+    df_sorted["Satker"] = df_sorted["Satker"].astype(str).str.strip()
+    df_sorted = df_sorted[df_sorted["Satker"] != ""]
 
     if df_sorted.empty:
         st.info("Tidak ada data valid untuk ditampilkan.")
         return
 
     # ===============================
-    # PLOT (PAKAI LABEL_SATKER)
+    # PLOT
     # ===============================
     fig = px.bar(
         df_sorted,
         x=nilai_col,
-        y="LABEL_SATKER",   # ⬅️ KUNCI UTAMA
+        y="Satker",
         orientation="h",
         color=nilai_col,
         color_continuous_scale=color,
@@ -1794,7 +1763,6 @@ def safe_chart(
     )
 
     st.plotly_chart(fig, use_container_width=True)
-
 
 def get_top_bottom_unique(
     df,
@@ -4364,17 +4332,13 @@ def page_admin():
                         with st.spinner("🔄 Menggabungkan IKPA & DIPA..."):
                             merge_ikpa_dipa_auto()
                             st.session_state.ikpa_dipa_merged = True
-                            
-                            # 🔐 FINAL GUARD: PAKSA RINGKAS SETELAH MERGE
-                            key = (month, str(year))
-                            if key in st.session_state.data_storage:
-                                df_fix = st.session_state.data_storage[key]
-                                df_fix = apply_reference_short_names(df_fix)
-                                df_fix = create_satker_column(df_fix)
-                                st.session_state.data_storage[key] = df_fix
                     
                     st.session_state["_just_uploaded"] = True
-                    
+
+                    # 🔥 WAJIB: proses ulang semua data (ambil dari GitHub)
+                    reprocess_all_ikpa_satker()
+
+                    # refresh UI
                     st.rerun()
 
 
