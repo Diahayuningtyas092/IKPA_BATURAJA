@@ -1345,8 +1345,9 @@ def make_column_chart(data, title, color_scale, y_min, y_max):
     if data.empty:
         return None
 
+    plot_df = df.copy()
     fig = px.bar(
-        data.sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)"),
+        plot_df.sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)"),
         x="Nilai Akhir (Nilai Total/Konversi Bobot)",
         y="Satker",
         orientation="h",
@@ -1354,6 +1355,7 @@ def make_column_chart(data, title, color_scale, y_min, y_max):
         color_continuous_scale=color_scale,
         title=title
     )
+
 
     fig.update_layout(
         xaxis_range=[y_min, y_max],
