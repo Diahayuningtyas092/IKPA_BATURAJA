@@ -1374,20 +1374,25 @@ def get_top_bottom(df, n=10, top=True):
 
 
 def make_column_chart(data, title, color_scale, y_min, y_max):
-    if data.empty:
+    if data is None or data.empty:
         return None
 
-    plot_df = df.copy()
+    # 🔥 WAJIB pakai data, BUKAN df global
+    plot_df = data.copy()
+
+    # 🔐 PROTEKSI FINAL: pastikan Satker dipakai
+    if "Satker" not in plot_df.columns:
+        return None
+
     fig = px.bar(
         plot_df.sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)"),
         x="Nilai Akhir (Nilai Total/Konversi Bobot)",
-        y="Satker",
+        y="Satker",  # ✅ SUDAH BENAR
         orientation="h",
         color="Nilai Akhir (Nilai Total/Konversi Bobot)",
         color_continuous_scale=color_scale,
         title=title
     )
-
 
     fig.update_layout(
         xaxis_range=[y_min, y_max],
