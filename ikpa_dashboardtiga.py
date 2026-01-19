@@ -23,7 +23,7 @@ def render_table_pin_satker(df):
     # ==================================
     def calc_grid_height(
         df,
-        row_height=32,     # tinggi baris (theme streamlit)
+        row_height=50,     # tinggi baris (theme streamlit)
         header_height=40,  # tinggi header
         max_height=900     # batas maksimum agar tidak berat
     ):
