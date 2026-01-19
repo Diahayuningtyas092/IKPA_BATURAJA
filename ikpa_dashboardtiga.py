@@ -1887,7 +1887,18 @@ def page_dashboard():
 
     if df is not None:
         df = df.copy()
-        
+
+        # ===============================
+        # 🔍 CEK REFERENSI DI MEMORI
+        # ===============================
+        st.write("CEK REFERENSI DI MEMORI:")
+
+        st.write(
+            st.session_state.reference_df[
+                ["Kode Satker", "Uraian Satker-SINGKAT"]
+            ].head(10)
+        )
+
 
     # ensure main_tab state exists
     if "main_tab" not in st.session_state:
