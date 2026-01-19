@@ -2082,14 +2082,15 @@ def page_dashboard():
         # ===============================
         if 'Kode BA' in df.columns:
             df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
-
+        
         df = apply_filter_ba(df)
 
+
         # ===============================
-        # 🔒 PAKSA RINGKAS SETELAH FILTER (KUNCI)
+        # PAKSA KOLOM SATKER (1x SAJA)
         # ===============================
-        df = apply_reference_short_names(df)
-        df = create_satker_column(df)
+        if 'Satker' not in df.columns:
+            df = create_satker_column(df)
 
         # ===============================
         # GUNAKAN JENIS SATKER DARI LOADER
@@ -2099,7 +2100,6 @@ def page_dashboard():
         df_kecil  = df[df['Jenis Satker'] == 'KECIL']
         df_sedang = df[df['Jenis Satker'] == 'SEDANG']
         df_besar  = df[df['Jenis Satker'] == 'BESAR']
-
 
 
         # ===============================
