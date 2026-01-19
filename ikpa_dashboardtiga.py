@@ -1704,6 +1704,7 @@ def safe_chart(
     y_max=None,
     thin_bar=False
 ):
+
     # ===============================
     # PROTEKSI AWAL
     # ===============================
@@ -1715,6 +1716,19 @@ def safe_chart(
         st.warning("Kolom Satker belum siap.")
         return
 
+    # ===============================
+    # 🔎 DEBUG DATA (TAMBAHKAN DI SINI)
+    # ===============================
+    st.subheader(f"DEBUG SAFE_CHART – {jenis}")
+    st.write(
+        df_part[
+            ["Uraian Satker", "Uraian Satker-RINGKAS", "Satker"]
+        ].head(10)
+    )
+
+    # ===============================
+    # PILIH KOLOM NILAI IKPA
+    # ===============================
     kandidat_ikpa = [
         "Nilai Akhir (Nilai Total/Konversi Bobot)",
         "Nilai Total/Konversi Bobot",
@@ -1725,6 +1739,7 @@ def safe_chart(
     if nilai_col is None:
         st.warning(f"Kolom IKPA tidak ditemukan untuk {jenis}")
         return
+
 
     # ===============================
     # SORT DATA
