@@ -1530,6 +1530,24 @@ def apply_reference_short_names(df):
             df_merged.get('Uraian Satker', '')
         )
 
+        # ======================================================
+        # AUTO-RINGKAS: jika ringkas == nama panjang
+        # ======================================================
+        mask = df_merged['Uraian Satker-RINGKAS'] == df_merged.get('Uraian Satker', '')
+
+        df_merged.loc[mask, 'Uraian Satker-RINGKAS'] = (
+            df_merged.loc[mask, 'Uraian Satker-RINGKAS']
+                .str.replace("KANTOR KEMENTERIAN AGAMA", "Kemenag", regex=False)
+                .str.replace("PENGADILAN AGAMA", "PA", regex=False)
+                .str.replace("RUMAH TAHANAN NEGARA", "Rutan", regex=False)
+                .str.replace("LEMBAGA PEMASYARAKATAN", "Lapas", regex=False)
+                .str.replace("BADAN PUSAT STATISTIK", "BPS", regex=False)
+                .str.replace("KANTOR PELAYANAN PERBENDAHARAAN NEGARA", "KPPN", regex=False)
+                .str.replace("KANTOR PELAYANAN PAJAK PRATAMA", "KPP Pratama", regex=False)
+                .str.replace("KABUPATEN", "Kab.", regex=False)
+                .str.replace("KOTA", "Kota", regex=False)
+        )
+
         # Keep a generic final field for backward compatibility
         df_merged['Uraian Satker Final'] = df_merged['Uraian Satker-RINGKAS']
 
@@ -1870,18 +1888,6 @@ def page_dashboard():
     if df is not None:
         df = df.copy()
         
-        # ===============================
-        # 🔍 DEBUG RINGKAS – DESEMBER 2025
-        # ===============================
-        if st.session_state.selected_period == ("DESEMBER", "2025"):
-            st.subheader("DEBUG Ringkas Desember 2025")
-            st.write(
-                df[[
-                    "Kode Satker",
-                    "Uraian Satker",
-                    "Uraian Satker-RINGKAS"
-                ]].head(10)
-            )
 
     # ensure main_tab state exists
     if "main_tab" not in st.session_state:
