@@ -85,14 +85,13 @@ def render_table_pin_satker(df):
     """)
 
     # ===============================
-    # GRID OPTIONS (INI KUNCINYA)
+    # GRID OPTIONS (AUTOHEIGHT)
     # ===============================
     gb.configure_grid_options(
-        domLayout="normal",         
+        domLayout="autoHeight",   
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
-        getRowStyle=zebra_dark,
-        headerHeight=40              
+        getRowStyle=zebra_dark
     )
 
     gridOptions = gb.build()
@@ -100,12 +99,12 @@ def render_table_pin_satker(df):
     AgGrid(
         df,
         gridOptions=gridOptions,
-        height=500,                  
-        width="100%",
+        width="100%",             
         theme="streamlit",
         fit_columns_on_grid_load=False,
         allow_unsafe_jscode=True
     )
+
 
 
 # =========================
