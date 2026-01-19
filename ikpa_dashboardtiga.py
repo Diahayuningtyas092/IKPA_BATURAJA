@@ -4342,6 +4342,14 @@ def page_admin():
                         with st.spinner("🔄 Menggabungkan IKPA & DIPA..."):
                             merge_ikpa_dipa_auto()
                             st.session_state.ikpa_dipa_merged = True
+                            
+                            # 🔐 FINAL GUARD: PAKSA RINGKAS SETELAH MERGE
+                            key = (month, str(year))
+                            if key in st.session_state.data_storage:
+                                df_fix = st.session_state.data_storage[key]
+                                df_fix = apply_reference_short_names(df_fix)
+                                df_fix = create_satker_column(df_fix)
+                                st.session_state.data_storage[key] = df_fix
                     
                     st.session_state["_just_uploaded"] = True
                     
