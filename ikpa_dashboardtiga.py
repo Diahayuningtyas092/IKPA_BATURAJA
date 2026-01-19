@@ -4296,7 +4296,13 @@ def page_admin():
                             st.session_state.ikpa_dipa_merged = True
                     
                     st.session_state["_just_uploaded"] = True
+
+                    # 🔥 WAJIB: proses ulang semua data (ambil dari GitHub)
+                    reprocess_all_ikpa_satker()
+
+                    # refresh UI
                     st.rerun()
+
 
         
         # Submenu Upload Data IKPA KPPN
