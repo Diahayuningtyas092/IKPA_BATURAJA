@@ -530,7 +530,14 @@ def process_excel_file(uploaded_file, upload_year):
         # ===============================
         # 🔴 FILTER AWAL (CEGAH NILAI/BOBOT)
         # ===============================
-        kode_satker = str(nilai[3]).strip("'").strip()
+        kode_satker = (
+            str(nilai[3])
+            .replace("\u00a0", "")   # hapus NBSP (spasi tak terlihat dari Excel)
+            .strip()                # hapus spasi kiri/kanan
+        )
+
+        kode_satker = normalize_kode_satker(kode_satker)
+
         uraian_satker = str(nilai[4]).strip()
 
         if (
@@ -1860,6 +1867,16 @@ def page_dashboard():
     if df is not None:
         df = df.copy()
 
+        # ===============================
+        # 🔍 DEBUG KODE SATKER (SEMENTARA)
+        # ===============================
+        if st.session_state.selected_period == ("DESEMBER", "2025"):
+            debug = df[["Kode Satker", "Uraian Satker"]].copy()
+            debug["len"] = debug["Kode Satker"].astype(str).str.len()
+            debug["repr"] = debug["Kode Satker"].apply(lambda x: repr(x))
+            st.subheader("DEBUG Kode Satker – Desember 2025")
+            st.write(debug.head(20))
+            
 
     # ensure main_tab state exists
     if "main_tab" not in st.session_state:
