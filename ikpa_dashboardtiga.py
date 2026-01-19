@@ -1841,13 +1841,6 @@ def page_dashboard():
     if not isinstance(data_storage, dict) or len(data_storage) == 0:
         st.warning("⚠️ Data IKPA belum tersedia.")
         return
-
-    # ===============================
-    # 🔍 DEBUG KEY DATA_STORAGE
-    # ===============================
-    st.write("SEMUA KEY DATA_STORAGE:")
-    for k in st.session_state.data_storage.keys():
-        st.write(repr(k))
         
     
     # Ambil & urutkan semua periode (bulan, tahun)
@@ -1876,6 +1869,19 @@ def page_dashboard():
 
     if df is not None:
         df = df.copy()
+        
+        # ===============================
+        # 🔍 DEBUG RINGKAS – DESEMBER 2025
+        # ===============================
+        if st.session_state.selected_period == ("DESEMBER", "2025"):
+            st.subheader("DEBUG Ringkas Desember 2025")
+            st.write(
+                df[[
+                    "Kode Satker",
+                    "Uraian Satker",
+                    "Uraian Satker-RINGKAS"
+                ]].head(10)
+            )
 
     # ensure main_tab state exists
     if "main_tab" not in st.session_state:
