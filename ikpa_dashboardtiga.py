@@ -2629,7 +2629,6 @@ def page_dashboard():
                 # =========================================================
                 # 12. RENDER
                 # =========================================================
-                render_sticky_header(df_display_filtered.columns.tolist())
                 render_table_pin_satker(df_display_filtered)
 
 
@@ -3046,11 +3045,7 @@ def page_dashboard():
             # ===============================
             # TAMPILKAN DENGAN AGGRID
             # ===============================
-            render_sticky_header(df_display.columns.tolist())
             render_table_pin_satker(df_display)
-
-
-
 
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
