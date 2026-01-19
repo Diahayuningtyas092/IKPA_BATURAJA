@@ -31,14 +31,14 @@ def render_table_pin_satker(df):
     )
 
     # ===============================
-    # PIN KOLOM
+    # PIN KOLOM KIRI
     # ===============================
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
             "Uraian Satker-RINGKAS",
             headerName="Nama Satker",
             pinned="left",
-            width=150,
+            width=180,
             suppressSizeToFit=True
         )
 
@@ -46,12 +46,12 @@ def render_table_pin_satker(df):
         gb.configure_column(
             "Kode Satker",
             pinned="left",
-            width=70,
+            width=80,
             suppressSizeToFit=True
         )
 
     if "Kode BA" in df.columns:
-        gb.configure_column("Kode BA", width=50)
+        gb.configure_column("Kode BA", width=60)
 
     # ===============================
     # KOLOM BULAN / TRIWULAN
@@ -66,13 +66,13 @@ def render_table_pin_satker(df):
         if col in df.columns:
             gb.configure_column(
                 col,
-                width=65,
+                width=70,
                 type=["numericColumn"],
                 cellStyle={"textAlign": "center"}
             )
 
     # ===============================
-    # PAKSA DARK MODE (HITAM + ABU)
+    # ZEBRA DARK MODE
     # ===============================
     zebra_dark = JsCode("""
     function(params) {
@@ -84,11 +84,15 @@ def render_table_pin_satker(df):
     }
     """)
 
+    # ===============================
+    # GRID OPTIONS (INI KUNCINYA)
+    # ===============================
     gb.configure_grid_options(
-        domLayout="autoHeight",
+        domLayout="normal",         
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
-        getRowStyle=zebra_dark
+        getRowStyle=zebra_dark,
+        headerHeight=40              
     )
 
     gridOptions = gb.build()
@@ -96,6 +100,7 @@ def render_table_pin_satker(df):
     AgGrid(
         df,
         gridOptions=gridOptions,
+        height=500,                  
         width="100%",
         theme="streamlit",
         fit_columns_on_grid_load=False,
