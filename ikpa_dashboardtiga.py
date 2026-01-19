@@ -445,8 +445,18 @@ def extract_kode_from_satker_field(s, width=6):
 def register_ikpa_satker(df_final, month, year, source="Manual"):
     key = (month, str(year))
 
+    # ===============================
+    # COPY & NORMALISASI FINAL
+    # ===============================
     df = df_final.copy()
 
+    # 🔐 PAKSA SELALU PAKAI NAMA RINGKAS (KUNCI MASALAH)
+    df = apply_reference_short_names(df)
+    df = create_satker_column(df)
+
+    # ===============================
+    # METADATA
+    # ===============================
     df["Source"] = source
     df["Period"] = f"{month} {year}"
 
@@ -463,19 +473,19 @@ def register_ikpa_satker(df_final, month, year, source="Manual"):
     nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
 
     if nilai_col in df.columns:
-        # pastikan numerik
         df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce").fillna(0)
 
-        # urutkan DESC
         df = df.sort_values(nilai_col, ascending=False)
 
-        # DENSE RANKING → 1,1,1,2,3,4,...
         df["Peringkat"] = (
             df[nilai_col]
             .rank(method="dense", ascending=False)
             .astype(int)
         )
 
+    # ===============================
+    # SIMPAN KE STORAGE (FINAL)
+    # ===============================
     st.session_state.data_storage[key] = df
 
 
@@ -4334,11 +4344,7 @@ def page_admin():
                             st.session_state.ikpa_dipa_merged = True
                     
                     st.session_state["_just_uploaded"] = True
-
-                    # 🔥 WAJIB: proses ulang semua data (ambil dari GitHub)
-                    reprocess_all_ikpa_satker()
-
-                    # refresh UI
+                    
                     st.rerun()
 
 
