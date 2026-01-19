@@ -699,6 +699,10 @@ def post_process_ikpa_satker(df, source="Upload"):
     ]
 
     df = df[[c for c in FINAL_COLUMNS if c in df.columns]]
+    
+    # 🔒 PAKSA RINGKAS DI AKHIR (INI KUNCI)
+    df = apply_reference_short_names(df)
+    df = create_satker_column(df)
 
     return df
 
