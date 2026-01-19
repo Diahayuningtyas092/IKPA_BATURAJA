@@ -1177,14 +1177,12 @@ def load_data_from_github(_cache_buster: int = 0):
             # =====================================================
             df = apply_reference_short_names(df)
 
-            # jika hasil ringkas kosong / NaN → fallback
             df["Uraian Satker-RINGKAS"] = (
                 df["Uraian Satker-RINGKAS"]
                 .replace("", pd.NA)
                 .fillna(df["Uraian Satker"])
             )
 
-            # jika ringkas == nama panjang → auto-ringkas
             mask = df["Uraian Satker-RINGKAS"] == df["Uraian Satker"]
             df.loc[mask, "Uraian Satker-RINGKAS"] = (
                 df.loc[mask, "Uraian Satker-RINGKAS"]
@@ -1198,6 +1196,7 @@ def load_data_from_github(_cache_buster: int = 0):
                 .str.replace("KABUPATEN", "Kab.", regex=False)
                 .str.replace("KOTA", "Kota", regex=False)
             )
+
 
             df = create_satker_column(df)
 
@@ -5192,16 +5191,15 @@ def main():
     # ============================================================
     # 🔄 REPROCESS IKPA SETELAH REFERENCE SIAP (1x)
     # ============================================================
-    if st.session_state.get("_need_reprocess_ikpa", True):
-        with st.spinner("🔄 Menyelaraskan data IKPA dengan referensi terbaru..."):
-            load_data_from_github.clear()   # bersihkan cache
-            st.session_state.data_storage = load_data_from_github(
-                _cache_buster=int(time.time())
-            )
-            st.session_state.ikpa_dipa_merged = False
-            st.session_state["_need_reprocess_ikpa"] = False
+    if st.session_state.get("_force_fix_ringkas", True):
+        load_data_from_github.clear()
+        st.session_state.data_storage = load_data_from_github(
+            _cache_buster=int(time.time())
+        )
+        st.session_state.ikpa_dipa_merged = False
+        st.session_state["_force_fix_ringkas"] = False
 
-    
+
     # ============================================================
     #  AUTO LOAD DATA IKPA
     # ============================================================
