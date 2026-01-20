@@ -154,6 +154,29 @@ MONTH_ORDER = {
 # Path ke file template (akan diatur di session state)
 TEMPLATE_PATH = r"C:\Users\KEMENKEU\Desktop\INDIKATOR PELAKSANAAN ANGGARAN.xlsx"
 
+def load_reference_satker():
+    """
+    Load referensi nama satker ringkas.
+    Wajib punya kolom:
+    - Kode Satker
+    - Uraian Satker-SINGKAT
+    """
+    try:
+        url = (
+            "https://raw.githubusercontent.com/"
+            "Diahayuningtyas092/IKPA_BATURAJA/main/templates/"
+            "Template_Data_Referensi.xlsx"
+        )
+        ref = pd.read_excel(url, dtype=str)
+
+        ref["Kode Satker"] = ref["Kode Satker"].apply(normalize_kode_satker)
+        ref["Uraian Satker-SINGKAT"] = ref["Uraian Satker-SINGKAT"].astype(str)
+
+        return ref
+    except Exception as e:
+        st.warning(f"Referensi satker gagal dimuat: {e}")
+        return None
+
 # ================================
 # INIT SESSION STATE 
 # ================================
@@ -176,8 +199,12 @@ if "ikpa_dipa_merged" not in st.session_state:
 # Log aktivitas
 if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
-    
-    
+
+# reference
+if "reference_df" not in st.session_state or st.session_state.reference_df is None:
+    st.session_state.reference_df = load_reference_satker() 
+    st.rerun()
+
 def clean_invalid_satker_rows(df):
     df = df.copy()
 
@@ -1580,7 +1607,11 @@ def apply_reference_short_names(df):
         # ======================================================
         # AUTO-RINGKAS: jika ringkas == nama panjang
         # ======================================================
-        mask = df_merged['Uraian Satker-RINGKAS'] == df_merged.get('Uraian Satker', '')
+        orig = df_merged.get('Uraian Satker', '').fillna('').astype(str)
+        ring = df_merged['Uraian Satker-RINGKAS'].fillna('').astype(str)
+
+        mask = ring == orig
+
 
         df_merged.loc[mask, 'Uraian Satker-RINGKAS'] = (
             df_merged.loc[mask, 'Uraian Satker-RINGKAS']
