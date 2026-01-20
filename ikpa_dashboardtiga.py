@@ -154,6 +154,20 @@ MONTH_ORDER = {
 # Path ke file template (akan diatur di session state)
 TEMPLATE_PATH = r"C:\Users\KEMENKEU\Desktop\INDIKATOR PELAKSANAAN ANGGARAN.xlsx"
 
+
+
+# Normalize kode satker
+def normalize_kode_satker(k, width=6):
+    if pd.isna(k):
+        return ''
+    s = str(k).strip()
+    digits = re.findall(r'\d+', s)
+    if not digits:
+        return ''
+    kod = digits[0].zfill(width)
+    return kod
+
+
 def load_reference_satker():
     """
     Load referensi nama satker ringkas.
@@ -201,9 +215,11 @@ if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
 
 # reference
-if "reference_df" not in st.session_state or st.session_state.reference_df is None:
-    st.session_state.reference_df = load_reference_satker() 
+if "_reference_loaded" not in st.session_state:
+    st.session_state.reference_df = load_reference_satker()
+    st.session_state["_reference_loaded"] = True
     st.rerun()
+
 
 def clean_invalid_satker_rows(df):
     df = df.copy()
@@ -427,17 +443,6 @@ def apply_filter_ba(df):
     if not selected_ba or "SEMUA BA" in selected_ba:
         return df
     return df[df['Kode BA'].astype(str).isin(selected_ba)].copy()
-
-# Normalize kode satker
-def normalize_kode_satker(k, width=6):
-    if pd.isna(k):
-        return ''
-    s = str(k).strip()
-    digits = re.findall(r'\d+', s)
-    if not digits:
-        return ''
-    kod = digits[0].zfill(width)
-    return kod
 
 # Konfigurasi halaman
 st.set_page_config(
