@@ -1217,28 +1217,6 @@ def load_data_from_github(_cache_buster: int = 0):
             # 🔑 PAKSA URAIAN SATKER RINGKAS (FIX UTAMA)
             # =====================================================
             df = apply_reference_short_names(df)
-
-            df["Uraian Satker-RINGKAS"] = (
-                df["Uraian Satker-RINGKAS"]
-                .replace("", pd.NA)
-                .fillna(df["Uraian Satker"])
-            )
-
-            mask = df["Uraian Satker-RINGKAS"] == df["Uraian Satker"]
-            df.loc[mask, "Uraian Satker-RINGKAS"] = (
-                df.loc[mask, "Uraian Satker-RINGKAS"]
-                .str.replace("KANTOR KEMENTERIAN AGAMA", "Kemenag", regex=False)
-                .str.replace("PENGADILAN AGAMA", "PA", regex=False)
-                .str.replace("RUMAH TAHANAN NEGARA", "Rutan", regex=False)
-                .str.replace("LEMBAGA PEMASYARAKATAN", "Lapas", regex=False)
-                .str.replace("BADAN PUSAT STATISTIK", "BPS", regex=False)
-                .str.replace("KANTOR PELAYANAN PERBENDAHARAAN NEGARA", "KPPN", regex=False)
-                .str.replace("KANTOR PELAYANAN PAJAK PRATAMA", "KPP Pratama", regex=False)
-                .str.replace("KABUPATEN", "Kab.", regex=False)
-                .str.replace("KOTA", "Kota", regex=False)
-            )
-
-
             df = create_satker_column(df)
 
             # ===============================
