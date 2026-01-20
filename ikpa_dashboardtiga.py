@@ -1181,6 +1181,15 @@ def load_data_from_github(_cache_buster: int = 0):
         try:
             decoded = base64.b64decode(file.content)
             df = pd.read_excel(io.BytesIO(decoded))
+            
+            # ===============================
+            # 🔥 RESET HASIL LAMA (WAJIB)
+            # ===============================
+            df = df.copy()
+
+            for col in ["Uraian Satker-RINGKAS", "Uraian Satker Final", "Satker"]:
+                if col in df.columns:
+                    df.drop(columns=[col], inplace=True)
 
             # ===============================
             # VALIDASI KOLOM WAJIB
