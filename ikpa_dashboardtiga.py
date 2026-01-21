@@ -1528,6 +1528,67 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
 
     return fig
 
+def create_internal_problem_chart_horizontal(
+    df,
+    column,
+    threshold,
+    title="",
+    comparison="less"
+):
+    if df.empty or column not in df.columns:
+        return None
+
+    # Pastikan numerik
+    df[column] = pd.to_numeric(df[column], errors="coerce")
+    df = df.dropna(subset=[column])
+
+    # Filter satker bermasalah
+    if comparison == "less":
+        df = df[df[column] < threshold].sort_values(column)
+    else:
+        df = df[df[column] > threshold].sort_values(column, ascending=False)
+
+    if df.empty:
+        return None
+
+    fig = go.Figure()
+
+    fig.add_bar(
+        x=df[column],
+        y=df["Satker"],
+        orientation="h",
+        marker=dict(
+            color=df[column],
+            colorscale="OrRd_r",
+            showscale=True,
+            colorbar=dict(title="Nilai")
+        ),
+        text=df[column].round(2),
+        textposition="outside",
+        hovertemplate="<b>%{y}</b><br>Nilai: %{x:.2f}<extra></extra>"
+    )
+
+    fig.add_vline(
+        x=threshold,
+        line_dash="dash",
+        line_color="red",
+        annotation_text=f"Target: {threshold}",
+        annotation_position="top"
+    )
+
+    fig.update_layout(
+        title=title,
+        height=max(600, len(df) * 28),  # 🔑 otomatis tinggi
+        margin=dict(l=260, r=40, t=80, b=40),
+        xaxis_title="Nilai IKPA",
+        yaxis_title="",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)"
+    )
+
+    return fig
+
+
 # ===============================================
 # Helper to apply reference short names (Simplified)
 # ===============================================
@@ -3040,7 +3101,6 @@ def page_dashboard():
                 value_cols = (
                     component_cols +
                     [
-                        "Nilai Total",
                         "Dispensasi SPM (Pengurang)",
                         "Nilai Akhir (Nilai Total/Konversi Bobot)"
                     ]
@@ -3165,16 +3225,14 @@ def menu_ews_satker():
             unsafe_allow_html=True
         )
 
-        fig_up = create_problem_chart(
+        fig_up = create_internal_problem_chart_horizontal(
             df_latest,
             'Pengelolaan UP dan TUP',
             100,
-            "Pengelolaan UP dan TUP Belum Optimal (< 100)",
-            'less',
-            y_min=y_min_int,
-            y_max=y_max_int,
-            show_yaxis=True
+            title="Pengelolaan UP dan TUP Belum Optimal (< 100)",
+            comparison='less'
         )
+
 
         if fig_up:
             st.plotly_chart(fig_up, use_container_width=True)
