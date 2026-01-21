@@ -1482,21 +1482,27 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
 
     fig = go.Figure()
     fig.add_trace(go.Bar(
-        x=df_filtered['Satker'],
-        y=df_filtered[column],
-        marker=dict(
-            color=df_filtered[column],
-            colorscale='OrRd_r',
-            showscale=True,
-            cmin=min_val,
-            cmax=max_val,
+    x=df_filtered['Satker'],
+    y=df_filtered[column],
+    marker=dict(
+        color=df_filtered[column],
+        colorscale='OrRd_r',
+        showscale=True,
+        cmin=min_val,
+        cmax=max_val,
+        colorbar=dict(
+            x=1.01,          # ⬅️ DEKATKAN KE CHART
+            thickness=12,    # ⬅️ LEBIH RAMPING
+            len=0.85         # ⬅️ TIDAK TERLALU TINGGI
+        )
         ),
         text=df_filtered[column].round(2),
         textposition='outside',
         textangle=0,
-        textfont=dict(family="Arial Black", size=12), 
+        textfont=dict(family="Arial Black", size=12),
         hovertemplate='<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>'
     ))
+
 
     # Garis target threshold (tidak berubah)
     fig.add_hline(
@@ -1579,7 +1585,7 @@ def create_internal_problem_chart_horizontal(
     fig.update_layout(
         title=title,
         height=max(520, len(df) * 30),
-        margin=dict(l=260, r=30, t=80, b=40),
+        margin=dict(l=260, r=10, t=80, b=40),
         xaxis_title="Nilai IKPA",
         yaxis_title="",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -3080,6 +3086,7 @@ def page_dashboard():
                     "Kualitas Perencanaan Anggaran",
                     "Kualitas Pelaksanaan Anggaran",
                     "Kualitas Hasil Pelaksanaan Anggaran",
+                    "Nilai Total",
                     "Dispensasi SPM (Pengurang)",
                     "Nilai Akhir (Nilai Total/Konversi Bobot)"
                 ]
@@ -3204,7 +3211,7 @@ def menu_ews_satker():
         )
 
     # 📊 Highlights Kinerja Satker yang Perlu Perhatian Khusus
-    col1, col2 = st.columns([2.5, 1.2], gap="small")   # KIRI LEBIH LEBAR
+    col1, col2 = st.columns([2.5, 1.2])  #  KIRI LEBIH LEBAR
 
     with col1:
         # ===============================
