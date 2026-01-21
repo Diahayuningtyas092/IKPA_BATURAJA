@@ -3080,7 +3080,6 @@ def page_dashboard():
                     "Kualitas Perencanaan Anggaran",
                     "Kualitas Pelaksanaan Anggaran",
                     "Kualitas Hasil Pelaksanaan Anggaran",
-                    "Nilai Total",
                     "Dispensasi SPM (Pengurang)",
                     "Nilai Akhir (Nilai Total/Konversi Bobot)"
                 ]
@@ -3205,7 +3204,7 @@ def menu_ews_satker():
         )
 
     # 📊 Highlights Kinerja Satker yang Perlu Perhatian Khusus
-    col1, col2 = st.columns([2, 1])  # ⬅️ KIRI LEBIH LEBAR
+    col1, col2 = st.columns([2.5, 1], gap="small")   # KIRI LEBIH LEBAR
 
     with col1:
         # ===============================
