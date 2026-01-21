@@ -92,18 +92,21 @@ def render_table_pin_satker(df):
     zebra_dark = JsCode("""
     function(params) {
         const isEven = params.node.rowIndex % 2 === 0;
+
         return {
-            backgroundColor: isEven ? '#2B2B2B' : '#1C1C1C',
-            color: '#FFFFFF'
+            backgroundColor: isEven ? '#2E2E2E' : '#0D0D0D',
+            color: '#FFFFFF',
+            borderBottom: '1px solid #3A3A3A'
         };
     }
     """)
+
 
     # ===============================
     # GRID OPTIONS (HEADER FREEZE)
     # ===============================
     gb.configure_grid_options(
-        domLayout="normal",          
+        domLayout="normal",          # ⬅️ BUKAN autoHeight
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
