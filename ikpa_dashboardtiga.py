@@ -1533,16 +1533,15 @@ def create_internal_problem_chart_horizontal(
     column,
     threshold,
     title="",
-    comparison="less"
+    comparison="less",
+    max_items=20
 ):
     if df.empty or column not in df.columns:
         return None
 
-    # Pastikan numerik
     df[column] = pd.to_numeric(df[column], errors="coerce")
     df = df.dropna(subset=[column])
 
-    # Filter satker bermasalah
     if comparison == "less":
         df = df[df[column] < threshold].sort_values(column)
     else:
@@ -1550,6 +1549,8 @@ def create_internal_problem_chart_horizontal(
 
     if df.empty:
         return None
+
+    df = df.head(max_items)
 
     fig = go.Figure()
 
@@ -1560,8 +1561,7 @@ def create_internal_problem_chart_horizontal(
         marker=dict(
             color=df[column],
             colorscale="OrRd_r",
-            showscale=True,
-            colorbar=dict(title="Nilai")
+            showscale=True
         ),
         text=df[column].round(2),
         textposition="outside",
@@ -1578,8 +1578,8 @@ def create_internal_problem_chart_horizontal(
 
     fig.update_layout(
         title=title,
-        height=max(600, len(df) * 28),  # 🔑 otomatis tinggi
-        margin=dict(l=260, r=40, t=80, b=40),
+        height=max(520, len(df) * 30),
+        margin=dict(l=260, r=30, t=80, b=40),
         xaxis_title="Nilai IKPA",
         yaxis_title="",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -3205,12 +3205,12 @@ def menu_ews_satker():
         )
 
     # 📊 Highlights Kinerja Satker yang Perlu Perhatian Khusus
-    col1, col2 = st.columns(2)
+    col1, col2 = st.columns([1.6, 1])  # ⬅️ KIRI LEBIH LEBAR
 
     with col1:
-    # ===============================
-    # JUDUL INDIKATOR
-    # ===============================
+        # ===============================
+        # JUDUL INDIKATOR
+        # ===============================
         st.markdown(
             """
             <div style="margin-bottom:6px;">
@@ -3225,16 +3225,25 @@ def menu_ews_satker():
             unsafe_allow_html=True
         )
 
-        fig_up = create_internal_problem_chart_horizontal(
+        fig_up = create_problem_chart(
             df_latest,
             'Pengelolaan UP dan TUP',
             100,
-            title="Pengelolaan UP dan TUP Belum Optimal (< 100)",
-            comparison='less'
+            "Pengelolaan UP dan TUP Belum Optimal (< 100)",
+            'less',
+            y_min=y_min_int,
+            y_max=y_max_int,
+            show_yaxis=True
         )
 
-
         if fig_up:
+            # 🔧 SENTUHAN KECIL AGAR LABEL TIDAK NUMPUK
+            fig_up.update_xaxes(
+                tickangle=-45,
+                tickfont=dict(size=10),
+                automargin=True
+            )
+
             st.plotly_chart(fig_up, use_container_width=True)
         else:
             st.success("✅ Semua satker sudah optimal untuk Pengelolaan UP dan TUP")
@@ -3267,12 +3276,20 @@ def menu_ews_satker():
         )
 
         if fig_output:
+            # (Opsional) sedikit rotasi agar konsisten
+            fig_output.update_xaxes(
+                tickangle=-30,
+                tickfont=dict(size=10),
+                automargin=True
+            )
+
             st.plotly_chart(fig_output, use_container_width=True)
         else:
             st.success("✅ Semua satker sudah optimal untuk Capaian Output")
 
-    
+
     warnings = []
+
     
     # ===============================
     # 📈 ANALISIS TREN
