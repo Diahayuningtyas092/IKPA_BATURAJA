@@ -3211,7 +3211,7 @@ def menu_ews_satker():
         )
 
     # 📊 Highlights Kinerja Satker yang Perlu Perhatian Khusus
-    col1, col2 = st.columns([2.5, 1.2])  #  KIRI LEBIH LEBAR
+    col1, col2 = st.columns([2.7, 1.2])  #  KIRI LEBIH LEBAR
 
     with col1:
         # ===============================
