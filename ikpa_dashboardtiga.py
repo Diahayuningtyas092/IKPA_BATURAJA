@@ -3119,7 +3119,9 @@ def page_dashboard():
                     if c not in df.columns:
                         df[c] = 0
 
-                df_display = df[base_cols + value_cols].copy()
+                cols_exist = [c for c in (base_cols + value_cols) if c in df.columns]
+                df_display = df[cols_exist].copy()
+
 
             # ===============================
             # SEARCH
