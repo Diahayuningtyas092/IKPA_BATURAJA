@@ -103,7 +103,7 @@ def render_table_pin_satker(df):
     # GRID OPTIONS (HEADER FREEZE)
     # ===============================
     gb.configure_grid_options(
-        domLayout="normal",          # ⬅️ BUKAN autoHeight
+        domLayout="normal",          
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
