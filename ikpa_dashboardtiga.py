@@ -94,9 +94,9 @@ def render_table_pin_satker(df):
         const isEven = params.node.rowIndex % 2 === 0;
 
         return {
-            backgroundColor: isEven ? '#2E2E2E' : '#0D0D0D',
+            backgroundColor: isEven ? '#3D3D3D' : '#050505',
             color: '#FFFFFF',
-            borderBottom: '1px solid #3A3A3A'
+            borderBottom: '1px solid #6A6A6A'
         };
     }
     """)
