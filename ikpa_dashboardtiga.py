@@ -2688,7 +2688,7 @@ def page_dashboard():
                 st.markdown("### 📊 Perbandingan Antara Dua Tahun")
 
                 # ===============================
-                # 1. GABUNGKAN SELURUH DATA (TANPA FILTER BA GLOBAL)
+                # 1. GABUNGKAN SELURUH DATA
                 # ===============================
                 all_data = []
 
@@ -2701,7 +2701,10 @@ def page_dashboard():
                         .str.upper()
                         .str.strip()
                     )
-                    df2["Tahun"] = pd.to_numeric(df2["Tahun"], errors="coerce").astype("Int64")
+
+                    df2["Tahun"] = pd.to_numeric(
+                        df2["Tahun"], errors="coerce"
+                    ).astype("Int64")
 
                     if "Kode BA" in df2.columns:
                         df2["Kode BA"] = df2["Kode BA"].apply(normalize_kode_ba)
@@ -2715,7 +2718,7 @@ def page_dashboard():
                 df_full = pd.concat(all_data, ignore_index=True)
 
                 # ===============================
-                #  HAPUS BA YANG TIDAK ADA DI HIGHLIGHTS (PERIODE TERBARU)
+                # 2. FILTER BA VALID (SESUI HIGHLIGHTS)
                 # ===============================
                 latest_period = max(
                     st.session_state.data_storage.keys(),
@@ -2723,65 +2726,48 @@ def page_dashboard():
                 )
 
                 df_latest = st.session_state.data_storage[latest_period].copy()
-
-                # Normalisasi Kode BA
                 df_latest["Kode BA"] = df_latest["Kode BA"].apply(normalize_kode_ba)
                 df_full["Kode BA"] = df_full["Kode BA"].apply(normalize_kode_ba)
 
-                # Ambil BA yang valid (yang muncul di highlights)
                 valid_ba = df_latest["Kode BA"].dropna().unique()
-
-                #  FILTER FINAL
                 df_full = df_full[df_full["Kode BA"].isin(valid_ba)]
 
-
                 # ===============================
-                # 2. FILTER KODE BA KHUSUS COMPARE
+                # 3. FILTER BA KHUSUS COMPARE
                 # ===============================
                 if "filter_ba_compare" not in st.session_state:
                     st.session_state["filter_ba_compare"] = ["SEMUA BA"]
 
-                if "Kode BA" in df_full.columns:
+                ba_list = sorted(df_full["Kode BA"].dropna().unique())
+                ba_options = ["SEMUA BA"] + ba_list
 
-                    df_full["Kode BA"] = df_full["Kode BA"].apply(normalize_kode_ba)
+                def format_ba_compare(code):
+                    if code == "SEMUA BA":
+                        return "SEMUA BA"
+                    return f"{code} – {BA_MAP.get(code, 'Nama BA tidak ditemukan')}"
 
-                    ba_list = sorted(df_full["Kode BA"].dropna().unique())
-                    ba_options = ["SEMUA BA"] + ba_list
+                selected_ba_compare = st.multiselect(
+                    "Pilih Kode BA (Perbandingan)",
+                    options=ba_options,
+                    format_func=format_ba_compare,
+                    default=st.session_state["filter_ba_compare"],
+                    key="filter_ba_compare"
+                )
 
-                    def format_ba_compare(code):
-                        if code == "SEMUA BA":
-                            return "SEMUA BA"
-                        return f"{code} – {BA_MAP.get(code, 'Nama BA tidak ditemukan')}"
-
-                    selected_ba_compare = st.multiselect(
-                        "Pilih Kode BA (Perbandingan)",
-                        options=ba_options,
-                        format_func=format_ba_compare,
-                        default=st.session_state["filter_ba_compare"],
-                        key="filter_ba_compare"
-                    )
-
-                    if "SEMUA BA" not in selected_ba_compare:
-                        df_full = df_full[df_full["Kode BA"].isin(selected_ba_compare)]
-
+                if "SEMUA BA" not in selected_ba_compare:
+                    df_full = df_full[df_full["Kode BA"].isin(selected_ba_compare)]
 
                 # ===============================
-                # 3. VALIDASI TAHUN (SETELAH FILTER BA COMPARE)
+                # 4. VALIDASI TAHUN
                 # ===============================
                 available_years = sorted(
-                    [int(y) for y in df_full["Tahun"].dropna().unique()]
+                    df_full["Tahun"].dropna().unique().astype(int)
                 )
 
                 if len(available_years) < 2:
-                    st.info(
-                        "Data tahun tidak cukup untuk Kode BA yang dipilih. "
-                        "Silakan pilih BA lain atau gunakan SEMUA BA."
-                    )
+                    st.info("Data tahun tidak cukup untuk perbandingan.")
                     st.stop()
 
-                # ===============================
-                # 4. PILIH TAHUN A & B
-                # ===============================
                 colA, colB = st.columns(2)
                 with colA:
                     year_a = st.selectbox(
@@ -2823,12 +2809,12 @@ def page_dashboard():
                 # 6. PILIH SATKER
                 # ===============================
                 satker_list = (
-                    df_full[['Kode Satker', 'Uraian Satker-RINGKAS']]
+                    df_full[["Kode Satker", "Uraian Satker-RINGKAS"]]
                     .drop_duplicates()
-                    .sort_values('Uraian Satker-RINGKAS')
+                    .sort_values("Uraian Satker-RINGKAS")
                 )
 
-                satker_options = ["SEMUA SATKER"] + satker_list['Kode Satker'].tolist()
+                satker_options = ["SEMUA SATKER"] + satker_list["Kode Satker"].tolist()
 
                 selected_satkers = st.multiselect(
                     "Pilih Satker",
@@ -2836,48 +2822,51 @@ def page_dashboard():
                     format_func=lambda x: (
                         "SEMUA SATKER"
                         if x == "SEMUA SATKER"
-                        else satker_list[satker_list['Kode Satker'] == x]['Uraian Satker-RINGKAS'].values[0]
+                        else satker_list.loc[
+                            satker_list["Kode Satker"] == x,
+                            "Uraian Satker-RINGKAS"
+                        ].values[0]
                     ),
                     default=["SEMUA SATKER"],
                     key="satker_compare"
                 )
 
                 selected_satkers_final = (
-                    satker_list['Kode Satker'].tolist()
+                    satker_list["Kode Satker"].tolist()
                     if "SEMUA SATKER" in selected_satkers
                     else selected_satkers
                 )
 
                 # ===============================
-                # 7. BANGUN TABEL PERBANDINGAN (AMAN INDIKATOR)
+                # 7. BANGUN TABEL PERBANDINGAN
                 # ===============================
                 rows = []
 
                 for _, m in satker_list.iterrows():
-                    kode = m['Kode Satker']
+                    kode = m["Kode Satker"]
                     if kode not in selected_satkers_final:
                         continue
 
                     row = {
                         "Kode Satker": kode,
-                        "Uraian Satker": m['Uraian Satker-RINGKAS']
+                        "Uraian Satker-RINGKAS": m["Uraian Satker-RINGKAS"]
                     }
 
                     latest_a, latest_b = None, None
                     has_data = False
 
-                    for tw in ['Tw I', 'Tw II', 'Tw III', 'Tw IV']:
+                    for tw in ["Tw I", "Tw II", "Tw III", "Tw IV"]:
 
                         if selected_indicator not in tw_a[tw].columns:
                             continue
 
                         valA = tw_a[tw].loc[
-                            tw_a[tw]['Kode Satker'] == kode,
+                            tw_a[tw]["Kode Satker"] == kode,
                             selected_indicator
                         ].values
 
                         valB = tw_b[tw].loc[
-                            tw_b[tw]['Kode Satker'] == kode,
+                            tw_b[tw]["Kode Satker"] == kode,
                             selected_indicator
                         ].values
 
@@ -2906,28 +2895,16 @@ def page_dashboard():
                     rows.append(row)
 
                 if not rows:
-                    st.info("Tidak ada data indikator untuk periode dan BA yang dipilih.")
+                    st.info("Tidak ada data indikator untuk periode yang dipilih.")
                     st.stop()
 
                 df_compare = pd.DataFrame(rows)
 
                 # ===============================
-                # 8. TAMPILKAN HASIL
+                # 8. TAMPILKAN HASIL (AGGRID)
                 # ===============================
-                def highlight_years(col):
-                    if str(year_a) in col:
-                        return 'background-color: #FFF8C6;'
-                    if str(year_b) in col:
-                        return 'background-color: #DCEBFF;'
-                    return ''
-
-                df_style = df_compare.style.apply(
-                    lambda _: [highlight_years(c) for c in df_compare.columns],
-                    axis=1
-                ).format(precision=2)
-
                 st.markdown("### 📋 Hasil Perbandingan")
-                st.dataframe(df_style, use_container_width=True, height=600)
+                render_table_pin_satker(df_compare)
 
 
         # -------------------------
