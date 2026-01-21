@@ -35,6 +35,8 @@ def render_table_pin_satker(df):
 
     gb = GridOptionsBuilder.from_dataframe(df)
 
+    gb.configure_column("Nilai Total", hide=True)
+    
     # ===============================
     # DEFAULT SEMUA KOLOM
     # ===============================
@@ -106,7 +108,7 @@ def render_table_pin_satker(df):
     # GRID OPTIONS (HEADER FREEZE)
     # ===============================
     gb.configure_grid_options(
-        domLayout="normal",          # ⬅️ BUKAN autoHeight
+        domLayout="normal",          # BUKAN autoHeight
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
@@ -121,7 +123,7 @@ def render_table_pin_satker(df):
     AgGrid(
         df,
         gridOptions=gridOptions,
-        height=calc_grid_height(df),  # ⬅️ KUNCI UTAMA
+        height=calc_grid_height(df),  #  KUNCI UTAMA
         width="100%",
         theme="streamlit",
         fit_columns_on_grid_load=False,
@@ -3107,6 +3109,7 @@ def page_dashboard():
                 value_cols = (
                     component_cols +
                     [
+                        "NIlai Total",
                         "Dispensasi SPM (Pengurang)",
                         "Nilai Akhir (Nilai Total/Konversi Bobot)"
                     ]
