@@ -3478,21 +3478,41 @@ def menu_ews_satker():
         )
 
     fig.update_layout(
-        title=f"Tren {selected_metric}",
+        title=dict(
+            text=f"Tren {selected_metric}",
+            x=0.01,
+            xanchor="left"
+        ),
         xaxis_title="Periode",
         yaxis_title="Nilai",
-        height=600,
+        height=650,
         hovermode="x unified",
-        xaxis=dict(categoryorder="array", categoryarray=ordered_periods),
+
+        xaxis=dict(
+            categoryorder="array",
+            categoryarray=ordered_periods
+        ),
+
+        # 🔑 LEGEND ANTI NUMPUK
         legend=dict(
             orientation="h",
-            x=0.01,
-            y=1.02,
-            xanchor="left",
-            yanchor="bottom"
+            x=0.5,
+            y=-0.25,               # ⬅️ PINDAH KE BAWAH
+            xanchor="center",
+            yanchor="top",
+            font=dict(size=11),
+            itemwidth=220          # ⬅️ KUNCI AUTO-WRAP
         ),
-        margin=dict(l=60, r=40, t=120, b=60)
+
+        # 🔑 TAMBAH RUANG BAWAH
+        margin=dict(
+            l=60,
+            r=40,
+            t=100,
+            b=140
+        )
     )
+
 
     st.plotly_chart(fig, use_container_width=True)
 
