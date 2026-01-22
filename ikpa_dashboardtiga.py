@@ -3339,9 +3339,7 @@ def menu_ews_satker():
         start_period = st.selectbox("Periode Awal", available_periods, index=0)
 
     with col2:
-        end_period = st.selectbox(
-            "Periode Akhir", available_periods, index=len(available_periods) - 1
-        )
+        end_period = st.selectbox("Periode Akhir", available_periods, index=len(available_periods) - 1)
 
     with col3:
         metric_options = [
@@ -3367,8 +3365,8 @@ def menu_ews_satker():
     # FILTER PERIODE
     # ======================================================
     df_trend = df_all[
-        (df_all["Period_Sort"] >= start_period)
-        & (df_all["Period_Sort"] <= end_period)
+        (df_all["Period_Sort"] >= start_period) &
+        (df_all["Period_Sort"] <= end_period)
     ].copy()
 
     if df_trend.empty:
@@ -3376,13 +3374,31 @@ def menu_ews_satker():
         st.stop()
 
     # ======================================================
-    # 🔑 PAKSA SATKER RINGKAS (WAJIB)
+    # 🔑 PAKSA SATKER RINGKAS
     # ======================================================
     df_trend = apply_reference_short_names(df_trend)
-    df_trend = create_satker_column(df_trend)
+    df_trend["Kode Satker"] = df_trend["Kode Satker"].astype(str)
 
     # ======================================================
-    # LABEL PERIODE (UNTUK X AXIS)
+    # NAMA RINGKAS MURNI (HAPUS KODE JIKA ADA)
+    # ======================================================
+    df_trend["Nama_Ringkas_Murni"] = (
+        df_trend["Uraian Satker-RINGKAS"]
+        .astype(str)
+        .str.replace(r"\s*\(\d+\)$", "", regex=True)
+        .str.strip()
+    )
+
+    # ======================================================
+    # LABEL LEGEND FINAL (SATU-SATUNYA)
+    # ======================================================
+    df_trend["Legend_Label"] = (
+        df_trend["Nama_Ringkas_Murni"] +
+        " (" + df_trend["Kode Satker"] + ")"
+    )
+
+    # ======================================================
+    # LABEL PERIODE
     # ======================================================
     MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
 
@@ -3391,84 +3407,56 @@ def menu_ews_satker():
         axis=1
     )
 
-    # ======================================================
-    # URUTAN PERIODE KRONOLOGIS (UNTUK X AXIS)
-    # ======================================================
     ordered_periods = (
         df_trend
         .sort_values("Period_Sort")
-        .drop_duplicates("Period_Sort")
-        ["Periode_Label"]
+        .drop_duplicates("Period_Sort")["Periode_Label"]
         .tolist()
     )
 
     # ======================================================
-    # NAMA SATKER (RINGKAS JIKA ADA)
+    # MAP KODE → LABEL LEGEND
     # ======================================================
-    df_trend["Kode Satker"] = df_trend["Kode Satker"].astype(str)
-
-    if "Uraian Satker-RINGKAS" in df_trend.columns:
-        df_trend["Nama_Satker_Display"] = df_trend["Uraian Satker-RINGKAS"].astype(str)
-    else:
-        df_trend["Nama_Satker_Display"] = df_trend["Uraian Satker"].astype(str)
-
-    # ======================================================
-    # MAP KODE → NAMA
-    # ======================================================
-    satker_map = (
-        df_trend[["Kode Satker", "Nama_Satker_Display"]]
+    legend_map = (
+        df_trend[["Kode Satker", "Legend_Label"]]
         .drop_duplicates()
-        .assign(
-            label=lambda x: x["Nama_Satker_Display"] + " (" + x["Kode Satker"] + ")"
-        )
-        .set_index("Kode Satker")["label"]
+        .set_index("Kode Satker")["Legend_Label"]
         .to_dict()
     )
-
 
     # ======================================================
     # DEFAULT: 5 SATKER TERENDAH (PERIODE TERBARU)
     # ======================================================
     latest_period = df_all["Period_Sort"].max()
-
     df_latest = df_all[df_all["Period_Sort"] == latest_period].copy()
-    df_latest["Kode Satker"] = df_latest["Kode Satker"].astype(str)
 
     bottom_5_kode = (
         df_latest
-        .sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)", ascending=True)
+        .sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)")
         .head(5)["Kode Satker"]
-        .tolist()
-    )
-
-    # ======================================================
-    # MULTISELECT SATKER 
-    # ======================================================
-    # OPTIONS HARUS KODE SATKER
-    all_kode_satker = (
-        df_trend["Kode Satker"]
         .astype(str)
-        .unique()
         .tolist()
     )
 
-    # DEFAULT (AMAN)
+    all_kode_satker = df_trend["Kode Satker"].unique().tolist()
+
     default_kode = [k for k in bottom_5_kode if k in all_kode_satker]
     if not default_kode:
         default_kode = all_kode_satker[:5]
 
-    # MULTISELECT
+    # ======================================================
+    # MULTISELECT SATKER
+    # ======================================================
     selected_kode_satker = st.multiselect(
         "Pilih Satker",
-        options=all_kode_satker,                 # ← KODE, BUKAN NAMA
+        options=all_kode_satker,
         default=default_kode,
-        format_func=lambda k: satker_map.get(k, k)  # ← NAMA RINGKAS
+        format_func=lambda k: legend_map.get(k, k)
     )
 
     if not selected_kode_satker:
         st.warning("Pilih minimal satu satker.")
         st.stop()
-
 
     # ======================================================
     # 📊 PLOT GRAFIK TREN
@@ -3476,11 +3464,7 @@ def menu_ews_satker():
     fig = go.Figure()
 
     for kode in selected_kode_satker:
-        d = (
-            df_trend[df_trend["Kode Satker"] == kode]
-            .sort_values("Period_Sort")
-        )
-
+        d = df_trend[df_trend["Kode Satker"] == kode].sort_values("Period_Sort")
         if d.empty:
             continue
 
@@ -3489,47 +3473,26 @@ def menu_ews_satker():
                 x=d["Periode_Label"],
                 y=d[selected_metric],
                 mode="lines+markers",
-                name=f"{satker_map.get(kode, kode)} ({kode})"
+                name=legend_map[kode]   # 🔑 TIDAK BOLEH NEMPEL KODE LAGI
             )
         )
 
     fig.update_layout(
-        title=dict(
-            text=f"Tren {selected_metric}",
-            x=0.01,
-            y=0.97,            # 🔑 judul sedikit turun
-            xanchor="left",
-            yanchor="top"
-        ),
+        title=f"Tren {selected_metric}",
         xaxis_title="Periode",
         yaxis_title="Nilai",
         height=600,
         hovermode="x unified",
-
-        xaxis=dict(
-            categoryorder="array",
-            categoryarray=ordered_periods
-        ),
-
-        # 🔑 LEGEND TEPAT DI BAWAH JUDUL
+        xaxis=dict(categoryorder="array", categoryarray=ordered_periods),
         legend=dict(
             orientation="h",
             x=0.01,
+            y=1.02,
             xanchor="left",
-            y=1.005,           # 🔑 sangat dekat ke chart
-            yanchor="bottom",
-            font=dict(size=12)
+            yanchor="bottom"
         ),
-
-        # 🔑 MARGIN ATAS DIPERKECIL
-        margin=dict(
-            l=60,
-            r=40,
-            t=135,             # 🔑 INI KUNCI JARAK
-            b=60
-        )
+        margin=dict(l=60, r=40, t=120, b=60)
     )
-
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -3539,17 +3502,13 @@ def menu_ews_satker():
     warnings = []
 
     for kode in selected_kode_satker:
-        d = (
-            df_trend[df_trend["Kode Satker"] == kode]
-            .sort_values("Period_Sort")
-        )
-
+        d = df_trend[df_trend["Kode Satker"] == kode].sort_values("Period_Sort")
         if len(d) < 2:
             continue
 
         if d[selected_metric].iloc[-1] < d[selected_metric].iloc[-2]:
             warnings.append({
-                "Satker": f"{satker_map.get(kode, kode)} ({kode})",
+                "Satker": legend_map[kode],
                 "Sebelum": d[selected_metric].iloc[-2],
                 "Terakhir": d[selected_metric].iloc[-1],
                 "Turun": d[selected_metric].iloc[-2] - d[selected_metric].iloc[-1]
