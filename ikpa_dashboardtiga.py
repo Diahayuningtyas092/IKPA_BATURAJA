@@ -3418,9 +3418,13 @@ def menu_ews_satker():
     satker_map = (
         df_trend[["Kode Satker", "Nama_Satker_Display"]]
         .drop_duplicates()
-        .set_index("Kode Satker")["Nama_Satker_Display"]
+        .assign(
+            label=lambda x: x["Nama_Satker_Display"] + " (" + x["Kode Satker"] + ")"
+        )
+        .set_index("Kode Satker")["label"]
         .to_dict()
     )
+
 
     # ======================================================
     # DEFAULT: 5 SATKER TERENDAH (PERIODE TERBARU)
