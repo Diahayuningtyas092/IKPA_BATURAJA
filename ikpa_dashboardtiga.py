@@ -3309,22 +3309,25 @@ def menu_ews_satker():
     # ======================================================
     # VALIDASI BULAN & TAHUN
     # ======================================================
-    df_all["Month_Num"] = (
-        df_all["Bulan"]
+    # ======================================================
+    # PAKSA SATKER RINGKAS GLOBAL 
+    # ======================================================
+    df_all = apply_reference_short_names(df_all)
+
+    df_all["Kode Satker"] = df_all["Kode Satker"].astype(str)
+
+    # nama ringkas murni (tanpa kode)
+    df_all["Nama_Ringkas_Murni"] = (
+        df_all["Uraian Satker-RINGKAS"]
         .astype(str)
+        .str.replace(r"\s*\(\d+\)$", "", regex=True)
         .str.strip()
-        .str.upper()
-        .map(MONTH_ORDER)
     )
 
-    if df_all["Month_Num"].isna().any():
-        st.error("❌ Ditemukan nama bulan tidak valid.")
-        st.stop()
-
-    df_all["Tahun_Int"] = df_all["Tahun"].astype(int)
-    df_all["Period_Sort"] = df_all.apply(
-        lambda x: f"{x['Tahun_Int']:04d}-{x['Month_Num']:02d}",
-        axis=1
+    # label final standar (dipakai SEMUA KOMPONEN)
+    df_all["Legend_Label"] = (
+        df_all["Nama_Ringkas_Murni"] +
+        " (" + df_all["Kode Satker"] + ")"
     )
 
     # ======================================================
