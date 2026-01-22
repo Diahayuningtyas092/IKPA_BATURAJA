@@ -3364,6 +3364,27 @@ def menu_ews_satker():
         st.stop()
 
     # ======================================================
+    #  PASTIKAN KOLOM WAKTU ADA DI df_trend
+    # ======================================================
+    if "Month_Num" not in df_trend.columns:
+        df_trend["Month_Num"] = (
+            df_trend["Bulan"]
+            .astype(str)
+            .str.strip()
+            .str.upper()
+            .map(MONTH_ORDER)
+        )
+
+    if "Tahun_Int" not in df_trend.columns:
+        df_trend["Tahun_Int"] = df_trend["Tahun"].astype(int)
+
+    # safety check
+    if df_trend["Month_Num"].isna().any():
+        st.error("❌ Ditemukan nama bulan tidak valid pada data tren.")
+        st.stop()
+
+    
+    # ======================================================
     # FILTER PERIODE
     # ======================================================
     df_trend = df_all[
