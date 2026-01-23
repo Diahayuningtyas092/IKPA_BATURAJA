@@ -3190,6 +3190,16 @@ def menu_ews_satker():
     latest_period = sorted(st.session_state.data_storage.keys(), key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)), reverse=True)[0]
     df_latest = st.session_state.data_storage[latest_period]
 
+    # ===============================
+    # 🔑 LABEL SATKER INTERNAL (PAKAI BA)
+    # ===============================
+    df_latest = df_latest.copy()
+    df_latest["Satker_Internal"] = (
+        "[" + df_latest["Kode BA"].astype(str) + "] "
+        + df_latest["Uraian Satker-RINGKAS"].astype(str)
+        + " (" + df_latest["Kode Satker"].astype(str) + ")"
+    )
+
     st.markdown("---")
     st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
 
@@ -3236,8 +3246,12 @@ def menu_ews_satker():
             unsafe_allow_html=True
         )
 
+        df_latest_up = df_latest.copy()
+        df_latest_up["Satker"] = df_latest_up["Satker_Internal"]
+
         fig_up = create_problem_chart(
-            df_latest,
+            df_latest_up,
+
             'Pengelolaan UP dan TUP',
             100,
             "Pengelolaan UP dan TUP Belum Optimal (< 100)",
@@ -3275,8 +3289,11 @@ def menu_ews_satker():
             unsafe_allow_html=True
         )
 
+        df_latest_out = df_latest.copy()
+        df_latest_out["Satker"] = df_latest_out["Satker_Internal"]
+
         fig_output = create_problem_chart(
-            df_latest,
+            df_latest_out,
             'Capaian Output',
             100,
             "Capaian Output Belum Optimal (< 100)",
@@ -3395,6 +3412,12 @@ def menu_ews_satker():
     df_trend["Legend_Label"] = (
         df_trend["Nama_Ringkas_Murni"] +
         " (" + df_trend["Kode Satker"] + ")"
+    )
+    
+    df_trend["Legend_Label"] = (
+        "[" + df_trend["Kode BA"].astype(str) + "] "
+        + df_trend["Nama_Ringkas_Murni"]
+        + " (" + df_trend["Kode Satker"] + ")"
     )
 
     # ======================================================
