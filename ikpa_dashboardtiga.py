@@ -4124,7 +4124,8 @@ def assign_jenis_satker(df):
         return df
 
     # pastikan numerik
-    df["Total Pagu"] = pd.to_numeric(out["Total Pagu"], errors="coerce")
+    df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce")
+
 
     p40 = df["Total Pagu"].quantile(0.40)
     p70 = df["Total Pagu"].quantile(0.70)
