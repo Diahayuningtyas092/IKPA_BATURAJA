@@ -413,6 +413,7 @@ def standardize_dipa(df_raw):
     # 4) SUSUN URUTAN KOLOM
     # =============
     final_order = [
+        "Kode Satker",
         "Tanggal Posting Revisi",
         "Total Pagu",
         "Jenis Satker",
