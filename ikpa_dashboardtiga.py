@@ -3283,12 +3283,12 @@ def menu_ews_satker():
         )
 
     # 📊 Highlights Kinerja Satker yang Perlu Perhatian Khusus
-    col1, col2 = st.columns([2.7, 1.5])  #  KIRI LEBIH LEBAR
+    col1, col2 = st.columns([2.7, 1.5])  # KIRI LEBIH LEBAR
 
+    # ======================================================
+    # 🔴 KOLOM KIRI — Pengelolaan UP dan TUP
+    # ======================================================
     with col1:
-        # ===============================
-        # JUDUL INDIKATOR
-        # ===============================
         st.markdown(
             """
             <div style="margin-bottom:6px;">
@@ -3306,32 +3306,24 @@ def menu_ews_satker():
         df_latest_up = df_latest.copy()
         df_latest_up["Satker"] = df_latest_up["Satker_Internal"]
 
-        fig_up = create_problem_chart(
+        fig_up = create_internal_problem_chart_horizontal(
             df_latest_up,
-
-            'Pengelolaan UP dan TUP',
-            100,
-            "Pengelolaan UP dan TUP Belum Optimal (< 100)",
-            'less',
-            y_min=y_min_int,
-            y_max=y_max_int,
-            show_yaxis=True,
-            internal=True
+            column='Pengelolaan UP dan TUP',
+            threshold=100,
+            title="Pengelolaan UP dan TUP Belum Optimal (< 100)",
+            comparison="less",
+            max_items=25
         )
 
         if fig_up:
-            # 🔧 SENTUHAN KECIL AGAR LABEL TIDAK NUMPUK
-            fig_up.update_xaxes(
-                tickangle=-45,
-                tickfont=dict(size=10),
-                automargin=True
-            )
-
             st.plotly_chart(fig_up, use_container_width=True)
         else:
             st.success("✅ Semua satker sudah optimal untuk Pengelolaan UP dan TUP")
 
 
+    # ======================================================
+    # 🔴 KOLOM KANAN — Capaian Output
+    # ======================================================
     with col2:
         st.markdown(
             """
@@ -3350,26 +3342,16 @@ def menu_ews_satker():
         df_latest_out = df_latest.copy()
         df_latest_out["Satker"] = df_latest_out["Satker_Internal"]
 
-        fig_output = create_problem_chart(
+        fig_output = create_internal_problem_chart_horizontal(
             df_latest_out,
-            'Capaian Output',
-            100,
-            "Capaian Output Belum Optimal (< 100)",
-            'less',
-            y_min=y_min_int,
-            y_max=y_max_int,
-            show_yaxis=False,
-            internal=True
+            column='Capaian Output',
+            threshold=100,
+            title="Capaian Output Belum Optimal (< 100)",
+            comparison="less",
+            max_items=15
         )
 
         if fig_output:
-            # (Opsional) sedikit rotasi agar konsisten
-            fig_output.update_xaxes(
-                tickangle=-30,
-                tickfont=dict(size=10),
-                automargin=True
-            )
-
             st.plotly_chart(fig_output, use_container_width=True)
         else:
             st.success("✅ Semua satker sudah optimal untuk Capaian Output")
