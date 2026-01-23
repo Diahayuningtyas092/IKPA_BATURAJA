@@ -3225,6 +3225,22 @@ def menu_ews_satker():
     if "SEMUA BA" not in selected_ba_internal:
         df_all = df_all[df_all["Kode BA"].isin(selected_ba_internal)]
         df_latest = df_latest[df_latest["Kode BA"].isin(selected_ba_internal)]
+        
+    # ===============================
+    # 🔑 BUAT LABEL SATKER INTERNAL
+    # ===============================
+    df_latest = df_latest.copy()
+
+    if "Kode BA" not in df_latest.columns:
+        df_latest["Kode BA"] = ""
+
+    df_latest["Kode BA"] = df_latest["Kode BA"].apply(normalize_kode_ba)
+
+    df_latest["Satker_Internal"] = (
+        "[" + df_latest["Kode BA"] + "] "
+        + df_latest["Uraian Satker-RINGKAS"].astype(str)
+        + " (" + df_latest["Kode Satker"].astype(str) + ")"
+    )
 
 
     st.markdown("---")
@@ -3417,29 +3433,21 @@ def menu_ews_satker():
         st.warning("⚠️ Tidak ada data pada periode yang dipilih.")
         st.stop()
 
+
     # ======================================================
-    # 🔑 PAKSA SATKER RINGKAS
+    # 🔑 PAKSA SATKER RINGKAS & KODE BA
     # ======================================================
     df_trend = apply_reference_short_names(df_trend)
+
     df_trend["Kode Satker"] = df_trend["Kode Satker"].astype(str)
-    
-    # ===============================
-    # 🔑 PAKSA KODE BA ADA & STRING
-    # ===============================
+
     if "Kode BA" not in df_trend.columns:
         df_trend["Kode BA"] = ""
 
     df_trend["Kode BA"] = df_trend["Kode BA"].apply(normalize_kode_ba)
-    
-    df_trend["Legend_Label"] = (
-        "[" + df_trend["Kode BA"] + "] "
-        + df_trend["Nama_Ringkas_Murni"]
-        + " (" + df_trend["Kode Satker"] + ")"
-    )
-
 
     # ======================================================
-    # NAMA RINGKAS MURNI (HAPUS KODE JIKA ADA)
+    # NAMA RINGKAS MURNI
     # ======================================================
     df_trend["Nama_Ringkas_Murni"] = (
         df_trend["Uraian Satker-RINGKAS"]
@@ -3452,15 +3460,11 @@ def menu_ews_satker():
     # LABEL LEGEND FINAL (SATU-SATUNYA)
     # ======================================================
     df_trend["Legend_Label"] = (
-        df_trend["Nama_Ringkas_Murni"] +
-        " (" + df_trend["Kode Satker"] + ")"
-    )
-    
-    df_trend["Legend_Label"] = (
-        "[" + df_trend["Kode BA"].astype(str) + "] "
+        "[" + df_trend["Kode BA"] + "] "
         + df_trend["Nama_Ringkas_Murni"]
         + " (" + df_trend["Kode Satker"] + ")"
     )
+
 
     # ======================================================
     # LABEL PERIODE
