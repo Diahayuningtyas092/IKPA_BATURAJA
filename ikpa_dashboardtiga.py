@@ -1536,13 +1536,13 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
 
     return fig
 
-def create_internal_problem_chart_horizontal(
+def create_internal_problem_chart_vertical(
     df,
     column,
     threshold,
-    title="",
-    comparison="less",
-    max_items=20
+    title,
+    comparison='less',
+    show_yaxis=True
 ):
     if df.empty or column not in df.columns:
         return None
@@ -1551,34 +1551,33 @@ def create_internal_problem_chart_horizontal(
     df[column] = pd.to_numeric(df[column], errors="coerce")
     df = df.dropna(subset=[column])
 
-    if comparison == "less":
-        df = df[df[column] < threshold].sort_values(column)
-    else:
-        df = df[df[column] > threshold].sort_values(column, ascending=False)
+    if comparison == 'less':
+        df = df[df[column] < threshold]
+    elif comparison == 'greater':
+        df = df[df[column] > threshold]
 
     if df.empty:
         return None
 
-    df = df.head(max_items)
+    df = df.sort_values(by=column, ascending=False)
 
     jumlah_satker = len(df)
 
     # ===============================
     # 🎯 AUTO HEIGHT KHUSUS INTERNAL
     # ===============================
-    BAR_HEIGHT = 34
-    BASE_HEIGHT = 180
-    MAX_HEIGHT = 900
+    BAR_HEIGHT = 38          # tinggi per satker
+    BASE_HEIGHT = 260        # header + margin
+    MAX_HEIGHT = 1200
 
     auto_height = BASE_HEIGHT + (jumlah_satker * BAR_HEIGHT)
-    auto_height = min(max(auto_height, 320), MAX_HEIGHT)
+    auto_height = min(max(auto_height, 420), MAX_HEIGHT)
 
     fig = go.Figure()
 
     fig.add_bar(
-        x=df[column],
-        y=df["Satker"],
-        orientation="h",
+        x=df["Satker"],
+        y=df[column],
         marker=dict(
             color=df[column],
             colorscale="OrRd_r",
@@ -1586,26 +1585,27 @@ def create_internal_problem_chart_horizontal(
         ),
         text=df[column].round(2),
         textposition="outside",
-        hovertemplate="<b>%{y}</b><br>Nilai: %{x:.2f}<extra></extra>"
+        hovertemplate="<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>"
     )
 
-    fig.add_vline(
-        x=threshold,
+    fig.add_hline(
+        y=threshold,
         line_dash="dash",
         line_color="red",
         annotation_text=f"Target: {threshold}",
-        annotation_position="top"
+        annotation_position="top right"
     )
 
     fig.update_layout(
         title=title,
         height=auto_height,
-        margin=dict(l=260, r=20, t=80, b=40),
-        xaxis_title="Nilai IKPA",
-        yaxis_title="",
-        plot_bgcolor="rgba(0,0,0,0)",
-        paper_bgcolor="rgba(0,0,0,0)"
+        margin=dict(l=50, r=20, t=80, b=200),
+        xaxis_tickangle=-45,
+        showlegend=False
     )
+
+    if not show_yaxis:
+        fig.update_yaxes(showticklabels=False)
 
     return fig
 
@@ -3286,7 +3286,7 @@ def menu_ews_satker():
     col1, col2 = st.columns([2.7, 1.5])  # KIRI LEBIH LEBAR
 
     # ======================================================
-    # 🔴 KOLOM KIRI — Pengelolaan UP dan TUP
+    # KOLOM KIRI — Pengelolaan UP dan TUP
     # ======================================================
     with col1:
         st.markdown(
@@ -3306,13 +3306,13 @@ def menu_ews_satker():
         df_latest_up = df_latest.copy()
         df_latest_up["Satker"] = df_latest_up["Satker_Internal"]
 
-        fig_up = create_internal_problem_chart_horizontal(
+        fig_up = create_internal_problem_chart_vertical(
             df_latest_up,
             column='Pengelolaan UP dan TUP',
             threshold=100,
             title="Pengelolaan UP dan TUP Belum Optimal (< 100)",
-            comparison="less",
-            max_items=25
+            comparison='less',
+            show_yaxis=True
         )
 
         if fig_up:
@@ -3322,7 +3322,7 @@ def menu_ews_satker():
 
 
     # ======================================================
-    # 🔴 KOLOM KANAN — Capaian Output
+    # KOLOM KANAN — Capaian Output
     # ======================================================
     with col2:
         st.markdown(
@@ -3342,13 +3342,13 @@ def menu_ews_satker():
         df_latest_out = df_latest.copy()
         df_latest_out["Satker"] = df_latest_out["Satker_Internal"]
 
-        fig_output = create_internal_problem_chart_horizontal(
+        fig_output = create_internal_problem_chart_vertical(
             df_latest_out,
             column='Capaian Output',
             threshold=100,
             title="Capaian Output Belum Optimal (< 100)",
-            comparison="less",
-            max_items=15
+            comparison='less',
+            show_yaxis=False
         )
 
         if fig_output:
