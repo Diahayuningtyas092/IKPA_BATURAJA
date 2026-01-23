@@ -257,6 +257,23 @@ def fix_missing_month(df):
     df["Bulan"] = df["Bulan"].astype(str).str.upper()
     return df
 
+def fix_dipa_header(df_raw):
+    """
+    Adapter kecil:
+    - Cari baris header DIPA
+    - Jadikan header
+    - Kembalikan df siap masuk standardize_dipa()
+    """
+    for i in range(min(10, len(df_raw))):
+        row = df_raw.iloc[i].astype(str).str.lower()
+        if row.str.contains("satker").any() and row.str.contains("pagu").any():
+            df = df_raw.iloc[i+1:].copy()
+            df.columns = df_raw.iloc[i]
+            return df.reset_index(drop=True)
+
+    # fallback → biar standardize_dipa yang handle
+    return df_raw
+
 
 # -------------------------
 # standardize_dipa
@@ -4152,7 +4169,9 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
         # 2️⃣ Standarisasi format
         with st.spinner("Menstandarisasi format DIPA..."):
-            df_std = standardize_dipa(raw)
+            raw_fixed = fix_dipa_header(raw)
+            df_std = standardize_dipa(raw_fixed)
+
 
         if df_std.empty:
             return None, None, "❌ Data tidak berhasil distandarisasi atau tidak ada data valid"
