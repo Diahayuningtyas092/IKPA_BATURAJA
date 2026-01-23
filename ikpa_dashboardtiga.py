@@ -4179,13 +4179,13 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
             return None, None, "❌ Data tidak berhasil distandarisasi atau tidak ada data valid"
 
         # 3️⃣ Validasi Tahun
-        if "Tahun" not in df_std.columns or df_std["Tahun"].isna().all():
-            st.warning("⚠️ Tahun tidak terdeteksi, menggunakan tahun sekarang")
-            tahun_dipa = datetime.now().year
-            df_std["Tahun"] = tahun_dipa
+        if "Tahun" in df_std.columns and not df_std["Tahun"].isna().all():
+            tahun_dipa = int(df_std["Tahun"].dropna().min())
         else:
-            tahun_dipa = int(df_std["Tahun"].mode()[0])
-            df_std["Tahun"] = df_std["Tahun"].fillna(tahun_dipa)
+            # Ambil tahun dari Tanggal Posting Revisi (tahun anggaran = paling awal)
+            tahun_dipa = int(df_std["Tanggal Posting Revisi"].dropna().dt.year.min())
+            df_std["Tahun"] = tahun_dipa
+
 
         # 4️⃣ Validasi data
         st.write(f"**Validasi:** {len(df_std)} baris data valid terdeteksi")
