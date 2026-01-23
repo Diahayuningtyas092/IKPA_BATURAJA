@@ -1542,7 +1542,9 @@ def create_internal_problem_chart_vertical(
     threshold,
     title,
     comparison='less',
-    show_yaxis=True
+    show_yaxis=True,
+    show_colorbar=True,      # 🔹 kontrol colorbar
+    fixed_height=None        # 🔹 untuk samakan tinggi antar chart
 ):
     if df.empty or column not in df.columns:
         return None
@@ -1560,18 +1562,20 @@ def create_internal_problem_chart_vertical(
         return None
 
     df = df.sort_values(by=column, ascending=False)
-
     jumlah_satker = len(df)
 
     # ===============================
     # 🎯 AUTO HEIGHT KHUSUS INTERNAL
     # ===============================
-    BAR_HEIGHT = 38          # tinggi per satker
-    BASE_HEIGHT = 260        # header + margin
+    BAR_HEIGHT = 38
+    BASE_HEIGHT = 260
     MAX_HEIGHT = 1200
 
-    auto_height = BASE_HEIGHT + (jumlah_satker * BAR_HEIGHT)
-    auto_height = min(max(auto_height, 420), MAX_HEIGHT)
+    if fixed_height is not None:
+        height = fixed_height
+    else:
+        height = BASE_HEIGHT + (jumlah_satker * BAR_HEIGHT)
+        height = min(max(height, 420), MAX_HEIGHT)
 
     fig = go.Figure()
 
@@ -1581,7 +1585,11 @@ def create_internal_problem_chart_vertical(
         marker=dict(
             color=df[column],
             colorscale="OrRd_r",
-            showscale=True
+            showscale=show_colorbar,
+            colorbar=dict(
+                thickness=12,
+                len=0.85
+            ) if show_colorbar else None
         ),
         text=df[column].round(2),
         textposition="outside",
@@ -1598,7 +1606,7 @@ def create_internal_problem_chart_vertical(
 
     fig.update_layout(
         title=title,
-        height=auto_height,
+        height=height,
         margin=dict(l=50, r=20, t=80, b=200),
         xaxis_tickangle=-45,
         showlegend=False
@@ -1608,6 +1616,7 @@ def create_internal_problem_chart_vertical(
         fig.update_yaxes(showticklabels=False)
 
     return fig
+
 
 
 # ===============================================
@@ -3297,6 +3306,21 @@ def menu_ews_satker():
         col1, col2 = st.columns([3, 1.5])
     else:
         col1, col2 = st.columns([2.5, 1.5])
+        
+    # ===============================
+    # 🔧 SHARED HEIGHT (BIAR TIDAK TINGGI SEBELAH)
+    # ===============================
+    n_out = len(df_tmp[df_tmp['Capaian Output'] < 100])
+
+    BAR_HEIGHT = 38
+    BASE_HEIGHT = 260
+    MAX_HEIGHT = 1200
+
+    shared_height = min(
+        max(BASE_HEIGHT + max(n_up, n_out) * BAR_HEIGHT, 420),
+        MAX_HEIGHT
+    )
+
 
     # ======================================================
     # KOLOM KIRI — Pengelolaan UP dan TUP
@@ -3325,8 +3349,11 @@ def menu_ews_satker():
             threshold=100,
             title="Pengelolaan UP dan TUP Belum Optimal (< 100)",
             comparison='less',
-            show_yaxis=True
+            show_yaxis=True,
+            show_colorbar=True,
+            fixed_height=shared_height
         )
+
 
         if fig_up:
             st.plotly_chart(fig_up, use_container_width=True)
@@ -3361,8 +3388,11 @@ def menu_ews_satker():
             threshold=100,
             title="Capaian Output Belum Optimal (< 100)",
             comparison='less',
-            show_yaxis=False
+            show_yaxis=False,
+            show_colorbar=False,
+            fixed_height=shared_height
         )
+
 
         if fig_output:
             st.plotly_chart(fig_output, use_container_width=True)
