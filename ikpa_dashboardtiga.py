@@ -3316,10 +3316,16 @@ def menu_ews_satker():
     BASE_HEIGHT = 260
     MAX_HEIGHT = 1200
 
-    shared_height = min(
-        max(BASE_HEIGHT + max(n_up, n_out) * BAR_HEIGHT, 120),
-        MAX_HEIGHT
-    )
+    # ===============================
+    # 🔧 SOFT SHARED HEIGHT (NORMAL)
+    # ===============================
+    MAX_VISIBLE_ITEMS = 10  # ⬅️ kunci utama
+
+    effective_items = min(max(n_up, n_out), MAX_VISIBLE_ITEMS)
+
+    shared_height = BASE_HEIGHT + (effective_items * BAR_HEIGHT)
+    shared_height = min(max(shared_height, 380), 700)
+
 
 
     # ======================================================
