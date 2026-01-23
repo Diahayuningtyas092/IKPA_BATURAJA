@@ -3193,12 +3193,49 @@ def menu_ews_satker():
     # ===============================
     # 🔑 LABEL SATKER INTERNAL (PAKAI BA)
     # ===============================
-    df_latest = df_latest.copy()
-    df_latest["Satker_Internal"] = (
-        "[" + df_latest["Kode BA"].astype(str) + "] "
-        + df_latest["Uraian Satker-RINGKAS"].astype(str)
-        + " (" + df_latest["Kode Satker"].astype(str) + ")"
+    df_trend["Legend_Label"] = (
+        "[" + df_trend["Kode BA"] + "] "
+        + df_trend["Nama_Ringkas_Murni"]
+        + " (" + df_trend["Kode Satker"] + ")"
     )
+
+    
+    # ===============================
+    # 🔑 NORMALISASI KODE BA (WAJIB)
+    # ===============================
+    df_all["Kode BA"] = df_all["Kode BA"].apply(normalize_kode_ba)
+    df_latest["Kode BA"] = df_latest["Kode BA"].apply(normalize_kode_ba)
+    
+    # ===============================
+    # LOAD & MAP BA
+    # ===============================
+    df_ref_ba = load_reference_ba()
+    BA_MAP = get_ba_map(df_ref_ba)
+
+    st.markdown("### 🔎 Filter Kode BA")
+    ba_codes = sorted(df_all["Kode BA"].dropna().unique())
+    ba_options = ["SEMUA BA"] + ba_codes
+
+    def format_ba(code):
+        if code == "SEMUA BA":
+            return "SEMUA BA"
+        return f"{code} – {BA_MAP.get(code, 'Nama BA tidak ditemukan')}"
+
+    selected_ba_internal = st.multiselect(
+        "Pilih Kode BA",
+        options=ba_options,
+        default=["SEMUA BA"],
+        format_func=format_ba,
+        key="filter_ba_internal"
+    )
+
+    # ===============================
+    # TERAPKAN FILTER BA (GLOBAL INTERNAL)
+    # ===============================
+    if "SEMUA BA" not in selected_ba_internal:
+        df_all = df_all[df_all["Kode BA"].isin(selected_ba_internal)]
+        df_latest = df_latest[df_latest["Kode BA"].isin(selected_ba_internal)]
+
 
     st.markdown("---")
     st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
