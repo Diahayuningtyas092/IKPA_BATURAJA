@@ -4143,6 +4143,12 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
         if raw.empty:
             return None, None, "❌ File kosong"
+        
+        # 🔍 DEBUG STRUKTUR FILE (SEMENTARA)
+        st.write("🧱 DEBUG RAW SHAPE:", raw.shape)
+        st.write("🧱 DEBUG RAW PREVIEW (10 baris):")
+        st.dataframe(raw.head(10))
+
 
         # 2️⃣ Standarisasi format
         with st.spinner("Menstandarisasi format DIPA..."):
