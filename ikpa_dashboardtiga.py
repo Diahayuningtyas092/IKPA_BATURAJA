@@ -3317,7 +3317,7 @@ def menu_ews_satker():
     MAX_HEIGHT = 1200
 
     shared_height = min(
-        max(BASE_HEIGHT + max(n_up, n_out) * BAR_HEIGHT, 420),
+        max(BASE_HEIGHT + max(n_up, n_out) * BAR_HEIGHT, 120),
         MAX_HEIGHT
     )
 
