@@ -4772,7 +4772,17 @@ def page_admin():
         if uploaded_dipa_file is not None:
             if st.button("🔄 Proses Data DIPA", type="primary"):
                 with st.spinner("Memproses data DIPA..."):
+                    
+                    # ====================================================
+                    # RESET STATE DIPA (WAJIB, AMAN, KHUSUS DIPA)
+                    # ====================================================
+                    st.session_state.DATA_DIPA_by_year = {}
+                    st.session_state.ikpa_dipa_merged = False
+                    st.session_state["_just_uploaded_dipa"] = True
 
+                    # clear cache agar tidak pakai data lama
+                    st.cache_data.clear()
+                    
                     try:
                         # 1️⃣ Proses file raw DIPA → dibersihkan → revisi terbaru
                         df_clean, tahun_dipa, status_msg = process_uploaded_dipa(uploaded_dipa_file, save_file_to_github)
