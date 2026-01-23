@@ -1547,6 +1547,7 @@ def create_internal_problem_chart_horizontal(
     if df.empty or column not in df.columns:
         return None
 
+    df = df.copy()
     df[column] = pd.to_numeric(df[column], errors="coerce")
     df = df.dropna(subset=[column])
 
@@ -1559,6 +1560,18 @@ def create_internal_problem_chart_horizontal(
         return None
 
     df = df.head(max_items)
+
+    jumlah_satker = len(df)
+
+    # ===============================
+    # 🎯 AUTO HEIGHT KHUSUS INTERNAL
+    # ===============================
+    BAR_HEIGHT = 34
+    BASE_HEIGHT = 180
+    MAX_HEIGHT = 900
+
+    auto_height = BASE_HEIGHT + (jumlah_satker * BAR_HEIGHT)
+    auto_height = min(max(auto_height, 320), MAX_HEIGHT)
 
     fig = go.Figure()
 
@@ -1586,8 +1599,8 @@ def create_internal_problem_chart_horizontal(
 
     fig.update_layout(
         title=title,
-        height=max(520, len(df) * 30),
-        margin=dict(l=260, r=10, t=80, b=40),
+        height=auto_height,
+        margin=dict(l=260, r=20, t=80, b=40),
         xaxis_title="Nilai IKPA",
         yaxis_title="",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -3302,7 +3315,8 @@ def menu_ews_satker():
             'less',
             y_min=y_min_int,
             y_max=y_max_int,
-            show_yaxis=True
+            show_yaxis=True,
+            internal=True
         )
 
         if fig_up:
@@ -3344,7 +3358,8 @@ def menu_ews_satker():
             'less',
             y_min=y_min_int,
             y_max=y_max_int,
-            show_yaxis=False
+            show_yaxis=False,
+            internal=True
         )
 
         if fig_output:
