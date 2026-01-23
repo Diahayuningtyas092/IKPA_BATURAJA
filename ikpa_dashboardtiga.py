@@ -3202,7 +3202,8 @@ def menu_ews_satker():
     df_ref_ba = load_reference_ba()
     BA_MAP = get_ba_map(df_ref_ba)
 
-    st.markdown("### 🔎 Filter Kode BA")
+    st.markdown('<div class="filter-ba">', unsafe_allow_html=True)
+    st.markdown("🔎 Filter Kode BA")
     ba_codes = sorted(df_all["Kode BA"].dropna().unique())
     ba_options = ["SEMUA BA"] + ba_codes
 
@@ -3269,7 +3270,7 @@ def menu_ews_satker():
         )
 
     # 📊 Highlights Kinerja Satker yang Perlu Perhatian Khusus
-    col1, col2 = st.columns([2.7, 1.2])  #  KIRI LEBIH LEBAR
+    col1, col2 = st.columns([2.7, 1.5])  #  KIRI LEBIH LEBAR
 
     with col1:
         # ===============================
