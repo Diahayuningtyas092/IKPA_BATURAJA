@@ -3283,7 +3283,20 @@ def menu_ews_satker():
         )
 
     # 📊 Highlights Kinerja Satker yang Perlu Perhatian Khusus
-    col1, col2 = st.columns([2.7, 1.5])  # KIRI LEBIH LEBAR
+    # ===============================
+    # 🔧 ADAPTIVE LAYOUT (INTERNAL)
+    # ===============================
+    df_tmp = df_latest.copy()
+    df_tmp["Satker"] = df_tmp["Satker_Internal"]
+
+    n_up = len(df_tmp[df_tmp['Pengelolaan UP dan TUP'] < 100])
+
+    if n_up >= 15:
+        col1, col2 = st.columns([3.5, 1.2])
+    elif n_up >= 8:
+        col1, col2 = st.columns([3, 1.5])
+    else:
+        col1, col2 = st.columns([2.5, 1.5])
 
     # ======================================================
     # KOLOM KIRI — Pengelolaan UP dan TUP
