@@ -3189,16 +3189,6 @@ def menu_ews_satker():
     # Gunakan data periode terkini
     latest_period = sorted(st.session_state.data_storage.keys(), key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)), reverse=True)[0]
     df_latest = st.session_state.data_storage[latest_period]
-
-    # ===============================
-    # 🔑 LABEL SATKER INTERNAL (PAKAI BA)
-    # ===============================
-    df_trend["Legend_Label"] = (
-        "[" + df_trend["Kode BA"] + "] "
-        + df_trend["Nama_Ringkas_Murni"]
-        + " (" + df_trend["Kode Satker"] + ")"
-    )
-
     
     # ===============================
     # 🔑 NORMALISASI KODE BA (WAJIB)
@@ -3432,6 +3422,21 @@ def menu_ews_satker():
     # ======================================================
     df_trend = apply_reference_short_names(df_trend)
     df_trend["Kode Satker"] = df_trend["Kode Satker"].astype(str)
+    
+    # ===============================
+    # 🔑 PAKSA KODE BA ADA & STRING
+    # ===============================
+    if "Kode BA" not in df_trend.columns:
+        df_trend["Kode BA"] = ""
+
+    df_trend["Kode BA"] = df_trend["Kode BA"].apply(normalize_kode_ba)
+    
+    df_trend["Legend_Label"] = (
+        "[" + df_trend["Kode BA"] + "] "
+        + df_trend["Nama_Ringkas_Murni"]
+        + " (" + df_trend["Kode Satker"] + ")"
+    )
+
 
     # ======================================================
     # NAMA RINGKAS MURNI (HAPUS KODE JIKA ADA)
