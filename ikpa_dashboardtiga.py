@@ -1064,6 +1064,15 @@ def parse_dipa(df_raw):
     out = out.dropna(subset=["Kode Satker"])
     out["Kode Satker"] = out["Kode Satker"].astype(str).str.zfill(6)
 
+    # 🔒 PAKSA NORMALISASI KODE SATKER
+    out["Kode Satker"] = (
+        out["Kode Satker"]
+        .astype(str)
+        .str.extract(r"(\d{6})")[0]
+        .fillna("")
+        .str.zfill(6)
+    )
+
     return out
 
 
@@ -4826,52 +4835,52 @@ def page_admin():
             key="upload_dipa"
         )
 
-        # Tombol proses DIPA
         if uploaded_dipa_file is not None:
             if st.button("🔄 Proses Data DIPA", type="primary"):
                 with st.spinner("Memproses data DIPA..."):
-                    
-                    # ====================================================
-                    # RESET STATE DIPA (WAJIB, AMAN, KHUSUS DIPA)
-                    # ====================================================
+
+                    # RESET STATE
                     st.session_state.DATA_DIPA_by_year = {}
                     st.session_state.ikpa_dipa_merged = False
                     st.session_state["_just_uploaded_dipa"] = True
-
-                    # clear cache agar tidak pakai data lama
                     st.cache_data.clear()
-                    
+
                     try:
-                        # 1️⃣ Proses file raw DIPA → dibersihkan → revisi terbaru
-                        df_clean, tahun_dipa, status_msg = process_uploaded_dipa(uploaded_dipa_file, save_file_to_github)
+                        # ===============================
+                        # 1️⃣ PROSES DIPA
+                        # ===============================
+                        df_clean, tahun_dipa, status_msg = process_uploaded_dipa(
+                            uploaded_dipa_file,
+                            save_file_to_github
+                        )
 
                         if df_clean is None:
                             st.error(f"❌ Gagal memproses DIPA: {status_msg}")
                             st.stop()
 
-                        # 2️⃣ Pastikan kolom Kode Satker distandardkan
-                        df_clean["Kode Satker"] = df_clean["Kode Satker"].astype(str).apply(normalize_kode_satker)
-
-                        # 3️⃣ Simpan ke session_state per tahun
-                        if "DATA_DIPA_by_year" not in st.session_state:
-                            st.session_state.DATA_DIPA_by_year = {}
-
+                        # ===============================
+                        # 2️⃣ SIMPAN KE SESSION
+                        # ===============================
+                        df_clean["Kode Satker"] = df_clean["Kode Satker"].apply(normalize_kode_satker)
                         st.session_state.DATA_DIPA_by_year[int(tahun_dipa)] = df_clean.copy()
 
-                        # 4️⃣ Simpan ke GitHub dalam folder `DATA_DIPA`
+                        # ===============================
+                        # 3️⃣ SIMPAN KE GITHUB
+                        # ===============================
                         excel_bytes = io.BytesIO()
                         with pd.ExcelWriter(excel_bytes, engine='openpyxl') as writer:
                             df_clean.to_excel(writer, index=False, sheet_name=f"DIPA_{tahun_dipa}")
 
                         excel_bytes.seek(0)
-
                         save_file_to_github(
                             excel_bytes.getvalue(),
-                            f"DIPA_{tahun_dipa}.xlsx",  
+                            f"DIPA_{tahun_dipa}.xlsx",
                             folder="DATA_DIPA"
                         )
 
-                        # 5️⃣ Catat log
+                        # ===============================
+                        # 4️⃣ LOG
+                        # ===============================
                         st.session_state.activity_log.append({
                             "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             "Aksi": "Upload DIPA",
@@ -4879,12 +4888,21 @@ def page_admin():
                             "Status": "Sukses"
                         })
 
-                        # 6️⃣ Tampilkan hasil preview
-                        st.success(f"✅ Data DIPA tahun {tahun_dipa} berhasil diproses & disimpan.")
+                        # ===============================
+                        # 🔥 5️⃣ INI YANG WAJIB DITAMBAHKAN
+                        # ===============================
+                        merge_ikpa_dipa_auto()   # 🔑 PAKSA MERGE SEKARANG
+                        st.rerun()               # 🔑 PAKSA UI REFRESH
+
+                        # ===============================
+                        # 6️⃣ FEEDBACK
+                        # ===============================
+                        st.success(f"✅ Data DIPA tahun {tahun_dipa} berhasil diproses & digabung.")
                         st.dataframe(df_clean.head(10), use_container_width=True)
 
                     except Exception as e:
                         st.error(f"❌ Terjadi error saat memproses file DIPA: {e}")
+
 
         # ============================================================
         # SUBMENU: Upload Data Referensi
