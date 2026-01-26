@@ -1168,7 +1168,7 @@ def parse_dipa(df_raw):
     return out
 
 
-def handle_upload_dipa(uploaded_file, tahun):
+def handle_upload_dipa(uploaded_file):
     df_raw = pd.read_excel(uploaded_file, header=None)
 
     # =========================
@@ -4986,14 +4986,15 @@ def page_admin():
                         # ===============================
                         # 1️⃣ PROSES DIPA
                         # ===============================
-                        df_clean, tahun_dipa, status_msg = process_uploaded_dipa(
+                        df_clean = handle_upload_dipa(
                             uploaded_dipa_file,
-                            save_file_to_github
+                            tahun_dipa
                         )
 
-                        if df_clean is None:
-                            st.error(f"❌ Gagal memproses DIPA: {status_msg}")
+                        if df_clean is None or df_clean.empty:
+                            st.error("❌ DIPA gagal diproses")
                             st.stop()
+
 
                         # ===============================
                         # 2️⃣ SIMPAN KE SESSION
