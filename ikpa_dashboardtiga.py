@@ -2000,31 +2000,48 @@ def merge_ikpa_with_dipa(df):
 
 def classify_jenis_satker(df):
     """
-    Menentukan Jenis Satker sebagai IDENTITAS (FINAL)
+    Menentukan Jenis Satker sebagai IDENTITAS (AMAN UNTUK OMSPAN)
     """
     df = df.copy()
 
+    # pastikan numerik
     df["Total Pagu"] = pd.to_numeric(
         df.get("Total Pagu", 0),
         errors="coerce"
     ).fillna(0)
 
-    # 🚨 PAKSA RESET
+    # reset
     df["Jenis Satker"] = None
 
-    # kalau semua nol (harusnya sudah tidak)
-    if df["Total Pagu"].sum() == 0:
+    # 🔴 KASUS 1: semua nol / semua sama
+    if df["Total Pagu"].nunique() <= 1:
         df["Jenis Satker"] = "SEDANG"
         return df
 
+    # hitung quantile
     p40 = df["Total Pagu"].quantile(0.40)
     p70 = df["Total Pagu"].quantile(0.70)
 
-    df["Jenis Satker"] = pd.cut(
-        df["Total Pagu"],
-        bins=[-float("inf"), p40, p70, float("inf")],
-        labels=["KECIL", "SEDANG", "BESAR"]
-    )
+    # 🔴 KASUS 2: bin tidak valid
+    if p40 >= p70:
+        df["Jenis Satker"] = "SEDANG"
+        return df
+
+    # 🔴 KASUS 3: quantile nol (OMSPAN klasik)
+    if p70 == 0:
+        df["Jenis Satker"] = "SEDANG"
+        return df
+
+    # 🟢 BARU BOLEH pd.cut
+    try:
+        df["Jenis Satker"] = pd.cut(
+            df["Total Pagu"],
+            bins=[-float("inf"), p40, p70, float("inf")],
+            labels=["KECIL", "SEDANG", "BESAR"]
+        )
+    except ValueError:
+        # fallback terakhir
+        df["Jenis Satker"] = "SEDANG"
 
     df["Jenis Satker"] = df["Jenis Satker"].astype(str)
 
