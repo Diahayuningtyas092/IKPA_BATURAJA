@@ -1138,18 +1138,16 @@ def handle_upload_dipa(uploaded_file, tahun):
     # 🔀 CABANG LOGIKA
     # =========================
     if is_omspan:
-        # 🔴 OMSPAN → JALUR KHUSUS
         hasil = process_dipa_omspan(df_dipa)
         st.session_state.DATA_DIPA_OMSPAN[int(tahun)] = hasil
 
-        st.success(f"✅ DIPA OMSPAN {tahun} diproses (mode nasional)")
+        # 🔥 GABUNGKAN OMSPAN KE IKPA
+        for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
+            df_merged = merge_omspan_to_ikpa(df_ikpa, hasil["raw"])
+            st.session_state.data_storage[(bulan, tahun)] = df_merged
 
-    else:
-        # 🟢 NON-OMSPAN → JALUR LAMA
-        st.session_state.DATA_DIPA_by_year[int(tahun)] = df_dipa
-        st.session_state.ikpa_dipa_merged = False
+        st.success("✅ DIPA OMSPAN digabung ke IKPA (metode proporsional)")
 
-        st.success(f"✅ DIPA {tahun} berhasil diproses & siap merge IKPA")
 
 
 # ============================================================
@@ -4405,6 +4403,34 @@ def merge_ikpa_dipa_auto():
         st.session_state.data_storage[(bulan, tahun)] = df_merged
 
     st.session_state.ikpa_dipa_merged = True
+    
+    
+
+def merge_omspan_to_ikpa(df_ikpa, dipa_omspan_raw):
+    """
+    Gabungkan DIPA OMSPAN ke IKPA dengan metode proporsional
+    """
+    df = df_ikpa.copy()
+
+    total_pagu_omspan = dipa_omspan_raw["Total Pagu"].sum()
+
+    if total_pagu_omspan <= 0:
+        df["Total Pagu"] = 0
+        return df
+
+    # jumlah satker IKPA
+    n_satker = len(df)
+
+    # BAGI RATA
+    pagu_per_satker = total_pagu_omspan / n_satker
+
+    df["Total Pagu"] = pagu_per_satker
+
+    # klasifikasi ulang
+    df = classify_jenis_satker(df)
+
+    return df
+
 
 
 # ============================================================
