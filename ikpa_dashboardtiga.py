@@ -5480,16 +5480,7 @@ def page_admin():
                 ).drop_duplicates(subset="Kode Satker", keep="first")
 
             # Klasifikasi Satker
-            if "Total Pagu" in df.columns:
-                p40 = df["Total Pagu"].quantile(0.40)
-                p70 = df["Total Pagu"].quantile(0.70)
-
-                df["Jenis Satker"] = pd.cut(
-                    df["Total Pagu"],
-                    bins=[-float("inf"), p40, p70, float("inf")],
-                    labels=["Satker Kecil", "Satker Sedang", "Satker Besar"]
-                )
-
+            df = classify_jenis_satker(df)
 
             # Preview
             with st.expander("Preview Data"):
