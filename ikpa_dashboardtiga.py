@@ -4605,7 +4605,7 @@ def page_admin():
 
                         except Exception as e:
                             st.error(f"❌ Error {uploaded_file.name}: {e}")
-
+                    
                     if need_merge and st.session_state.DATA_DIPA_by_year:
                         with st.spinner("🔄 Menggabungkan IKPA & DIPA..."):
                             merge_ikpa_dipa_auto()
@@ -4890,6 +4890,38 @@ def page_admin():
                             "Periode": f"Tahun {tahun_dipa}",
                             "Status": "Sukses"
                         })
+
+                        # ===============================
+                        # 🔎 CEK IRISAN SATKER IKPA & DIPA
+                        # ===============================
+                        ikpa_satker = set()
+                        dipa_satker = set()
+
+                        if "data_storage" in st.session_state:
+                            for (_, _), df in st.session_state.data_storage.items():
+                                ikpa_satker |= set(
+                                    df["Kode Satker"]
+                                    .dropna()
+                                    .astype(str)
+                                    .str.extract(r"(\d{6})")[0]
+                                    .dropna()
+                                    .str.zfill(6)
+                                )
+
+                        if "DATA_DIPA_by_year" in st.session_state:
+                            for _, df in st.session_state.DATA_DIPA_by_year.items():
+                                dipa_satker |= set(
+                                    df["Kode Satker"]
+                                    .dropna()
+                                    .astype(str)
+                                    .str.extract(r"(\d{6})")[0]
+                                    .dropna()
+                                    .str.zfill(6)
+                                )
+
+                        st.write("🔎 Contoh IKPA Satker:", list(ikpa_satker)[:10])
+                        st.write("🔎 Contoh DIPA Satker:", list(dipa_satker)[:10])
+                        st.write("🔥 JUMLAH SATKER YANG SAMA:", len(ikpa_satker & dipa_satker))
 
                         # ===============================
                         # 🔥 5️⃣ INI YANG WAJIB DITAMBAHKAN
