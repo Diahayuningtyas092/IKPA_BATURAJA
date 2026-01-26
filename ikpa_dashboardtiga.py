@@ -5431,15 +5431,13 @@ def page_admin():
         # ===========================
         # Submenu Download Data DIPA
         # ===========================
+
         st.markdown("### 📥 Download Data DIPA")
 
         if not st.session_state.get("DATA_DIPA_by_year"):
             st.info("ℹ️ Belum ada data DIPA.")
         else:
-            available_years = sorted(
-                st.session_state.DATA_DIPA_by_year.keys(),
-                reverse=True
-            )
+            available_years = sorted(st.session_state.DATA_DIPA_by_year.keys(), reverse=True)
 
             year_to_download = st.selectbox(
                 "Pilih tahun DIPA",
@@ -5448,7 +5446,7 @@ def page_admin():
                 key="download_dipa_year"
             )
 
-            # Ambil data FINAL dari session (SUDAH DIFINALISASI SAAT UPLOAD)
+            # Ambil data yang sudah bersih dari load()
             df = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
 
             # Kolom yang ingin ditampilkan
@@ -5473,22 +5471,24 @@ def page_admin():
             # Filter kolom yang ada
             df = df[[c for c in desired_columns if c in df.columns]]
 
-            # Ambil revisi terbaru per satker
+            # Ambil revisi terbaru
             if "Kode Satker" in df.columns and "Tanggal Posting Revisi" in df.columns:
-                df["Tanggal Posting Revisi"] = pd.to_datetime(
-                    df["Tanggal Posting Revisi"],
-                    errors="coerce"
-                )
-                df = (
-                    df.sort_values(
-                        by=["Kode Satker", "Tanggal Posting Revisi"],
-                        ascending=[True, False]
-                    )
-                    .drop_duplicates(subset="Kode Satker", keep="first")
-                )
+                df["Tanggal Posting Revisi"] = pd.to_datetime(df["Tanggal Posting Revisi"], errors="coerce")
+                df = df.sort_values(
+                    by=["Kode Satker", "Tanggal Posting Revisi"],
+                    ascending=[True, False]
+                ).drop_duplicates(subset="Kode Satker", keep="first")
 
-            # ⛔ JANGAN klasifikasi ulang di sini
-            # df = classify_jenis_satker(df)
+            # Klasifikasi Satker
+            if "Total Pagu" in df.columns:
+                p40 = df["Total Pagu"].quantile(0.40)
+                p70 = df["Total Pagu"].quantile(0.70)
+
+                df["Jenis Satker"] = pd.cut(
+                    df["Total Pagu"],
+                    bins=[-float("inf"), p40, p70, float("inf")],
+                    labels=["Satker Kecil", "Satker Sedang", "Satker Besar"]
+                )
 
             # Preview
             with st.expander("Preview Data"):
@@ -5497,11 +5497,7 @@ def page_admin():
             # Export Excel
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                df.to_excel(
-                    writer,
-                    index=False,
-                    sheet_name=f"DIPA_{year_to_download}"
-                )
+                df.to_excel(writer, index=False, sheet_name=f"DIPA_{year_to_download}")
 
             output.seek(0)
 
