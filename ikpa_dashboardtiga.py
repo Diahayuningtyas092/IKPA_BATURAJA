@@ -18,6 +18,14 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid import JsCode
 import time
 
+
+# KONTRAK DATA DIPA (SATU-SATUNYA)
+DIPA_SCHEMA = {
+    "kode_satker": "Kode Satker",
+    "anggaran": "Total Pagu",
+    "tahun": "Tahun"
+}
+
 def render_table_pin_satker(df):
     # ==================================
     # HELPER: HITUNG TINGGI GRID DINAMIS
@@ -523,6 +531,29 @@ def finalize_dipa_omspan(df_dipa):
 
     return df
 
+def normalize_dipa_schema(df):
+    df = df.copy()
+
+    # pastikan kolom wajib ada
+    for key, col in DIPA_SCHEMA.items():
+        if col not in df.columns:
+            df[col] = 0 if key == "anggaran" else None
+
+    # normalisasi anggaran
+    df[DIPA_SCHEMA["anggaran"]] = pd.to_numeric(
+        df[DIPA_SCHEMA["anggaran"]], errors="coerce"
+    ).fillna(0)
+
+    # normalisasi kode satker
+    df[DIPA_SCHEMA["kode_satker"]] = (
+        df[DIPA_SCHEMA["kode_satker"]]
+        .astype(str)
+        .str.extract(r"(\d{6})")[0]
+        .fillna("")
+        .str.zfill(6)
+    )
+
+    return df
 
 
 #Normalisasi kode BA
@@ -1981,41 +2012,26 @@ def create_satker_column(df):
     return df
 
 
-def merge_ikpa_with_dipa(df):
-    """
-    Merge IKPA Satker dengan DIPA berdasarkan Kode Satker + Tahun
-    """
-    df = df.copy()
-
-    if "Kode Satker" not in df.columns or "Tahun" not in df.columns:
-        df["Total Pagu"] = 0
-        return df
+def merge_ikpa_with_dipa(df_ikpa):
+    df = df_ikpa.copy()
 
     tahun = int(df["Tahun"].iloc[0])
+    df_dipa = st.session_state.DATA_DIPA_by_year.get(tahun)
 
-    dipa_map = st.session_state.get("DATA_DIPA_by_year", {})
-    df_dipa = dipa_map.get(tahun)
-
-    if df_dipa is None or df_dipa.empty:
+    if df_dipa is None:
         df["Total Pagu"] = 0
         return df
 
-    df_dipa_small = (
+    dipa_map = (
         df_dipa[["Kode Satker", "Total Pagu"]]
         .drop_duplicates("Kode Satker")
     )
 
-    df = df.merge(
-        df_dipa_small,
-        on="Kode Satker",
-        how="left"
-    )
-
-    df["Total Pagu"] = pd.to_numeric(
-        df["Total Pagu"], errors="coerce"
-    ).fillna(0)
+    df = df.merge(dipa_map, on="Kode Satker", how="left")
+    df["Total Pagu"] = df["Total Pagu"].fillna(0)
 
     return df
+
 
 
 def classify_jenis_satker(df):
