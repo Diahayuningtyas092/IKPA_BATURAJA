@@ -1255,6 +1255,26 @@ def handle_upload_dipa(uploaded_file):
 
     # PAKSA MERGE IKPA ULANG
     st.session_state.ikpa_dipa_merged = False
+    
+    # =========================================
+    # 🔥 AUTO-MERGE IKPA ← DIPA (TERMASUK OMSPAN)
+    # =========================================
+    if "data_storage" in st.session_state:
+        for key, df_ikpa in st.session_state.data_storage.items():
+            try:
+                # merge ulang pagu
+                df_new = merge_ikpa_with_dipa(df_ikpa)
+
+                # klasifikasi ulang jenis satker
+                df_new = classify_jenis_satker(df_new)
+
+                # simpan kembali
+                st.session_state.data_storage[key] = df_new
+            except Exception as e:
+                pass
+
+        st.success("🔄 IKPA otomatis diperbarui menggunakan DIPA terbaru")
+
 
     return df_final
 
