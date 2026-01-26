@@ -5428,29 +5428,6 @@ def page_admin():
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
-        # ===============================
-        # SAFETY GUARD SEBELUM pd.cut
-        # ===============================
-        df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0)
-
-        # kondisi aman
-        unique_pagu = df["Total Pagu"].nunique()
-        p40 = df["Total Pagu"].quantile(0.40)
-        p70 = df["Total Pagu"].quantile(0.70)
-
-        if (
-            unique_pagu <= 1      # semua sama / semua nol
-            or p70 == 0           # OMSPAN klasik
-            or p40 >= p70         # bin tidak valid
-        ):
-            df["Jenis Satker"] = "SEDANG"
-        else:
-            df["Jenis Satker"] = pd.cut(
-                df["Total Pagu"],
-                bins=[-float("inf"), p40, p70, float("inf")],
-                labels=["KECIL", "SEDANG", "BESAR"]
-            ).astype(str)
-
     
         # ===========================
         # Submenu Download Data DIPA
@@ -5472,6 +5449,30 @@ def page_admin():
 
             # Ambil data yang sudah bersih dari load()
             df = st.session_state.DATA_DIPA_by_year[year_to_download].copy()
+            
+            # ===============================
+            # SAFETY GUARD SEBELUM pd.cut
+            # ===============================
+            df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0)
+
+            # kondisi aman
+            unique_pagu = df["Total Pagu"].nunique()
+            p40 = df["Total Pagu"].quantile(0.40)
+            p70 = df["Total Pagu"].quantile(0.70)
+
+            if (
+                unique_pagu <= 1      # semua sama / semua nol
+                or p70 == 0           # OMSPAN klasik
+                or p40 >= p70         # bin tidak valid
+            ):
+                df["Jenis Satker"] = "SEDANG"
+            else:
+                df["Jenis Satker"] = pd.cut(
+                    df["Total Pagu"],
+                    bins=[-float("inf"), p40, p70, float("inf")],
+                    labels=["KECIL", "SEDANG", "BESAR"]
+                ).astype(str)
+
 
             # Kolom yang ingin ditampilkan
             desired_columns = [
