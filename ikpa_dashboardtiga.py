@@ -1200,7 +1200,8 @@ def handle_upload_dipa(uploaded_file):
     df_dipa = parse_dipa(df_raw)
 
     if df_dipa.empty:
-        return None
+        raise ValueError("Data DIPA kosong setelah parsing")
+
 
     # =========================
     # TENTUKAN TAHUN DARI DATA
