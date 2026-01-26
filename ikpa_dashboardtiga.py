@@ -1067,6 +1067,42 @@ def parse_dipa(df_raw):
     return out
 
 
+def handle_upload_dipa(uploaded_file, tahun):
+    df_raw = pd.read_excel(uploaded_file, header=None)
+
+    preview = (
+        df_raw.head(10)
+        .astype(str)
+        .apply(lambda x: " ".join(x), axis=1)
+        .str.upper()
+        .str.cat(sep=" ")
+    )
+
+    is_omspan = (
+        "OMSPAN" in preview
+        or "POSTING REVISI" in preview
+        or "DIGITAL STAMP" in preview
+    )
+
+    # 🔑 FIX: OMSPAN DISIAPKAN, TAPI TETAP MASUK parse_dipa
+    if is_omspan:
+        df_raw = fix_dipa_header(df_raw)
+        source = "OMSPAN"
+    else:
+        source = "NON-OMSPAN"
+
+    df_dipa = parse_dipa(df_raw)   # 🔥 SATU PINTU
+
+    df_dipa["Tahun"] = int(tahun)
+    df_dipa["Sumber DIPA"] = source
+
+    st.session_state.DATA_DIPA_by_year[int(tahun)] = df_dipa
+
+    st.success(f"✅ DIPA {tahun} ({source}) berhasil diproses")
+
+    st.session_state.ikpa_dipa_merged = False
+
+
 # ============================================================
 # FUNGSI HELPER: Load Data DIPA dari GitHub
 # ============================================================
@@ -4162,11 +4198,6 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
         if raw.empty:
             return None, None, "❌ File kosong"
-        
-        # 🔍 DEBUG STRUKTUR FILE (SEMENTARA)
-        st.write("🧱 DEBUG RAW SHAPE:", raw.shape)
-        st.write("🧱 DEBUG RAW PREVIEW (10 baris):")
-        st.dataframe(raw.head(10))
 
 
         # 2️⃣ Standarisasi format
