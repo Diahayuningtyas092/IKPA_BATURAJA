@@ -4332,17 +4332,23 @@ def merge_ikpa_dipa_auto():
         df_final = df_ikpa.copy()
         dipa_latest = get_latest_dipa(dipa)
 
-        # NORMALISASI KODE SATKER
-        df_final["Kode Satker"] = df_final["Kode Satker"].astype(str).str.zfill(6)
-        dipa_latest["Kode Satker"] = dipa_latest["Kode Satker"].astype(str).str.zfill(6)
+        # 🔑 NORMALISASI KODE SATKER (INI KUNCI)
+        df_final["Kode Satker"] = (
+            df_final["Kode Satker"].astype(str)
+            .str.extract(r"(\d{6})")[0]
+            .fillna("").str.zfill(6)
+        )
 
-        # 🔴 AMBIL TOTAL PAGU SAJA (TANPA JENIS SATKER)
+        dipa_latest["Kode Satker"] = (
+            dipa_latest["Kode Satker"].astype(str)
+            .str.extract(r"(\d{6})")[0]
+            .fillna("").str.zfill(6)
+        )
+
         dipa_selected = dipa_latest[['Kode Satker', 'Total Pagu']]
 
-        # HAPUS TOTAL PAGU & JENIS SATKER LAMA
         df_final = df_final.drop(columns=['Total Pagu', 'Jenis Satker'], errors='ignore')
 
-        # MERGE
         df_merged = pd.merge(
             df_final,
             dipa_selected,
@@ -4350,13 +4356,10 @@ def merge_ikpa_dipa_auto():
             how='left'
         )
 
-        # AMANKAN TOTAL PAGU
         df_merged["Total Pagu"] = pd.to_numeric(
-            df_merged["Total Pagu"],
-            errors="coerce"
+            df_merged["Total Pagu"], errors="coerce"
         ).fillna(0)
 
-        # 🔑 KLASIFIKASI SETELAH MERGE (INI YANG HILANG)
         df_merged = classify_jenis_satker(df_merged)
 
         st.session_state.data_storage[(bulan, tahun)] = df_merged
