@@ -258,6 +258,18 @@ def clean_invalid_satker_rows(df):
 
     return df.reset_index(drop=True)
 
+def detect_tahun_anggaran_omspan(df_raw):
+    """
+    Mendeteksi Tahun Anggaran (TA) dari header OMSPAN
+    """
+    for i in range(min(10, len(df_raw))):
+        row_text = " ".join(df_raw.iloc[i].astype(str)).upper()
+        # cari pola TA 2022 / TAHUN ANGGARAN 2022
+        match = re.search(r"(TA|TAHUN ANGGARAN)\s*(20\d{2})", row_text)
+        if match:
+            return int(match.group(2))
+    return None
+
 
 def fix_missing_month(df):
     df = df.copy()
@@ -1227,7 +1239,7 @@ def handle_upload_dipa(uploaded_file):
     # DETEKSI OMSPAN
     # =========================
     preview = (
-        df_raw.head(10)
+        df_raw.head(15)
         .astype(str)
         .apply(lambda x: " ".join(x), axis=1)
         .str.upper()
@@ -1249,22 +1261,30 @@ def handle_upload_dipa(uploaded_file):
     df_dipa = parse_dipa(df_raw)
 
     if df_dipa.empty:
-        raise ValueError("Data DIPA kosong setelah parsing")
-
+        st.error("❌ Data DIPA kosong setelah parsing")
+        return None
 
     # =========================
-    # TENTUKAN TAHUN DARI DATA
+    # TENTUKAN TAHUN (FIX UTAMA)
     # =========================
-    if "Tahun" in df_dipa.columns and not df_dipa["Tahun"].isna().all():
-        tahun = int(df_dipa["Tahun"].dropna().min())
+    if is_omspan:
+        tahun = detect_tahun_anggaran_omspan(df_raw)
+
+        if tahun is None:
+            st.error("❌ Tahun Anggaran OMSPAN tidak terdeteksi (TA xxxx).")
+            return None
     else:
-        tahun = int(
-            pd.to_datetime(
-                df_dipa["Tanggal Posting Revisi"],
-                errors="coerce"
-            ).dt.year.min()
-        )
-        df_dipa["Tahun"] = tahun
+        if "Tahun" in df_dipa.columns and not df_dipa["Tahun"].isna().all():
+            tahun = int(df_dipa["Tahun"].dropna().min())
+        else:
+            tahun = int(
+                pd.to_datetime(
+                    df_dipa["Tanggal Posting Revisi"],
+                    errors="coerce"
+                ).dt.year.min()
+            )
+
+    df_dipa["Tahun"] = int(tahun)
 
     # =========================
     # FINALISASI OMSPAN JIKA PERLU
@@ -1272,7 +1292,7 @@ def handle_upload_dipa(uploaded_file):
     if is_omspan:
         df_final = finalize_dipa_omspan(df_dipa)
         st.success(
-            f"✅ DIPA OMSPAN {tahun} berhasil difinalisasi "
+            f"✅ DIPA OMSPAN TA {tahun} berhasil difinalisasi "
             "dan disamakan dengan format DIPA 2025"
         )
     else:
@@ -1280,39 +1300,33 @@ def handle_upload_dipa(uploaded_file):
         st.success(f"✅ DIPA {tahun} berhasil diproses")
 
     # =========================
-    # SIMPAN KE SESSION (SATU-SATUNYA TEMPAT)
+    # SIMPAN KE SESSION
     # =========================
     st.session_state.DATA_DIPA_by_year[int(tahun)] = df_final.copy()
 
     # PAKSA MERGE IKPA ULANG
     st.session_state.ikpa_dipa_merged = False
-    
+
     # =========================================
-    # 🔥 AUTO-MERGE IKPA ← DIPA (TERMASUK OMSPAN)
+    # 🔥 AUTO-MERGE IKPA ← DIPA
     # =========================================
     if "data_storage" in st.session_state:
         for key, df_ikpa in st.session_state.data_storage.items():
             try:
-                # merge ulang pagu
                 df_new = merge_ikpa_with_dipa(df_ikpa)
-
-                # klasifikasi ulang jenis satker
                 df_new = classify_jenis_satker(df_new)
-
-                # simpan kembali
                 st.session_state.data_storage[key] = df_new
-            except Exception as e:
+            except Exception:
                 pass
 
         st.success("🔄 IKPA otomatis diperbarui menggunakan DIPA terbaru")
 
     # =========================================
-    # 🔒 LOCK STATE SETELAH UPLOAD OMSPAN
+    # 🔒 LOCK STATE SETELAH UPLOAD
     # =========================================
     st.session_state["_dipa_uploaded_once"] = True
     st.session_state["_last_dipa_year"] = int(tahun)
 
-    
     return df_final
 
 
