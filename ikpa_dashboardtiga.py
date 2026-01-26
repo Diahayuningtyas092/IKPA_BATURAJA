@@ -5786,6 +5786,17 @@ def main():
             merge_ikpa_dipa_auto()
             
     # ============================================================
+    # 🔎 DEBUG STATE (SEMENTARA)
+    # ============================================================
+    st.write("=== DEBUG STATE ===")
+    st.write("uploaded_once:", st.session_state.get("_dipa_uploaded_once"))
+    st.write("DATA_DIPA_by_year keys:", st.session_state.DATA_DIPA_by_year.keys())
+
+    for y, df in st.session_state.DATA_DIPA_by_year.items():
+        st.write(f"Tahun {y}, Total Pagu sum:", df["Total Pagu"].sum())
+
+            
+    # ============================================================
     # NOTIF GLOBAL STATUS DATA (MUNCUL SAAT APP DIBUKA)
     # ============================================================
     if st.session_state.get("ikpa_dipa_merged", False):
