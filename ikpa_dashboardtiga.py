@@ -436,30 +436,93 @@ def standardize_dipa(df_raw):
 
     return out
 
-def process_dipa_omspan(df_dipa):
+
+def finalize_dipa_omspan(df_dipa):
     """
-    Proses khusus DIPA OMSPAN (NASIONAL)
-    - Tidak merge ke IKPA
-    - Untuk dashboard & download nasional
+    Mengubah DIPA OMSPAN mentah menjadi
+    FORMAT DIPA FINAL (seperti DIPA 2025)
     """
+
     df = df_dipa.copy()
 
-    # pastikan tipe data
-    df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0)
-
-    # agregasi nasional per K/L
-    summary_kl = (
-        df.groupby("Kementerian", dropna=False)["Total Pagu"]
-        .sum()
-        .reset_index()
-        .sort_values("Total Pagu", ascending=False)
+    # ===============================
+    # 1️⃣ NORMALISASI KODE SATKER
+    # ===============================
+    df["Kode Satker"] = (
+        df["Kode Satker"]
+        .astype(str)
+        .str.extract(r"(\d{6})")[0]
+        .fillna("")
+        .str.zfill(6)
     )
 
-    return {
-        "raw": df,
-        "summary_kl": summary_kl,
-        "total_pagu": df["Total Pagu"].sum()
-    }
+    # ===============================
+    # 2️⃣ PASTIKAN TOTAL PAGU NUMERIK
+    # ===============================
+    df["Total Pagu"] = pd.to_numeric(
+        df["Total Pagu"], errors="coerce"
+    ).fillna(0)
+
+    # ===============================
+    # 3️⃣ AMBIL REVISI TERAKHIR PER SATKER
+    # ===============================
+    if "Tanggal Posting Revisi" in df.columns:
+        df["Tanggal Posting Revisi"] = pd.to_datetime(
+            df["Tanggal Posting Revisi"], errors="coerce"
+        )
+        df = (
+            df.sort_values(
+                ["Kode Satker", "Tanggal Posting Revisi"],
+                ascending=[True, False]
+            )
+            .drop_duplicates(subset="Kode Satker", keep="first")
+        )
+
+    # ===============================
+    # 4️⃣ PASTIKAN KOLOM WAJIB DIPA FINAL
+    # ===============================
+    kolom_wajib = [
+        "Kode Satker", "Satker", "Kementerian",
+        "No Dipa", "Tanggal Dipa",
+        "Tanggal Posting Revisi",
+        "Revisi ke-", "Jenis Revisi",
+        "Kode Status History",
+        "Total Pagu", "Tahun"
+    ]
+
+    for col in kolom_wajib:
+        if col not in df.columns:
+            df[col] = None
+
+    # ===============================
+    # 5️⃣ ISI NAMA SATKER JIKA KOSONG
+    # ===============================
+    df["Satker"] = df["Satker"].fillna(
+        "Satker " + df["Kode Satker"]
+    )
+
+    # ===============================
+    # 6️⃣ KLASIFIKASI JENIS SATKER
+    # ===============================
+    df = classify_jenis_satker(df)
+
+    # ===============================
+    # 7️⃣ URUTKAN KOLOM (SAMA SEPERTI 2025)
+    # ===============================
+    urutan_2025 = [
+        "Kode Satker", "Satker", "Jenis Satker",
+        "Kementerian",
+        "No Dipa", "Tanggal Dipa",
+        "Tanggal Posting Revisi",
+        "Revisi ke-", "Jenis Revisi",
+        "Kode Status History",
+        "Total Pagu", "Tahun"
+    ]
+
+    df = df[urutan_2025]
+
+    return df
+
 
 
 #Normalisasi kode BA
@@ -1138,15 +1201,20 @@ def handle_upload_dipa(uploaded_file, tahun):
     # 🔀 CABANG LOGIKA
     # =========================
     if is_omspan:
-        hasil = process_dipa_omspan(df_dipa)
-        st.session_state.DATA_DIPA_OMSPAN[int(tahun)] = hasil
+        df_final = finalize_dipa_omspan(df_dipa)
 
-        # 🔥 GABUNGKAN OMSPAN KE IKPA
-        for (bulan, tahun), df_ikpa in st.session_state.data_storage.items():
-            df_merged = merge_omspan_to_ikpa(df_ikpa, hasil["raw"])
-            st.session_state.data_storage[(bulan, tahun)] = df_merged
+        # SIMPAN SEPERTI DIPA BIASA
+        st.session_state.DATA_DIPA_by_year[int(tahun)] = df_final.copy()
 
-        st.success("✅ DIPA OMSPAN digabung ke IKPA (metode proporsional)")
+        # SEKARANG BOLEH DIGABUNG KE IKPA
+        st.session_state.ikpa_dipa_merged = False
+        merge_ikpa_dipa_auto()
+
+        st.success(
+            f"✅ DIPA OMSPAN {tahun} berhasil difinalisasi "
+            "dan disamakan dengan format DIPA 2025"
+        )
+
 
 
 
