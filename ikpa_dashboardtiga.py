@@ -5036,7 +5036,10 @@ def page_admin():
                         st.rerun()
 
                     except Exception as e:
-                        st.error(f"❌ Terjadi error saat memproses file DIPA: {e}")
+                        import traceback
+                        st.error("❌ Terjadi error saat memproses file DIPA")
+                        st.code(traceback.format_exc())
+
 
 
         # ============================================================
