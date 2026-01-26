@@ -210,6 +210,9 @@ if "data_storage_kppn" not in st.session_state:
 # Storage DIPA per tahun
 if "DATA_DIPA_by_year" not in st.session_state:
     st.session_state.DATA_DIPA_by_year = {}
+    
+if "DATA_DIPA_OMSPAN" not in st.session_state:
+    st.session_state.DATA_DIPA_OMSPAN = {}
 
 # Flag merge IKPA–DIPA
 if "ikpa_dipa_merged" not in st.session_state:
@@ -432,6 +435,32 @@ def standardize_dipa(df_raw):
     out = out[existing_cols]
 
     return out
+
+def process_dipa_omspan(df_dipa):
+    """
+    Proses khusus DIPA OMSPAN (NASIONAL)
+    - Tidak merge ke IKPA
+    - Untuk dashboard & download nasional
+    """
+    df = df_dipa.copy()
+
+    # pastikan tipe data
+    df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce").fillna(0)
+
+    # agregasi nasional per K/L
+    summary_kl = (
+        df.groupby("Kementerian", dropna=False)["Total Pagu"]
+        .sum()
+        .reset_index()
+        .sort_values("Total Pagu", ascending=False)
+    )
+
+    return {
+        "raw": df,
+        "summary_kl": summary_kl,
+        "total_pagu": df["Total Pagu"].sum()
+    }
+
 
 #Normalisasi kode BA
 def normalize_kode_ba(x):
@@ -1079,6 +1108,9 @@ def parse_dipa(df_raw):
 def handle_upload_dipa(uploaded_file, tahun):
     df_raw = pd.read_excel(uploaded_file, header=None)
 
+    # =========================
+    # DETEKSI OMSPAN
+    # =========================
     preview = (
         df_raw.head(10)
         .astype(str)
@@ -1093,23 +1125,31 @@ def handle_upload_dipa(uploaded_file, tahun):
         or "DIGITAL STAMP" in preview
     )
 
-    # 🔑 FIX: OMSPAN DISIAPKAN, TAPI TETAP MASUK parse_dipa
+    # =========================
+    # STANDARDISASI
+    # =========================
     if is_omspan:
         df_raw = fix_dipa_header(df_raw)
-        source = "OMSPAN"
-    else:
-        source = "NON-OMSPAN"
 
-    df_dipa = parse_dipa(df_raw)   # 🔥 SATU PINTU
-
+    df_dipa = parse_dipa(df_raw)
     df_dipa["Tahun"] = int(tahun)
-    df_dipa["Sumber DIPA"] = source
 
-    st.session_state.DATA_DIPA_by_year[int(tahun)] = df_dipa
+    # =========================
+    # 🔀 CABANG LOGIKA
+    # =========================
+    if is_omspan:
+        # 🔴 OMSPAN → JALUR KHUSUS
+        hasil = process_dipa_omspan(df_dipa)
+        st.session_state.DATA_DIPA_OMSPAN[int(tahun)] = hasil
 
-    st.success(f"✅ DIPA {tahun} ({source}) berhasil diproses")
+        st.success(f"✅ DIPA OMSPAN {tahun} diproses (mode nasional)")
 
-    st.session_state.ikpa_dipa_merged = False
+    else:
+        # 🟢 NON-OMSPAN → JALUR LAMA
+        st.session_state.DATA_DIPA_by_year[int(tahun)] = df_dipa
+        st.session_state.ikpa_dipa_merged = False
+
+        st.success(f"✅ DIPA {tahun} berhasil diproses & siap merge IKPA")
 
 
 # ============================================================
@@ -4891,38 +4931,7 @@ def page_admin():
                             "Status": "Sukses"
                         })
 
-                        # ===============================
-                        # 🔎 CEK IRISAN SATKER IKPA & DIPA
-                        # ===============================
-                        ikpa_satker = set()
-                        dipa_satker = set()
-
-                        if "data_storage" in st.session_state:
-                            for (_, _), df in st.session_state.data_storage.items():
-                                ikpa_satker |= set(
-                                    df["Kode Satker"]
-                                    .dropna()
-                                    .astype(str)
-                                    .str.extract(r"(\d{6})")[0]
-                                    .dropna()
-                                    .str.zfill(6)
-                                )
-
-                        if "DATA_DIPA_by_year" in st.session_state:
-                            for _, df in st.session_state.DATA_DIPA_by_year.items():
-                                dipa_satker |= set(
-                                    df["Kode Satker"]
-                                    .dropna()
-                                    .astype(str)
-                                    .str.extract(r"(\d{6})")[0]
-                                    .dropna()
-                                    .str.zfill(6)
-                                )
-
-                        st.write("🔎 Contoh IKPA Satker:", list(ikpa_satker)[:10])
-                        st.write("🔎 Contoh DIPA Satker:", list(dipa_satker)[:10])
-                        st.write("🔥 JUMLAH SATKER YANG SAMA:", len(ikpa_satker & dipa_satker))
-
+                    
                         # ===============================
                         # 🔥 5️⃣ INI YANG WAJIB DITAMBAHKAN
                         # ===============================
