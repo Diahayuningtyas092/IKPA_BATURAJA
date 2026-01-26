@@ -1306,7 +1306,13 @@ def handle_upload_dipa(uploaded_file):
 
         st.success("🔄 IKPA otomatis diperbarui menggunakan DIPA terbaru")
 
+    # =========================================
+    # 🔒 LOCK STATE SETELAH UPLOAD OMSPAN
+    # =========================================
+    st.session_state["_dipa_uploaded_once"] = True
+    st.session_state["_last_dipa_year"] = int(tahun)
 
+    
     return df_final
 
 
@@ -5744,9 +5750,12 @@ def main():
     # ============================================================
     # 3️⃣ AUTO LOAD DATA DIPA (HASIL PROCESSING STREAMLIT)
     # ============================================================
-    if not st.session_state.DATA_DIPA_by_year:
-        with st.spinner("🔄 Memuat data DIPA..."):
-            load_DATA_DIPA_from_github()
+    if (
+        not st.session_state.DATA_DIPA_by_year
+        and not st.session_state.get("_dipa_uploaded_once")
+        ):
+        load_DATA_DIPA_from_github()
+
 
     # ============================================================
     # 4️⃣ FINALISASI DATA DIPA (AMAN)
