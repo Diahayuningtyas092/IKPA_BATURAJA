@@ -2716,14 +2716,24 @@ def page_dashboard():
                 # =========================================================
                 # 9. RENAME BULAN (KHUSUS DISPLAY, AMAN)
                 # =========================================================
-                df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
-                
-                if period_type == 'monthly':
+                # default 
+                display_period_cols = []
+
+                # ISI NaN DULU 
+                if ordered_periods:
+                    df_display.loc[:, ordered_periods] = (
+                        df_display.loc[:, ordered_periods].fillna("–")
+                    )
+
+                # RENAME KHUSUS DISPLAY
+                if period_type == 'monthly' and ordered_periods:
                     rename_map = {m: MONTH_ABBR.get(m.upper(), m) for m in ordered_periods}
                     df_display.rename(columns=rename_map, inplace=True)
                     display_period_cols = list(rename_map.values())
-                else:
+
+                elif period_type != 'monthly':
                     display_period_cols = ordered_periods
+
                     
                     
                 # =========================================================
