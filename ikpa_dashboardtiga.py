@@ -2773,6 +2773,12 @@ def page_dashboard():
                     .reset_index(drop=True)
                 )
 
+                # =========================================================
+                # 🔒 AGGRID SAFETY: PASTIKAN KOLOM UNIK
+                # =========================================================
+                df_display_filtered = df_display_filtered.loc[
+                    :, ~df_display_filtered.columns.duplicated()
+                ].copy()
 
                 # =========================================================
                 # 12. RENDER
