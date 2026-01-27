@@ -257,23 +257,6 @@ def fix_missing_month(df):
     df["Bulan"] = df["Bulan"].astype(str).str.upper()
     return df
 
-def fix_dipa_header(df_raw):
-    """
-    Adapter kecil:
-    - Cari baris header DIPA
-    - Jadikan header
-    - Kembalikan df siap masuk standardize_dipa()
-    """
-    for i in range(min(10, len(df_raw))):
-        row = df_raw.iloc[i].astype(str).str.lower()
-        if row.str.contains("satker").any() and row.str.contains("pagu").any():
-            df = df_raw.iloc[i+1:].copy()
-            df.columns = df_raw.iloc[i]
-            return df.reset_index(drop=True)
-
-    # fallback → biar standardize_dipa yang handle
-    return df_raw
-
 
 # -------------------------
 # standardize_dipa
@@ -413,7 +396,6 @@ def standardize_dipa(df_raw):
     # 4) SUSUN URUTAN KOLOM
     # =============
     final_order = [
-        "Kode Satker",
         "Tanggal Posting Revisi",
         "Total Pagu",
         "Jenis Satker",
@@ -1554,87 +1536,65 @@ def create_problem_chart(df, column, threshold, title, comparison='less', y_min=
 
     return fig
 
-def create_internal_problem_chart_vertical(
+def create_internal_problem_chart_horizontal(
     df,
     column,
     threshold,
-    title,
-    comparison='less',
-    show_yaxis=True,
-    show_colorbar=True,      # 🔹 kontrol colorbar
-    fixed_height=None        # 🔹 untuk samakan tinggi antar chart
+    title="",
+    comparison="less",
+    max_items=20
 ):
     if df.empty or column not in df.columns:
         return None
 
-    df = df.copy()
     df[column] = pd.to_numeric(df[column], errors="coerce")
     df = df.dropna(subset=[column])
 
-    if comparison == 'less':
-        df = df[df[column] < threshold]
-    elif comparison == 'greater':
-        df = df[df[column] > threshold]
+    if comparison == "less":
+        df = df[df[column] < threshold].sort_values(column)
+    else:
+        df = df[df[column] > threshold].sort_values(column, ascending=False)
 
     if df.empty:
         return None
 
-    df = df.sort_values(by=column, ascending=False)
-    jumlah_satker = len(df)
-
-    # ===============================
-    # 🎯 AUTO HEIGHT KHUSUS INTERNAL
-    # ===============================
-    BAR_HEIGHT = 38
-    BASE_HEIGHT = 260
-    MAX_HEIGHT = 1200
-
-    if fixed_height is not None:
-        height = fixed_height
-    else:
-        height = BASE_HEIGHT + (jumlah_satker * BAR_HEIGHT)
-        height = min(max(height, 420), MAX_HEIGHT)
+    df = df.head(max_items)
 
     fig = go.Figure()
 
     fig.add_bar(
-        x=df["Satker"],
-        y=df[column],
+        x=df[column],
+        y=df["Satker"],
+        orientation="h",
         marker=dict(
             color=df[column],
             colorscale="OrRd_r",
-            showscale=show_colorbar,
-            colorbar=dict(
-                thickness=12,
-                len=0.85
-            ) if show_colorbar else None
+            showscale=True
         ),
         text=df[column].round(2),
         textposition="outside",
-        hovertemplate="<b>%{x}</b><br>Nilai: %{y:.2f}<extra></extra>"
+        hovertemplate="<b>%{y}</b><br>Nilai: %{x:.2f}<extra></extra>"
     )
 
-    fig.add_hline(
-        y=threshold,
+    fig.add_vline(
+        x=threshold,
         line_dash="dash",
         line_color="red",
         annotation_text=f"Target: {threshold}",
-        annotation_position="top right"
+        annotation_position="top"
     )
 
     fig.update_layout(
         title=title,
-        height=height,
-        margin=dict(l=50, r=20, t=80, b=200),
-        xaxis_tickangle=-45,
-        showlegend=False
+        height=max(520, len(df) * 30),
+        margin=dict(l=260, r=10, t=80, b=40),
+        xaxis_title="Nilai IKPA",
+        yaxis_title="",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)"
     )
 
-    if not show_yaxis:
-        fig.update_yaxes(showticklabels=False)
-
     return fig
-
 
 
 # ===============================================
@@ -3229,60 +3189,6 @@ def menu_ews_satker():
     # Gunakan data periode terkini
     latest_period = sorted(st.session_state.data_storage.keys(), key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)), reverse=True)[0]
     df_latest = st.session_state.data_storage[latest_period]
-    
-    # ===============================
-    # 🔑 NORMALISASI KODE BA (WAJIB)
-    # ===============================
-    df_all["Kode BA"] = df_all["Kode BA"].apply(normalize_kode_ba)
-    df_latest["Kode BA"] = df_latest["Kode BA"].apply(normalize_kode_ba)
-    
-    # ===============================
-    # LOAD & MAP BA
-    # ===============================
-    df_ref_ba = load_reference_ba()
-    BA_MAP = get_ba_map(df_ref_ba)
-
-    st.markdown('<div class="filter-ba">', unsafe_allow_html=True)
-    st.markdown("🔎 Filter Kode BA")
-    ba_codes = sorted(df_all["Kode BA"].dropna().unique())
-    ba_options = ["SEMUA BA"] + ba_codes
-
-    def format_ba(code):
-        if code == "SEMUA BA":
-            return "SEMUA BA"
-        return f"{code} – {BA_MAP.get(code, 'Nama BA tidak ditemukan')}"
-
-    selected_ba_internal = st.multiselect(
-        "Pilih Kode BA",
-        options=ba_options,
-        default=["SEMUA BA"],
-        format_func=format_ba,
-        key="filter_ba_internal"
-    )
-
-    # ===============================
-    # TERAPKAN FILTER BA (GLOBAL INTERNAL)
-    # ===============================
-    if "SEMUA BA" not in selected_ba_internal:
-        df_all = df_all[df_all["Kode BA"].isin(selected_ba_internal)]
-        df_latest = df_latest[df_latest["Kode BA"].isin(selected_ba_internal)]
-        
-    # ===============================
-    # 🔑 BUAT LABEL SATKER INTERNAL
-    # ===============================
-    df_latest = df_latest.copy()
-
-    if "Kode BA" not in df_latest.columns:
-        df_latest["Kode BA"] = ""
-
-    df_latest["Kode BA"] = df_latest["Kode BA"].apply(normalize_kode_ba)
-
-    df_latest["Satker_Internal"] = (
-        "[" + df_latest["Kode BA"] + "] "
-        + df_latest["Uraian Satker-RINGKAS"].astype(str)
-        + " (" + df_latest["Kode Satker"].astype(str) + ")"
-    )
-
 
     st.markdown("---")
     st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
@@ -3310,46 +3216,12 @@ def menu_ews_satker():
         )
 
     # 📊 Highlights Kinerja Satker yang Perlu Perhatian Khusus
-    # ===============================
-    # 🔧 ADAPTIVE LAYOUT (INTERNAL)
-    # ===============================
-    df_tmp = df_latest.copy()
-    df_tmp["Satker"] = df_tmp["Satker_Internal"]
+    col1, col2 = st.columns([2.7, 1.2])  #  KIRI LEBIH LEBAR
 
-    n_up = len(df_tmp[df_tmp['Pengelolaan UP dan TUP'] < 100])
-
-    if n_up >= 15:
-        col1, col2 = st.columns([3.5, 1.2])
-    elif n_up >= 8:
-        col1, col2 = st.columns([3, 1.5])
-    else:
-        col1, col2 = st.columns([2.5, 1.5])
-        
-    # ===============================
-    # 🔧 SHARED HEIGHT (BIAR TIDAK TINGGI SEBELAH)
-    # ===============================
-    n_out = len(df_tmp[df_tmp['Capaian Output'] < 100])
-
-    BAR_HEIGHT = 38
-    BASE_HEIGHT = 260
-    MAX_HEIGHT = 1200
-
-    # ===============================
-    # 🔧 SOFT SHARED HEIGHT (NORMAL)
-    # ===============================
-    MAX_VISIBLE_ITEMS = 10  # ⬅️ kunci utama
-
-    effective_items = min(max(n_up, n_out), MAX_VISIBLE_ITEMS)
-
-    shared_height = BASE_HEIGHT + (effective_items * BAR_HEIGHT)
-    shared_height = min(max(shared_height, 380), 700)
-
-
-
-    # ======================================================
-    # KOLOM KIRI — Pengelolaan UP dan TUP
-    # ======================================================
     with col1:
+        # ===============================
+        # JUDUL INDIKATOR
+        # ===============================
         st.markdown(
             """
             <div style="margin-bottom:6px;">
@@ -3364,30 +3236,30 @@ def menu_ews_satker():
             unsafe_allow_html=True
         )
 
-        df_latest_up = df_latest.copy()
-        df_latest_up["Satker"] = df_latest_up["Satker_Internal"]
-
-        fig_up = create_internal_problem_chart_vertical(
-            df_latest_up,
-            column='Pengelolaan UP dan TUP',
-            threshold=100,
-            title="Pengelolaan UP dan TUP Belum Optimal (< 100)",
-            comparison='less',
-            show_yaxis=True,
-            show_colorbar=True,
-            fixed_height=shared_height
+        fig_up = create_problem_chart(
+            df_latest,
+            'Pengelolaan UP dan TUP',
+            100,
+            "Pengelolaan UP dan TUP Belum Optimal (< 100)",
+            'less',
+            y_min=y_min_int,
+            y_max=y_max_int,
+            show_yaxis=True
         )
 
-
         if fig_up:
+            # 🔧 SENTUHAN KECIL AGAR LABEL TIDAK NUMPUK
+            fig_up.update_xaxes(
+                tickangle=-45,
+                tickfont=dict(size=10),
+                automargin=True
+            )
+
             st.plotly_chart(fig_up, use_container_width=True)
         else:
             st.success("✅ Semua satker sudah optimal untuk Pengelolaan UP dan TUP")
 
 
-    # ======================================================
-    # KOLOM KANAN — Capaian Output
-    # ======================================================
     with col2:
         st.markdown(
             """
@@ -3403,22 +3275,25 @@ def menu_ews_satker():
             unsafe_allow_html=True
         )
 
-        df_latest_out = df_latest.copy()
-        df_latest_out["Satker"] = df_latest_out["Satker_Internal"]
-
-        fig_output = create_internal_problem_chart_vertical(
-            df_latest_out,
-            column='Capaian Output',
-            threshold=100,
-            title="Capaian Output Belum Optimal (< 100)",
-            comparison='less',
-            show_yaxis=False,
-            show_colorbar=False,
-            fixed_height=shared_height
+        fig_output = create_problem_chart(
+            df_latest,
+            'Capaian Output',
+            100,
+            "Capaian Output Belum Optimal (< 100)",
+            'less',
+            y_min=y_min_int,
+            y_max=y_max_int,
+            show_yaxis=False
         )
 
-
         if fig_output:
+            # (Opsional) sedikit rotasi agar konsisten
+            fig_output.update_xaxes(
+                tickangle=-30,
+                tickfont=dict(size=10),
+                automargin=True
+            )
+
             st.plotly_chart(fig_output, use_container_width=True)
         else:
             st.success("✅ Semua satker sudah optimal untuk Capaian Output")
@@ -3498,21 +3373,14 @@ def menu_ews_satker():
         st.warning("⚠️ Tidak ada data pada periode yang dipilih.")
         st.stop()
 
-
     # ======================================================
-    # 🔑 PAKSA SATKER RINGKAS & KODE BA
+    # 🔑 PAKSA SATKER RINGKAS
     # ======================================================
     df_trend = apply_reference_short_names(df_trend)
-
     df_trend["Kode Satker"] = df_trend["Kode Satker"].astype(str)
 
-    if "Kode BA" not in df_trend.columns:
-        df_trend["Kode BA"] = ""
-
-    df_trend["Kode BA"] = df_trend["Kode BA"].apply(normalize_kode_ba)
-
     # ======================================================
-    # NAMA RINGKAS MURNI
+    # NAMA RINGKAS MURNI (HAPUS KODE JIKA ADA)
     # ======================================================
     df_trend["Nama_Ringkas_Murni"] = (
         df_trend["Uraian Satker-RINGKAS"]
@@ -3525,11 +3393,9 @@ def menu_ews_satker():
     # LABEL LEGEND FINAL (SATU-SATUNYA)
     # ======================================================
     df_trend["Legend_Label"] = (
-        "[" + df_trend["Kode BA"] + "] "
-        + df_trend["Nama_Ringkas_Murni"]
-        + " (" + df_trend["Kode Satker"] + ")"
+        df_trend["Nama_Ringkas_Murni"] +
+        " (" + df_trend["Kode Satker"] + ")"
     )
-
 
     # ======================================================
     # LABEL PERIODE
@@ -4124,8 +3990,7 @@ def assign_jenis_satker(df):
         return df
 
     # pastikan numerik
-    df["Total Pagu"] = pd.to_numeric(df["Total Pagu"], errors="coerce")
-
+    df["Total Pagu"] = pd.to_numeric(out["Total Pagu"], errors="coerce")
 
     p40 = df["Total Pagu"].quantile(0.40)
     p70 = df["Total Pagu"].quantile(0.70)
@@ -4162,30 +4027,22 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
         if raw.empty:
             return None, None, "❌ File kosong"
-        
-        # 🔍 DEBUG STRUKTUR FILE (SEMENTARA)
-        st.write("🧱 DEBUG RAW SHAPE:", raw.shape)
-        st.write("🧱 DEBUG RAW PREVIEW (10 baris):")
-        st.dataframe(raw.head(10))
-
 
         # 2️⃣ Standarisasi format
         with st.spinner("Menstandarisasi format DIPA..."):
-            raw_fixed = fix_dipa_header(raw)
-            df_std = standardize_dipa(raw_fixed)
-
+            df_std = standardize_dipa(raw)
 
         if df_std.empty:
             return None, None, "❌ Data tidak berhasil distandarisasi atau tidak ada data valid"
 
         # 3️⃣ Validasi Tahun
-        if "Tahun" in df_std.columns and not df_std["Tahun"].isna().all():
-            tahun_dipa = int(df_std["Tahun"].dropna().min())
-        else:
-            # Ambil tahun dari Tanggal Posting Revisi (tahun anggaran = paling awal)
-            tahun_dipa = int(df_std["Tanggal Posting Revisi"].dropna().dt.year.min())
+        if "Tahun" not in df_std.columns or df_std["Tahun"].isna().all():
+            st.warning("⚠️ Tahun tidak terdeteksi, menggunakan tahun sekarang")
+            tahun_dipa = datetime.now().year
             df_std["Tahun"] = tahun_dipa
-
+        else:
+            tahun_dipa = int(df_std["Tahun"].mode()[0])
+            df_std["Tahun"] = df_std["Tahun"].fillna(tahun_dipa)
 
         # 4️⃣ Validasi data
         st.write(f"**Validasi:** {len(df_std)} baris data valid terdeteksi")
@@ -4799,17 +4656,7 @@ def page_admin():
         if uploaded_dipa_file is not None:
             if st.button("🔄 Proses Data DIPA", type="primary"):
                 with st.spinner("Memproses data DIPA..."):
-                    
-                    # ====================================================
-                    # RESET STATE DIPA (WAJIB, AMAN, KHUSUS DIPA)
-                    # ====================================================
-                    st.session_state.DATA_DIPA_by_year = {}
-                    st.session_state.ikpa_dipa_merged = False
-                    st.session_state["_just_uploaded_dipa"] = True
 
-                    # clear cache agar tidak pakai data lama
-                    st.cache_data.clear()
-                    
                     try:
                         # 1️⃣ Proses file raw DIPA → dibersihkan → revisi terbaru
                         df_clean, tahun_dipa, status_msg = process_uploaded_dipa(uploaded_dipa_file, save_file_to_github)
