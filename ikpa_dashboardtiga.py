@@ -3673,7 +3673,7 @@ def menu_ews_satker():
             text=f"Tren {selected_metric}",
             x=0.5,
             xanchor="center",
-            y=0.98,
+            y=0.97,
             yanchor="top",
             font=dict(size=18)
         ),
@@ -3690,7 +3690,7 @@ def menu_ews_satker():
         legend=dict(
             orientation="h",
             x=0.5,
-            y=1.08,              # ⬅️ HARUS > 1
+            y=1.03,              # ⬅️ HARUS > 1
             xanchor="center",
             yanchor="bottom",    # ⬅️ PENTING
             font=dict(size=10),
@@ -3701,11 +3701,10 @@ def menu_ews_satker():
         margin=dict(
             l=60,
             r=40,
-            t=180,               # ⬅️ INI KUNCI UTAMA
+            t=170,               # ⬅️ INI KUNCI UTAMA
             b=60
         )
     )
-
 
 
     st.plotly_chart(fig, use_container_width=True)
