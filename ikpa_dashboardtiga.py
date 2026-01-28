@@ -3281,11 +3281,18 @@ def menu_ews_satker():
         return
     
     df_all = pd.concat(all_data, ignore_index=True)
+    # 🔑 PAKSA NAMA SATKER RINGKAS (GLOBAL INTERNAL)
+    df_all = apply_reference_short_names(df_all)
+
     
     # Analisis tren dan Early Warning System
     # Gunakan data periode terkini
     latest_period = sorted(st.session_state.data_storage.keys(), key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)), reverse=True)[0]
     df_latest = st.session_state.data_storage[latest_period]
+    df_latest = apply_reference_short_names(
+        st.session_state.data_storage[latest_period].copy()
+    )
+
     
     # ===============================
     # 🔑 NORMALISASI KODE BA (WAJIB)
