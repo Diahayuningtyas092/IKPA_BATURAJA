@@ -3679,28 +3679,33 @@ def menu_ews_satker():
         ),
         xaxis_title="Periode",
         yaxis_title="Nilai",
-        height=650,
+        height=700,
         hovermode="x unified",
         xaxis=dict(
             categoryorder="array",
             categoryarray=ordered_periods
         ),
+
+        # 🔑 LEGEND DI BAWAH JUDUL, DI LUAR CHART
         legend=dict(
             orientation="h",
             x=0.5,
-            y=0.90,              # ⬅️ DI BAWAH JUDUL
+            y=0.88,          # ⬅️ PAS DI BAWAH JUDUL
             xanchor="center",
             yanchor="top",
             font=dict(size=10),
             traceorder="normal"
         ),
+
+        # 🔑 TAMBAH RUANG ATAS SUPAYA TIDAK NUTUP GRAFIK
         margin=dict(
             l=60,
             r=40,
-            t=160,               # ⬅️ RUANG ATAS DITAMBAH
+            t=180,           # ⬅️ INI KUNCI UTAMA
             b=60
         )
     )
+
 
 
     st.plotly_chart(fig, use_container_width=True)
