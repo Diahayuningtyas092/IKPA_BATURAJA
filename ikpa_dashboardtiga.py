@@ -2853,7 +2853,14 @@ def page_dashboard():
                     .reset_index(drop=True)
                 )
 
-
+                # 🔒 AMANKAN DATA JULI (AGAR TAMPIL DI SEMUA MODUL)
+                if "Jul" in df_display_filtered.columns and "Jun" in df_display_filtered.columns:
+                    df_display_filtered["Jul"] = (
+                        df_display_filtered["Jul"]
+                        .replace("–", pd.NA)
+                        .fillna(df_display_filtered["Jun"])
+                    )
+                    
                 # =========================================================
                 # 12. RENDER
                 # =========================================================
