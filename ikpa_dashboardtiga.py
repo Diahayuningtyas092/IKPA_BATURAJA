@@ -20,32 +20,34 @@ import time
 
 def render_table_pin_satker(df):
     # ==================================
-    # COPY DF + NOMOR URUT (DISPLAY SAJA)
-    # ==================================
-    df = df.copy()
-    df.insert(0, "No.", range(1, len(df) + 1))
-
-    # ==================================
     # HELPER: HITUNG TINGGI GRID DINAMIS
     # ==================================
     def calc_grid_height(
         df,
-        row_height=50,     # tinggi baris (theme streamlit)
-        header_height=40,  # tinggi header
-        max_height=900     # batas maksimum agar tidak berat
+        row_height=50,
+        header_height=40,
+        max_height=900
     ):
-        return min(
-            header_height + len(df) * row_height,
-            max_height
-        )
+        return min(header_height + len(df) * row_height, max_height)
 
     gb = GridOptionsBuilder.from_dataframe(df)
 
     # ===============================
-    # HIDE KOLOM TIDAK PERLU
+    # KOLOM NOMOR OTOMATIS (PALING KIRI)
     # ===============================
-    if "Nilai Total" in df.columns:
-        gb.configure_column("Nilai Total", hide=True)
+    gb.configure_column(
+        "__rowNum__",
+        headerName="No",
+        pinned="left",
+        width=60,
+        suppressSizeToFit=True,
+        sortable=False,
+        filter=False,
+        cellStyle={"textAlign": "center"},
+        valueGetter=JsCode(
+            "function(params) { return params.node.rowIndex + 1; }"
+        )
+    )
 
     # ===============================
     # DEFAULT SEMUA KOLOM
@@ -58,21 +60,7 @@ def render_table_pin_satker(df):
     )
 
     # ===============================
-    # PIN KOLOM NOMOR (PALING KIRI)
-    # ===============================
-    gb.configure_column(
-        "No.",
-        headerName="No",
-        pinned="left",
-        width=60,
-        suppressSizeToFit=True,
-        cellStyle={"textAlign": "center"},
-        sortable=False,
-        filter=False
-    )
-
-    # ===============================
-    # PIN KOLOM KIRI (SATKER)
+    # PIN KOLOM KIRI
     # ===============================
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
@@ -126,22 +114,15 @@ def render_table_pin_satker(df):
     }
     """)
 
-    # ===============================
-    # GRID OPTIONS
-    # ===============================
     gb.configure_grid_options(
         domLayout="normal",
-        suppressHorizontalScroll=False,
-        alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
-        headerHeight=40
+        headerHeight=40,
+        alwaysShowHorizontalScroll=True
     )
 
     gridOptions = gb.build()
 
-    # ===============================
-    # RENDER AGGRID
-    # ===============================
     AgGrid(
         df,
         gridOptions=gridOptions,
