@@ -3633,24 +3633,19 @@ def menu_ews_satker():
     # DEFAULT: 5 SATKER TERENDAH (PERIODE TERBARU)
     # ======================================================
     latest_period = df_all["Period_Sort"].max()
-
-    df_latest = (
-        df_all[df_all["Period_Sort"] == latest_period]
-        .copy()
-    )
-
-    df_latest["Kode Satker"] = df_latest["Kode Satker"].astype(str)
+    df_latest = df_all[df_all["Period_Sort"] == latest_period].copy()
 
     bottom_5_kode = (
         df_latest
         .sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)")
-        ["Kode Satker"]
+        .head(5)["Kode Satker"]
+        .astype(str)
         .tolist()
     )
 
-    # 🔒 AMAN: hanya yang ada di legend_map
-    default_kode = [k for k in bottom_5_kode if k in legend_map]
+    all_kode_satker = df_trend["Kode Satker"].unique().tolist()
 
+    default_kode = [k for k in bottom_5_kode if k in all_kode_satker]
     if not default_kode:
         default_kode = all_kode_satker[:5]
 
