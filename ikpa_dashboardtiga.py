@@ -3669,21 +3669,39 @@ def menu_ews_satker():
         )
 
     fig.update_layout(
-        title=f"Tren {selected_metric}",
+        title=dict(
+            text=f"Tren {selected_metric}",
+            x=0.5,
+            xanchor="center",
+            y=0.98,
+            yanchor="top",
+            font=dict(size=18)
+        ),
         xaxis_title="Periode",
         yaxis_title="Nilai",
-        height=600,
+        height=650,
         hovermode="x unified",
-        xaxis=dict(categoryorder="array", categoryarray=ordered_periods),
+        xaxis=dict(
+            categoryorder="array",
+            categoryarray=ordered_periods
+        ),
         legend=dict(
             orientation="h",
-            x=0.01,
-            y=1.02,
-            xanchor="left",
-            yanchor="bottom"
+            x=0.5,
+            y=0.90,              # ⬅️ DI BAWAH JUDUL
+            xanchor="center",
+            yanchor="top",
+            font=dict(size=10),
+            traceorder="normal"
         ),
-        margin=dict(l=60, r=40, t=120, b=60)
+        margin=dict(
+            l=60,
+            r=40,
+            t=160,               # ⬅️ RUANG ATAS DITAMBAH
+            b=60
+        )
     )
+
 
     st.plotly_chart(fig, use_container_width=True)
 
