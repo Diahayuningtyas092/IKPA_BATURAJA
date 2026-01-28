@@ -3440,7 +3440,14 @@ def menu_ews_satker():
         )
 
         df_latest_up = df_latest.copy()
-        df_latest_up["Satker"] = df_latest_up["Satker_Internal"]
+
+        df_latest_up["Satker"] = (
+            df_latest_up["Uraian Satker-RINGKAS"]
+            .astype(str)
+            .str.replace(r"\s*\(\d+\)$", "", regex=True)
+            .str.strip()
+        )
+
 
         fig_up = create_internal_problem_chart_vertical(
             df_latest_up,
@@ -3479,7 +3486,14 @@ def menu_ews_satker():
         )
 
         df_latest_out = df_latest.copy()
-        df_latest_out["Satker"] = df_latest_out["Satker_Internal"]
+
+        df_latest_out["Satker"] = (
+            df_latest_out["Uraian Satker-RINGKAS"]
+            .astype(str)
+            .str.replace(r"\s*\(\d+\)$", "", regex=True)
+            .str.strip()
+        )
+
 
         fig_output = create_internal_problem_chart_vertical(
             df_latest_out,
