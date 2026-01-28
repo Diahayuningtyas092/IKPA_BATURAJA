@@ -3580,25 +3580,27 @@ def menu_ews_satker():
     )
 
 
+    # ======================================================
+    # LABEL SATKER RESMI (SATU SUMBER KEBENARAN)
+    # ======================================================
 
-    # ======================================================
-    # NAMA RINGKAS MURNI
-    # ======================================================
+    # Nama ringkas murni (tanpa kode)
     df_trend["Nama_Ringkas_Murni"] = (
         df_trend["Uraian Satker-RINGKAS"]
         .astype(str)
-        .str.replace(r"\s*\(\d+\)$", "", regex=True)
         .str.strip()
     )
 
-    # ======================================================
-    # LABEL LEGEND FINAL (SATU-SATUNYA)
-    # ======================================================
+    # Label untuk legend & chart
     df_trend["Legend_Label"] = (
         "[" + df_trend["Kode BA"] + "] "
         + df_trend["Nama_Ringkas_Murni"]
         + " (" + df_trend["Kode Satker"] + ")"
     )
+
+    # Label khusus untuk multiselect (SAMA FORMAT)
+    df_trend["Satker_Select_Label"] = df_trend["Legend_Label"]
+
 
 
     # ======================================================
@@ -3667,7 +3669,7 @@ def menu_ews_satker():
         .set_index("Kode Satker")["Satker_Select_Label"]
         .to_dict()
     )
-    
+
     all_kode_satker = list(satker_select_map.keys())
 
     selected_kode_satker = st.multiselect(
@@ -3677,6 +3679,7 @@ def menu_ews_satker():
         format_func=lambda k: satker_select_map[k],
         key="trend_satker_selector"
     )
+
 
 
     # ======================================================
