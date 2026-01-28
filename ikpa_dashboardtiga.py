@@ -3649,6 +3649,16 @@ def menu_ews_satker():
         default_kode = all_kode_satker[:5]
 
     # ======================================================
+    # 🔑 LABEL KHUSUS SELECTOR (WAJIB RINGKAS)
+    # ======================================================
+    df_trend["Satker_Select_Label"] = (
+        "[" + df_trend["Kode BA"] + "] "
+        + df_trend["Uraian Satker-RINGKAS"]
+        .astype(str)
+        .str.strip()
+    )
+
+    # ======================================================
     # MULTISELECT SATKER
     # ======================================================
     satker_select_map = (
