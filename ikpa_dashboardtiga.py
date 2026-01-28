@@ -3679,32 +3679,33 @@ def menu_ews_satker():
         ),
         xaxis_title="Periode",
         yaxis_title="Nilai",
-        height=700,
+        height=750,
         hovermode="x unified",
         xaxis=dict(
             categoryorder="array",
             categoryarray=ordered_periods
         ),
 
-        # 🔑 LEGEND DI ATAS CHART (DI BAWAH JUDUL)
+        # 🔑 LEGEND BENAR-BENAR DI ATAS CHART (DI LUAR PLOT AREA)
         legend=dict(
             orientation="h",
             x=0.5,
-            y=0.90,          # ⬅️ POSISI LEGEND (ATAS CHART)
+            y=1.08,              # ⬅️ HARUS > 1
             xanchor="center",
-            yanchor="top",
+            yanchor="bottom",    # ⬅️ PENTING
             font=dict(size=10),
             traceorder="normal"
         ),
 
-        # 🔑 RUANG ATAS DIBESARKAN (WAJIB)
+        # 🔑 RUANG ATAS BESAR (WAJIB)
         margin=dict(
             l=60,
             r=40,
-            t=180,           # ⬅️ INI KUNCI UTAMA
+            t=220,               # ⬅️ INI KUNCI UTAMA
             b=60
         )
     )
+
 
 
     st.plotly_chart(fig, use_container_width=True)
