@@ -20,9 +20,25 @@ import time
 
 def render_table_pin_satker(df):
     # =====================================================
-    # COPY DF & TAMBAHKAN KOLOM NOMOR (AMAN)
+    # COPY DF (WAJIB)
     # =====================================================
     df = df.copy()
+
+    # =====================================================
+    # 🔒 GUARD 1: HAPUS __rowNum__ JIKA SUDAH ADA
+    # (AGGRID TIDAK BOLEH KOLOM DUPLIKAT)
+    # =====================================================
+    if "__rowNum__" in df.columns:
+        df = df.drop(columns="__rowNum__")
+
+    # =====================================================
+    # 🔒 GUARD 2: PASTIKAN KOLOM UNIK (ANTI AGGRID CRASH)
+    # =====================================================
+    df = df.loc[:, ~df.columns.duplicated()].copy()
+
+    # =====================================================
+    # TAMBAHKAN KOLOM NOMOR (SETELAH DF BERSIH)
+    # =====================================================
     df.insert(0, "__rowNum__", range(1, len(df) + 1))
 
     # =====================================================
@@ -122,7 +138,7 @@ def render_table_pin_satker(df):
             )
 
     # =====================================================
-    # ZEBRA DARK MODE (SAMA SEPERTI FUNGSI AWAL)
+    # ZEBRA DARK MODE
     # =====================================================
     zebra_dark = JsCode("""
     function(params) {
@@ -147,7 +163,7 @@ def render_table_pin_satker(df):
     )
 
     # =====================================================
-    # RENDER AGGRID
+    # RENDER AGGRID (AMAN)
     # =====================================================
     AgGrid(
         df,
