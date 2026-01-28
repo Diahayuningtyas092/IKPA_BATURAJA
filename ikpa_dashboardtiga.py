@@ -2785,14 +2785,19 @@ def page_dashboard():
                 # =========================================================
                 # 9. RENAME BULAN (KHUSUS DISPLAY, AMAN)
                 # =========================================================
-                if period_type == 'monthly':
-                    rename_map = {m: MONTH_ABBR.get(m.upper(), m) for m in ordered_periods}
-                    df_display.rename(columns=rename_map, inplace=True)
-                    display_period_cols = list(rename_map.values())
-                else:
-                    display_period_cols = ordered_periods
+                for c in ordered_periods:
+                    if c in df_display.columns:
+                        df_display[c] = df_display[c].fillna("–")
 
-                df_display[display_period_cols] = df_display[display_period_cols].fillna("–")
+                # --- rename hanya untuk display (SETELAH NaN) ---
+                if period_type == 'monthly':
+                    rename_map = {
+                        c: MONTH_ABBR.get(c.upper(), c)
+                        for c in ordered_periods
+                        if c in df_display.columns
+                    }
+                    df_display.rename(columns=rename_map, inplace=True)
+
 
 
                 # =========================================================
