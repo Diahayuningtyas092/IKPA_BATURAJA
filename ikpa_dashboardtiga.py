@@ -3288,18 +3288,11 @@ def menu_ews_satker():
         return
     
     df_all = pd.concat(all_data, ignore_index=True)
-    # 🔑 PAKSA NAMA SATKER RINGKAS (GLOBAL INTERNAL)
-    df_all = apply_reference_short_names(df_all)
-
     
     # Analisis tren dan Early Warning System
     # Gunakan data periode terkini
     latest_period = sorted(st.session_state.data_storage.keys(), key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)), reverse=True)[0]
     df_latest = st.session_state.data_storage[latest_period]
-    df_latest = apply_reference_short_names(
-        st.session_state.data_storage[latest_period].copy()
-    )
-
     
     # ===============================
     # 🔑 NORMALISASI KODE BA (WAJIB)
@@ -3572,7 +3565,12 @@ def menu_ews_satker():
     if df_trend.empty:
         st.warning("⚠️ Tidak ada data pada periode yang dipilih.")
         st.stop()
-        
+
+    # ======================================================
+    # 🔑 PAKSA NAMA SATKER RINGKAS (WAJIB)
+    # ======================================================
+    df_trend = apply_reference_short_names(df_trend)
+
     # ======================================================
     # 🔑 PAKSA SATKER RINGKAS & KODE BA
     # ======================================================
@@ -3626,17 +3624,14 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # MAP KODE SATKER → LABEL LEGEND (SATU SUMBER KEBENARAN)
+    # MAP KODE → LABEL LEGEND
     # ======================================================
     legend_map = (
         df_trend[["Kode Satker", "Legend_Label"]]
-        .drop_duplicates(subset=["Kode Satker"])
+        .drop_duplicates()
         .set_index("Kode Satker")["Legend_Label"]
         .to_dict()
     )
-
-    # 🔒 OPSI SATKER HANYA YANG ADA DI LEGEND
-    all_kode_satker = list(legend_map.keys())
 
     # ======================================================
     # DEFAULT: 5 SATKER TERENDAH (PERIODE TERBARU)
@@ -3659,20 +3654,18 @@ def menu_ews_satker():
         default_kode = all_kode_satker[:5]
 
     # ======================================================
-    # MULTISELECT SATKER (FINAL & AMAN)
+    # MULTISELECT SATKER
     # ======================================================
     selected_kode_satker = st.multiselect(
         "Pilih Satker",
         options=all_kode_satker,
         default=default_kode,
-        format_func=lambda k: legend_map[k],
-        key="trend_satker_selector"
+        format_func=lambda k: legend_map.get(k, k)
     )
 
     if not selected_kode_satker:
         st.warning("Pilih minimal satu satker.")
         st.stop()
-
 
     # ======================================================
     # 📊 PLOT GRAFIK TREN
