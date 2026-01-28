@@ -3121,14 +3121,21 @@ def page_dashboard():
                 m for (m, y) in available_periods if int(y) == selected_year
             ]
 
+            months_for_year = [
+                VALID_MONTHS.get(m.upper(), m.upper())
+                for (m, y) in available_periods
+                if int(y) == selected_year
+            ]
+
             if not months_for_year:
                 st.info(f"Tidak ada data untuk tahun {selected_year}.")
                 return
 
             months_for_year = sorted(
-                months_for_year,
-                key=lambda m: MONTH_ORDER.get(m.upper(), 0)
+                set(months_for_year),
+                key=lambda m: MONTH_ORDER.get(m, 0)
             )
+
 
             selected_month = st.selectbox(
                 "Pilih Bulan",
