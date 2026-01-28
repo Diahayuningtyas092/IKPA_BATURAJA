@@ -3440,14 +3440,7 @@ def menu_ews_satker():
         )
 
         df_latest_up = df_latest.copy()
-
-        df_latest_up["Satker"] = (
-            df_latest_up["Uraian Satker-RINGKAS"]
-            .astype(str)
-            .str.replace(r"\s*\(\d+\)$", "", regex=True)
-            .str.strip()
-        )
-
+        df_latest_up["Satker"] = df_latest_up["Satker_Internal"]
 
         fig_up = create_internal_problem_chart_vertical(
             df_latest_up,
@@ -3486,14 +3479,7 @@ def menu_ews_satker():
         )
 
         df_latest_out = df_latest.copy()
-
-        df_latest_out["Satker"] = (
-            df_latest_out["Uraian Satker-RINGKAS"]
-            .astype(str)
-            .str.replace(r"\s*\(\d+\)$", "", regex=True)
-            .str.strip()
-        )
-
+        df_latest_out["Satker"] = df_latest_out["Satker_Internal"]
 
         fig_output = create_internal_problem_chart_vertical(
             df_latest_out,
@@ -3586,12 +3572,7 @@ def menu_ews_satker():
     if df_trend.empty:
         st.warning("⚠️ Tidak ada data pada periode yang dipilih.")
         st.stop()
-
-    # ======================================================
-    # 🔑 PAKSA NAMA SATKER RINGKAS (WAJIB)
-    # ======================================================
-    df_trend = apply_reference_short_names(df_trend)
-
+        
     # ======================================================
     # 🔑 PAKSA SATKER RINGKAS & KODE BA
     # ======================================================
