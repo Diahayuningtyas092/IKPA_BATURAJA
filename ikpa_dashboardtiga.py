@@ -3701,7 +3701,7 @@ def menu_ews_satker():
         margin=dict(
             l=60,
             r=40,
-            t=220,               # ⬅️ INI KUNCI UTAMA
+            t=180,               # ⬅️ INI KUNCI UTAMA
             b=60
         )
     )
