@@ -39,6 +39,8 @@ def render_table_pin_satker(df):
         "__rowNum__",
         headerName="No",
         pinned="left",
+        lockPosition=True,
+        suppressMovable=True,
         width=60,
         suppressSizeToFit=True,
         sortable=False,
@@ -60,13 +62,15 @@ def render_table_pin_satker(df):
     )
 
     # ===============================
-    # PIN KOLOM KIRI
+    # PIN KOLOM KIRI (SETELAH NOMOR)
     # ===============================
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
             "Uraian Satker-RINGKAS",
             headerName="Nama Satker",
             pinned="left",
+            lockPosition=True,
+            suppressMovable=True,
             width=180,
             suppressSizeToFit=True
         )
@@ -75,12 +79,17 @@ def render_table_pin_satker(df):
         gb.configure_column(
             "Kode Satker",
             pinned="left",
+            lockPosition=True,
+            suppressMovable=True,
             width=80,
             suppressSizeToFit=True
         )
 
     if "Kode BA" in df.columns:
-        gb.configure_column("Kode BA", width=60)
+        gb.configure_column(
+            "Kode BA",
+            width=60
+        )
 
     # ===============================
     # KOLOM BULAN / TRIWULAN
