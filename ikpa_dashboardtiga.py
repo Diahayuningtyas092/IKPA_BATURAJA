@@ -19,21 +19,19 @@ from st_aggrid import JsCode
 import time
 
 def render_table_pin_satker(df):
-    # ==================================
-    # HELPER: HITUNG TINGGI GRID DINAMIS
-    # ==================================
-    def calc_grid_height(
-        df,
-        row_height=50,
-        header_height=40,
-        max_height=900
-    ):
+    # ===============================
+    # PAKSA __rowNum__ JADI KOLOM PERTAMA
+    # ===============================
+    df = df.copy()
+    df.insert(0, "__rowNum__", range(1, len(df) + 1))
+
+    def calc_grid_height(df, row_height=50, header_height=40, max_height=900):
         return min(header_height + len(df) * row_height, max_height)
 
     gb = GridOptionsBuilder.from_dataframe(df)
 
     # ===============================
-    # KOLOM NOMOR OTOMATIS (PALING KIRI)
+    # KOLOM NOMOR (PALING KIRI - FIX)
     # ===============================
     gb.configure_column(
         "__rowNum__",
@@ -45,15 +43,9 @@ def render_table_pin_satker(df):
         suppressSizeToFit=True,
         sortable=False,
         filter=False,
-        cellStyle={"textAlign": "center"},
-        valueGetter=JsCode(
-            "function(params) { return params.node.rowIndex + 1; }"
-        )
+        cellStyle={"textAlign": "center"}
     )
 
-    # ===============================
-    # DEFAULT SEMUA KOLOM
-    # ===============================
     gb.configure_default_column(
         resizable=True,
         filter=True,
@@ -61,9 +53,6 @@ def render_table_pin_satker(df):
         minWidth=80
     )
 
-    # ===============================
-    # PIN KOLOM KIRI (SETELAH NOMOR)
-    # ===============================
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
             "Uraian Satker-RINGKAS",
@@ -71,8 +60,7 @@ def render_table_pin_satker(df):
             pinned="left",
             lockPosition=True,
             suppressMovable=True,
-            width=180,
-            suppressSizeToFit=True
+            width=180
         )
 
     if "Kode Satker" in df.columns:
@@ -81,67 +69,34 @@ def render_table_pin_satker(df):
             pinned="left",
             lockPosition=True,
             suppressMovable=True,
-            width=80,
-            suppressSizeToFit=True
+            width=80
         )
 
-    if "Kode BA" in df.columns:
-        gb.configure_column(
-            "Kode BA",
-            width=60
-        )
-
-    # ===============================
-    # KOLOM BULAN / TRIWULAN
-    # ===============================
-    bulan_cols = [
-        "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
-        "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
-        "Tw I", "Tw II", "Tw III", "Tw IV"
-    ]
-
-    for col in bulan_cols:
-        if col in df.columns:
-            gb.configure_column(
-                col,
-                width=70,
-                type=["numericColumn"],
-                cellStyle={"textAlign": "center"}
-            )
-
-    # ===============================
-    # ZEBRA DARK MODE
-    # ===============================
     zebra_dark = JsCode("""
     function(params) {
         const isEven = params.node.rowIndex % 2 === 0;
         return {
             backgroundColor: isEven ? '#3D3D3D' : '#050505',
-            color: '#FFFFFF',
-            borderBottom: '1px solid #6A6A6A'
+            color: '#FFFFFF'
         };
     }
     """)
 
     gb.configure_grid_options(
-        domLayout="normal",
         getRowStyle=zebra_dark,
         headerHeight=40,
         alwaysShowHorizontalScroll=True
     )
 
-    gridOptions = gb.build()
-
     AgGrid(
         df,
-        gridOptions=gridOptions,
+        gridOptions=gb.build(),
         height=calc_grid_height(df),
         width="100%",
         theme="streamlit",
         fit_columns_on_grid_load=False,
         allow_unsafe_jscode=True
     )
-
 
 
 # =========================
