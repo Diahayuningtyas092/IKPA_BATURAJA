@@ -3301,7 +3301,10 @@ def menu_ews_satker():
 
     st.markdown('<div class="filter-ba">', unsafe_allow_html=True)
     st.markdown("🔎 Filter Kode BA")
-    ba_codes = sorted(df_all["Kode BA"].dropna().unique())
+    # 🔒 HANYA BA YANG ADA DI REFERENSI
+    ba_codes = sorted(
+        [ba for ba in df_all["Kode BA"].dropna().unique() if ba in BA_MAP]
+    )
     ba_options = ["SEMUA BA"] + ba_codes
 
     def format_ba(code):
