@@ -3326,6 +3326,7 @@ def menu_ews_satker():
     if "SEMUA BA" not in selected_ba_internal:
         df_all = df_all[df_all["Kode BA"].isin(selected_ba_internal)]
         df_latest = df_latest[df_latest["Kode BA"].isin(selected_ba_internal)]
+
         
     # ===============================
     # 🔑 BUAT LABEL SATKER INTERNAL
@@ -3558,6 +3559,10 @@ def menu_ews_satker():
         st.warning("⚠️ Tidak ada data pada periode yang dipilih.")
         st.stop()
 
+    # ======================================================
+    # 🔑 PAKSA NAMA SATKER RINGKAS (WAJIB)
+    # ======================================================
+    df_trend = apply_reference_short_names(df_trend)
 
     # ======================================================
     # 🔑 PAKSA SATKER RINGKAS & KODE BA
@@ -3570,6 +3575,9 @@ def menu_ews_satker():
         df_trend["Kode BA"] = ""
 
     df_trend["Kode BA"] = df_trend["Kode BA"].apply(normalize_kode_ba)
+    # 🔒 WAJIB: samakan BA Analisis Tren dengan referensi
+    df_trend = df_trend[df_trend["Kode BA"].isin(BA_MAP)].copy()
+
 
     # ======================================================
     # NAMA RINGKAS MURNI
@@ -3609,48 +3617,58 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # MAP KODE → LABEL LEGEND
+    # MAP KODE SATKER → LABEL LEGEND (SATU SUMBER KEBENARAN)
     # ======================================================
     legend_map = (
         df_trend[["Kode Satker", "Legend_Label"]]
-        .drop_duplicates()
+        .drop_duplicates(subset=["Kode Satker"])
         .set_index("Kode Satker")["Legend_Label"]
         .to_dict()
     )
+
+    # 🔒 OPSI SATKER HANYA YANG ADA DI LEGEND
+    all_kode_satker = list(legend_map.keys())
 
     # ======================================================
     # DEFAULT: 5 SATKER TERENDAH (PERIODE TERBARU)
     # ======================================================
     latest_period = df_all["Period_Sort"].max()
-    df_latest = df_all[df_all["Period_Sort"] == latest_period].copy()
+
+    df_latest = (
+        df_all[df_all["Period_Sort"] == latest_period]
+        .copy()
+    )
+
+    df_latest["Kode Satker"] = df_latest["Kode Satker"].astype(str)
 
     bottom_5_kode = (
         df_latest
         .sort_values("Nilai Akhir (Nilai Total/Konversi Bobot)")
-        .head(5)["Kode Satker"]
-        .astype(str)
+        ["Kode Satker"]
         .tolist()
     )
 
-    all_kode_satker = df_trend["Kode Satker"].unique().tolist()
+    # 🔒 AMAN: hanya yang ada di legend_map
+    default_kode = [k for k in bottom_5_kode if k in legend_map]
 
-    default_kode = [k for k in bottom_5_kode if k in all_kode_satker]
     if not default_kode:
         default_kode = all_kode_satker[:5]
 
     # ======================================================
-    # MULTISELECT SATKER
+    # MULTISELECT SATKER (FINAL & AMAN)
     # ======================================================
     selected_kode_satker = st.multiselect(
         "Pilih Satker",
         options=all_kode_satker,
         default=default_kode,
-        format_func=lambda k: legend_map.get(k, k)
+        format_func=lambda k: legend_map[k],
+        key="trend_satker_selector"
     )
 
     if not selected_kode_satker:
         st.warning("Pilih minimal satu satker.")
         st.stop()
+
 
     # ======================================================
     # 📊 PLOT GRAFIK TREN
@@ -3742,7 +3760,6 @@ def menu_ews_satker():
             st.markdown("---")
     else:
         st.success("✅ Tidak ada satker dengan tren menurun.")
-
 
         
 #HIGHLIGHTS
