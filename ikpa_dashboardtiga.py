@@ -3686,18 +3686,18 @@ def menu_ews_satker():
             categoryarray=ordered_periods
         ),
 
-        # 🔑 LEGEND DI BAWAH JUDUL, DI LUAR CHART
+        # 🔑 LEGEND DI ATAS CHART (DI BAWAH JUDUL)
         legend=dict(
             orientation="h",
             x=0.5,
-            y=0.88,          # ⬅️ PAS DI BAWAH JUDUL
+            y=0.90,          # ⬅️ POSISI LEGEND (ATAS CHART)
             xanchor="center",
             yanchor="top",
             font=dict(size=10),
             traceorder="normal"
         ),
 
-        # 🔑 TAMBAH RUANG ATAS SUPAYA TIDAK NUTUP GRAFIK
+        # 🔑 RUANG ATAS DIBESARKAN (WAJIB)
         margin=dict(
             l=60,
             r=40,
@@ -3705,7 +3705,6 @@ def menu_ews_satker():
             b=60
         )
     )
-
 
 
     st.plotly_chart(fig, use_container_width=True)
