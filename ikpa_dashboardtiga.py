@@ -20,6 +20,12 @@ import time
 
 def render_table_pin_satker(df):
     # ==================================
+    # COPY DF + NOMOR URUT (DISPLAY SAJA)
+    # ==================================
+    df = df.copy()
+    df.insert(0, "No.", range(1, len(df) + 1))
+
+    # ==================================
     # HELPER: HITUNG TINGGI GRID DINAMIS
     # ==================================
     def calc_grid_height(
@@ -35,8 +41,12 @@ def render_table_pin_satker(df):
 
     gb = GridOptionsBuilder.from_dataframe(df)
 
-    gb.configure_column("Nilai Total", hide=True)
-    
+    # ===============================
+    # HIDE KOLOM TIDAK PERLU
+    # ===============================
+    if "Nilai Total" in df.columns:
+        gb.configure_column("Nilai Total", hide=True)
+
     # ===============================
     # DEFAULT SEMUA KOLOM
     # ===============================
@@ -48,7 +58,21 @@ def render_table_pin_satker(df):
     )
 
     # ===============================
-    # PIN KOLOM KIRI
+    # PIN KOLOM NOMOR (PALING KIRI)
+    # ===============================
+    gb.configure_column(
+        "No.",
+        headerName="No",
+        pinned="left",
+        width=60,
+        suppressSizeToFit=True,
+        cellStyle={"textAlign": "center"},
+        sortable=False,
+        filter=False
+    )
+
+    # ===============================
+    # PIN KOLOM KIRI (SATKER)
     # ===============================
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
@@ -94,7 +118,6 @@ def render_table_pin_satker(df):
     zebra_dark = JsCode("""
     function(params) {
         const isEven = params.node.rowIndex % 2 === 0;
-
         return {
             backgroundColor: isEven ? '#3D3D3D' : '#050505',
             color: '#FFFFFF',
@@ -103,12 +126,11 @@ def render_table_pin_satker(df):
     }
     """)
 
-
     # ===============================
-    # GRID OPTIONS (HEADER FREEZE)
+    # GRID OPTIONS
     # ===============================
     gb.configure_grid_options(
-        domLayout="normal",          # BUKAN autoHeight
+        domLayout="normal",
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
@@ -118,17 +140,18 @@ def render_table_pin_satker(df):
     gridOptions = gb.build()
 
     # ===============================
-    # RENDER AGGRID (DYNAMIC HEIGHT)
+    # RENDER AGGRID
     # ===============================
     AgGrid(
         df,
         gridOptions=gridOptions,
-        height=calc_grid_height(df),  #  KUNCI UTAMA
+        height=calc_grid_height(df),
         width="100%",
         theme="streamlit",
         fit_columns_on_grid_load=False,
         allow_unsafe_jscode=True
     )
+
 
 
 # =========================
