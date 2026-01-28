@@ -218,10 +218,11 @@ def normalize_kode_satker(k, width=6):
     return kod
 
 
+@st.cache_data
 def load_reference_satker():
     """
     Load referensi nama satker ringkas.
-    Wajib punya kolom:
+    WAJIB punya kolom:
     - Kode Satker
     - Uraian Satker-SINGKAT
     """
@@ -231,15 +232,41 @@ def load_reference_satker():
             "Diahayuningtyas092/IKPA_BATURAJA/main/templates/"
             "Template_Data_Referensi.xlsx"
         )
+
         ref = pd.read_excel(url, dtype=str)
 
-        ref["Kode Satker"] = ref["Kode Satker"].apply(normalize_kode_satker)
-        ref["Uraian Satker-SINGKAT"] = ref["Uraian Satker-SINGKAT"].astype(str)
+        # ===============================
+        # NORMALISASI WAJIB
+        # ===============================
+        ref["Kode Satker"] = (
+            ref["Kode Satker"]
+            .apply(normalize_kode_satker)
+            .astype(str)
+            .str.strip()
+        )
+
+        ref["Uraian Satker-SINGKAT"] = (
+            ref["Uraian Satker-SINGKAT"]
+            .astype(str)
+            .str.strip()
+        )
+
+        # ===============================
+        # BUANG DATA TIDAK VALID
+        # ===============================
+        ref = ref[
+            (ref["Kode Satker"] != "") &
+            (ref["Kode Satker"].notna()) &
+            (ref["Uraian Satker-SINGKAT"] != "") &
+            (ref["Uraian Satker-SINGKAT"].notna())
+        ].copy()
 
         return ref
+
     except Exception as e:
-        st.warning(f"Referensi satker gagal dimuat: {e}")
-        return None
+        st.error(f"❌ Referensi satker gagal dimuat: {e}")
+        return pd.DataFrame(columns=["Kode Satker", "Uraian Satker-SINGKAT"])
+
 
 # ================================
 # INIT SESSION STATE 
@@ -3567,68 +3594,54 @@ def menu_ews_satker():
         st.stop()
 
     # ======================================================
-    # 🔑 PAKSA SATKER RINGKAS & KODE BA
+    # PAKSA SATKER RINGKAS & KODE BA
     # ======================================================
     df_trend = apply_reference_short_names(df_trend)
 
-    df_trend["Satker_Select_Label"] = (
-        "[" + df_trend["Kode BA"] + "] "
-        + df_trend["Uraian Satker-RINGKAS"]
-        .astype(str)
-        .str.replace(r"\s*\(\d+\)$", "", regex=True)
-        .str.strip()
-    )
-
+    # ======================================================
+    # 🔒 FILTER: HANYA SATKER YANG ADA DI REFERENSI
+    # ======================================================
+    df_trend = df_trend[
+        df_trend["Uraian Satker-SINGKAT"].notna() &
+        (df_trend["Uraian Satker-SINGKAT"].str.strip() != "")
+    ].copy()
 
     # ======================================================
-    # LABEL SATKER RESMI (SATU SUMBER KEBENARAN)
+    # 🔑 NAMA RINGKAS MURNI (SATU-SATUNYA)
     # ======================================================
-
-    # Nama ringkas murni (tanpa kode)
-    df_trend["Nama_Ringkas_Murni"] = (
-        df_trend["Uraian Satker-RINGKAS"]
+    df_trend["Nama_Satker_Ringkas"] = (
+        df_trend["Uraian Satker-SINGKAT"]
         .astype(str)
         .str.strip()
     )
 
-    # Label untuk legend & chart
-    df_trend["Legend_Label"] = (
+    # ======================================================
+    # 🔑 LABEL FINAL RESMI (SATU SUMBER KEBENARAN)
+    # FORMAT: [BA] NAMA RINGKAS (KODE SATKER)
+    # ======================================================
+    df_trend["Satker_Label_Final"] = (
         "[" + df_trend["Kode BA"] + "] "
-        + df_trend["Nama_Ringkas_Murni"]
-        + " (" + df_trend["Kode Satker"] + ")"
-    )
-
-    # Label khusus untuk multiselect (SAMA FORMAT)
-    df_trend["Satker_Select_Label"] = df_trend["Legend_Label"]
-
-
-
-    # ======================================================
-    # LABEL PERIODE
-    # ======================================================
-    MONTH_REVERSE = {v: k for k, v in MONTH_ORDER.items()}
-
-    df_trend["Periode_Label"] = df_trend.apply(
-        lambda x: f"{MONTH_REVERSE.get(x['Month_Num'], '')} {x['Tahun_Int']}",
-        axis=1
-    )
-
-    ordered_periods = (
-        df_trend
-        .sort_values("Period_Sort")
-        .drop_duplicates("Period_Sort")["Periode_Label"]
-        .tolist()
+        + df_trend["Nama_Satker_Ringkas"]
+        + " (" + df_trend["Kode Satker"].astype(str) + ")"
     )
 
     # ======================================================
-    # MAP KODE → LABEL LEGEND
+    # LABEL LEGEND & SELECTOR (PAKAI LABEL FINAL)
     # ======================================================
-    legend_map = (
-        df_trend[["Kode Satker", "Legend_Label"]]
-        .drop_duplicates()
-        .set_index("Kode Satker")["Legend_Label"]
+    df_trend["Legend_Label"] = df_trend["Satker_Label_Final"]
+    df_trend["Satker_Select_Label"] = df_trend["Satker_Label_Final"]
+
+    # ======================================================
+    # MAP KODE SATKER → LABEL FINAL
+    # ======================================================
+    satker_label_map = (
+        df_trend[["Kode Satker", "Satker_Label_Final"]]
+        .drop_duplicates(subset=["Kode Satker"])
+        .set_index("Kode Satker")["Satker_Label_Final"]
         .to_dict()
     )
+
+    all_kode_satker = list(satker_label_map.keys())
 
     # ======================================================
     # DEFAULT: 5 SATKER TERENDAH (PERIODE TERBARU)
@@ -3644,41 +3657,21 @@ def menu_ews_satker():
         .tolist()
     )
 
-    all_kode_satker = df_trend["Kode Satker"].unique().tolist()
-
     default_kode = [k for k in bottom_5_kode if k in all_kode_satker]
     if not default_kode:
         default_kode = all_kode_satker[:5]
 
     # ======================================================
-    # 🔑 LABEL KHUSUS SELECTOR (WAJIB RINGKAS)
+    # MULTISELECT SATKER (RINGKAS + KODE SATKER)
     # ======================================================
-    df_trend["Satker_Select_Label"] = (
-        "[" + df_trend["Kode BA"] + "] "
-        + df_trend["Uraian Satker-RINGKAS"]
-        .astype(str)
-        .str.strip()
-    )
-
-    # ======================================================
-    # MULTISELECT SATKER
-    # ======================================================
-    satker_select_map = (
-        df_trend[["Kode Satker", "Satker_Select_Label"]]
-        .drop_duplicates(subset=["Kode Satker"])
-        .set_index("Kode Satker")["Satker_Select_Label"]
-        .to_dict()
-    )
-
-    all_kode_satker = list(satker_select_map.keys())
-
     selected_kode_satker = st.multiselect(
         "Pilih Satker",
         options=all_kode_satker,
         default=default_kode,
-        format_func=lambda k: satker_select_map[k],
+        format_func=lambda k: satker_label_map[k],
         key="trend_satker_selector"
     )
+
 
 
 
