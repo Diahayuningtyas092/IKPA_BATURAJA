@@ -3567,23 +3567,18 @@ def menu_ews_satker():
         st.stop()
 
     # ======================================================
-    # 🔑 PAKSA NAMA SATKER RINGKAS (WAJIB)
-    # ======================================================
-    df_trend = apply_reference_short_names(df_trend)
-
-    # ======================================================
     # 🔑 PAKSA SATKER RINGKAS & KODE BA
     # ======================================================
     df_trend = apply_reference_short_names(df_trend)
 
-    df_trend["Kode Satker"] = df_trend["Kode Satker"].astype(str)
+    df_trend["Satker_Select_Label"] = (
+        "[" + df_trend["Kode BA"] + "] "
+        + df_trend["Uraian Satker-RINGKAS"]
+        .astype(str)
+        .str.replace(r"\s*\(\d+\)$", "", regex=True)
+        .str.strip()
+    )
 
-    if "Kode BA" not in df_trend.columns:
-        df_trend["Kode BA"] = ""
-
-    df_trend["Kode BA"] = df_trend["Kode BA"].apply(normalize_kode_ba)
-    # 🔒 WAJIB: samakan BA Analisis Tren dengan referensi
-    df_trend = df_trend[df_trend["Kode BA"].isin(BA_MAP)].copy()
 
 
     # ======================================================
@@ -3656,16 +3651,23 @@ def menu_ews_satker():
     # ======================================================
     # MULTISELECT SATKER
     # ======================================================
+    satker_select_map = (
+        df_trend[["Kode Satker", "Satker_Select_Label"]]
+        .drop_duplicates(subset=["Kode Satker"])
+        .set_index("Kode Satker")["Satker_Select_Label"]
+        .to_dict()
+    )
+    
+    all_kode_satker = list(satker_select_map.keys())
+
     selected_kode_satker = st.multiselect(
         "Pilih Satker",
         options=all_kode_satker,
         default=default_kode,
-        format_func=lambda k: legend_map.get(k, k)
+        format_func=lambda k: satker_select_map[k],
+        key="trend_satker_selector"
     )
 
-    if not selected_kode_satker:
-        st.warning("Pilih minimal satu satker.")
-        st.stop()
 
     # ======================================================
     # 📊 PLOT GRAFIK TREN
