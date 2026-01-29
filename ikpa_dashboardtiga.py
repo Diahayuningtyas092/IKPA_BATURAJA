@@ -347,6 +347,73 @@ def fix_dipa_header(df_raw):
     # fallback → biar standardize_dipa yang handle
     return df_raw
 
+# ============================================================
+# 🔍 DETEKSI FORMAT DIPA OMSPAN
+# ============================================================
+def is_omspan_dipa(df_raw):
+    cols = df_raw.astype(str).apply(lambda x: " ".join(x), axis=1).str.upper()
+    return (
+        cols.str.contains("OMSPAN").any() or
+        cols.str.contains("PAGU_RUPIAH").any() or
+        cols.str.contains("KODE_SATKER").any()
+    )
+
+
+# ============================================================
+# 🔄 ADAPTER DIPA OMSPAN → FORMAT DIPA STANDAR
+# ============================================================
+def adapt_dipa_omspan(df_raw):
+    df = df_raw.copy()
+
+    # 🔹 cari header otomatis
+    for i in range(15):
+        row = " ".join(df.iloc[i].astype(str).str.upper())
+        if "SATKER" in row and "PAGU" in row:
+            df.columns = df.iloc[i]
+            df = df.iloc[i+1:]
+            break
+
+    df = df.dropna(how="all")
+
+    def find(names):
+        for c in df.columns:
+            cc = str(c).upper().replace(" ", "")
+            for n in names:
+                if n in cc:
+                    return c
+        return None
+
+    out = pd.DataFrame()
+
+    out["Kode Satker"] = (
+        df[find(["KODESATKER", "SATKER"])]
+        .astype(str)
+        .str.extract(r"(\d{6})")[0]
+    )
+
+    out["Satker"] = (
+        df[find(["NAMASATKER", "URAIAN"])]
+        .astype(str)
+        if find(["NAMASATKER", "URAIAN"])
+        else ""
+    )
+
+    out["Total Pagu"] = (
+        df[find(["PAGU", "JUMLAH"])]
+        .astype(str)
+        .str.replace(r"[^\d]", "", regex=True)
+        .astype(float)
+    )
+
+    out["No Dipa"] = df.get(find(["DIPA"]), "")
+    out["Tanggal Posting Revisi"] = pd.NaT
+    out["Revisi ke-"] = 0
+    out["Jenis Revisi"] = "ANGKA_DASAR"
+    out["Owner"] = "OMSPAN"
+    out["Digital Stamp"] = ""
+
+    return out.dropna(subset=["Kode Satker"])
+
 
 # -------------------------
 # standardize_dipa
@@ -4287,13 +4354,26 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
 
         # 2️⃣ Standarisasi format
+        # 2️⃣ Standarisasi format (AUTO DETECT OMSPAN)
         with st.spinner("Menstandarisasi format DIPA..."):
-            raw_fixed = fix_dipa_header(raw)
-            df_std = standardize_dipa(raw_fixed)
 
+            if is_omspan_dipa(raw):
+                st.info("📌 Format DIPA OMSPAN terdeteksi")
 
-        if df_std.empty:
-            return None, None, "❌ Data tidak berhasil distandarisasi atau tidak ada data valid"
+                # 🔄 Adapter OMSPAN → format standar
+                df_adapted = adapt_dipa_omspan(raw)
+
+                if df_adapted.empty:
+                    return None, None, "❌ Data OMSPAN tidak valid / kosong"
+
+                # 👉 Masuk pipeline normal
+                df_std = standardize_dipa(df_adapted)
+
+            else:
+                # 🔁 Alur lama (DIPA standar)
+                raw_fixed = fix_dipa_header(raw)
+                df_std = standardize_dipa(raw_fixed)
+
 
         # 3️⃣ Validasi Tahun
         if "Tahun" in df_std.columns and not df_std["Tahun"].isna().all():
