@@ -3321,8 +3321,21 @@ def menu_ews_satker():
     df_all["Kode Satker"] = df_all["Kode Satker"].apply(normalize_kode_satker)
 
     df_all = apply_reference_short_names(df_all)
-
     
+    # ======================================================
+    # 🧪 DEBUG RINGKAS (SEMENTARA – BOLEH DIHAPUS SETELAH FIX)
+    # ======================================================
+    st.write(
+        "DEBUG ✅ contoh ringkas:",
+        df_all["Uraian Satker-RINGKAS"]
+        .dropna()
+        .unique()[:10]
+    )
+
+    if (df_all["Uraian Satker-RINGKAS"] == df_all["Uraian Satker"]).all():
+        st.warning("⚠️ Nama satker belum berhasil diringkas.")
+
+
     # Analisis tren dan Early Warning System
     # Gunakan data periode terkini
     latest_period = sorted(st.session_state.data_storage.keys(), key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0].upper(), 0)), reverse=True)[0]
