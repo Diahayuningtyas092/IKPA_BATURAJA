@@ -3308,14 +3308,20 @@ def menu_ews_satker():
         df_copy = df.copy()
         # ensure Period & Period_Sort exist
         df_copy['Period'] = f"{period[0]} {period[1]}"
-        df_copy['Period_Sort'] = f"{period[1]}-{period[0]}"
+        month_num = MONTH_ORDER.get(period[0].upper(), 0)
+        df_copy["Period_Sort"] = f"{int(period[1]):04d}-{month_num:02d}"
         all_data.append(df_copy)
     
     if not all_data:
         st.warning("⚠️ Belum ada data historis yang tersedia.")
         return
     
+    
     df_all = pd.concat(all_data, ignore_index=True)
+    df_all["Kode Satker"] = df_all["Kode Satker"].apply(normalize_kode_satker)
+
+    df_all = apply_reference_short_names(df_all)
+
     
     # Analisis tren dan Early Warning System
     # Gunakan data periode terkini
@@ -3374,8 +3380,8 @@ def menu_ews_satker():
     df_latest["Kode BA"] = df_latest["Kode BA"].apply(normalize_kode_ba)
 
     df_latest["Satker_Internal"] = (
-        "[" + df_latest["Kode BA"] + "] "
-        + df_latest["Uraian Satker-RINGKAS"].astype(str)
+        "[" + df_latest["Kode BA"].fillna("").astype(str) + "] "
+        + df_latest["Uraian Satker-RINGKAS"].fillna("").astype(str)
         + " (" + df_latest["Kode Satker"].astype(str) + ")"
     )
 
