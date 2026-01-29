@@ -4200,7 +4200,7 @@ def clean_dipa(df_raw):
     final_columns = [
         "Kode Satker", "Satker", "Tahun", "Tanggal Posting Revisi", "Total Pagu",
         "NO", "Kementerian", "Kode Status History", "Jenis Revisi", "Revisi ke-",
-        "No Dipa", "Tanggal Dipa", "Owner", "Digital Stamp"
+        "No Dipa", "Tanggal Dipa", "Digital Stamp"
     ]
     
     df_clean = df[final_columns].copy()
@@ -4476,7 +4476,6 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
             "Revisi ke-",
             "No Dipa",
             "Tanggal Dipa",
-            "Owner",
             "Digital Stamp",
         ]
 
