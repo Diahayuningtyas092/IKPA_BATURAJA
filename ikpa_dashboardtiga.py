@@ -225,7 +225,6 @@ def load_reference_satker():
     WAJIB punya kolom:
     - Kode Satker
     - Uraian Satker-RINGKAS
-
     """
     try:
         url = (
@@ -236,9 +235,9 @@ def load_reference_satker():
 
         ref = pd.read_excel(url, dtype=str)
 
-        # ===============================
-        # NORMALISASI WAJIB
-        # ===============================
+        # ==================================================
+        # 🔑 NORMALISASI WAJIB (KUNCI UTAMA)
+        # ==================================================
         ref["Kode Satker"] = (
             ref["Kode Satker"]
             .apply(normalize_kode_satker)
@@ -252,21 +251,31 @@ def load_reference_satker():
             .str.strip()
         )
 
-        # ===============================
-        # BUANG DATA TIDAK VALID
-        # ===============================
+        # ==================================================
+        # 🔒 BUANG DATA TIDAK VALID
+        # ==================================================
         ref = ref[
+            ref["Kode Satker"].notna() &
             (ref["Kode Satker"] != "") &
-            (ref["Kode Satker"].notna()) &
-            (ref["Uraian Satker-RINGKAS"] != "") &
-            (ref["Uraian Satker-RINGKAS"].notna())
+            ref["Uraian Satker-RINGKAS"].notna() &
+            (ref["Uraian Satker-RINGKAS"] != "")
         ].copy()
+
+        # ==================================================
+        # 🔐 KUNCI STRUKTUR (ANTI ERROR DI TEMPAT LAIN)
+        # ==================================================
+        ref = ref[["Kode Satker", "Uraian Satker-RINGKAS"]]
 
         return ref
 
     except Exception as e:
         st.error(f"❌ Referensi satker gagal dimuat: {e}")
-        return pd.DataFrame(columns=["Kode Satker", "Uraian Satker-SINGKAT"])
+
+        # ⛑️ FALLBACK AMAN (KONSISTEN)
+        return pd.DataFrame(
+            columns=["Kode Satker", "Uraian Satker-RINGKAS"]
+        )
+
 
 
 # ================================
