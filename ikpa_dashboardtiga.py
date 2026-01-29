@@ -4412,7 +4412,7 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
                 if df_adapted.empty:
                     return None, None, "❌ Data OMSPAN tidak valid / kosong"
 
-                # 👉 Masuk pipeline normal
+                # Masuk pipeline normal
                 df_std = standardize_dipa(df_adapted)
 
             else:
