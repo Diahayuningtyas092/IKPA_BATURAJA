@@ -224,7 +224,8 @@ def load_reference_satker():
     Load referensi nama satker ringkas.
     WAJIB punya kolom:
     - Kode Satker
-    - Uraian Satker-SINGKAT
+    - Uraian Satker-RINGKAS
+
     """
     try:
         url = (
@@ -245,8 +246,8 @@ def load_reference_satker():
             .str.strip()
         )
 
-        ref["Uraian Satker-SINGKAT"] = (
-            ref["Uraian Satker-SINGKAT"]
+        ref["Uraian Satker-RINGKAS"] = (
+            ref["Uraian Satker-RINGKAS"]
             .astype(str)
             .str.strip()
         )
@@ -257,8 +258,8 @@ def load_reference_satker():
         ref = ref[
             (ref["Kode Satker"] != "") &
             (ref["Kode Satker"].notna()) &
-            (ref["Uraian Satker-SINGKAT"] != "") &
-            (ref["Uraian Satker-SINGKAT"].notna())
+            (ref["Uraian Satker-RINGKAS"] != "") &
+            (ref["Uraian Satker-RINGKAS"].notna())
         ].copy()
 
         return ref
@@ -3599,25 +3600,41 @@ def menu_ews_satker():
     df_trend = apply_reference_short_names(df_trend)
 
     # ======================================================
+    # 🔍 VALIDASI HASIL REFERENSI SATKER (WAJIB)
+    # ======================================================
+    REQUIRED_COL = "Uraian Satker-RINGKAS"
+
+    if REQUIRED_COL not in df_trend.columns:
+        st.error(
+            f"❌ Kolom '{REQUIRED_COL}' tidak ditemukan.\n\n"
+            "Pastikan:\n"
+            "- apply_reference_short_names() melakukan merge\n"
+            "- nama kolom di referensi BENAR\n"
+            "- Kode Satker sudah ternormalisasi"
+        )
+        st.write("📌 Kolom yang tersedia:", df_trend.columns.tolist())
+        st.stop()
+
+    # ======================================================
     # 🔒 FILTER: HANYA SATKER YANG ADA DI REFERENSI
     # ======================================================
     df_trend = df_trend[
-        df_trend["Uraian Satker-SINGKAT"].notna() &
-        (df_trend["Uraian Satker-SINGKAT"].str.strip() != "")
+        df_trend[REQUIRED_COL].notna() &
+        (df_trend[REQUIRED_COL].astype(str).str.strip() != "")
     ].copy()
 
+
     # ======================================================
-    # 🔑 NAMA RINGKAS MURNI (SATU-SATUNYA)
+    # 🔑 NAMA SATKER RINGKAS (SATU-SATUNYA)
     # ======================================================
     df_trend["Nama_Satker_Ringkas"] = (
-        df_trend["Uraian Satker-SINGKAT"]
+        df_trend["Uraian Satker-RINGKAS"]
         .astype(str)
         .str.strip()
     )
 
     # ======================================================
-    # 🔑 LABEL FINAL RESMI (SATU SUMBER KEBENARAN)
-    # FORMAT: [BA] NAMA RINGKAS (KODE SATKER)
+    # 🔑 LABEL FINAL RESMI
     # ======================================================
     df_trend["Satker_Label_Final"] = (
         "[" + df_trend["Kode BA"] + "] "
@@ -3625,11 +3642,9 @@ def menu_ews_satker():
         + " (" + df_trend["Kode Satker"].astype(str) + ")"
     )
 
-    # ======================================================
-    # LABEL LEGEND & SELECTOR (PAKAI LABEL FINAL)
-    # ======================================================
     df_trend["Legend_Label"] = df_trend["Satker_Label_Final"]
     df_trend["Satker_Select_Label"] = df_trend["Satker_Label_Final"]
+
 
     # ======================================================
     # MAP KODE SATKER → LABEL FINAL
@@ -3671,8 +3686,6 @@ def menu_ews_satker():
         format_func=lambda k: satker_label_map[k],
         key="trend_satker_selector"
     )
-
-
 
 
     # ======================================================
