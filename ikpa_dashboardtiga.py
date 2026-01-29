@@ -4466,6 +4466,41 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
         df_std["Digital Stamp"] = df_std["Digital Stamp"].replace("", pd.NA)
         df_std["Digital Stamp"] = df_std["Digital Stamp"].fillna("OMSPAN (NON-SPAN)")
 
+        # =====================================================
+        # FINALISASI TANGGAL DIPA, OWNER, DIGITAL STAMP
+        # =====================================================
+
+        # === 1️⃣ TANGGAL DIPA ===
+        # (pakai Tanggal Posting Revisi sebagai Tanggal DIPA resmi)
+        if "Tanggal Posting Revisi" not in df_std.columns:
+            df_std["Tanggal Posting Revisi"] = pd.NaT
+
+        df_std["Tanggal Posting Revisi"] = pd.to_datetime(
+            df_std["Tanggal Posting Revisi"],
+            errors="coerce"
+        )
+
+        # fallback keras: 31 Desember tahun anggaran
+        mask_na = df_std["Tanggal Posting Revisi"].isna()
+        df_std.loc[mask_na, "Tanggal Posting Revisi"] = pd.to_datetime(
+            df_std.loc[mask_na, "Tahun"].astype(str) + "-12-31"
+        )
+
+        # === 2️⃣ OWNER (INI YANG HILANG DI KODE KAMU) ===
+        if "Owner" not in df_std.columns:
+            df_std["Owner"] = "SATKER"
+        else:
+            df_std["Owner"] = df_std["Owner"].fillna("SATKER")
+
+        # === 3️⃣ DIGITAL STAMP ===
+        if "Digital Stamp" not in df_std.columns:
+            df_std["Digital Stamp"] = "OMSPAN (NON-SPAN)"
+        else:
+            df_std["Digital Stamp"] = (
+                df_std["Digital Stamp"]
+                .replace("", pd.NA)
+                .fillna("OMSPAN (NON-SPAN)")
+            )
 
 
         # 4️⃣ Validasi data
@@ -4492,7 +4527,7 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
                     df_std["Kementerian"] = df_std["Kementerian"].fillna(df_std["K/L"])
         
         # =====================================================
-        # 🔑 FINAL FIX NAMA SATKER (WAJIB UNTUK OMSPAN)
+        # FINAL FIX NAMA SATKER (WAJIB UNTUK OMSPAN)
         # =====================================================
         # pastikan kolom Satker ada
         if "Satker" not in df_std.columns:
