@@ -224,8 +224,7 @@ def load_reference_satker():
     Load referensi nama satker ringkas.
     WAJIB punya kolom:
     - Kode Satker
-    - Uraian Satker-RINGKAS
-
+    - Uraian Satker-SINGKAT
     """
     try:
         url = (
@@ -246,8 +245,8 @@ def load_reference_satker():
             .str.strip()
         )
 
-        ref["Uraian Satker-RINGKAS"] = (
-            ref["Uraian Satker-RINGKAS"]
+        ref["Uraian Satker-SINGKAT"] = (
+            ref["Uraian Satker-SINGKAT"]
             .astype(str)
             .str.strip()
         )
@@ -258,15 +257,15 @@ def load_reference_satker():
         ref = ref[
             (ref["Kode Satker"] != "") &
             (ref["Kode Satker"].notna()) &
-            (ref["Uraian Satker-RINGKAS"] != "") &
-            (ref["Uraian Satker-RINGKAS"].notna())
+            (ref["Uraian Satker-SINGKAT"] != "") &
+            (ref["Uraian Satker-SINGKAT"].notna())
         ].copy()
 
         return ref
 
     except Exception as e:
         st.error(f"❌ Referensi satker gagal dimuat: {e}")
-        return pd.DataFrame(columns=["Kode Satker", "Uraian Satker-RINGKAS"])
+        return pd.DataFrame(columns=["Kode Satker", "Uraian Satker-SINGKAT"])
 
 
 # ================================
@@ -346,120 +345,6 @@ def fix_dipa_header(df_raw):
 
     # fallback → biar standardize_dipa yang handle
     return df_raw
-
-# ============================================================
-# 🔍 DETEKSI FORMAT DIPA OMSPAN
-# ============================================================
-def is_omspan_dipa(df_raw):
-    cols = df_raw.astype(str).apply(lambda x: " ".join(x), axis=1).str.upper()
-    return (
-        cols.str.contains("OMSPAN").any() or
-        cols.str.contains("PAGU_RUPIAH").any() or
-        cols.str.contains("KODE_SATKER").any()
-    )
-
-
-# ============================================================
-# 🔄 ADAPTER DIPA OMSPAN → FORMAT DIPA STANDAR (FINAL)
-# ============================================================
-def adapt_dipa_omspan(df_raw):
-    df = df_raw.copy()
-
-    # 🔹 cari header otomatis
-    for i in range(15):
-        row = " ".join(df.iloc[i].astype(str).str.upper())
-        if "SATKER" in row and "PAGU" in row:
-            df.columns = df.iloc[i]
-            df = df.iloc[i+1:]
-            break
-
-    df = df.dropna(how="all")
-
-    def find(names):
-        for c in df.columns:
-            cc = str(c).upper().replace(" ", "").replace("_", "")
-            for n in names:
-                if n in cc:
-                    return c
-        return None
-
-    out = pd.DataFrame()
-
-    # ===============================
-    # 1️⃣ KODE SATKER (WAJIB)
-    # ===============================
-    satker_col = find(["KODESATKER", "SATKER"])
-    if satker_col is None:
-        raise ValueError("Kolom Kode Satker tidak ditemukan di file OMSPAN")
-
-    out["Kode Satker"] = (
-        df[satker_col]
-        .astype(str)
-        .str.extract(r"(\d{6})")[0]
-    )
-
-    # ===============================
-    # 2️⃣ NAMA SATKER
-    # (OMSPAN TIDAK PUNYA → KOSONG DULU)
-    # ===============================
-    out["Satker"] = pd.NA
-
-    # ===============================
-    # 3️⃣ TOTAL PAGU
-    # ===============================
-    pagu_col = find(["PAGU", "JUMLAH"])
-    if pagu_col is None:
-        raise ValueError("Kolom Pagu tidak ditemukan di file OMSPAN")
-
-    out["Total Pagu"] = (
-        df[pagu_col]
-        .astype(str)
-        .str.replace(r"[^\d]", "", regex=True)
-        .replace("", "0")
-        .astype(float)
-    )
-
-    # ===============================
-    # 4️⃣ NO DIPA (JIKA ADA)
-    # ===============================
-    dipa_col = find(["DIPA"])
-    out["No Dipa"] = df[dipa_col].astype(str) if dipa_col else ""
-
-    # ===============================
-    # 5️⃣ TANGGAL POSTING REVISI
-    # ===============================
-    tgl_col = find([
-        "TANGGAL POSTING",
-        "TGL POSTING",
-        "TANGGAL REKAM",
-        "TGL REKAM",
-        "TANGGAL APPROVAL",
-        "TGL APPROVAL"
-    ])
-
-    if tgl_col:
-        out["Tanggal Posting Revisi"] = pd.to_datetime(
-            df[tgl_col],
-            errors="coerce"
-        )
-    else:
-        # fallback aman → 31 Desember (akan disesuaikan di proses utama)
-        out["Tanggal Posting Revisi"] = pd.NaT
-
-    # ===============================
-    # 6️⃣ METADATA REVISI
-    # ===============================
-    out["Revisi ke-"] = 0
-    out["Jenis Revisi"] = "ANGKA DASAR"
-
-    # ===============================
-    # 7️⃣ OWNER & DIGITAL STAMP
-    # ===============================
-    out["Owner"] = "SATKER"
-    out["Digital Stamp"] = "OMSPAN (NON-SPAN)"
-
-    return out.dropna(subset=["Kode Satker"])
-
 
 
 # -------------------------
@@ -3714,41 +3599,25 @@ def menu_ews_satker():
     df_trend = apply_reference_short_names(df_trend)
 
     # ======================================================
-    # 🔍 VALIDASI HASIL REFERENSI SATKER (WAJIB)
-    # ======================================================
-    REQUIRED_COL = "Uraian Satker-RINGKAS"
-
-    if REQUIRED_COL not in df_trend.columns:
-        st.error(
-            f"❌ Kolom '{REQUIRED_COL}' tidak ditemukan.\n\n"
-            "Pastikan:\n"
-            "- apply_reference_short_names() melakukan merge\n"
-            "- nama kolom di referensi BENAR\n"
-            "- Kode Satker sudah ternormalisasi"
-        )
-        st.write("📌 Kolom yang tersedia:", df_trend.columns.tolist())
-        st.stop()
-
-    # ======================================================
     # 🔒 FILTER: HANYA SATKER YANG ADA DI REFERENSI
     # ======================================================
     df_trend = df_trend[
-        df_trend[REQUIRED_COL].notna() &
-        (df_trend[REQUIRED_COL].astype(str).str.strip() != "")
+        df_trend["Uraian Satker-SINGKAT"].notna() &
+        (df_trend["Uraian Satker-SINGKAT"].str.strip() != "")
     ].copy()
 
-
     # ======================================================
-    # 🔑 NAMA SATKER RINGKAS (SATU-SATUNYA)
+    # 🔑 NAMA RINGKAS MURNI (SATU-SATUNYA)
     # ======================================================
     df_trend["Nama_Satker_Ringkas"] = (
-        df_trend["Uraian Satker-RINGKAS"]
+        df_trend["Uraian Satker-SINGKAT"]
         .astype(str)
         .str.strip()
     )
 
     # ======================================================
-    # 🔑 LABEL FINAL RESMI
+    # 🔑 LABEL FINAL RESMI (SATU SUMBER KEBENARAN)
+    # FORMAT: [BA] NAMA RINGKAS (KODE SATKER)
     # ======================================================
     df_trend["Satker_Label_Final"] = (
         "[" + df_trend["Kode BA"] + "] "
@@ -3756,9 +3625,11 @@ def menu_ews_satker():
         + " (" + df_trend["Kode Satker"].astype(str) + ")"
     )
 
+    # ======================================================
+    # LABEL LEGEND & SELECTOR (PAKAI LABEL FINAL)
+    # ======================================================
     df_trend["Legend_Label"] = df_trend["Satker_Label_Final"]
     df_trend["Satker_Select_Label"] = df_trend["Satker_Label_Final"]
-
 
     # ======================================================
     # MAP KODE SATKER → LABEL FINAL
@@ -3800,6 +3671,8 @@ def menu_ews_satker():
         format_func=lambda k: satker_label_map[k],
         key="trend_satker_selector"
     )
+
+
 
 
     # ======================================================
@@ -4402,38 +4275,12 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
         # 2️⃣ Standarisasi format
         with st.spinner("Menstandarisasi format DIPA..."):
+            raw_fixed = fix_dipa_header(raw)
+            df_std = standardize_dipa(raw_fixed)
 
-            if is_omspan_dipa(raw):
-                st.info("📌 Format DIPA OMSPAN terdeteksi")
 
-                # 🔄 Adapter OMSPAN → format standar
-                df_adapted = adapt_dipa_omspan(raw)
-
-                if df_adapted.empty:
-                    return None, None, "❌ Data OMSPAN tidak valid / kosong"
-
-                # Masuk pipeline normal
-                df_std = standardize_dipa(df_adapted)
-
-            else:
-                # 🔁 Alur lama (DIPA standar)
-                raw_fixed = fix_dipa_header(raw)
-                df_std = standardize_dipa(raw_fixed)
-        
-        # =====================================================
-        # PATCH 2 — PAKSA SET TAHUN UNTUK OMSPAN
-        # =====================================================
-        if is_omspan_dipa(raw):
-            # jika kolom Tahun belum ada / kosong
-            if "Tahun" not in df_std.columns or df_std["Tahun"].isna().all():
-                if "Tanggal Posting Revisi" in df_std.columns:
-                    df_std["Tahun"] = df_std["Tanggal Posting Revisi"].dt.year
-
-            # fallback terakhir (WAJIB ADA TAHUN)
-            df_std["Tahun"] = df_std["Tahun"].fillna(
-                datetime.now().year
-            ).astype(int)
-
+        if df_std.empty:
+            return None, None, "❌ Data tidak berhasil distandarisasi atau tidak ada data valid"
 
         # 3️⃣ Validasi Tahun
         if "Tahun" in df_std.columns and not df_std["Tahun"].isna().all():
@@ -4442,65 +4289,6 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
             # Ambil tahun dari Tanggal Posting Revisi (tahun anggaran = paling awal)
             tahun_dipa = int(df_std["Tanggal Posting Revisi"].dropna().dt.year.min())
             df_std["Tahun"] = tahun_dipa
-        
-        # =====================================================
-        # 🔑 NORMALISASI METADATA DIPA (ANTI DATA ANEH)
-        # =====================================================
-
-        # Pastikan tanggal valid
-        df_std["Tanggal Posting Revisi"] = pd.to_datetime(
-            df_std["Tanggal Posting Revisi"],
-            errors="coerce"
-        )
-
-        # Jika masih kosong → fallback ke 31 Desember
-        mask_na = df_std["Tanggal Posting Revisi"].isna()
-        df_std.loc[mask_na, "Tanggal Posting Revisi"] = pd.to_datetime(
-            df_std.loc[mask_na, "Tahun"].astype(str) + "-12-31"
-        )
-
-        # Owner default
-        df_std["Owner"] = df_std["Owner"].fillna("SATKER")
-
-        # Digital Stamp default
-        df_std["Digital Stamp"] = df_std["Digital Stamp"].replace("", pd.NA)
-        df_std["Digital Stamp"] = df_std["Digital Stamp"].fillna("OMSPAN (NON-SPAN)")
-
-        # =====================================================
-        # FINALISASI TANGGAL DIPA, OWNER, DIGITAL STAMP
-        # =====================================================
-
-        # === 1️⃣ TANGGAL DIPA ===
-        # (pakai Tanggal Posting Revisi sebagai Tanggal DIPA resmi)
-        if "Tanggal Posting Revisi" not in df_std.columns:
-            df_std["Tanggal Posting Revisi"] = pd.NaT
-
-        df_std["Tanggal Posting Revisi"] = pd.to_datetime(
-            df_std["Tanggal Posting Revisi"],
-            errors="coerce"
-        )
-
-        # fallback keras: 31 Desember tahun anggaran
-        mask_na = df_std["Tanggal Posting Revisi"].isna()
-        df_std.loc[mask_na, "Tanggal Posting Revisi"] = pd.to_datetime(
-            df_std.loc[mask_na, "Tahun"].astype(str) + "-12-31"
-        )
-
-        # === 2️⃣ OWNER (INI YANG HILANG DI KODE KAMU) ===
-        if "Owner" not in df_std.columns:
-            df_std["Owner"] = "SATKER"
-        else:
-            df_std["Owner"] = df_std["Owner"].fillna("SATKER")
-
-        # === 3️⃣ DIGITAL STAMP ===
-        if "Digital Stamp" not in df_std.columns:
-            df_std["Digital Stamp"] = "OMSPAN (NON-SPAN)"
-        else:
-            df_std["Digital Stamp"] = (
-                df_std["Digital Stamp"]
-                .replace("", pd.NA)
-                .fillna("OMSPAN (NON-SPAN)")
-            )
 
 
         # 4️⃣ Validasi data
@@ -4525,28 +4313,7 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
                 if "Kementerian" in df_std.columns and "K/L" in df_std.columns:
                     df_std["Kementerian"] = df_std["Kementerian"].fillna(df_std["K/L"])
-        
-        # =====================================================
-        # FINAL FIX NAMA SATKER (WAJIB UNTUK OMSPAN)
-        # =====================================================
-        # pastikan kolom Satker ada
-        if "Satker" not in df_std.columns:
-            df_std["Satker"] = pd.NA
 
-        # 1️⃣ isi dari referensi (SINGKAT lebih dulu)
-        if "Uraian Satker-SINGKAT" in df_std.columns:
-            df_std["Satker"] = df_std["Satker"].fillna(df_std["Uraian Satker-SINGKAT"])
-
-        # 2️⃣ fallback ke LENGKAP
-        if "Uraian Satker-LENGKAP" in df_std.columns:
-            df_std["Satker"] = df_std["Satker"].fillna(df_std["Uraian Satker-LENGKAP"])
-
-        # 3️⃣ fallback terakhir (tidak boleh kosong)
-        df_std["Satker"] = df_std["Satker"].fillna(
-            "SATKER " + df_std["Kode Satker"].astype(str)
-        )
-
-        
         # 7️⃣ Klasifikasi Satker
         with st.spinner("Mengklasifikasi jenis satker..."):
             df_std = assign_jenis_satker(df_std)
@@ -4554,58 +4321,6 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
         # 8️⃣ Ambil revisi terakhir per satker
         df_std = df_std.sort_values(["Kode Satker", "Tanggal Posting Revisi"], ascending=[True, False])
         df_std = df_std.drop_duplicates(subset="Kode Satker", keep="first")
-        
-        # =====================================================
-        # 🔑 FINALISASI STRUKTUR AGAR SAMA DENGAN DIPA NORMAL
-        # =====================================================
-
-        is_omspan = is_omspan_dipa(raw)
-
-        # === NO (nomor urut) ===
-        df_std = df_std.reset_index(drop=True)
-        df_std["NO"] = df_std.index + 1
-
-        # === Jenis Revisi & Revisi ke- ===
-        if "Jenis Revisi" not in df_std.columns:
-            df_std["Jenis Revisi"] = "ANGKA DASAR" if is_omspan else df_std.get("Jenis Revisi")
-
-        if "Revisi ke-" not in df_std.columns:
-            df_std["Revisi ke-"] = 0 if is_omspan else df_std.get("Revisi ke-")
-
-        # === Kode Status History ===
-        if "Kode Status History" not in df_std.columns:
-            df_std["Kode Status History"] = "DIPA_AWAL" if is_omspan else "DIPA_REVISI"
-
-        # === Tanggal Dipa (INI YANG UI PAKAI) ===
-        df_std["Tanggal Dipa"] = df_std["Tanggal Posting Revisi"]
-
-        # === Owner & Digital Stamp ===
-        df_std["Owner"] = "SATKER" if is_omspan else df_std.get("Owner", "SPAN")
-        df_std["Digital Stamp"] = "OMSPAN (NON-SPAN)" if is_omspan else df_std.get("Digital Stamp", "SPAN")
-        
-        # =====================================================
-        # 🔑 KONTRAK KOLOM FINAL (WAJIB SAMA)
-        # =====================================================
-        FINAL_COLUMNS = [
-            "Kode Satker",
-            "Satker",
-            "Tahun",
-            "Tanggal Posting Revisi",
-            "Total Pagu",
-            "Jenis Satker",
-            "NO",
-            "Kementerian",
-            "Kode Status History",
-            "Jenis Revisi",
-            "Revisi ke-",
-            "No Dipa",
-            "Tanggal Dipa",
-            "Owner",
-            "Digital Stamp",
-        ]
-
-        df_std = df_std.reindex(columns=FINAL_COLUMNS)
-
 
         # 9️⃣ Simpan ke session_state
         if "DATA_DIPA_by_year" not in st.session_state:
