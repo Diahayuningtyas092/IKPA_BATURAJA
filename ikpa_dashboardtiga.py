@@ -4254,6 +4254,9 @@ def assign_jenis_satker(df):
 # ======================================================================================
 # PROCESS UPLOADED DIPA (MAIN FUNCTION)
 # ======================================================================================
+# ======================================================================================
+# PROCESS UPLOADED DIPA (MAIN FUNCTION)
+# ======================================================================================
 def process_uploaded_dipa(uploaded_file, save_file_to_github):
     """Process file DIPA upload user dengan validasi ketat"""
     
@@ -4275,12 +4278,38 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
         # 2️⃣ Standarisasi format
         with st.spinner("Menstandarisasi format DIPA..."):
-            raw_fixed = fix_dipa_header(raw)
-            df_std = standardize_dipa(raw_fixed)
 
+            if is_omspan_dipa(raw):
+                st.info("📌 Format DIPA OMSPAN terdeteksi")
 
-        if df_std.empty:
-            return None, None, "❌ Data tidak berhasil distandarisasi atau tidak ada data valid"
+                # 🔄 Adapter OMSPAN → format standar
+                df_adapted = adapt_dipa_omspan(raw)
+
+                if df_adapted.empty:
+                    return None, None, "❌ Data OMSPAN tidak valid / kosong"
+
+                # Masuk pipeline normal
+                df_std = standardize_dipa(df_adapted)
+
+            else:
+                # 🔁 Alur lama (DIPA standar)
+                raw_fixed = fix_dipa_header(raw)
+                df_std = standardize_dipa(raw_fixed)
+        
+        # =====================================================
+        # PATCH 2 — PAKSA SET TAHUN UNTUK OMSPAN
+        # =====================================================
+        if is_omspan_dipa(raw):
+            # jika kolom Tahun belum ada / kosong
+            if "Tahun" not in df_std.columns or df_std["Tahun"].isna().all():
+                if "Tanggal Posting Revisi" in df_std.columns:
+                    df_std["Tahun"] = df_std["Tanggal Posting Revisi"].dt.year
+
+            # fallback terakhir (WAJIB ADA TAHUN)
+            df_std["Tahun"] = df_std["Tahun"].fillna(
+                datetime.now().year
+            ).astype(int)
+
 
         # 3️⃣ Validasi Tahun
         if "Tahun" in df_std.columns and not df_std["Tahun"].isna().all():
@@ -4289,6 +4318,65 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
             # Ambil tahun dari Tanggal Posting Revisi (tahun anggaran = paling awal)
             tahun_dipa = int(df_std["Tanggal Posting Revisi"].dropna().dt.year.min())
             df_std["Tahun"] = tahun_dipa
+        
+        # =====================================================
+        # 🔑 NORMALISASI METADATA DIPA (ANTI DATA ANEH)
+        # =====================================================
+
+        # Pastikan tanggal valid
+        df_std["Tanggal Posting Revisi"] = pd.to_datetime(
+            df_std["Tanggal Posting Revisi"],
+            errors="coerce"
+        )
+
+        # Jika masih kosong → fallback ke 31 Desember
+        mask_na = df_std["Tanggal Posting Revisi"].isna()
+        df_std.loc[mask_na, "Tanggal Posting Revisi"] = pd.to_datetime(
+            df_std.loc[mask_na, "Tahun"].astype(str) + "-12-31"
+        )
+
+        # Owner default
+        df_std["Owner"] = df_std["Owner"].fillna("SATKER")
+
+        # Digital Stamp default
+        df_std["Digital Stamp"] = df_std["Digital Stamp"].replace("", pd.NA)
+        df_std["Digital Stamp"] = df_std["Digital Stamp"].fillna("OMSPAN (NON-SPAN)")
+
+        # =====================================================
+        # FINALISASI TANGGAL DIPA, OWNER, DIGITAL STAMP
+        # =====================================================
+
+        # === 1️⃣ TANGGAL DIPA ===
+        # (pakai Tanggal Posting Revisi sebagai Tanggal DIPA resmi)
+        if "Tanggal Posting Revisi" not in df_std.columns:
+            df_std["Tanggal Posting Revisi"] = pd.NaT
+
+        df_std["Tanggal Posting Revisi"] = pd.to_datetime(
+            df_std["Tanggal Posting Revisi"],
+            errors="coerce"
+        )
+
+        # fallback keras: 31 Desember tahun anggaran
+        mask_na = df_std["Tanggal Posting Revisi"].isna()
+        df_std.loc[mask_na, "Tanggal Posting Revisi"] = pd.to_datetime(
+            df_std.loc[mask_na, "Tahun"].astype(str) + "-12-31"
+        )
+
+        # === 2️⃣ OWNER (INI YANG HILANG DI KODE KAMU) ===
+        if "Owner" not in df_std.columns:
+            df_std["Owner"] = "SATKER"
+        else:
+            df_std["Owner"] = df_std["Owner"].fillna("SATKER")
+
+        # === 3️⃣ DIGITAL STAMP ===
+        if "Digital Stamp" not in df_std.columns:
+            df_std["Digital Stamp"] = "OMSPAN (NON-SPAN)"
+        else:
+            df_std["Digital Stamp"] = (
+                df_std["Digital Stamp"]
+                .replace("", pd.NA)
+                .fillna("OMSPAN (NON-SPAN)")
+            )
 
 
         # 4️⃣ Validasi data
@@ -4313,7 +4401,28 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
 
                 if "Kementerian" in df_std.columns and "K/L" in df_std.columns:
                     df_std["Kementerian"] = df_std["Kementerian"].fillna(df_std["K/L"])
+        
+        # =====================================================
+        # FINAL FIX NAMA SATKER (WAJIB UNTUK OMSPAN)
+        # =====================================================
+        # pastikan kolom Satker ada
+        if "Satker" not in df_std.columns:
+            df_std["Satker"] = pd.NA
 
+        # 1️⃣ isi dari referensi (SINGKAT lebih dulu)
+        if "Uraian Satker-SINGKAT" in df_std.columns:
+            df_std["Satker"] = df_std["Satker"].fillna(df_std["Uraian Satker-SINGKAT"])
+
+        # 2️⃣ fallback ke LENGKAP
+        if "Uraian Satker-LENGKAP" in df_std.columns:
+            df_std["Satker"] = df_std["Satker"].fillna(df_std["Uraian Satker-LENGKAP"])
+
+        # 3️⃣ fallback terakhir (tidak boleh kosong)
+        df_std["Satker"] = df_std["Satker"].fillna(
+            "SATKER " + df_std["Kode Satker"].astype(str)
+        )
+
+        
         # 7️⃣ Klasifikasi Satker
         with st.spinner("Mengklasifikasi jenis satker..."):
             df_std = assign_jenis_satker(df_std)
@@ -4321,6 +4430,58 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
         # 8️⃣ Ambil revisi terakhir per satker
         df_std = df_std.sort_values(["Kode Satker", "Tanggal Posting Revisi"], ascending=[True, False])
         df_std = df_std.drop_duplicates(subset="Kode Satker", keep="first")
+        
+        # =====================================================
+        # 🔑 FINALISASI STRUKTUR AGAR SAMA DENGAN DIPA NORMAL
+        # =====================================================
+
+        is_omspan = is_omspan_dipa(raw)
+
+        # === NO (nomor urut) ===
+        df_std = df_std.reset_index(drop=True)
+        df_std["NO"] = df_std.index + 1
+
+        # === Jenis Revisi & Revisi ke- ===
+        if "Jenis Revisi" not in df_std.columns:
+            df_std["Jenis Revisi"] = "ANGKA DASAR" if is_omspan else df_std.get("Jenis Revisi")
+
+        if "Revisi ke-" not in df_std.columns:
+            df_std["Revisi ke-"] = 0 if is_omspan else df_std.get("Revisi ke-")
+
+        # === Kode Status History ===
+        if "Kode Status History" not in df_std.columns:
+            df_std["Kode Status History"] = "DIPA_AWAL" if is_omspan else "DIPA_REVISI"
+
+        # === Tanggal Dipa (INI YANG UI PAKAI) ===
+        df_std["Tanggal Dipa"] = df_std["Tanggal Posting Revisi"]
+
+        # === Owner & Digital Stamp ===
+        df_std["Owner"] = "SATKER" if is_omspan else df_std.get("Owner", "SPAN")
+        df_std["Digital Stamp"] = "OMSPAN (NON-SPAN)" if is_omspan else df_std.get("Digital Stamp", "SPAN")
+        
+        # =====================================================
+        # 🔑 KONTRAK KOLOM FINAL (WAJIB SAMA)
+        # =====================================================
+        FINAL_COLUMNS = [
+            "Kode Satker",
+            "Satker",
+            "Tahun",
+            "Tanggal Posting Revisi",
+            "Total Pagu",
+            "Jenis Satker",
+            "NO",
+            "Kementerian",
+            "Kode Status History",
+            "Jenis Revisi",
+            "Revisi ke-",
+            "No Dipa",
+            "Tanggal Dipa",
+            "Owner",
+            "Digital Stamp",
+        ]
+
+        df_std = df_std.reindex(columns=FINAL_COLUMNS)
+
 
         # 9️⃣ Simpan ke session_state
         if "DATA_DIPA_by_year" not in st.session_state:
