@@ -3790,6 +3790,13 @@ def menu_ews_satker():
     # ======================================================
     # 📊 PLOT GRAFIK TREN
     # ======================================================
+    ordered_periods = (
+    df_trend
+    .sort_values("Period_Sort")["Period_Sort"]
+    .unique()
+    .tolist()
+    )
+
     fig = go.Figure()
 
     for kode in selected_kode_satker:
@@ -3799,51 +3806,36 @@ def menu_ews_satker():
 
         fig.add_trace(
             go.Scatter(
-                x=d["Periode_Label"],
+                x=d["Period_Sort"],              # ✅ FIX 1
                 y=d[selected_metric],
                 mode="lines+markers",
-                name=legend_map[kode]   # 🔑 TIDAK BOLEH NEMPEL KODE LAGI
+                name=satker_label_map[kode]      # ✅ FIX 2
             )
         )
 
     fig.update_layout(
         title=dict(
             text=f"Tren {selected_metric}",
-            x=0.5,
-            xanchor="center",
-            y=0.97,
-            yanchor="top",
-            font=dict(size=18)
+            x=0.5
         ),
-        xaxis_title="Periode",
-        yaxis_title="Nilai",
-        height=750,
-        hovermode="x unified",
         xaxis=dict(
+            title="Periode",
             categoryorder="array",
             categoryarray=ordered_periods
         ),
-
-        # 🔑 LEGEND BENAR-BENAR DI ATAS CHART (DI LUAR PLOT AREA)
+        yaxis_title="Nilai",
+        height=750,
+        hovermode="x unified",
         legend=dict(
             orientation="h",
             x=0.5,
-            y=1.03,              # ⬅️ HARUS > 1
+            y=1.03,
             xanchor="center",
-            yanchor="bottom",    # ⬅️ PENTING
-            font=dict(size=10),
-            traceorder="normal"
+            yanchor="bottom",
+            font=dict(size=10)
         ),
-
-        # 🔑 RUANG ATAS BESAR (WAJIB)
-        margin=dict(
-            l=60,
-            r=40,
-            t=170,               # ⬅️ INI KUNCI UTAMA
-            b=60
-        )
+        margin=dict(l=60, r=40, t=170, b=60)
     )
-
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -3853,18 +3845,35 @@ def menu_ews_satker():
     warnings = []
 
     for kode in selected_kode_satker:
-        d = df_trend[df_trend["Kode Satker"] == kode].sort_values("Period_Sort")
+        d = (
+            df_trend[df_trend["Kode Satker"] == kode]
+            .sort_values("Period_Sort")
+            .copy()
+        )
+
+        # Minimal 2 periode untuk dibandingkan
         if len(d) < 2:
             continue
 
-        if d[selected_metric].iloc[-1] < d[selected_metric].iloc[-2]:
+        # Pastikan nilai numerik & tidak NaN
+        prev = pd.to_numeric(d[selected_metric].iloc[-2], errors="coerce")
+        last = pd.to_numeric(d[selected_metric].iloc[-1], errors="coerce")
+
+        if pd.isna(prev) or pd.isna(last):
+            continue
+
+        # Deteksi tren menurun
+        if last < prev:
             warnings.append({
-                "Satker": legend_map[kode],
-                "Sebelum": d[selected_metric].iloc[-2],
-                "Terakhir": d[selected_metric].iloc[-1],
-                "Turun": d[selected_metric].iloc[-2] - d[selected_metric].iloc[-1]
+                "Satker": satker_label_map[kode],   # 🔑 LABEL FINAL KONSISTEN
+                "Sebelum": prev,
+                "Terakhir": last,
+                "Turun": prev - last
             })
 
+    # ======================================================
+    # TAMPILKAN HASIL WARNING
+    # ======================================================
     if warnings:
         st.warning(f"⚠️ Ditemukan {len(warnings)} satker dengan tren menurun!")
         for w in warnings:
