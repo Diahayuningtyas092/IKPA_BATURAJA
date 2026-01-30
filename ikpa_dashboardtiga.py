@@ -3819,9 +3819,10 @@ def menu_ews_satker():
                 x=d["Period_Sort"],
                 y=d[selected_metric],
                 mode="lines+markers",
-                name=satker_label_map[kode]
+                name=satker_short_label_map.get(kode, kode)
             )
         )
+
 
     fig.update_layout(
         title=dict(text=f"Tren {selected_metric}", x=0.5),
@@ -3869,11 +3870,12 @@ def menu_ews_satker():
 
         if last < prev:
             warnings.append({
-                "Satker": satker_label_map[kode],
+                "Satker": satker_short_label_map.get(kode, kode),
                 "Sebelum": prev,
                 "Terakhir": last,
                 "Turun": prev - last
             })
+
 
     if warnings:
         st.warning(f"⚠️ Ditemukan {len(warnings)} satker dengan tren menurun!")
