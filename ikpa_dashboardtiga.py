@@ -3740,7 +3740,9 @@ def menu_ews_satker():
         .set_index("Kode Satker")["Satker_Label_Final"]
         .to_dict()
     )
-
+    
+    all_kode_satker = list(satker_label_map.keys())
+    
     # ======================================================
     # 🔑 LABEL SELECTOR DARI DATA REFERENSI (SUMBER ASLI)
     # ======================================================
