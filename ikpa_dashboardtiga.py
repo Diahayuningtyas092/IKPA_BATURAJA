@@ -3742,17 +3742,27 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # LABEL RINGKAS KHUSUS SELECTOR (UX LEBIH BERSIH)
+    # 🔑 LABEL SELECTOR DARI DATA REFERENSI (SUMBER ASLI)
     # ======================================================
+    ref_df = st.session_state.reference_df.copy()
+
+    # pastikan kode satker string & rapi
+    ref_df["Kode Satker"] = ref_df["Kode Satker"].astype(str).str.strip()
+    ref_df["Uraian Satker-SINGKAT"] = ref_df["Uraian Satker-SINGKAT"].astype(str).str.strip()
+
+    # hanya satker yang ADA di df_trend
     satker_short_label_map = {
         k: (
-            df_trend[df_trend["Kode Satker"] == k]["Nama_Satker_Ringkas"].iloc[0]
+            ref_df.loc[
+                ref_df["Kode Satker"] == k,
+                "Uraian Satker-SINGKAT"
+            ].iloc[0]
             + " (" + k + ")"
         )
         for k in satker_label_map.keys()
+        if k in ref_df["Kode Satker"].values
     }
 
-    all_kode_satker = list(satker_label_map.keys())
 
     # ======================================================
     # DEFAULT: 5 SATKER TERENDAH (PERIODE TERBARU)
@@ -3777,12 +3787,13 @@ def menu_ews_satker():
     # ======================================================
     selected_kode_satker = st.multiselect(
         label="Pilih Satker (Nama Ringkas)",
-        options=all_kode_satker,
+        options=list(satker_short_label_map.keys()),
         default=default_kode,
         format_func=lambda k: satker_short_label_map[k],
         placeholder="🔍 Ketik nama satker…",
         key="trend_satker_selector",
     )
+
 
     # ======================================================
     # 📊 GRAFIK TREN
