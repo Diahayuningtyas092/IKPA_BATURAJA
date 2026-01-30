@@ -3671,7 +3671,11 @@ def menu_ews_satker():
         start_period = st.selectbox("Periode Awal", available_periods, index=0)
 
     with col2:
-        end_period = st.selectbox("Periode Akhir", available_periods, index=len(available_periods) - 1)
+        end_period = st.selectbox(
+            "Periode Akhir",
+            available_periods,
+            index=len(available_periods) - 1
+        )
 
     with col3:
         metric_options = [
@@ -3706,21 +3710,15 @@ def menu_ews_satker():
         st.stop()
 
     # ======================================================
-    # PAKSA SATKER RINGKAS & KODE BA
+    # PAKSA SATKER RINGKAS
     # ======================================================
     df_trend = apply_reference_short_names(df_trend)
 
-    # ======================================================
-    # 🔒 FILTER: HANYA SATKER YANG ADA DI REFERENSI
-    # ======================================================
     df_trend = df_trend[
         df_trend["Uraian Satker-RINGKAS"].notna() &
         (df_trend["Uraian Satker-RINGKAS"].str.strip() != "")
     ].copy()
 
-    # ======================================================
-    # 🔑 NAMA RINGKAS MURNI (SATU-SATUNYA)
-    # ======================================================
     df_trend["Nama_Satker_Ringkas"] = (
         df_trend["Uraian Satker-RINGKAS"]
         .astype(str)
@@ -3728,8 +3726,7 @@ def menu_ews_satker():
     )
 
     # ======================================================
-    # 🔑 LABEL FINAL RESMI (SATU SUMBER KEBENARAN)
-    # FORMAT: [BA] NAMA RINGKAS (KODE SATKER)
+    # LABEL FINAL (UNTUK LEGEND)
     # ======================================================
     df_trend["Satker_Label_Final"] = (
         "[" + df_trend["Kode BA"] + "] "
@@ -3737,21 +3734,23 @@ def menu_ews_satker():
         + " (" + df_trend["Kode Satker"].astype(str) + ")"
     )
 
-    # ======================================================
-    # LABEL LEGEND & SELECTOR (PAKAI LABEL FINAL)
-    # ======================================================
-    df_trend["Legend_Label"] = df_trend["Satker_Label_Final"]
-    df_trend["Satker_Select_Label"] = df_trend["Satker_Label_Final"]
-
-    # ======================================================
-    # MAP KODE SATKER → LABEL FINAL
-    # ======================================================
     satker_label_map = (
         df_trend[["Kode Satker", "Satker_Label_Final"]]
-        .drop_duplicates(subset=["Kode Satker"])
+        .drop_duplicates("Kode Satker")
         .set_index("Kode Satker")["Satker_Label_Final"]
         .to_dict()
     )
+
+    # ======================================================
+    # LABEL RINGKAS KHUSUS SELECTOR (UX LEBIH BERSIH)
+    # ======================================================
+    satker_short_label_map = {
+        k: (
+            df_trend[df_trend["Kode Satker"] == k]["Nama_Satker_Ringkas"].iloc[0]
+            + " (" + k + ")"
+        )
+        for k in satker_label_map.keys()
+    }
 
     all_kode_satker = list(satker_label_map.keys())
 
@@ -3774,27 +3773,25 @@ def menu_ews_satker():
         default_kode = all_kode_satker[:5]
 
     # ======================================================
-    # MULTISELECT SATKER (RINGKAS + KODE SATKER)
+    # 🎯 PILIH SATKER (RINGKAS, SEARCHABLE, TETAP KODE)
     # ======================================================
     selected_kode_satker = st.multiselect(
-        "Pilih Satker",
+        label="Pilih Satker (Nama Ringkas)",
         options=all_kode_satker,
         default=default_kode,
-        format_func=lambda k: satker_label_map[k],
-        key="trend_satker_selector"
+        format_func=lambda k: satker_short_label_map[k],
+        placeholder="🔍 Ketik nama satker…",
+        key="trend_satker_selector",
     )
 
-
-
-
     # ======================================================
-    # 📊 PLOT GRAFIK TREN
+    # 📊 GRAFIK TREN
     # ======================================================
     ordered_periods = (
-    df_trend
-    .sort_values("Period_Sort")["Period_Sort"]
-    .unique()
-    .tolist()
+        df_trend
+        .sort_values("Period_Sort")["Period_Sort"]
+        .unique()
+        .tolist()
     )
 
     fig = go.Figure()
@@ -3806,18 +3803,15 @@ def menu_ews_satker():
 
         fig.add_trace(
             go.Scatter(
-                x=d["Period_Sort"],              # ✅ FIX 1
+                x=d["Period_Sort"],
                 y=d[selected_metric],
                 mode="lines+markers",
-                name=satker_label_map[kode]      # ✅ FIX 2
+                name=satker_label_map[kode]
             )
         )
 
     fig.update_layout(
-        title=dict(
-            text=f"Tren {selected_metric}",
-            x=0.5
-        ),
+        title=dict(text=f"Tren {selected_metric}", x=0.5),
         xaxis=dict(
             title="Periode",
             categoryorder="array",
@@ -3851,29 +3845,23 @@ def menu_ews_satker():
             .copy()
         )
 
-        # Minimal 2 periode untuk dibandingkan
         if len(d) < 2:
             continue
 
-        # Pastikan nilai numerik & tidak NaN
         prev = pd.to_numeric(d[selected_metric].iloc[-2], errors="coerce")
         last = pd.to_numeric(d[selected_metric].iloc[-1], errors="coerce")
 
         if pd.isna(prev) or pd.isna(last):
             continue
 
-        # Deteksi tren menurun
         if last < prev:
             warnings.append({
-                "Satker": satker_label_map[kode],   # 🔑 LABEL FINAL KONSISTEN
+                "Satker": satker_label_map[kode],
                 "Sebelum": prev,
                 "Terakhir": last,
                 "Turun": prev - last
             })
 
-    # ======================================================
-    # TAMPILKAN HASIL WARNING
-    # ======================================================
     if warnings:
         st.warning(f"⚠️ Ditemukan {len(warnings)} satker dengan tren menurun!")
         for w in warnings:
