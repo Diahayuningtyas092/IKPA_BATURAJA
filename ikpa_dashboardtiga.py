@@ -398,7 +398,13 @@ def adapt_dipa_omspan(df_raw):
     )
 
     # ===============================
-    # 2️⃣ TOTAL PAGU
+    # 2️⃣ NAMA SATKER
+    # (OMSPAN TIDAK PUNYA → KOSONG DULU)
+    # ===============================
+    out["Satker"] = pd.NA
+
+    # ===============================
+    # 3️⃣ TOTAL PAGU
     # ===============================
     pagu_col = find(["PAGU", "JUMLAH"])
     if pagu_col is None:
@@ -413,13 +419,13 @@ def adapt_dipa_omspan(df_raw):
     )
 
     # ===============================
-    # 3️⃣ NO DIPA (JIKA ADA)
+    # 4️⃣ NO DIPA (JIKA ADA)
     # ===============================
     dipa_col = find(["DIPA"])
     out["No Dipa"] = df[dipa_col].astype(str) if dipa_col else ""
 
     # ===============================
-    # 4️⃣ TANGGAL POSTING REVISI
+    # 5️⃣ TANGGAL POSTING REVISI
     # ===============================
     tgl_col = find([
         "TANGGAL POSTING",
@@ -430,39 +436,28 @@ def adapt_dipa_omspan(df_raw):
         "TGL APPROVAL"
     ])
 
-    out["Tanggal Posting Revisi"] = (
-        pd.to_datetime(df[tgl_col], errors="coerce")
-        if tgl_col else pd.NaT
-    )
+    if tgl_col:
+        out["Tanggal Posting Revisi"] = pd.to_datetime(
+            df[tgl_col],
+            errors="coerce"
+        )
+    else:
+        # fallback aman → 31 Desember (akan disesuaikan di proses utama)
+        out["Tanggal Posting Revisi"] = pd.NaT
 
     # ===============================
-    # 5️⃣ METADATA REVISI
+    # 6️⃣ METADATA REVISI
     # ===============================
     out["Revisi ke-"] = 0
     out["Jenis Revisi"] = "ANGKA DASAR"
 
     # ===============================
-    # 6️⃣ OWNER & DIGITAL STAMP
+    # 7️⃣ OWNER & DIGITAL STAMP
     # ===============================
     out["Owner"] = "SATKER"
     out["Digital Stamp"] = "OMSPAN (NON-SPAN)"
 
-    # ===============================
-    # 🔑 7️⃣ ISI NAMA SATKER DARI DATA REFERENSI
-    # ===============================
-    ref = st.session_state.reference_df[
-        ["Kode Satker", "Uraian Satker-SINGKAT"]
-    ].copy()
-
-    ref["Kode Satker"] = ref["Kode Satker"].astype(str).str.strip()
-    out["Kode Satker"] = out["Kode Satker"].astype(str).str.strip()
-
-    out = out.merge(ref, on="Kode Satker", how="left")
-    out["Satker"] = out["Uraian Satker-SINGKAT"]
-    out.drop(columns=["Uraian Satker-SINGKAT"], inplace=True)
-
     return out.dropna(subset=["Kode Satker"])
-
 
 # -------------------------
 # standardize_dipa
@@ -1297,11 +1292,7 @@ def load_DATA_DIPA_from_github():
             df_raw = pd.read_excel(io.BytesIO(raw), header=None)
 
             # GUNAKAN PARSER BARU
-            if is_omspan_dipa(df_raw) or tahun >= 2024:
-                df_parsed = adapt_dipa_omspan(df_raw)
-            else:
-                df_parsed = parse_dipa(df_raw)
-
+            df_parsed = parse_dipa(df_raw)
 
             # Set tahun
             df_parsed["Tahun"] = tahun
