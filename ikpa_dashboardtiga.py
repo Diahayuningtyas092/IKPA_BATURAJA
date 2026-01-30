@@ -1292,7 +1292,11 @@ def load_DATA_DIPA_from_github():
             df_raw = pd.read_excel(io.BytesIO(raw), header=None)
 
             # GUNAKAN PARSER BARU
-            df_parsed = parse_dipa(df_raw)
+            if is_omspan_dipa(df_raw) or tahun >= 2024:
+                df_parsed = adapt_dipa_omspan(df_raw)
+            else:
+                df_parsed = parse_dipa(df_raw)
+
 
             # Set tahun
             df_parsed["Tahun"] = tahun
