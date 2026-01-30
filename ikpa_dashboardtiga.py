@@ -346,6 +346,118 @@ def fix_dipa_header(df_raw):
     # fallback → biar standardize_dipa yang handle
     return df_raw
 
+# ============================================================
+# 🔍 DETEKSI FORMAT DIPA OMSPAN
+# ============================================================
+def is_omspan_dipa(df_raw):
+    cols = df_raw.astype(str).apply(lambda x: " ".join(x), axis=1).str.upper()
+    return (
+        cols.str.contains("OMSPAN").any() or
+        cols.str.contains("PAGU_RUPIAH").any() or
+        cols.str.contains("KODE_SATKER").any()
+    )
+
+
+# ============================================================
+# 🔄 ADAPTER DIPA OMSPAN → FORMAT DIPA STANDAR (FINAL)
+# ============================================================
+def adapt_dipa_omspan(df_raw):
+    df = df_raw.copy()
+
+    # 🔹 cari header otomatis
+    for i in range(15):
+        row = " ".join(df.iloc[i].astype(str).str.upper())
+        if "SATKER" in row and "PAGU" in row:
+            df.columns = df.iloc[i]
+            df = df.iloc[i+1:]
+            break
+
+    df = df.dropna(how="all")
+
+    def find(names):
+        for c in df.columns:
+            cc = str(c).upper().replace(" ", "").replace("_", "")
+            for n in names:
+                if n in cc:
+                    return c
+        return None
+
+    out = pd.DataFrame()
+
+    # ===============================
+    # 1️⃣ KODE SATKER (WAJIB)
+    # ===============================
+    satker_col = find(["KODESATKER", "SATKER"])
+    if satker_col is None:
+        raise ValueError("Kolom Kode Satker tidak ditemukan di file OMSPAN")
+
+    out["Kode Satker"] = (
+        df[satker_col]
+        .astype(str)
+        .str.extract(r"(\d{6})")[0]
+    )
+
+    # ===============================
+    # 2️⃣ NAMA SATKER
+    # (OMSPAN TIDAK PUNYA → KOSONG DULU)
+    # ===============================
+    out["Satker"] = pd.NA
+
+    # ===============================
+    # 3️⃣ TOTAL PAGU
+    # ===============================
+    pagu_col = find(["PAGU", "JUMLAH"])
+    if pagu_col is None:
+        raise ValueError("Kolom Pagu tidak ditemukan di file OMSPAN")
+
+    out["Total Pagu"] = (
+        df[pagu_col]
+        .astype(str)
+        .str.replace(r"[^\d]", "", regex=True)
+        .replace("", "0")
+        .astype(float)
+    )
+
+    # ===============================
+    # 4️⃣ NO DIPA (JIKA ADA)
+    # ===============================
+    dipa_col = find(["DIPA"])
+    out["No Dipa"] = df[dipa_col].astype(str) if dipa_col else ""
+
+    # ===============================
+    # 5️⃣ TANGGAL POSTING REVISI
+    # ===============================
+    tgl_col = find([
+        "TANGGAL POSTING",
+        "TGL POSTING",
+        "TANGGAL REKAM",
+        "TGL REKAM",
+        "TANGGAL APPROVAL",
+        "TGL APPROVAL"
+    ])
+
+    if tgl_col:
+        out["Tanggal Posting Revisi"] = pd.to_datetime(
+            df[tgl_col],
+            errors="coerce"
+        )
+    else:
+        # fallback aman → 31 Desember (akan disesuaikan di proses utama)
+        out["Tanggal Posting Revisi"] = pd.NaT
+
+    # ===============================
+    # 6️⃣ METADATA REVISI
+    # ===============================
+    out["Revisi ke-"] = 0
+    out["Jenis Revisi"] = "ANGKA DASAR"
+
+    # ===============================
+    # 7️⃣ OWNER & DIGITAL STAMP
+    # ===============================
+    out["Owner"] = "SATKER"
+    out["Digital Stamp"] = "OMSPAN (NON-SPAN)"
+
+    return out.dropna(subset=["Kode Satker"])
 
 # -------------------------
 # standardize_dipa
@@ -3602,15 +3714,15 @@ def menu_ews_satker():
     # 🔒 FILTER: HANYA SATKER YANG ADA DI REFERENSI
     # ======================================================
     df_trend = df_trend[
-        df_trend["Uraian Satker-SINGKAT"].notna() &
-        (df_trend["Uraian Satker-SINGKAT"].str.strip() != "")
+        df_trend["Uraian Satker-RINGKAS"].notna() &
+        (df_trend["Uraian Satker-RINGKAS"].str.strip() != "")
     ].copy()
 
     # ======================================================
     # 🔑 NAMA RINGKAS MURNI (SATU-SATUNYA)
     # ======================================================
     df_trend["Nama_Satker_Ringkas"] = (
-        df_trend["Uraian Satker-SINGKAT"]
+        df_trend["Uraian Satker-RINGKAS"]
         .astype(str)
         .str.strip()
     )
@@ -4410,8 +4522,8 @@ def process_uploaded_dipa(uploaded_file, save_file_to_github):
             df_std["Satker"] = pd.NA
 
         # 1️⃣ isi dari referensi (SINGKAT lebih dulu)
-        if "Uraian Satker-SINGKAT" in df_std.columns:
-            df_std["Satker"] = df_std["Satker"].fillna(df_std["Uraian Satker-SINGKAT"])
+        if "Uraian Satker-RINGKAS" in df_std.columns:
+            df_std["Satker"] = df_std["Satker"].fillna(df_std["Uraian Satker-RINGKAS"])
 
         # 2️⃣ fallback ke LENGKAP
         if "Uraian Satker-LENGKAP" in df_std.columns:
