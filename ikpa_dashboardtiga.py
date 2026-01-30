@@ -398,13 +398,7 @@ def adapt_dipa_omspan(df_raw):
     )
 
     # ===============================
-    # 2️⃣ NAMA SATKER
-    # (OMSPAN TIDAK PUNYA → KOSONG DULU)
-    # ===============================
-    out["Satker"] = pd.NA
-
-    # ===============================
-    # 3️⃣ TOTAL PAGU
+    # 2️⃣ TOTAL PAGU
     # ===============================
     pagu_col = find(["PAGU", "JUMLAH"])
     if pagu_col is None:
@@ -419,13 +413,13 @@ def adapt_dipa_omspan(df_raw):
     )
 
     # ===============================
-    # 4️⃣ NO DIPA (JIKA ADA)
+    # 3️⃣ NO DIPA (JIKA ADA)
     # ===============================
     dipa_col = find(["DIPA"])
     out["No Dipa"] = df[dipa_col].astype(str) if dipa_col else ""
 
     # ===============================
-    # 5️⃣ TANGGAL POSTING REVISI
+    # 4️⃣ TANGGAL POSTING REVISI
     # ===============================
     tgl_col = find([
         "TANGGAL POSTING",
@@ -436,28 +430,39 @@ def adapt_dipa_omspan(df_raw):
         "TGL APPROVAL"
     ])
 
-    if tgl_col:
-        out["Tanggal Posting Revisi"] = pd.to_datetime(
-            df[tgl_col],
-            errors="coerce"
-        )
-    else:
-        # fallback aman → 31 Desember (akan disesuaikan di proses utama)
-        out["Tanggal Posting Revisi"] = pd.NaT
+    out["Tanggal Posting Revisi"] = (
+        pd.to_datetime(df[tgl_col], errors="coerce")
+        if tgl_col else pd.NaT
+    )
 
     # ===============================
-    # 6️⃣ METADATA REVISI
+    # 5️⃣ METADATA REVISI
     # ===============================
     out["Revisi ke-"] = 0
     out["Jenis Revisi"] = "ANGKA DASAR"
 
     # ===============================
-    # 7️⃣ OWNER & DIGITAL STAMP
+    # 6️⃣ OWNER & DIGITAL STAMP
     # ===============================
     out["Owner"] = "SATKER"
     out["Digital Stamp"] = "OMSPAN (NON-SPAN)"
 
+    # ===============================
+    # 🔑 7️⃣ ISI NAMA SATKER DARI DATA REFERENSI
+    # ===============================
+    ref = st.session_state.reference_df[
+        ["Kode Satker", "Uraian Satker-SINGKAT"]
+    ].copy()
+
+    ref["Kode Satker"] = ref["Kode Satker"].astype(str).str.strip()
+    out["Kode Satker"] = out["Kode Satker"].astype(str).str.strip()
+
+    out = out.merge(ref, on="Kode Satker", how="left")
+    out["Satker"] = out["Uraian Satker-SINGKAT"]
+    out.drop(columns=["Uraian Satker-SINGKAT"], inplace=True)
+
     return out.dropna(subset=["Kode Satker"])
+
 
 # -------------------------
 # standardize_dipa
