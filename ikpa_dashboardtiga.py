@@ -1178,31 +1178,28 @@ def parse_dipa(df_raw):
     out["Kode Satker"] = (
         df[col_satker]
         .astype(str)
-        .str.extract(r"(\d{6})")[0]
+        .str.extract(r"(\d{6})", expand=False)
     )
 
-    # ====== NAMA SATKER ======
-    if col_nama:
-        out["Satker"] = df[col_nama].astype(str).str.strip()
-    else:
-        out["Satker"] = (
-            df[col_satker]
+    # fallback: ambil dari No DIPA jika gagal
+    if col_dipa:
+        out["Kode Satker"] = out["Kode Satker"].fillna(
+            df[col_dipa]
             .astype(str)
-            .str.replace(r"^\s*\d{6}\s*[-–—]?\s*", "", regex=True)
-            .str.strip()
+            .str.extract(r"/(\d{6})", expand=False)
         )
 
-    # ====== TOTAL PAGU (AMAN UNTUK SPAN) ======
-    if col_pagu:
-        out["Total Pagu"] = (
-            df[col_pagu]
-            .astype(str)
-            .str.replace(r"[^\d]", "", regex=True)
-            .replace("", "0")
-            .astype(float)
-        )
-    else:
-        out["Total Pagu"] = 0.0
+        # ====== TOTAL PAGU (AMAN UNTUK SPAN) ======
+        if col_pagu:
+            out["Total Pagu"] = (
+                df[col_pagu]
+                .astype(str)
+                .str.replace(r"[^\d]", "", regex=True)
+                .replace("", "0")
+                .astype(float)
+            )
+        else:
+            out["Total Pagu"] = 0.0
 
     # ====== NO DIPA ======
     out["No Dipa"] = df[col_dipa].astype(str) if col_dipa else ""
