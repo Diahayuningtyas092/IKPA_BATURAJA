@@ -2333,7 +2333,6 @@ def page_dashboard():
         margin: 0 16px 0 0 !important;
     }
 
-
     /* =================================================
     3. KUNCI SELECTBOX PERIODE (NOVEMBER 2025)
     AGAR TIDAK PERNAH MENGECIL
@@ -2385,13 +2384,10 @@ def page_dashboard():
     # ===============================
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
-        ["🎯 Highlights Satker", "🏛️ Highlights BA", "📋 Data Detail Satker"],
-        key="main_tab_choice",
+        ["🎯 Highlights Satker", "🏢 Highlights BA", "📋 Data Detail Satker"],
+        key="main_tab",
         horizontal=True
     )
-
-
-    st.session_state["main_tab"] = main_tab
 
     
     # -------------------------
@@ -2680,12 +2676,13 @@ def page_dashboard():
             )
 
             st.plotly_chart(fig_dev, use_container_width=True)
+            
 
     # -------------------------
     # HIGHLIGHTS BA
     # -------------------------
-    elif main_tab == "🏛️ Highlights BA":
-        st.markdown("## 🏛️ Highlights Kinerja per BA")
+    elif main_tab == "🏢 Highlights BA":
+        st.markdown("## 🏢 Highlights Kinerja per BA")
 
         # pilih periode (sama seperti highlights utama)
         st.selectbox(
@@ -2766,7 +2763,7 @@ def page_dashboard():
         )
 
         fig_ba.update_layout(
-            title="🏛️ Rata-rata Nilai IKPA per BA",
+            title="🏢 Rata-rata Nilai IKPA per BA",
             xaxis_title="BA",
             yaxis_title="Rata-rata Nilai IKPA",
             height=600,
