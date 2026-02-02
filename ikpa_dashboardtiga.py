@@ -2379,15 +2379,29 @@ def page_dashboard():
     st.markdown('</div>', unsafe_allow_html=True)  # ⬅️ PENTING: tutup div
 
 
+    # =================================================
+    # 🔑 AMANKAN SESSION STATE RADIO (ANTI VALUEERROR)
+    # =================================================
+    VALID_MAIN_TABS = [
+        "🎯 Highlights Satker",
+        "🏢 Highlights BA",
+        "📋 Data Detail Satker"
+    ]
+
+    if "main_tab" in st.session_state:
+        if st.session_state.main_tab not in VALID_MAIN_TABS:
+            del st.session_state.main_tab
+
     # ===============================
     # RADIO PILIH BAGIAN DASHBOARD
     # ===============================
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
-        ["🎯 Highlights Satker", "🏢 Highlights BA", "📋 Data Detail Satker"],
+        VALID_MAIN_TABS,
         key="main_tab",
         horizontal=True
     )
+
 
     
     # -------------------------
@@ -2774,6 +2788,111 @@ def page_dashboard():
 
         st.plotly_chart(fig_ba, use_container_width=True)
 
+        # =================================================
+        # 🚨 BA dengan Deviasi Halaman III DIPA Bermasalah
+        # (Rata-rata < 90)
+        # =================================================
+        st.subheader("🚨 BA yang Memerlukan Perhatian Khusus")
+        st.markdown("###### Rata-rata Deviasi Halaman III DIPA < 90")
+
+        # -----------------------------
+        # Slider Skala Y
+        # -----------------------------
+        col_min_dev, col_max_dev = st.columns(2)
+
+        with col_min_dev:
+            st.markdown("**Nilai Minimum (Y-Axis)**")
+            y_min_dev = st.slider(
+                "",
+                min_value=0,
+                max_value=50,
+                value=40,
+                step=1,
+                key="ba_dev_ymin"
+            )
+
+        with col_max_dev:
+            st.markdown("**Nilai Maksimum (Y-Axis)**")
+            y_max_dev = st.slider(
+                "",
+                min_value=51,
+                max_value=110,
+                value=110,
+                step=1,
+                key="ba_dev_ymax"
+            )
+
+        # -----------------------------
+        # Hitung Rata-rata Deviasi per BA
+        # -----------------------------
+        problem_col = "Deviasi Halaman III DIPA"
+
+        df[problem_col] = pd.to_numeric(
+            df[problem_col],
+            errors="coerce"
+        )
+
+        df_ba_dev = (
+            df.groupby("Kode BA")[problem_col]
+            .mean()
+            .reset_index(name="Rata-rata Deviasi Halaman III DIPA")
+            .dropna()
+        )
+
+        # -----------------------------
+        # Filter BA Bermasalah (< 90)
+        # -----------------------------
+        df_ba_problem = df_ba_dev[
+            df_ba_dev["Rata-rata Deviasi Halaman III DIPA"] < 90
+        ].copy()
+
+        # -----------------------------
+        # Map Nama BA & Label
+        # -----------------------------
+        df_ba_problem["Nama BA"] = df_ba_problem["Kode BA"].map(BA_MAP)
+        df_ba_problem["Label BA"] = (
+            df_ba_problem["Kode BA"]
+            + " – "
+            + df_ba_problem["Nama BA"].fillna("Nama BA tidak ditemukan")
+        )
+
+        df_ba_problem = df_ba_problem.sort_values(
+            "Rata-rata Deviasi Halaman III DIPA",
+            ascending=False
+        )
+
+        # -----------------------------
+        # Render Chart
+        # -----------------------------
+        if df_ba_problem.empty:
+            st.success("✅ Seluruh BA sudah optimal (rata-rata Deviasi ≥ 90).")
+        else:
+            fig_ba_dev = px.bar(
+                df_ba_problem,
+                x="Label BA",
+                y="Rata-rata Deviasi Halaman III DIPA",
+                color="Rata-rata Deviasi Halaman III DIPA",
+                color_continuous_scale="OrRd_r",
+                text="Rata-rata Deviasi Halaman III DIPA"
+            )
+
+            fig_ba_dev.update_traces(
+                texttemplate="%{text:.2f}",
+                textposition="outside"
+            )
+
+            fig_ba_dev.update_layout(
+                title="🚨 BA dengan Rata-rata Deviasi Halaman III DIPA < 90",
+                xaxis_title="BA",
+                yaxis_title="Rata-rata Deviasi Halaman III DIPA",
+                height=600,
+                xaxis_tickangle=-45,
+                yaxis=dict(range=[y_min_dev, y_max_dev]),
+                coloraxis_showscale=False,
+                margin=dict(l=40, r=20, t=80, b=160)
+            )
+
+            st.plotly_chart(fig_ba_dev, use_container_width=True)
 
 
     # -------------------------
