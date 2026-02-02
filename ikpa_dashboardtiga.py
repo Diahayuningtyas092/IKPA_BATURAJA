@@ -2872,7 +2872,7 @@ def page_dashboard():
                 x="Label BA",
                 y="Rata-rata Deviasi Halaman III DIPA",
                 color="Rata-rata Deviasi Halaman III DIPA",
-                color_continuous_scale="OrRd_r",
+                color_continuous_scale="YlOrRd",
                 text="Rata-rata Deviasi Halaman III DIPA"
             )
 
