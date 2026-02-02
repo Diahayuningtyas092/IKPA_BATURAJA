@@ -4870,6 +4870,15 @@ def page_admin():
             index=list(range(2020, 2031)).index(datetime.now().year)
         )
 
+        st.markdown(
+            """
+            ℹ️ **Sumber Data IKPA SATKER**  
+            Sistem dapat memproses Data IKPA SATKER yang bersumber dari  
+            **Aplikasi OM-SPAN → Monev PA → Indikator Pelaksanaan Anggaran →  
+            Indikator Pelaksanaan Anggaran SATKER.**
+            """
+        )
+      
         uploaded_files = st.file_uploader(
             "Pilih satu atau beberapa file Excel IKPA Satker",
             type=["xlsx", "xls"],
@@ -5003,6 +5012,12 @@ def page_admin():
             list(range(2020, 2031)),
             index=list(range(2020, 2031)).index(datetime.now().year),
             key="tahun_kppn"
+        )
+        
+        st.caption(
+            "Sistem dapat memproses Data IKPA SATKER yang bersumber dari "
+            "Aplikasi OM-SPAN → Monev PA → Indikator Pelaksanaan Anggaran → "
+            "Indikator Pelaksanaan Anggaran KPPN."
         )
 
         # ===============================
