@@ -2199,7 +2199,7 @@ def format_ikpa_display(x):
     except:
         return x
 
-# HALAMAN 1: DASHBOARD UTAMA (REVISED)
+# HALAMAN 1: DASHBOARD UTAMA
 def page_dashboard():
     
     # ===============================
@@ -2385,10 +2385,11 @@ def page_dashboard():
     # ===============================
     main_tab = st.radio(
         "Pilih Bagian Dashboard",
-        ["🎯 Highlights", "📋 Data Detail Satker"],
+        ["🎯 Highlights Satker", "🏛️ Highlights BA", "📋 Data Detail Satker"],
         key="main_tab_choice",
         horizontal=True
     )
+
 
     st.session_state["main_tab"] = main_tab
 
@@ -2680,6 +2681,101 @@ def page_dashboard():
 
             st.plotly_chart(fig_dev, use_container_width=True)
 
+    # -------------------------
+    # HIGHLIGHTS BA
+    # -------------------------
+    elif main_tab == "🏛️ Highlights BA":
+        st.markdown("## 🏛️ Highlights Kinerja per BA")
+
+        # pilih periode (sama seperti highlights utama)
+        st.selectbox(
+            "Pilih Periode",
+            options=all_periods,
+            format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+            key="selected_period"
+        )
+
+        df = st.session_state.data_storage.get(st.session_state.selected_period)
+
+        if df is None or df.empty:
+            st.warning("Data IKPA belum tersedia.")
+            st.stop()
+
+        df = df.copy()
+
+        # ===============================
+        # NORMALISASI KODE BA
+        # ===============================
+        if "Kode BA" in df.columns:
+            df["Kode BA"] = df["Kode BA"].apply(normalize_kode_ba)
+        else:
+            st.warning("Kolom Kode BA tidak tersedia.")
+            st.stop()
+
+        # ===============================
+        # FILTER BA (PAKAI FILTER YANG SAMA)
+        # ===============================
+        df = apply_filter_ba(df)
+
+        # ===============================
+        # HITUNG RATA-RATA IKPA PER BA
+        # ===============================
+        nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+        df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce")
+
+        df_ba = (
+            df.groupby("Kode BA")[nilai_col]
+            .mean()
+            .reset_index(name="Rata-rata IKPA")
+            .dropna()
+        )
+
+        # ===============================
+        # MAP NAMA BA
+        # ===============================
+        df_ba["Nama BA"] = df_ba["Kode BA"].map(BA_MAP)
+        df_ba["Label BA"] = (
+            df_ba["Kode BA"] + " – " +
+            df_ba["Nama BA"].fillna("Nama BA tidak ditemukan")
+        )
+
+        # ===============================
+        # SORT DESC (TINGGI → RENDAH)
+        # ===============================
+        df_ba = df_ba.sort_values("Rata-rata IKPA", ascending=False)
+
+        if df_ba.empty:
+            st.info("Tidak ada data BA yang dapat ditampilkan.")
+            st.stop()
+
+        # ===============================
+        # CHART VERTIKAL (KHUSUS BA)
+        # ===============================
+        fig_ba = px.bar(
+            df_ba,
+            x="Label BA",
+            y="Rata-rata IKPA",
+            color="Rata-rata IKPA",
+            color_continuous_scale="Blues",
+            text="Rata-rata IKPA"
+        )
+
+        fig_ba.update_traces(
+            texttemplate="%{text:.2f}",
+            textposition="outside"
+        )
+
+        fig_ba.update_layout(
+            title="🏛️ Rata-rata Nilai IKPA per BA",
+            xaxis_title="BA",
+            yaxis_title="Rata-rata Nilai IKPA",
+            height=600,
+            xaxis_tickangle=-45,
+            coloraxis_showscale=False,
+            margin=dict(l=40, r=20, t=80, b=160)
+        )
+
+        st.plotly_chart(fig_ba, use_container_width=True)
 
 
 
