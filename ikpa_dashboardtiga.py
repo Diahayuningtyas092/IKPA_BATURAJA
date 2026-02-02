@@ -2393,7 +2393,7 @@ def page_dashboard():
     # -------------------------
     # HIGHLIGHTS
     # -------------------------
-    if main_tab == "🎯 Highlights":
+    if main_tab == "🎯 Highlights Satker":
         st.markdown("## 🎯 Highlights Kinerja Satker")
 
         st.selectbox(
@@ -2779,8 +2779,8 @@ def page_dashboard():
     # -------------------------
     # DATA DETAIL SATKER
     # -------------------------
-    else:
-        st.subheader("📋 Tabel Detail Satker")
+    elif main_tab == "📋 Data Detail Satker":
+        st.markdown("## 📋 Tabel Detail Satker")
 
         # ===============================
         # 🔎 AMBIL FILTER KODE BA (DARI DASHBOARD UTAMA)
