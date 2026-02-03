@@ -155,9 +155,14 @@ def render_table_pin_satker(df):
 
     gb.configure_grid_options(
         domLayout="normal",
+        alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
-        headerHeight=40
+        headerHeight=40,
+
+        # 🔑 INI KUNCINYA
+        enableBrowserTooltips=True,
     )
+
 
     # =====================================================
     # RENDER
