@@ -39,8 +39,10 @@ def render_table_pin_satker(df):
     # =====================================================
     gb.configure_selection(
         selection_mode="single",
-        use_checkbox=False
+        use_checkbox=False,
+        suppressRowClickSelection=False  
     )
+
 
     # =====================================================
     # KOLOM NOMOR
