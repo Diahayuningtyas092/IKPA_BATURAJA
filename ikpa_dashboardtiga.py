@@ -3575,10 +3575,14 @@ def page_dashboard():
             # ===============================
             grid_response = render_table_pin_satker(df_display)
 
-            selected = grid_response.get("selected_rows", [])
+            selected = grid_response.get("selected_rows")
 
-            if selected:
-                row = selected[0]
+            if selected is not None and len(selected) > 0:
+                if isinstance(selected, list):
+                    row = selected[0]
+                else:  # DataFrame
+                    row = selected.iloc[0].to_dict()
+
 
                 with st.popover("ℹ️ Detail Nilai"):
                     st.markdown(f"""
