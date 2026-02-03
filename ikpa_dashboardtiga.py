@@ -3647,6 +3647,42 @@ def page_dashboard():
                 .str.replace(r"\.0$", "", regex=True)
             )
 
+            st.markdown("### 🛈 Keterangan Indikator")
+
+            cols = st.columns(4)  # sesuaikan jumlah kolom aspek/komponen
+
+            with cols[0]:
+                st.markdown("**Kualitas Perencanaan Anggaran**")
+                with st.popover("ℹ️"):
+                    st.markdown("""
+                    Menilai kualitas perencanaan anggaran satker, meliputi:
+                    - Kesesuaian DIPA
+                    - Perencanaan kegiatan
+                    """)
+
+            with cols[1]:
+                st.markdown("**Kualitas Pelaksanaan Anggaran**")
+                with st.popover("ℹ️"):
+                    st.markdown("""
+                    Menilai kepatuhan pelaksanaan anggaran terhadap:
+                    - Jadwal
+                    - Regulasi
+                    """)
+
+            with cols[2]:
+                st.markdown("**Kualitas Hasil Pelaksanaan Anggaran**")
+                with st.popover("ℹ️"):
+                    st.markdown("""
+                    Menilai capaian output dan hasil akhir pelaksanaan anggaran.
+                    """)
+
+            with cols[3]:
+                st.markdown("**Nilai Akhir IKPA**")
+                with st.popover("ℹ️"):
+                    st.markdown("""
+                    Nilai akhir setelah konversi bobot dan pengurang.
+                    """)
+
             # ===============================
             # TAMPILKAN DENGAN AGGRID
             # ===============================
