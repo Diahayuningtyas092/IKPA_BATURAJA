@@ -56,43 +56,50 @@ def render_table_pin_satker(df):
         )
 
     gb = GridOptionsBuilder.from_dataframe(df)
+    
+    # =====================================================
+    # 🛈 HEADER TOOLTIP (HTML TITLE – WORKING)
+    # =====================================================
+    HEADER_TOOLTIPS = {
+        "Kualitas Perencanaan Anggaran":
+            "Menilai kualitas perencanaan anggaran satker.",
+        "Kualitas Pelaksanaan Anggaran":
+            "Menilai kepatuhan pelaksanaan anggaran.",
+        "Kualitas Hasil Pelaksanaan Anggaran":
+            "Menilai capaian output dan hasil anggaran.",
+
+        "Revisi DIPA":
+            "Frekuensi dan kualitas revisi DIPA.",
+        "Deviasi Halaman III DIPA":
+            "Deviasi realisasi terhadap rencana.",
+        "Penyerapan Anggaran":
+            "Persentase realisasi terhadap pagu.",
+        "Belanja Kontraktual":
+            "Ketepatan belanja kontraktual.",
+        "Penyelesaian Tagihan":
+            "Kecepatan penyelesaian tagihan.",
+        "Pengelolaan UP dan TUP":
+            "Ketertiban pengelolaan UP/TUP.",
+        "Capaian Output":
+            "Tingkat pencapaian output.",
+
+        "Nilai Akhir (Nilai Total/Konversi Bobot)":
+            "Nilai akhir IKPA setelah bobot & pengurang."
+    }
+
+    for col, tooltip in HEADER_TOOLTIPS.items():
+        if col in df.columns:
+            gb.configure_column(
+                col,
+                headerName=f'<span title="{tooltip}">{col}</span>'
+            )
+
 
     # =====================================================
     # SEMBUNYIKAN KOLOM INTERNAL (JIKA ADA)
     # =====================================================
     if "Nilai Total" in df.columns:
         gb.configure_column("Nilai Total", hide=True)
-
-    # =====================================================
-    # 🛈 TOOLTIP SEL (HOVER DI ISI TABEL)
-    # =====================================================
-    VALUE_COLUMNS = [
-        "Kualitas Perencanaan Anggaran",
-        "Kualitas Pelaksanaan Anggaran",
-        "Kualitas Hasil Pelaksanaan Anggaran",
-        "Revisi DIPA",
-        "Deviasi Halaman III DIPA",
-        "Penyerapan Anggaran",
-        "Belanja Kontraktual",
-        "Penyelesaian Tagihan",
-        "Pengelolaan UP dan TUP",
-        "Capaian Output",
-        "Dispensasi SPM (Pengurang)",
-        "Nilai Akhir (Nilai Total/Konversi Bobot)"
-    ]
-
-    for col in VALUE_COLUMNS:
-        if col in df.columns:
-            gb.configure_column(
-                col,
-                tooltipValueGetter=JsCode(f"""
-                function(params) {{
-                    return "{col}=" + params.value + "\\n" +
-                        "Satker=" + params.data['Uraian Satker-RINGKAS'] +
-                        " (" + params.data['Kode Satker'] + ")";
-                }}
-                """)
-            )
 
 
     # =====================================================
