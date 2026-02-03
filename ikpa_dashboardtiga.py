@@ -62,47 +62,36 @@ def render_table_pin_satker(df):
     # =====================================================
     if "Nilai Total" in df.columns:
         gb.configure_column("Nilai Total", hide=True)
-        
+
     # =====================================================
-    # 🛈 HEADER TOOLTIP (POPUP SAAT HOVER JUDUL KOLOM)
+    # 🛈 TOOLTIP SEL (HOVER DI ISI TABEL)
     # =====================================================
-    HEADER_TOOLTIPS = {
-        # ===== ASPEK =====
-        "Kualitas Perencanaan Anggaran": 
-            "coba coba.",
-        "Kualitas Pelaksanaan Anggaran": 
-            "coba coba.",
-        "Kualitas Hasil Pelaksanaan Anggaran": 
-            "coba coba.",
+    VALUE_COLUMNS = [
+        "Kualitas Perencanaan Anggaran",
+        "Kualitas Pelaksanaan Anggaran",
+        "Kualitas Hasil Pelaksanaan Anggaran",
+        "Revisi DIPA",
+        "Deviasi Halaman III DIPA",
+        "Penyerapan Anggaran",
+        "Belanja Kontraktual",
+        "Penyelesaian Tagihan",
+        "Pengelolaan UP dan TUP",
+        "Capaian Output",
+        "Dispensasi SPM (Pengurang)",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    ]
 
-        # ===== KOMPONEN =====
-        "Revisi DIPA": 
-            "coba coba.",
-        "Deviasi Halaman III DIPA": 
-            "Mengukur deviasi realisasi terhadap rencana penarikan dana.",
-        "Penyerapan Anggaran": 
-            "Persentase realisasi anggaran dibandingkan pagu.",
-        "Belanja Kontraktual": 
-            "Ketepatan dan kepatuhan belanja kontraktual.",
-        "Penyelesaian Tagihan": 
-            "Kecepatan penyelesaian tagihan satker.",
-        "Pengelolaan UP dan TUP": 
-            "Ketertiban pengelolaan uang persediaan (UP/TUP).",
-        "Capaian Output": 
-            "Tingkat pencapaian output kegiatan.",
-
-        # ===== NILAI AKHIR =====
-        "Dispensasi SPM (Pengurang)": 
-            "Nilai pengurang akibat dispensasi SPM.",
-        "Nilai Akhir (Nilai Total/Konversi Bobot)": 
-            "Nilai akhir IKPA setelah konversi bobot dan pengurang."
-    }
-
-    for col, tooltip in HEADER_TOOLTIPS.items():
+    for col in VALUE_COLUMNS:
         if col in df.columns:
             gb.configure_column(
                 col,
-                headerTooltip=tooltip
+                tooltipValueGetter=JsCode(f"""
+                function(params) {{
+                    return "{col}=" + params.value + "\\n" +
+                        "Satker=" + params.data['Uraian Satker-RINGKAS'] +
+                        " (" + params.data['Kode Satker'] + ")";
+                }}
+                """)
             )
 
 
