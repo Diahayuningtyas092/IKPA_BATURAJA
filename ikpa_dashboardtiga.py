@@ -18,15 +18,11 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid import JsCode
 import time
 
+from st_aggrid import GridUpdateMode
+
 def render_table_pin_satker(df):
-    # =====================================================
-    # COPY DF (WAJIB)
-    # =====================================================
     df = df.copy()
 
-    # =====================================================
-    # GUARD
-    # =====================================================
     if "__rowNum__" in df.columns:
         df = df.drop(columns="__rowNum__")
 
@@ -39,66 +35,12 @@ def render_table_pin_satker(df):
     gb = GridOptionsBuilder.from_dataframe(df)
 
     # =====================================================
-    # 🛈 TOOLTIP JUDUL KOLOM (BROWSER TOOLTIP)
+    # AKTIFKAN SELECTION (KUNCI SOLUSI)
     # =====================================================
-    header_with_tooltip = JsCode("""
-    class HeaderWithTooltip {
-      init(params) {
-        this.eGui = document.createElement('span');
-        this.eGui.innerText = params.displayName;
-        this.eGui.title = params.tooltip || '';
-        this.eGui.style.cursor = 'help';
-      }
-      getGui() {
-        return this.eGui;
-      }
-    }
-    """)
-
-    HEADER_TOOLTIPS = {
-        "Kualitas Perencanaan Anggaran": "coba-coba",
-        "Kualitas Pelaksanaan Anggaran": "coba-coba",
-        "Kualitas Hasil Pelaksanaan Anggaran": "coba-coba",
-        "Revisi DIPA": "coba-coba",
-        "Deviasi Halaman III DIPA": "coba-coba",
-        "Penyerapan Anggaran": "coba-coba",
-        "Belanja Kontraktual": "coba-coba",
-        "Penyelesaian Tagihan": "coba-coba",
-        "Pengelolaan UP dan TUP": "coba-coba",
-        "Capaian Output": "coba-coba",
-        "Nilai Akhir (Nilai Total/Konversi Bobot)": "coba-coba"
-    }
-
-    for col, tooltip in HEADER_TOOLTIPS.items():
-        if col in df.columns:
-            gb.configure_column(
-                col,
-                headerComponentFramework=header_with_tooltip,
-                headerComponentParams={"tooltip": tooltip}
-            )
-
-    # =====================================================
-    # 🟢 TOOLTIP DI ISI SEL (INI YANG KAMU BUTUHKAN)
-    # =====================================================
-    VALUE_COLUMNS = list(HEADER_TOOLTIPS.keys())
-
-    for col in VALUE_COLUMNS:
-        if col in df.columns:
-            gb.configure_column(
-                col,
-                tooltipValueGetter=JsCode("""
-                function(params) {
-                    if (params.value === null || params.value === undefined) {
-                        return null;
-                    }
-                    return (
-                        params.colDef.headerName + " : " + params.value + "\\n" +
-                        "Satker : " + params.data["Uraian Satker-RINGKAS"] +
-                        " (" + params.data["Kode Satker"] + ")"
-                    );
-                }
-                """)
-            )
+    gb.configure_selection(
+        selection_mode="single",
+        use_checkbox=False
+    )
 
     # =====================================================
     # KOLOM NOMOR
@@ -113,9 +55,6 @@ def render_table_pin_satker(df):
         cellStyle={"textAlign": "center"}
     )
 
-    # =====================================================
-    # DEFAULT KOLOM
-    # =====================================================
     gb.configure_default_column(
         resizable=True,
         filter=True,
@@ -123,9 +62,6 @@ def render_table_pin_satker(df):
         minWidth=80
     )
 
-    # =====================================================
-    # PIN KOLOM KIRI
-    # =====================================================
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
             "Uraian Satker-RINGKAS",
@@ -141,9 +77,6 @@ def render_table_pin_satker(df):
             width=80
         )
 
-    # =====================================================
-    # ZEBRA STYLE
-    # =====================================================
     zebra_dark = JsCode("""
     function(params) {
         return {
@@ -157,24 +90,21 @@ def render_table_pin_satker(df):
         domLayout="normal",
         alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
-        headerHeight=40,
-
-        # 🔑 INI KUNCINYA
-        enableBrowserTooltips=True,
+        headerHeight=40
     )
 
-
-    # =====================================================
-    # RENDER
-    # =====================================================
-    AgGrid(
+    grid_response = AgGrid(
         df,
         gridOptions=gb.build(),
         height=calc_grid_height(df),
         width="100%",
         theme="streamlit",
-        allow_unsafe_jscode=True
+        allow_unsafe_jscode=True,
+        update_mode=GridUpdateMode.SELECTION_CHANGED
     )
+
+    return grid_response
+
 
 
 # =========================
@@ -3641,7 +3571,22 @@ def page_dashboard():
             # ===============================
             # TAMPILKAN DENGAN AGGRID
             # ===============================
-            render_table_pin_satker(df_display)
+            grid_response = render_table_pin_satker(df_display)
+
+            selected = grid_response.get("selected_rows", [])
+
+            if selected:
+                row = selected[0]
+
+                with st.popover("ℹ️ Detail Nilai"):
+                    st.markdown(f"""
+                    **Satker**  
+                    {row.get("Uraian Satker-RINGKAS")} ({row.get("Kode Satker")})
+
+                    **Nilai Akhir IKPA**  
+                    {row.get("Nilai Akhir (Nilai Total/Konversi Bobot)", "-")}
+                    """)
+
 
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
