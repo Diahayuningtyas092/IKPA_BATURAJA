@@ -25,31 +25,21 @@ def render_table_pin_satker(df):
     df = df.copy()
 
     # =====================================================
-    # 🔒 GUARD 1: HAPUS __rowNum__ JIKA SUDAH ADA
+    # GUARD
     # =====================================================
     if "__rowNum__" in df.columns:
         df = df.drop(columns="__rowNum__")
 
-    # =====================================================
-    # 🔒 GUARD 2: PASTIKAN KOLOM UNIK
-    # =====================================================
     df = df.loc[:, ~df.columns.duplicated()].copy()
-
-    # =====================================================
-    # TAMBAHKAN KOLOM NOMOR
-    # =====================================================
     df.insert(0, "__rowNum__", range(1, len(df) + 1))
 
-    # =====================================================
-    # HELPER: TINGGI GRID DINAMIS
-    # =====================================================
     def calc_grid_height(df, row_height=50, header_height=40, max_height=900):
         return min(header_height + len(df) * row_height, max_height)
 
     gb = GridOptionsBuilder.from_dataframe(df)
 
     # =====================================================
-    # ✅ CUSTOM HEADER COMPONENT (UNTUK TOOLTIP JUDUL KOLOM)
+    # 🛈 TOOLTIP JUDUL KOLOM (BROWSER TOOLTIP)
     # =====================================================
     header_with_tooltip = JsCode("""
     class HeaderWithTooltip {
@@ -66,19 +56,17 @@ def render_table_pin_satker(df):
     """)
 
     HEADER_TOOLTIPS = {
-        "Kualitas Perencanaan Anggaran": "Menilai kualitas perencanaan anggaran satker.",
-        "Kualitas Pelaksanaan Anggaran": "Menilai kepatuhan pelaksanaan anggaran.",
-        "Kualitas Hasil Pelaksanaan Anggaran": "Menilai capaian output dan hasil anggaran.",
-
-        "Revisi DIPA": "Frekuensi dan kualitas revisi DIPA.",
-        "Deviasi Halaman III DIPA": "Deviasi realisasi terhadap rencana.",
-        "Penyerapan Anggaran": "Persentase realisasi terhadap pagu.",
-        "Belanja Kontraktual": "Ketepatan belanja kontraktual.",
-        "Penyelesaian Tagihan": "Kecepatan penyelesaian tagihan.",
-        "Pengelolaan UP dan TUP": "Ketertiban pengelolaan UP/TUP.",
-        "Capaian Output": "Tingkat pencapaian output.",
-
-        "Nilai Akhir (Nilai Total/Konversi Bobot)": "Nilai akhir IKPA setelah bobot & pengurang."
+        "Kualitas Perencanaan Anggaran": "coba-coba",
+        "Kualitas Pelaksanaan Anggaran": "coba-coba",
+        "Kualitas Hasil Pelaksanaan Anggaran": "coba-coba",
+        "Revisi DIPA": "coba-coba",
+        "Deviasi Halaman III DIPA": "coba-coba",
+        "Penyerapan Anggaran": "coba-coba",
+        "Belanja Kontraktual": "coba-coba",
+        "Penyelesaian Tagihan": "coba-coba",
+        "Pengelolaan UP dan TUP": "coba-coba",
+        "Capaian Output": "coba-coba",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)": "coba-coba"
     }
 
     for col, tooltip in HEADER_TOOLTIPS.items():
@@ -90,10 +78,27 @@ def render_table_pin_satker(df):
             )
 
     # =====================================================
-    # SEMBUNYIKAN KOLOM INTERNAL
+    # 🟢 TOOLTIP DI ISI SEL (INI YANG KAMU BUTUHKAN)
     # =====================================================
-    if "Nilai Total" in df.columns:
-        gb.configure_column("Nilai Total", hide=True)
+    VALUE_COLUMNS = list(HEADER_TOOLTIPS.keys())
+
+    for col in VALUE_COLUMNS:
+        if col in df.columns:
+            gb.configure_column(
+                col,
+                tooltipValueGetter=JsCode("""
+                function(params) {
+                    if (params.value === null || params.value === undefined) {
+                        return null;
+                    }
+                    return (
+                        params.colDef.headerName + " : " + params.value + "\\n" +
+                        "Satker : " + params.data["Uraian Satker-RINGKAS"] +
+                        " (" + params.data["Kode Satker"] + ")"
+                    );
+                }
+                """)
+            )
 
     # =====================================================
     # KOLOM NOMOR
@@ -102,10 +107,7 @@ def render_table_pin_satker(df):
         "__rowNum__",
         headerName="No",
         pinned="left",
-        lockPosition=True,
-        suppressMovable=True,
         width=60,
-        suppressSizeToFit=True,
         sortable=False,
         filter=False,
         cellStyle={"textAlign": "center"}
@@ -129,51 +131,36 @@ def render_table_pin_satker(df):
             "Uraian Satker-RINGKAS",
             headerName="Nama Satker",
             pinned="left",
-            lockPosition=True,
-            suppressMovable=True,
-            width=180,
-            suppressSizeToFit=True
+            width=180
         )
 
     if "Kode Satker" in df.columns:
         gb.configure_column(
             "Kode Satker",
             pinned="left",
-            lockPosition=True,
-            suppressMovable=True,
-            width=80,
-            suppressSizeToFit=True
+            width=80
         )
 
-    if "Kode BA" in df.columns:
-        gb.configure_column("Kode BA", width=60)
-
     # =====================================================
-    # ZEBRA DARK MODE
+    # ZEBRA STYLE
     # =====================================================
     zebra_dark = JsCode("""
     function(params) {
-        const isEven = params.node.rowIndex % 2 === 0;
         return {
-            backgroundColor: isEven ? '#3D3D3D' : '#050505',
-            color: '#FFFFFF',
-            borderBottom: '1px solid #6A6A6A'
+            backgroundColor: params.node.rowIndex % 2 === 0 ? '#3D3D3D' : '#050505',
+            color: '#FFFFFF'
         };
     }
     """)
 
-    # =====================================================
-    # GRID OPTIONS
-    # =====================================================
     gb.configure_grid_options(
         domLayout="normal",
-        alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
         headerHeight=40
     )
 
     # =====================================================
-    # RENDER AGGRID
+    # RENDER
     # =====================================================
     AgGrid(
         df,
@@ -181,7 +168,6 @@ def render_table_pin_satker(df):
         height=calc_grid_height(df),
         width="100%",
         theme="streamlit",
-        fit_columns_on_grid_load=False,
         allow_unsafe_jscode=True
     )
 
@@ -3646,42 +3632,6 @@ def page_dashboard():
                 .astype(str)
                 .str.replace(r"\.0$", "", regex=True)
             )
-
-            st.markdown("### 🛈 Keterangan Indikator")
-
-            cols = st.columns(4)  # sesuaikan jumlah kolom aspek/komponen
-
-            with cols[0]:
-                st.markdown("**Kualitas Perencanaan Anggaran**")
-                with st.popover("ℹ️"):
-                    st.markdown("""
-                    Menilai kualitas perencanaan anggaran satker, meliputi:
-                    - Kesesuaian DIPA
-                    - Perencanaan kegiatan
-                    """)
-
-            with cols[1]:
-                st.markdown("**Kualitas Pelaksanaan Anggaran**")
-                with st.popover("ℹ️"):
-                    st.markdown("""
-                    Menilai kepatuhan pelaksanaan anggaran terhadap:
-                    - Jadwal
-                    - Regulasi
-                    """)
-
-            with cols[2]:
-                st.markdown("**Kualitas Hasil Pelaksanaan Anggaran**")
-                with st.popover("ℹ️"):
-                    st.markdown("""
-                    Menilai capaian output dan hasil akhir pelaksanaan anggaran.
-                    """)
-
-            with cols[3]:
-                st.markdown("**Nilai Akhir IKPA**")
-                with st.popover("ℹ️"):
-                    st.markdown("""
-                    Nilai akhir setelah konversi bobot dan pengurang.
-                    """)
 
             # ===============================
             # TAMPILKAN DENGAN AGGRID
