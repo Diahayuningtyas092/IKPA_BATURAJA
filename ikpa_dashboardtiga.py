@@ -71,10 +71,11 @@ def render_table_pin_satker(df):
 
           popup.innerHTML = `
             <b>${params.colDef.headerName}</b><br/>
-            Nilai : ${params.value}<br/>
-            Satker : ${params.data["Uraian Satker-RINGKAS"]}
-            (${params.data["Kode Satker"]})
-          `;
+            popup.innerHTML = `
+            <b>${params.colDef.headerName}</b><br/>
+            coba-coba
+            `;
+
 
           document.body.appendChild(popup);
 
@@ -106,7 +107,7 @@ def render_table_pin_satker(df):
         "Penyelesaian Tagihan",
         "Pengelolaan UP dan TUP",
         "Capaian Output",
-        "Dispensasi SPM (Pengurangan)",
+        "Dispensasi SPM (Pengurang)",
         "Nilai Akhir (Nilai Total/Konversi Bobot)"
     ]
 
