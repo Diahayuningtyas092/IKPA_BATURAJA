@@ -191,8 +191,12 @@ def render_table_pin_satker(df):
         suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
-        headerHeight=40
+        headerHeight=40,
+
+        # 🔑 WAJIB AGAR HEADER TOOLTIP MUNCUL
+        enableBrowserTooltips=True,
     )
+
 
     # =====================================================
     # RENDER AGGRID (AMAN)
