@@ -5082,13 +5082,10 @@ def page_admin():
             index=list(range(2020, 2031)).index(datetime.now().year)
         )
 
-        st.markdown(
-            """
-            ℹ️ **Sumber Data IKPA SATKER**  
-            Sistem dapat memproses Data IKPA SATKER yang bersumber dari  
-            **Aplikasi OM-SPAN → Monev PA → Indikator Pelaksanaan Anggaran →  
-            Indikator Pelaksanaan Anggaran SATKER.**
-            """
+        st.caption(
+            "Sistem dapat memproses Data IKPA SATKER yang bersumber dari "
+            "Aplikasi OM-SPAN → Monev PA → Indikator Pelaksanaan Anggaran → "
+            "Indikator Pelaksanaan Anggaran SATKER."
         )
       
         uploaded_files = st.file_uploader(
@@ -5430,12 +5427,18 @@ def page_admin():
         st.markdown("---")
         st.subheader("📤 Upload Data DIPA")
 
+        st.caption(
+            "Sistem dapat memproses Data DIPA yang bersumber dari "
+            "Aplikasi MyIntress → Anggaran → Download Data Detail dan Aplikasi OM-SPAN → "
+            "Modul Peranggaran → Informasi Revisi DIPA (Versi 4 Desember 2025)"
+        )
+        
         uploaded_dipa_file = st.file_uploader(
             "Pilih file Excel DIPA (mentah dari SAS/SMART/Kemenkeu)",
             type=['xlsx', 'xls'],
             key="upload_dipa"
         )
-
+        
         # Tombol proses DIPA
         if uploaded_dipa_file is not None:
             if st.button("🔄 Proses Data DIPA", type="primary"):
