@@ -26,84 +26,77 @@ def render_table_pin_satker(df):
 
     # =====================================================
     # 🔒 GUARD 1: HAPUS __rowNum__ JIKA SUDAH ADA
-    # (AGGRID TIDAK BOLEH KOLOM DUPLIKAT)
     # =====================================================
     if "__rowNum__" in df.columns:
         df = df.drop(columns="__rowNum__")
 
     # =====================================================
-    # 🔒 GUARD 2: PASTIKAN KOLOM UNIK (ANTI AGGRID CRASH)
+    # 🔒 GUARD 2: PASTIKAN KOLOM UNIK
     # =====================================================
     df = df.loc[:, ~df.columns.duplicated()].copy()
 
     # =====================================================
-    # TAMBAHKAN KOLOM NOMOR (SETELAH DF BERSIH)
+    # TAMBAHKAN KOLOM NOMOR
     # =====================================================
     df.insert(0, "__rowNum__", range(1, len(df) + 1))
 
     # =====================================================
-    # HELPER: HITUNG TINGGI GRID DINAMIS
+    # HELPER: TINGGI GRID DINAMIS
     # =====================================================
-    def calc_grid_height(
-        df,
-        row_height=50,
-        header_height=40,
-        max_height=900
-    ):
-        return min(
-            header_height + len(df) * row_height,
-            max_height
-        )
+    def calc_grid_height(df, row_height=50, header_height=40, max_height=900):
+        return min(header_height + len(df) * row_height, max_height)
 
     gb = GridOptionsBuilder.from_dataframe(df)
-    
+
     # =====================================================
-    # 🛈 HEADER TOOLTIP (HTML TITLE – WORKING)
+    # ✅ CUSTOM HEADER COMPONENT (UNTUK TOOLTIP JUDUL KOLOM)
     # =====================================================
+    header_with_tooltip = JsCode("""
+    class HeaderWithTooltip {
+      init(params) {
+        this.eGui = document.createElement('span');
+        this.eGui.innerText = params.displayName;
+        this.eGui.title = params.tooltip || '';
+        this.eGui.style.cursor = 'help';
+      }
+      getGui() {
+        return this.eGui;
+      }
+    }
+    """)
+
     HEADER_TOOLTIPS = {
-        "Kualitas Perencanaan Anggaran":
-            "Menilai kualitas perencanaan anggaran satker.",
-        "Kualitas Pelaksanaan Anggaran":
-            "Menilai kepatuhan pelaksanaan anggaran.",
-        "Kualitas Hasil Pelaksanaan Anggaran":
-            "Menilai capaian output dan hasil anggaran.",
+        "Kualitas Perencanaan Anggaran": "Menilai kualitas perencanaan anggaran satker.",
+        "Kualitas Pelaksanaan Anggaran": "Menilai kepatuhan pelaksanaan anggaran.",
+        "Kualitas Hasil Pelaksanaan Anggaran": "Menilai capaian output dan hasil anggaran.",
 
-        "Revisi DIPA":
-            "Frekuensi dan kualitas revisi DIPA.",
-        "Deviasi Halaman III DIPA":
-            "Deviasi realisasi terhadap rencana.",
-        "Penyerapan Anggaran":
-            "Persentase realisasi terhadap pagu.",
-        "Belanja Kontraktual":
-            "Ketepatan belanja kontraktual.",
-        "Penyelesaian Tagihan":
-            "Kecepatan penyelesaian tagihan.",
-        "Pengelolaan UP dan TUP":
-            "Ketertiban pengelolaan UP/TUP.",
-        "Capaian Output":
-            "Tingkat pencapaian output.",
+        "Revisi DIPA": "Frekuensi dan kualitas revisi DIPA.",
+        "Deviasi Halaman III DIPA": "Deviasi realisasi terhadap rencana.",
+        "Penyerapan Anggaran": "Persentase realisasi terhadap pagu.",
+        "Belanja Kontraktual": "Ketepatan belanja kontraktual.",
+        "Penyelesaian Tagihan": "Kecepatan penyelesaian tagihan.",
+        "Pengelolaan UP dan TUP": "Ketertiban pengelolaan UP/TUP.",
+        "Capaian Output": "Tingkat pencapaian output.",
 
-        "Nilai Akhir (Nilai Total/Konversi Bobot)":
-            "Nilai akhir IKPA setelah bobot & pengurang."
+        "Nilai Akhir (Nilai Total/Konversi Bobot)": "Nilai akhir IKPA setelah bobot & pengurang."
     }
 
     for col, tooltip in HEADER_TOOLTIPS.items():
         if col in df.columns:
             gb.configure_column(
                 col,
-                headerName=f'<span title="{tooltip}">{col}</span>'
+                headerComponentFramework=header_with_tooltip,
+                headerComponentParams={"tooltip": tooltip}
             )
 
-
     # =====================================================
-    # SEMBUNYIKAN KOLOM INTERNAL (JIKA ADA)
+    # SEMBUNYIKAN KOLOM INTERNAL
     # =====================================================
     if "Nilai Total" in df.columns:
         gb.configure_column("Nilai Total", hide=True)
 
-
     # =====================================================
-    # KOLOM NOMOR OTOMATIS (PALING KIRI)
+    # KOLOM NOMOR
     # =====================================================
     gb.configure_column(
         "__rowNum__",
@@ -119,7 +112,7 @@ def render_table_pin_satker(df):
     )
 
     # =====================================================
-    # DEFAULT SEMUA KOLOM
+    # DEFAULT KOLOM
     # =====================================================
     gb.configure_default_column(
         resizable=True,
@@ -129,7 +122,7 @@ def render_table_pin_satker(df):
     )
 
     # =====================================================
-    # PIN KOLOM KIRI (SETELAH NOMOR)
+    # PIN KOLOM KIRI
     # =====================================================
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
@@ -153,28 +146,7 @@ def render_table_pin_satker(df):
         )
 
     if "Kode BA" in df.columns:
-        gb.configure_column(
-            "Kode BA",
-            width=60
-        )
-
-    # =====================================================
-    # KOLOM BULAN / TRIWULAN (LENGKAP, TIDAK HILANG)
-    # =====================================================
-    bulan_cols = [
-        "Jan", "Feb", "Mar", "Apr", "Mei", "Jun",
-        "Jul", "Agu", "Sep", "Okt", "Nov", "Des",
-        "Tw I", "Tw II", "Tw III", "Tw IV"
-    ]
-
-    for col in bulan_cols:
-        if col in df.columns:
-            gb.configure_column(
-                col,
-                width=70,
-                type=["numericColumn"],
-                cellStyle={"textAlign": "center"}
-            )
+        gb.configure_column("Kode BA", width=60)
 
     # =====================================================
     # ZEBRA DARK MODE
@@ -195,18 +167,13 @@ def render_table_pin_satker(df):
     # =====================================================
     gb.configure_grid_options(
         domLayout="normal",
-        suppressHorizontalScroll=False,
         alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
-        headerHeight=40,
-
-        # 🔑 WAJIB AGAR HEADER TOOLTIP MUNCUL
-        enableBrowserTooltips=True,
+        headerHeight=40
     )
 
-
     # =====================================================
-    # RENDER AGGRID (AMAN)
+    # RENDER AGGRID
     # =====================================================
     AgGrid(
         df,
