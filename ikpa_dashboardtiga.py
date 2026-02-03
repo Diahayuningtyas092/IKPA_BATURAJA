@@ -62,6 +62,49 @@ def render_table_pin_satker(df):
     # =====================================================
     if "Nilai Total" in df.columns:
         gb.configure_column("Nilai Total", hide=True)
+        
+    # =====================================================
+    # 🛈 HEADER TOOLTIP (POPUP SAAT HOVER JUDUL KOLOM)
+    # =====================================================
+    HEADER_TOOLTIPS = {
+        # ===== ASPEK =====
+        "Kualitas Perencanaan Anggaran": 
+            "coba coba.",
+        "Kualitas Pelaksanaan Anggaran": 
+            "coba coba.",
+        "Kualitas Hasil Pelaksanaan Anggaran": 
+            "coba coba.",
+
+        # ===== KOMPONEN =====
+        "Revisi DIPA": 
+            "coba coba.",
+        "Deviasi Halaman III DIPA": 
+            "Mengukur deviasi realisasi terhadap rencana penarikan dana.",
+        "Penyerapan Anggaran": 
+            "Persentase realisasi anggaran dibandingkan pagu.",
+        "Belanja Kontraktual": 
+            "Ketepatan dan kepatuhan belanja kontraktual.",
+        "Penyelesaian Tagihan": 
+            "Kecepatan penyelesaian tagihan satker.",
+        "Pengelolaan UP dan TUP": 
+            "Ketertiban pengelolaan uang persediaan (UP/TUP).",
+        "Capaian Output": 
+            "Tingkat pencapaian output kegiatan.",
+
+        # ===== NILAI AKHIR =====
+        "Dispensasi SPM (Pengurang)": 
+            "Nilai pengurang akibat dispensasi SPM.",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)": 
+            "Nilai akhir IKPA setelah konversi bobot dan pengurang."
+    }
+
+    for col, tooltip in HEADER_TOOLTIPS.items():
+        if col in df.columns:
+            gb.configure_column(
+                col,
+                headerTooltip=tooltip
+            )
+
 
     # =====================================================
     # KOLOM NOMOR OTOMATIS (PALING KIRI)
@@ -3469,7 +3512,7 @@ def page_dashboard():
 
 
         # -------------------------
-        # DETAIL SATKER (AgGrid FINAL)
+        # DETAIL SATKER 
         # -------------------------
         else:
             st.subheader("📋 Detail Satker")
