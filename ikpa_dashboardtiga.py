@@ -33,6 +33,12 @@ def render_table_pin_satker(df):
         return min(header_height + len(df) * row_height, max_height)
 
     gb = GridOptionsBuilder.from_dataframe(df)
+    
+    # =====================================================
+    # SEMBUNYIKAN KOLOM INTERNAL (JIKA ADA)
+    # =====================================================
+    if "Nilai Total" in df.columns:
+        gb.configure_column("Nilai Total", hide=True)
 
     # =====================================================
     # 🔥 CELL POPUP RENDERER (KLIK = POPUP DI TABEL)
@@ -100,6 +106,7 @@ def render_table_pin_satker(df):
         "Penyelesaian Tagihan",
         "Pengelolaan UP dan TUP",
         "Capaian Output",
+        "Dispensasi SPM (Pengurangan)",
         "Nilai Akhir (Nilai Total/Konversi Bobot)"
     ]
 
