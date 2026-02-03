@@ -45,53 +45,49 @@ def render_table_pin_satker(df):
     # =====================================================
     cell_popup_renderer = JsCode("""
     class CellPopupRenderer {
-      init(params) {
+    init(params) {
         this.eGui = document.createElement('span');
         this.eGui.innerText = params.value;
         this.eGui.style.cursor = 'pointer';
         this.eGui.style.fontWeight = '600';
 
         this.eGui.addEventListener('click', (e) => {
-          e.stopPropagation();
+        e.stopPropagation();
 
-          // tutup popup lain
-          document.querySelectorAll('.cell-popup').forEach(el => el.remove());
+        document.querySelectorAll('.cell-popup').forEach(el => el.remove());
 
-          const popup = document.createElement('div');
-          popup.className = 'cell-popup';
-          popup.style.position = 'absolute';
-          popup.style.background = '#1f2937';
-          popup.style.color = '#ffffff';
-          popup.style.padding = '8px 10px';
-          popup.style.borderRadius = '6px';
-          popup.style.fontSize = '12px';
-          popup.style.zIndex = 9999;
-          popup.style.boxShadow = '0 4px 10px rgba(0,0,0,0.4)';
-          popup.style.maxWidth = '260px';
+        const popup = document.createElement('div');
+        popup.className = 'cell-popup';
+        popup.style.position = 'absolute';
+        popup.style.background = '#1f2937';
+        popup.style.color = '#ffffff';
+        popup.style.padding = '8px 10px';
+        popup.style.borderRadius = '6px';
+        popup.style.fontSize = '12px';
+        popup.style.zIndex = 9999;
+        popup.style.boxShadow = '0 4px 10px rgba(0,0,0,0.4)';
+        popup.style.maxWidth = '260px';
 
-          popup.innerHTML = `
-            <b>${params.colDef.headerName}</b><br/>
-            popup.innerHTML = `
-            <b>${params.colDef.headerName}</b><br/>
-            coba-coba
-            `;
+        popup.innerHTML =
+            "<b>" + params.colDef.headerName + "</b><br/>" +
+            "coba-coba";
 
+        document.body.appendChild(popup);
 
-          document.body.appendChild(popup);
+        const rect = this.eGui.getBoundingClientRect();
+        popup.style.left = rect.left + 'px';
+        popup.style.top = (rect.top - popup.offsetHeight - 6) + 'px';
 
-          const rect = this.eGui.getBoundingClientRect();
-          popup.style.left = rect.left + 'px';
-          popup.style.top = (rect.top - popup.offsetHeight - 6) + 'px';
-
-          document.addEventListener('click', () => popup.remove(), { once: true });
+        document.addEventListener('click', () => popup.remove(), { once: true });
         });
-      }
+    }
 
-      getGui() {
+    getGui() {
         return this.eGui;
-      }
+    }
     }
     """)
+
 
     # =====================================================
     # PASANG POPUP KE KOLOM NILAI
