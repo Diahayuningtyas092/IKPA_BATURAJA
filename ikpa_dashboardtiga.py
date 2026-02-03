@@ -29,20 +29,83 @@ def render_table_pin_satker(df):
     df = df.loc[:, ~df.columns.duplicated()].copy()
     df.insert(0, "__rowNum__", range(1, len(df) + 1))
 
-    def calc_grid_height(df, row_height=50, header_height=40, max_height=900):
+    def calc_grid_height(df, row_height=45, header_height=40, max_height=900):
         return min(header_height + len(df) * row_height, max_height)
 
     gb = GridOptionsBuilder.from_dataframe(df)
 
     # =====================================================
-    # AKTIFKAN SELECTION (KUNCI SOLUSI)
+    # 🔥 CELL POPUP RENDERER (KLIK = POPUP DI TABEL)
     # =====================================================
-    gb.configure_selection(
-        selection_mode="single",
-        use_checkbox=False,
-        suppressRowClickSelection=False  
-    )
+    cell_popup_renderer = JsCode("""
+    class CellPopupRenderer {
+      init(params) {
+        this.eGui = document.createElement('span');
+        this.eGui.innerText = params.value;
+        this.eGui.style.cursor = 'pointer';
+        this.eGui.style.fontWeight = '600';
 
+        this.eGui.addEventListener('click', (e) => {
+          e.stopPropagation();
+
+          // tutup popup lain
+          document.querySelectorAll('.cell-popup').forEach(el => el.remove());
+
+          const popup = document.createElement('div');
+          popup.className = 'cell-popup';
+          popup.style.position = 'absolute';
+          popup.style.background = '#1f2937';
+          popup.style.color = '#ffffff';
+          popup.style.padding = '8px 10px';
+          popup.style.borderRadius = '6px';
+          popup.style.fontSize = '12px';
+          popup.style.zIndex = 9999;
+          popup.style.boxShadow = '0 4px 10px rgba(0,0,0,0.4)';
+          popup.style.maxWidth = '260px';
+
+          popup.innerHTML = `
+            <b>${params.colDef.headerName}</b><br/>
+            Nilai : ${params.value}<br/>
+            Satker : ${params.data["Uraian Satker-RINGKAS"]}
+            (${params.data["Kode Satker"]})
+          `;
+
+          document.body.appendChild(popup);
+
+          const rect = this.eGui.getBoundingClientRect();
+          popup.style.left = rect.left + 'px';
+          popup.style.top = (rect.top - popup.offsetHeight - 6) + 'px';
+
+          document.addEventListener('click', () => popup.remove(), { once: true });
+        });
+      }
+
+      getGui() {
+        return this.eGui;
+      }
+    }
+    """)
+
+    # =====================================================
+    # PASANG POPUP KE KOLOM NILAI
+    # =====================================================
+    POPUP_COLUMNS = [
+        "Kualitas Perencanaan Anggaran",
+        "Kualitas Pelaksanaan Anggaran",
+        "Kualitas Hasil Pelaksanaan Anggaran",
+        "Revisi DIPA",
+        "Deviasi Halaman III DIPA",
+        "Penyerapan Anggaran",
+        "Belanja Kontraktual",
+        "Penyelesaian Tagihan",
+        "Pengelolaan UP dan TUP",
+        "Capaian Output",
+        "Nilai Akhir (Nilai Total/Konversi Bobot)"
+    ]
+
+    for col in POPUP_COLUMNS:
+        if col in df.columns:
+            gb.configure_column(col, cellRenderer=cell_popup_renderer)
 
     # =====================================================
     # KOLOM NOMOR
@@ -59,8 +122,8 @@ def render_table_pin_satker(df):
 
     gb.configure_default_column(
         resizable=True,
-        filter=True,
         sortable=True,
+        filter=True,
         minWidth=80
     )
 
@@ -95,18 +158,14 @@ def render_table_pin_satker(df):
         headerHeight=40
     )
 
-    grid_response = AgGrid(
+    AgGrid(
         df,
         gridOptions=gb.build(),
         height=calc_grid_height(df),
         width="100%",
         theme="streamlit",
-        allow_unsafe_jscode=True,
-        update_mode=GridUpdateMode.SELECTION_CHANGED
+        allow_unsafe_jscode=True
     )
-
-    return grid_response
-
 
 
 # =========================
@@ -3573,26 +3632,7 @@ def page_dashboard():
             # ===============================
             # TAMPILKAN DENGAN AGGRID
             # ===============================
-            grid_response = render_table_pin_satker(df_display)
-
-            selected = grid_response.get("selected_rows")
-
-            if selected is not None and len(selected) > 0:
-                if isinstance(selected, list):
-                    row = selected[0]
-                else:  # DataFrame
-                    row = selected.iloc[0].to_dict()
-
-
-                with st.popover("ℹ️ Detail Nilai"):
-                    st.markdown(f"""
-                    **Satker**  
-                    {row.get("Uraian Satker-RINGKAS")} ({row.get("Kode Satker")})
-
-                    **Nilai Akhir IKPA**  
-                    {row.get("Nilai Akhir (Nilai Total/Konversi Bobot)", "-")}
-                    """)
-
+            render_table_pin_satker(df_display)
 
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
