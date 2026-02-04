@@ -5647,6 +5647,7 @@ def page_admin():
                     st.error(f"❌ Gagal menghapus data: {e}")
                     
         # Submenu Hapus Data IKPA KPPN
+        st.markdown("---")
         st.subheader("🗑️ Hapus Data IKPA KPPN")
 
         try:
@@ -5790,6 +5791,7 @@ def page_admin():
         # ===========================
         # Submenu Download Data IKPA KPPN
         # ===========================
+        st.markdown("---")
         st.subheader("📥 Download Data IKPA KPPN")
 
         try:
@@ -5849,7 +5851,7 @@ def page_admin():
         # ===========================
         # Submenu Download Data DIPA
         # ===========================
-
+        st.markdown("---")
         st.markdown("### 📥 Download Data DIPA")
 
         if not st.session_state.get("DATA_DIPA_by_year"):
@@ -5926,7 +5928,6 @@ def page_admin():
                 file_name=f"DIPA_{year_to_download}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
-
 
 
         # Download Data Satker Tidak Terdaftar
