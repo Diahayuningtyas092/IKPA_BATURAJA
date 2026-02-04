@@ -3226,7 +3226,7 @@ def page_dashboard():
                     .reset_index(drop=True)
                 )
 
-                # 🔒 AMANKAN DATA JULI (AGAR TAMPIL DI SEMUA MODUL)
+                # DATA BULAN JULI DIAMANKAN
                 if "Jul" in df_display_filtered.columns and "Jun" in df_display_filtered.columns:
                     df_display_filtered["Jul"] = (
                         df_display_filtered["Jul"]
@@ -3238,7 +3238,6 @@ def page_dashboard():
                 # 12. RENDER
                 # =========================================================
                 render_table_pin_satker(df_display_filtered)
-
 
 
             elif period_type == "compare":
@@ -5207,6 +5206,7 @@ def page_admin():
 
         
         # Submenu Upload Data IKPA KPPN
+        st.markdown("---")
         st.subheader("📝 Upload Data IKPA KPPN")
 
         # ===============================
