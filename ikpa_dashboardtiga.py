@@ -45,40 +45,81 @@ def render_table_pin_satker(df):
     # =====================================================
     cell_popup_renderer = JsCode("""
     class CellPopupRenderer {
-    init(params) {
-        this.eGui = document.createElement('span');
-        this.eGui.innerText = params.value;
-        this.eGui.style.cursor = 'pointer';
-        this.eGui.style.fontWeight = '600';
+        init(params) {
+            this.eGui = document.createElement('span');
+            this.eGui.innerText = params.value;
+            this.eGui.style.cursor = 'pointer';
+            this.eGui.style.fontWeight = '600';
+
+            // 🔑 MAP ISI POPUP PER KOLOM
+            const popupMap = {
+            "Kualitas Perencanaan Anggaran":
+                "Menilai kesesuaian perencanaan anggaran dengan kebutuhan dan prioritas.",
+
+            "Kualitas Pelaksanaan Anggaran":
+                "Mengukur ketepatan waktu dan kepatuhan pelaksanaan anggaran.",
+
+            "Kualitas Hasil Pelaksanaan Anggaran":
+                "Menilai hasil akhir pelaksanaan anggaran terhadap target.",
+
+            "Revisi DIPA":
+                "Frekuensi dan kualitas perubahan DIPA selama tahun berjalan.",
+
+            "Deviasi Halaman III DIPA":
+                "Selisih antara rencana dan realisasi pada Halaman III DIPA.",
+
+            "Penyerapan Anggaran":
+                "Persentase realisasi anggaran terhadap pagu.",
+
+            "Belanja Kontraktual":
+                "Kinerja satker dalam pengelolaan belanja kontrak.",
+
+            "Penyelesaian Tagihan":
+                "Kecepatan dan ketepatan penyelesaian tagihan.",
+
+            "Pengelolaan UP dan TUP":
+                "Kepatuhan dalam pengelolaan Uang Persediaan dan TUP.",
+
+            "Capaian Output":
+                "Tingkat pencapaian output kegiatan.",
+
+            "Dispensasi SPM (Pengurang)":
+                "Pengurang nilai akibat dispensasi SPM.",
+
+            "Nilai Akhir (Nilai Total/Konversi Bobot)":
+                "Nilai IKPA akhir setelah pembobotan."
+            };
 
         this.eGui.addEventListener('click', (e) => {
-        e.stopPropagation();
+            e.stopPropagation();
 
-        document.querySelectorAll('.cell-popup').forEach(el => el.remove());
+            document.querySelectorAll('.cell-popup').forEach(el => el.remove());
 
-        const popup = document.createElement('div');
-        popup.className = 'cell-popup';
-        popup.style.position = 'absolute';
-        popup.style.background = '#1f2937';
-        popup.style.color = '#ffffff';
-        popup.style.padding = '8px 10px';
-        popup.style.borderRadius = '6px';
-        popup.style.fontSize = '12px';
-        popup.style.zIndex = 9999;
-        popup.style.boxShadow = '0 4px 10px rgba(0,0,0,0.4)';
-        popup.style.maxWidth = '260px';
+            const popup = document.createElement('div');
+            popup.className = 'cell-popup';
+            popup.style.position = 'absolute';
+            popup.style.background = '#1f2937';
+            popup.style.color = '#ffffff';
+            popup.style.padding = '8px 10px';
+            popup.style.borderRadius = '6px';
+            popup.style.fontSize = '12px';
+            popup.style.zIndex = 9999;
+            popup.style.boxShadow = '0 4px 10px rgba(0,0,0,0.4)';
+            popup.style.maxWidth = '260px';
 
-        popup.innerHTML =
-            "<b>" + params.colDef.headerName + "</b><br/>" +
-            "coba-coba";
+            const header = params.colDef.headerName;
+            const content = popupMap[header] || "Tidak ada keterangan.";
 
-        document.body.appendChild(popup);
+            popup.innerHTML =
+                "<b>" + header + "</b><br/>" + content;
 
-        const rect = this.eGui.getBoundingClientRect();
-        popup.style.left = rect.left + 'px';
-        popup.style.top = (rect.top - popup.offsetHeight - 6) + 'px';
+            document.body.appendChild(popup);
 
-        document.addEventListener('click', () => popup.remove(), { once: true });
+            const rect = this.eGui.getBoundingClientRect();
+            popup.style.left = rect.left + 'px';
+            popup.style.top = (rect.top - popup.offsetHeight - 6) + 'px';
+
+            document.addEventListener('click', () => popup.remove(), { once: true });
         });
     }
 
@@ -87,6 +128,7 @@ def render_table_pin_satker(df):
     }
     }
     """)
+
 
 
     # =====================================================
