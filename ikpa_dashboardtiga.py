@@ -70,7 +70,7 @@ def render_table_pin_satker(df):
                 <br/>
                 <b>Total: 25%</b>
                 </span>
-                `
+                `,
 
 
             "Dispensasi SPM (Pengurang)": `
