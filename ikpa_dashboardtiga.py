@@ -67,6 +67,46 @@ def render_table_pin_satker(df):
                 </span>
                 `,
 
+            "Kualitas Pelaksanaan Anggaran": `
+                <b>Kualitas Pelaksanaan Anggaran</b><br/><br/>
+
+                <span style="color:#d1d5db">
+                Aspek ini mengukur kemampuan Satker dalam merealisasikan anggaran yang telah
+                ditetapkan. Penilaian mencakup kecepatan penyerapan anggaran, kelengkapan
+                belanja kontraktual, ketepatan penyelesaian tagihan, serta pengelolaan
+                Uang Persediaan dan Tambahan Uang Persediaan.
+                </span>
+
+                <br/><br/>
+                <b>Bobot:</b><br/>
+                <span style="color:#e5e7eb">
+                • Penyerapan Anggaran: <b>20%</b><br/>
+                • Belanja Kontraktual: <b>10%</b><br/>
+                • Penyelesaian Tagihan: <b>10%</b><br/>
+                • Pengelolaan UP/TUP: <b>10%</b><br/>
+                <br/>
+                <b>Total: 50%</b>
+                </span>
+                `,
+
+                "Kualitas Hasil Pelaksanaan Anggaran": `
+                <b>Kualitas Hasil Pelaksanaan Anggaran</b><br/><br/>
+
+                <span style="color:#d1d5db">
+                Aspek ini mengukur kemampuan Satker dalam mencapai output atau target kegiatan
+                yang telah ditetapkan dalam DIPA. Penilaian didasarkan pada ketepatan waktu
+                pelaporan serta tingkat ketercapaian volume output kegiatan.
+                </span>
+
+                <br/><br/>
+                <b>Bobot:</b><br/>
+                <span style="color:#e5e7eb">
+                • Capaian Output: <b>25%</b><br/>
+                <br/>
+                <b>Total: 25%</b>
+                </span>
+                `,
+
 
             "Dispensasi SPM (Pengurang)": `
                 <b>Dispensasi SPM (Pengurang Nilai)</b><br/><br/>
