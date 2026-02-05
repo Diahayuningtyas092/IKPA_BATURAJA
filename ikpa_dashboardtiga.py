@@ -52,7 +52,6 @@ def render_table_pin_satker(df):
             this.eGui.style.fontWeight = '600';
 
             const popupMap = {
-
             "Dispensasi SPM (Pengurang)": `
                 <b>Dispensasi SPM (Pengurang Nilai)</b><br/><br/>
 
@@ -66,89 +65,88 @@ def render_table_pin_satker(df):
                 <br/><br/>
                 <b>Pengurangan Nilai:</b>
 
-                <table style="
-                width:100%;
-                margin-top:6px;
-                border-collapse:collapse;
-                font-size:11px;
-                ">
+                <table style="width:100%;margin-top:6px;border-collapse:collapse;font-size:11px">
                 <tr style="background:#374151">
-                    <th style="padding:4px;border:1px solid #4b5563">Rasio Dispensasi (‰)</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Rasio (‰)</th>
                     <th style="padding:4px;border:1px solid #4b5563">Kategori</th>
                     <th style="padding:4px;border:1px solid #4b5563">Pengurangan</th>
                 </tr>
-
-                <tr>
-                    <td style="padding:4px;border:1px solid #4b5563">0</td>
-                    <td style="padding:4px;border:1px solid #4b5563">Tidak ada</td>
-                    <td style="padding:4px;border:1px solid #4b5563">0</td>
-                </tr>
-
-                <tr>
-                    <td style="padding:4px;border:1px solid #4b5563">0,01 – 0,099</td>
-                    <td style="padding:4px;border:1px solid #4b5563">Kategori 2</td>
-                    <td style="padding:4px;border:1px solid #4b5563">0,25</td>
-                </tr>
-
-                <tr>
-                    <td style="padding:4px;border:1px solid #4b5563">0,1 – 0,99</td>
-                    <td style="padding:4px;border:1px solid #4b5563">Kategori 3</td>
-                    <td style="padding:4px;border:1px solid #4b5563">0,50</td>
-                </tr>
-
-                <tr>
-                    <td style="padding:4px;border:1px solid #4b5563">1 – 4,99</td>
-                    <td style="padding:4px;border:1px solid #4b5563">Kategori 4</td>
-                    <td style="padding:4px;border:1px solid #4b5563">0,75</td>
-                </tr>
-
-                <tr>
-                    <td style="padding:4px;border:1px solid #4b5563">≥ 5,00</td>
-                    <td style="padding:4px;border:1px solid #4b5563">Kategori 5</td>
-                    <td style="padding:4px;border:1px solid #4b5563">1,00</td>
-                </tr>
+                <tr><td style="padding:4px;border:1px solid #4b5563">0</td><td style="padding:4px;border:1px solid #4b5563">Tidak ada</td><td style="padding:4px;border:1px solid #4b5563">0</td></tr>
+                <tr><td style="padding:4px;border:1px solid #4b5563">0,01 – 0,099</td><td style="padding:4px;border:1px solid #4b5563">Kategori 2</td><td style="padding:4px;border:1px solid #4b5563">0,25</td></tr>
+                <tr><td style="padding:4px;border:1px solid #4b5563">0,1 – 0,99</td><td style="padding:4px;border:1px solid #4b5563">Kategori 3</td><td style="padding:4px;border:1px solid #4b5563">0,50</td></tr>
+                <tr><td style="padding:4px;border:1px solid #4b5563">1 – 4,99</td><td style="padding:4px;border:1px solid #4b5563">Kategori 4</td><td style="padding:4px;border:1px solid #4b5563">0,75</td></tr>
+                <tr><td style="padding:4px;border:1px solid #4b5563">≥ 5,00</td><td style="padding:4px;border:1px solid #4b5563">Kategori 5</td><td style="padding:4px;border:1px solid #4b5563">1,00</td></tr>
                 </table>
 
                 <br/>
                 <small style="color:#9ca3af">
-                Formula: Rasio = (Jumlah SPM Dispensasi / Jumlah SPM Triwulan IV) × 1.000
+                Formula: (Jumlah SPM Dispensasi / Jumlah SPM Triwulan IV) × 1.000
                 </small>
             `
             };
 
-        this.eGui.addEventListener('click', (e) => {
-            e.stopPropagation();
-            document.querySelectorAll('.cell-popup').forEach(el => el.remove());
-            const popup = document.createElement('div');
-            popup.className = 'cell-popup';
-            popup.style.position = 'fixed';   // 🔑 KUNCI UTAMA
-            popup.style.background = '#1f2937';
-            popup.style.color = '#ffffff';
-            popup.style.padding = '10px';
-            popup.style.borderRadius = '8px';
-            popup.style.fontSize = '12px';
-            popup.style.zIndex = 99999;        // 🔑 TEMBUS SEMUA
-            popup.style.boxShadow = '0 8px 20px rgba(0,0,0,0.45)';
-            popup.style.maxWidth = '380px';
-            popup.innerHTML = popupMap[params.colDef.headerName] || "Tidak ada keterangan";
+            this.eGui.addEventListener('click', (e) => {
+                e.stopPropagation();
 
-            document.body.appendChild(popup);
+                // 🔥 HAPUS POPUP LAMA (DI TOP DOCUMENT)
+                window.top.document
+                    .querySelectorAll('.cell-popup')
+                    .forEach(el => el.remove());
 
-            // POSISI BERDASARKAN MOUSE
-            const offset = 12;
-            popup.style.left = (e.clientX + offset) + 'px';
-            popup.style.top  = (e.clientY - popup.offsetHeight - offset) + 'px';
+                const popup = document.createElement('div');
+                popup.className = 'cell-popup';
+                popup.style.position = 'fixed';
+                popup.style.background = '#1f2937';
+                popup.style.color = '#ffffff';
+                popup.style.padding = '10px';
+                popup.style.borderRadius = '8px';
+                popup.style.fontSize = '12px';
+                popup.style.zIndex = 2147483647; // MAX
+                popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
+                popup.style.maxWidth = '380px';
+                popup.innerHTML = popupMap[params.colDef.headerName] || "Tidak ada keterangan";
 
-            document.addEventListener('click', () => popup.remove(), { once: true });
-        });
+                // 🔑 TEMBUS IFRAME STREAMLIT
+                window.top.document.body.appendChild(popup);
 
-    }
+                // 📍 HITUNG POSISI AMAN LAYAR
+                const offset = 14;
+                const vw = window.top.innerWidth;
+                const vh = window.top.innerHeight;
 
-    getGui() {
-        return this.eGui;
-    }
+                let left = e.clientX + offset;
+                let top  = e.clientY - popup.offsetHeight - offset;
+
+                if (left + popup.offsetWidth > vw - 8) {
+                    left = e.clientX - popup.offsetWidth - offset;
+                }
+                if (top < 8) {
+                    top = e.clientY + offset;
+                }
+                if (top + popup.offsetHeight > vh - 8) {
+                    top = vh - popup.offsetHeight - 8;
+                }
+                if (left < 8) {
+                    left = 8;
+                }
+
+                popup.style.left = left + 'px';
+                popup.style.top  = top  + 'px';
+
+                window.top.document.addEventListener(
+                    'click',
+                    () => popup.remove(),
+                    { once: true }
+                );
+            });
+        }
+
+        getGui() {
+            return this.eGui;
+        }
     }
     """)
+
 
     # =====================================================
     # PASANG POPUP KE KOLOM NILAI
