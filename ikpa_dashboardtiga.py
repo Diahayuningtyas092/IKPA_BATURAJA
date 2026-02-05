@@ -52,10 +52,42 @@ def render_table_pin_satker(df):
             this.eGui.style.fontWeight = '600';
 
             const popupMap = {
+            "Kualitas Perencanaan Anggaran": `
+                <b>Kualitas Perencanaan Anggaran</b><br/><br/>
+
+                <span style="color:#d1d5db">
+                Aspek ini mengukur seberapa baik Satker dalam merencanakan anggaran.
+                Penilaian dilakukan terhadap kesesuaian pelaksanaan anggaran dengan yang
+                direncanakan dalam DIPA. Semakin sedikit revisi dan semakin sesuai
+                realisasi dengan rencana, semakin tinggi nilainya.
+                </span>
+
+                <br/><br/>
+                <b>Bobot:</b><br/>
+                <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:6px">
+                    <tr style="background:#374151">
+                    <th style="padding:4px;border:1px solid #4b5563">Komponen</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Bobot</th>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">Revisi DIPA</td>
+                    <td style="padding:4px;border:1px solid #4b5563">10%</td>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">Deviasi Halaman III DIPA</td>
+                    <td style="padding:4px;border:1px solid #4b5563">15%</td>
+                    </tr>
+                    <tr style="font-weight:bold">
+                    <td style="padding:4px;border:1px solid #4b5563">Total</td>
+                    <td style="padding:4px;border:1px solid #4b5563">25%</td>
+                    </tr>
+                </table>
+                `
+    
+            
             "Dispensasi SPM (Pengurang)": `
                 <b>Dispensasi SPM (Pengurang Nilai)</b><br/><br/>
 
-                <b>Narasi:</b><br/>
                 <span style="color:#d1d5db">
                 Indikator pengurang yang diberlakukan apabila Satker mengajukan SPM
                 melebihi batas waktu di akhir tahun anggaran.
@@ -80,7 +112,7 @@ def render_table_pin_satker(df):
 
                 <br/>
                 <small style="color:#9ca3af">
-                Formula: (Jumlah SPM Dispensasi / Jumlah SPM Triwulan IV) × 1.000
+                Rasio = (Jumlah SPM Dispensasi / Jumlah SPM Triwulan IV) × 1.000
                 </small>
             `
             };
