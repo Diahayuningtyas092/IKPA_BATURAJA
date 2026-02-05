@@ -119,30 +119,29 @@ def render_table_pin_satker(df):
         this.eGui.addEventListener('click', (e) => {
             e.stopPropagation();
             document.querySelectorAll('.cell-popup').forEach(el => el.remove());
-
             const popup = document.createElement('div');
             popup.className = 'cell-popup';
-            popup.style.position = 'absolute';
+            popup.style.position = 'fixed';   // 🔑 KUNCI UTAMA
             popup.style.background = '#1f2937';
             popup.style.color = '#ffffff';
             popup.style.padding = '10px';
             popup.style.borderRadius = '8px';
             popup.style.fontSize = '12px';
-            popup.style.zIndex = 9999;
-            popup.style.boxShadow = '0 6px 14px rgba(0,0,0,0.45)';
-            popup.style.maxWidth = '360px';
-
-            const header = params.colDef.headerName;
-            popup.innerHTML = popupMap[header] || "<b>" + header + "</b><br/>Tidak ada keterangan.";
+            popup.style.zIndex = 99999;        // 🔑 TEMBUS SEMUA
+            popup.style.boxShadow = '0 8px 20px rgba(0,0,0,0.45)';
+            popup.style.maxWidth = '380px';
+            popup.innerHTML = popupMap[params.colDef.headerName] || "Tidak ada keterangan";
 
             document.body.appendChild(popup);
 
-            const rect = this.eGui.getBoundingClientRect();
-            popup.style.left = rect.left + 'px';
-            popup.style.top = (rect.top - popup.offsetHeight - 8) + 'px';
+            // POSISI BERDASARKAN MOUSE
+            const offset = 12;
+            popup.style.left = (e.clientX + offset) + 'px';
+            popup.style.top  = (e.clientY - popup.offsetHeight - offset) + 'px';
 
             document.addEventListener('click', () => popup.remove(), { once: true });
         });
+
     }
 
     getGui() {
@@ -150,9 +149,6 @@ def render_table_pin_satker(df):
     }
     }
     """)
-
-
-
 
     # =====================================================
     # PASANG POPUP KE KOLOM NILAI
