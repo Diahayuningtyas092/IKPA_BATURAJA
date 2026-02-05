@@ -63,12 +63,7 @@ def render_table_pin_satker(df):
                 </span>
 
                 <br/><br/>
-                <b>Bobot:</b><br/>
-                <span style="color:#e5e7eb">
-                • Revisi DIPA: <b>10%</b><br/>
-                • Deviasi Halaman III DIPA: <b>15%</b><br/>
-                <br/>
-                <b>Total: 25%</b>
+                Bobot: 25% (Revisi DIPA 10% + Deviasi Halaman III DIPA 15%)
                 </span>
                 `,
 
