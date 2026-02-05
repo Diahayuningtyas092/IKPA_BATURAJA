@@ -51,50 +51,73 @@ def render_table_pin_satker(df):
             this.eGui.style.cursor = 'pointer';
             this.eGui.style.fontWeight = '600';
 
-            // 🔑 MAP ISI POPUP PER KOLOM
             const popupMap = {
-            "Kualitas Perencanaan Anggaran":
-                "Kualitas Perencanaan Anggaran\n
-                Aspek ini mengukur seberapa baik Satker dalam merencanakan anggaran.\nPenilaian dilakukan terhadap kesesuaian pelaksanaan anggaran dengan yang direncanakan dalam DIPA.\nSemakin sedikit revisi dan semakin sesuai realisasi dengan rencana, semakin tinggi nilainya.\n
-                Bobot: 25% (Revisi DIPA 10% + Deviasi Halaman III DIPA 15%)",
 
-            "Kualitas Pelaksanaan Anggaran":
-                "Mengukur ketepatan waktu dan kepatuhan pelaksanaan anggaran.",
+            "Dispensasi SPM (Pengurang)": `
+                <b>Dispensasi SPM (Pengurang Nilai)</b><br/><br/>
 
-            "Kualitas Hasil Pelaksanaan Anggaran":
-                "Menilai hasil akhir pelaksanaan anggaran terhadap target.",
+                <b>Narasi:</b><br/>
+                <span style="color:#d1d5db">
+                Indikator pengurang yang diberlakukan apabila Satker mengajukan SPM
+                melebihi batas waktu di akhir tahun anggaran.
+                Semakin banyak dispensasi, semakin besar pengurangan nilai IKPA.
+                </span>
 
-            "Revisi DIPA":
-                "Frekuensi dan kualitas perubahan DIPA selama tahun berjalan.",
+                <br/><br/>
+                <b>Pengurangan Nilai:</b>
 
-            "Deviasi Halaman III DIPA":
-                "Selisih antara rencana dan realisasi pada Halaman III DIPA.",
+                <table style="
+                width:100%;
+                margin-top:6px;
+                border-collapse:collapse;
+                font-size:11px;
+                ">
+                <tr style="background:#374151">
+                    <th style="padding:4px;border:1px solid #4b5563">Rasio Dispensasi (‰)</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Kategori</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Pengurangan</th>
+                </tr>
 
-            "Penyerapan Anggaran":
-                "Persentase realisasi anggaran terhadap pagu.",
+                <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">0</td>
+                    <td style="padding:4px;border:1px solid #4b5563">Tidak ada</td>
+                    <td style="padding:4px;border:1px solid #4b5563">0</td>
+                </tr>
 
-            "Belanja Kontraktual":
-                "Kinerja satker dalam pengelolaan belanja kontrak.",
+                <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">0,01 – 0,099</td>
+                    <td style="padding:4px;border:1px solid #4b5563">Kategori 2</td>
+                    <td style="padding:4px;border:1px solid #4b5563">0,25</td>
+                </tr>
 
-            "Penyelesaian Tagihan":
-                "Kecepatan dan ketepatan penyelesaian tagihan.",
+                <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">0,1 – 0,99</td>
+                    <td style="padding:4px;border:1px solid #4b5563">Kategori 3</td>
+                    <td style="padding:4px;border:1px solid #4b5563">0,50</td>
+                </tr>
 
-            "Pengelolaan UP dan TUP":
-                "Kepatuhan dalam pengelolaan Uang Persediaan dan TUP.",
+                <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">1 – 4,99</td>
+                    <td style="padding:4px;border:1px solid #4b5563">Kategori 4</td>
+                    <td style="padding:4px;border:1px solid #4b5563">0,75</td>
+                </tr>
 
-            "Capaian Output":
-                "Tingkat pencapaian output kegiatan.",
+                <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">≥ 5,00</td>
+                    <td style="padding:4px;border:1px solid #4b5563">Kategori 5</td>
+                    <td style="padding:4px;border:1px solid #4b5563">1,00</td>
+                </tr>
+                </table>
 
-            "Dispensasi SPM (Pengurang)":
-                "Pengurang nilai akibat dispensasi SPM.",
-
-            "Nilai Akhir (Nilai Total/Konversi Bobot)":
-                "Nilai IKPA akhir setelah pembobotan."
+                <br/>
+                <small style="color:#9ca3af">
+                Formula: Rasio = (Jumlah SPM Dispensasi / Jumlah SPM Triwulan IV) × 1.000
+                </small>
+            `
             };
 
         this.eGui.addEventListener('click', (e) => {
             e.stopPropagation();
-
             document.querySelectorAll('.cell-popup').forEach(el => el.remove());
 
             const popup = document.createElement('div');
@@ -102,24 +125,21 @@ def render_table_pin_satker(df):
             popup.style.position = 'absolute';
             popup.style.background = '#1f2937';
             popup.style.color = '#ffffff';
-            popup.style.padding = '8px 10px';
-            popup.style.borderRadius = '6px';
+            popup.style.padding = '10px';
+            popup.style.borderRadius = '8px';
             popup.style.fontSize = '12px';
             popup.style.zIndex = 9999;
-            popup.style.boxShadow = '0 4px 10px rgba(0,0,0,0.4)';
-            popup.style.maxWidth = '260px';
+            popup.style.boxShadow = '0 6px 14px rgba(0,0,0,0.45)';
+            popup.style.maxWidth = '360px';
 
             const header = params.colDef.headerName;
-            const content = popupMap[header] || "Tidak ada keterangan.";
-
-            popup.innerHTML =
-                "<b>" + header + "</b><br/>" + content;
+            popup.innerHTML = popupMap[header] || "<b>" + header + "</b><br/>Tidak ada keterangan.";
 
             document.body.appendChild(popup);
 
             const rect = this.eGui.getBoundingClientRect();
             popup.style.left = rect.left + 'px';
-            popup.style.top = (rect.top - popup.offsetHeight - 6) + 'px';
+            popup.style.top = (rect.top - popup.offsetHeight - 8) + 'px';
 
             document.addEventListener('click', () => popup.remove(), { once: true });
         });
@@ -130,6 +150,7 @@ def render_table_pin_satker(df):
     }
     }
     """)
+
 
 
 
