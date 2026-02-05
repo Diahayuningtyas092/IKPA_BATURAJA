@@ -17,8 +17,8 @@ from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
 from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid import JsCode
 import time
-
 from st_aggrid import GridUpdateMode
+
 
 def render_table_pin_satker(df):
     df = df.copy()
@@ -286,6 +286,18 @@ if "ikpa_dipa_merged" not in st.session_state:
 # Log aktivitas
 if "activity_log" not in st.session_state:
     st.session_state.activity_log = []
+
+def log_activity(menu, action, detail=""):
+    st.session_state.activity_log.insert(
+        0,
+        {
+            "Waktu": datetime.now().strftime("%H:%M:%S"),
+            "Menu": menu,
+            "Aktivitas": action,
+            "Detail": detail
+        }
+    )
+
 
 # reference
 if "_reference_loaded" not in st.session_state:
@@ -5078,9 +5090,9 @@ def page_admin():
         )
 
         st.caption(
-            "Sistem dapat memproses Data IKPA SATKER yang bersumber dari "
-            "Aplikasi OM-SPAN → Monev PA → Indikator Pelaksanaan Anggaran → "
-            "Indikator Pelaksanaan Anggaran SATKER."
+            "Sistem dapat memproses Data IKPA SATKER yang bersumber dari :"
+            "1. Aplikasi OM-SPAN, Menu Monev PA → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran SATKER."
+            "2. Aplikasi MyIntress, Menu Tematik → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran SATKER. "
         )
       
         uploaded_files = st.file_uploader(
@@ -5175,12 +5187,12 @@ def page_admin():
                                 folder="data"
                             )
 
-                            st.session_state.activity_log.append({
-                                "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                                "Aksi": "Upload IKPA Satker",
-                                "Periode": f"{month} {year}",
-                                "Status": "✅ Sukses"
-                            })
+                            log_activity(
+                                menu="Upload Data",
+                                action="Upload IKPA Satker",
+                                detail=f"{uploaded_file.name} | {month} {year}"
+                            )
+
 
                             st.success(
                                 f"✅ {uploaded_file.name} → "
@@ -5220,9 +5232,9 @@ def page_admin():
         )
         
         st.caption(
-            "Sistem dapat memproses Data IKPA SATKER yang bersumber dari "
-            "Aplikasi OM-SPAN → Monev PA → Indikator Pelaksanaan Anggaran → "
-            "Indikator Pelaksanaan Anggaran KPPN."
+            "Sistem dapat memproses Data IKPA SATKER yang bersumber dari : "
+            "1. Aplikasi OM-SPAN, menu Monev PA → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran KPPN"
+            "2. Aplikasi MyIntress, menu Tematik → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran IKPPN."
         )
 
         # ===============================
@@ -5408,6 +5420,12 @@ def page_admin():
                             filename,
                             folder="data_kppn"
                         )
+                        
+                        log_activity(
+                            menu="Upload Data",
+                            action="Upload IKPA KPPN",
+                            detail=f"{uploaded_file.name} | {month} {year}"
+                        )
 
                         st.success(
                             f" Data IKPA KPPN {month} {year} berhasil disimpan."
@@ -5424,9 +5442,9 @@ def page_admin():
         st.subheader("📤 Upload Data DIPA")
 
         st.caption(
-            "Sistem dapat memproses Data DIPA yang bersumber dari "
-            "Aplikasi MyIntress → Anggaran → Download Data Detail dan Aplikasi OM-SPAN → "
-            "Modul Peranggaran → Informasi Revisi DIPA (Versi 4 Desember 2025)"
+            "Sistem dapat memproses Data DIPA yang bersumber dari :"
+            "1. Aplikasi OM-SPAN → menu Penganggaran → Informasi Revisi DIPA"
+            "2. Aplikasi MyIntress → menu Anggaran → Download Data Detil"
         )
         
         uploaded_dipa_file = st.file_uploader(
@@ -5480,13 +5498,12 @@ def page_admin():
                             folder="DATA_DIPA"
                         )
 
-                        # 5️⃣ Catat log
-                        st.session_state.activity_log.append({
-                            "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "Aksi": "Upload DIPA",
-                            "Periode": f"Tahun {tahun_dipa}",
-                            "Status": "Sukses"
-                        })
+                        log_activity(
+                            menu="Upload Data",
+                            action="Upload Data DIPA",
+                            detail=f"Tahun {tahun} | {len(df_dipa)} satker"
+                        )
+
 
                         # 6️⃣ Tampilkan hasil preview
                         st.success(f"✅ Data DIPA tahun {tahun_dipa} berhasil diproses & disimpan.")
@@ -6010,6 +6027,44 @@ def page_admin():
             file_name="Template_Data_Referensi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+    
+    # ===============================
+    # 🕓 TAB RIWAYAT AKTIVITAS
+    # ===============================
+    with tab5:
+        st.subheader("🕓 Riwayat Aktivitas Sistem")
+
+        if not st.session_state.activity_log:
+            st.info("Belum ada aktivitas yang tercatat.")
+        else:
+            df_log = pd.DataFrame(st.session_state.activity_log)
+
+            st.dataframe(
+                df_log,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Waktu": st.column_config.TextColumn(
+                        "Waktu",
+                        width="medium"
+                    ),
+                    "Aktivitas": st.column_config.TextColumn(
+                        "Aktivitas",
+                        width="medium"
+                    ),
+                    "Detail": st.column_config.TextColumn(
+                        "Detail",
+                        width="large"
+                    ),
+                }
+            )
+
+        st.divider()
+
+        if st.button("🧹 Bersihkan Riwayat Aktivitas"):
+            st.session_state.activity_log.clear()
+            st.success("Riwayat aktivitas berhasil dibersihkan.")
+
 
 # ===============================
 # MAIN APP
