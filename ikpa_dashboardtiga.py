@@ -5442,8 +5442,8 @@ def page_admin():
         st.subheader("📤 Upload Data DIPA")
 
         st.caption(
-            "Sistem dapat memproses Data DIPA yang bersumber dari :"
-            "1. Aplikasi OM-SPAN → menu Penganggaran → Informasi Revisi DIPA"
+            "Sistem dapat memproses Data DIPA yang bersumber dari :\n"
+            "1. Aplikasi OM-SPAN → menu Penganggaran → Informasi Revisi DIPA\n"
             "2. Aplikasi MyIntress → menu Anggaran → Download Data Detil"
         )
         
