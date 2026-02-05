@@ -5090,9 +5090,9 @@ def page_admin():
         )
 
         st.caption(
-            "Sistem dapat memproses Data IKPA SATKER yang bersumber dari :"
-            "1. Aplikasi OM-SPAN, Menu Monev PA → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran SATKER."
-            "2. Aplikasi MyIntress, Menu Tematik → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran SATKER. "
+            "Sistem dapat memproses Data IKPA SATKER yang bersumber dari :\n"
+            "1. Aplikasi OM-SPAN, Menu Monev PA → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran SATKER\n"
+            "2. Aplikasi MyIntress, Menu Tematik → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran SATKER."
         )
       
         uploaded_files = st.file_uploader(
@@ -5232,8 +5232,8 @@ def page_admin():
         )
         
         st.caption(
-            "Sistem dapat memproses Data IKPA SATKER yang bersumber dari : "
-            "1. Aplikasi OM-SPAN, menu Monev PA → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran KPPN"
+            "Sistem dapat memproses Data IKPA SATKER yang bersumber dari :\n"
+            "1. Aplikasi OM-SPAN, menu Monev PA → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran KPPN\n"
             "2. Aplikasi MyIntress, menu Tematik → Indikator Pelaksanaan Anggaran → Indikator Pelaksanaan Anggaran IKPPN."
         )
 
