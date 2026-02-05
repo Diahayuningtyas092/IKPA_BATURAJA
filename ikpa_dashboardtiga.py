@@ -41,7 +41,7 @@ def render_table_pin_satker(df):
         gb.configure_column("Nilai Total", hide=True)
 
     # =====================================================
-    # 🔥 CELL POPUP RENDERER (KLIK = POPUP DI TABEL)
+    # CELL POPUP RENDERER (KLIK = POPUP DI TABEL)
     # =====================================================
     cell_popup_renderer = JsCode("""
     class CellPopupRenderer {
@@ -64,30 +64,17 @@ def render_table_pin_satker(df):
 
                 <br/><br/>
                 <b>Bobot:</b><br/>
-                <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:6px">
-                    <tr style="background:#374151">
-                    <th style="padding:4px;border:1px solid #4b5563">Komponen</th>
-                    <th style="padding:4px;border:1px solid #4b5563">Bobot</th>
-                    </tr>
-                    <tr>
-                    <td style="padding:4px;border:1px solid #4b5563">Revisi DIPA</td>
-                    <td style="padding:4px;border:1px solid #4b5563">10%</td>
-                    </tr>
-                    <tr>
-                    <td style="padding:4px;border:1px solid #4b5563">Deviasi Halaman III DIPA</td>
-                    <td style="padding:4px;border:1px solid #4b5563">15%</td>
-                    </tr>
-                    <tr style="font-weight:bold">
-                    <td style="padding:4px;border:1px solid #4b5563">Total</td>
-                    <td style="padding:4px;border:1px solid #4b5563">25%</td>
-                    </tr>
-                </table>
+                <span style="color:#e5e7eb">
+                • Revisi DIPA: <b>10%</b><br/>
+                • Deviasi Halaman III DIPA: <b>15%</b><br/>
+                <br/>
+                <b>Total: 25%</b>
+                </span>
                 `
-    
-            
+
+
             "Dispensasi SPM (Pengurang)": `
                 <b>Dispensasi SPM (Pengurang Nilai)</b><br/><br/>
-
                 <span style="color:#d1d5db">
                 Indikator pengurang yang diberlakukan apabila Satker mengajukan SPM
                 melebihi batas waktu di akhir tahun anggaran.
@@ -116,6 +103,7 @@ def render_table_pin_satker(df):
                 </small>
             `
             };
+
 
             this.eGui.addEventListener('click', (e) => {
                 e.stopPropagation();
