@@ -54,7 +54,9 @@ def render_table_pin_satker(df):
             // 🔑 MAP ISI POPUP PER KOLOM
             const popupMap = {
             "Kualitas Perencanaan Anggaran":
-                "Menilai kesesuaian perencanaan anggaran dengan kebutuhan dan prioritas.",
+                "Kualitas Perencanaan Anggaran\n
+                Aspek ini mengukur seberapa baik Satker dalam merencanakan anggaran.\nPenilaian dilakukan terhadap kesesuaian pelaksanaan anggaran dengan yang direncanakan dalam DIPA.\nSemakin sedikit revisi dan semakin sesuai realisasi dengan rencana, semakin tinggi nilainya.\n
+                Bobot: 25% (Revisi DIPA 10% + Deviasi Halaman III DIPA 15%)",
 
             "Kualitas Pelaksanaan Anggaran":
                 "Mengukur ketepatan waktu dan kepatuhan pelaksanaan anggaran.",
