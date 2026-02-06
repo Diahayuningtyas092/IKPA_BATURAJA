@@ -291,7 +291,88 @@ def render_table_pin_satker(df):
                     <tr><td style="padding:4px;border:1px solid #4b5563">Ketepatan Waktu</td><td style="padding:4px;border:1px solid #4b5563">30%</td><td style="padding:4px;border:1px solid #4b5563">≤5 hari kerja = 100</td></tr>
                     <tr><td style="padding:4px;border:1px solid #4b5563">Capaian RO</td><td style="padding:4px;border:1px solid #4b5563">70%</td><td style="padding:4px;border:1px solid #4b5563">Realisasi / Target × 100</td></tr>
                 </table>
-            `
+            `,
+            
+            "nilai_akhir_aspek": `
+                <b>Nilai Akhir (Berdasarkan Aspek)</b><br/><br/>
+
+                <span style="color:#d1d5db">
+                Nilai akhir IKPA dihitung berdasarkan pengelompokan aspek utama
+                pengelolaan anggaran. Nilai ini mencerminkan kinerja Satker secara
+                komprehensif berdasarkan perencanaan, pelaksanaan, dan hasil
+                pelaksanaan anggaran.
+                </span>
+
+                <br/><br/>
+                <b>Formula:</b><br/>
+                <small style="color:#9ca3af">
+                Nilai Akhir = Σ(Nilai Aspek × Bobot Aspek)
+                </small>
+
+                <br/><br/>
+                <b>Bobot Aspek:</b>
+
+                <table style="width:100%;margin-top:6px;border-collapse:collapse;font-size:11px">
+                    <tr style="background:#374151">
+                    <th style="padding:4px;border:1px solid #4b5563">Aspek</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Bobot</th>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">Kualitas Perencanaan Anggaran</td>
+                    <td style="padding:4px;border:1px solid #4b5563">25%</td>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">Kualitas Pelaksanaan Anggaran</td>
+                    <td style="padding:4px;border:1px solid #4b5563">50%</td>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">Kualitas Hasil Pelaksanaan Anggaran</td>
+                    <td style="padding:4px;border:1px solid #4b5563">25%</td>
+                    </tr>
+                </table>
+            `,
+
+            "nilai_akhir_komponen": `
+                <b>Nilai Akhir (Total / Konversi)</b><br/><br/>
+
+                <span style="color:#d1d5db">
+                Perhitungan akhir yang menyimpulkan kinerja Satker secara keseluruhan.
+                Nilai akhir diperoleh dari agregasi seluruh indikator komponen yang
+                dibobotkan dan dikonversi, kemudian dikurangi nilai Dispensasi SPM.
+                </span>
+
+                <br/><br/>
+                <b>Kategori Nilai IKPA:</b>
+
+                <table style="width:100%;margin-top:6px;border-collapse:collapse;font-size:11px">
+                    <tr style="background:#374151">
+                    <th style="padding:4px;border:1px solid #4b5563">Nilai IKPA</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Predikat</th>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">≥ 95</td>
+                    <td style="padding:4px;border:1px solid #4b5563">Sangat Baik</td>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">89 – &lt; 95</td>
+                    <td style="padding:4px;border:1px solid #4b5563">Baik</td>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">70 – &lt; 89</td>
+                    <td style="padding:4px;border:1px solid #4b5563">Cukup</td>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">&lt; 70</td>
+                    <td style="padding:4px;border:1px solid #4b5563">Kurang</td>
+                    </tr>
+                </table>
+
+                <br/>
+                <b>Rumus Final:</b><br/>
+                <small style="color:#9ca3af">
+                Nilai Akhir = [Σ(Indikator × Bobot) × Konversi Bobot] − Dispensasi SPM
+                </small>
+            `          
         };
 
             this.eGui.addEventListener('click', (e) => {
