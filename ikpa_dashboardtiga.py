@@ -52,60 +52,50 @@ def render_table_pin_satker(df):
             this.eGui.style.fontWeight = '600';
 
             const popupMap = {
+
             "Kualitas Perencanaan Anggaran": `
                 <b>Kualitas Perencanaan Anggaran</b><br/><br/>
-
                 <span style="color:#d1d5db">
                 Aspek ini mengukur seberapa baik Satker dalam merencanakan anggaran.
                 Penilaian dilakukan terhadap kesesuaian pelaksanaan anggaran dengan yang
                 direncanakan dalam DIPA. Semakin sedikit revisi dan semakin sesuai
                 realisasi dengan rencana, semakin tinggi nilainya.
                 </span>
-
                 <br/><br/>
-                Bobot: 25% (Revisi DIPA 10% + Deviasi Halaman III DIPA 15%)
+                <b>Bobot:</b><br/>
+                <span style="color:#e5e7eb">
+                25% (Revisi DIPA 10% + Deviasi Halaman III DIPA 15%)
                 </span>
-                `,
+            `,
 
             "Kualitas Pelaksanaan Anggaran": `
                 <b>Kualitas Pelaksanaan Anggaran</b><br/><br/>
-
                 <span style="color:#d1d5db">
                 Aspek ini mengukur kemampuan Satker dalam merealisasikan anggaran yang telah
                 ditetapkan. Penilaian mencakup kecepatan penyerapan anggaran, kelengkapan
                 belanja kontraktual, ketepatan penyelesaian tagihan, serta pengelolaan
                 Uang Persediaan dan Tambahan Uang Persediaan.
                 </span>
-
                 <br/><br/>
                 <b>Bobot:</b><br/>
                 <span style="color:#e5e7eb">
-                • Penyerapan Anggaran: <b>20%</b><br/>
-                • Belanja Kontraktual: <b>10%</b><br/>
-                • Penyelesaian Tagihan: <b>10%</b><br/>
-                • Pengelolaan UP/TUP: <b>10%</b><br/>
-                <br/>
-                <b>Total: 50%</b>
+                50% (Penyerapan 20% + Belanja Kontraktual 10% + Penyelesaian Tagihan 10% + Pengelolaan UP/TUP 10%)
                 </span>
-                `,
+            `,
 
-                "Kualitas Hasil Pelaksanaan Anggaran": `
+            "Kualitas Hasil Pelaksanaan Anggaran": `
                 <b>Kualitas Hasil Pelaksanaan Anggaran</b><br/><br/>
-
                 <span style="color:#d1d5db">
                 Aspek ini mengukur kemampuan Satker dalam mencapai output atau target kegiatan
                 yang telah ditetapkan dalam DIPA. Penilaian didasarkan pada ketepatan waktu
                 pelaporan serta tingkat ketercapaian volume output kegiatan.
                 </span>
-
                 <br/><br/>
                 <b>Bobot:</b><br/>
                 <span style="color:#e5e7eb">
-                • Capaian Output: <b>25%</b><br/>
-                <br/>
-                <b>Total: 25%</b>
+                25% (Capaian Output)
                 </span>
-                `,
+            `,
 
             "Dispensasi SPM (Pengurang)": `
                 <b>Dispensasi SPM (Pengurang Nilai)</b><br/><br/>
@@ -114,10 +104,8 @@ def render_table_pin_satker(df):
                 melebihi batas waktu di akhir tahun anggaran.
                 Semakin banyak dispensasi, semakin besar pengurangan nilai IKPA.
                 </span>
-
                 <br/><br/>
                 <b>Pengurangan Nilai:</b>
-
                 <table style="width:100%;margin-top:6px;border-collapse:collapse;font-size:11px">
                 <tr style="background:#374151">
                     <th style="padding:4px;border:1px solid #4b5563">Rasio (‰)</th>
@@ -130,18 +118,181 @@ def render_table_pin_satker(df):
                 <tr><td style="padding:4px;border:1px solid #4b5563">1 – 4,99</td><td style="padding:4px;border:1px solid #4b5563">Kategori 4</td><td style="padding:4px;border:1px solid #4b5563">0,75</td></tr>
                 <tr><td style="padding:4px;border:1px solid #4b5563">≥ 5,00</td><td style="padding:4px;border:1px solid #4b5563">Kategori 5</td><td style="padding:4px;border:1px solid #4b5563">1,00</td></tr>
                 </table>
-
                 <br/>
                 <small style="color:#9ca3af">
                 Rasio = (Jumlah SPM Dispensasi / Jumlah SPM Triwulan IV) × 1.000
                 </small>
             `,
             
-            "
-            
-            
-            };
+            "Revisi DIPA": `
+                <b>Revisi DIPA</b><br/><br/>
 
+                <span style="color:#d1d5db">
+                Mengukur frekuensi revisi DIPA dalam satu semester. Revisi yang dihitung
+                adalah revisi dengan pagu tetap yang menjadi kewenangan Kementerian Keuangan.
+                </span>
+
+                <br/><br/>
+                <b>Nilai Berdasarkan Frekuensi:</b>
+
+                <table style="width:100%;margin-top:6px;border-collapse:collapse;font-size:11px">
+                    <tr style="background:#374151">
+                    <th style="padding:4px;border:1px solid #4b5563">Jumlah Revisi / Semester</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Nilai</th>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">0 – 1</td>
+                    <td style="padding:4px;border:1px solid #4b5563">110</td>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">2</td>
+                    <td style="padding:4px;border:1px solid #4b5563">100</td>
+                    </tr>
+                    <tr>
+                    <td style="padding:4px;border:1px solid #4b5563">≥ 3</td>
+                    <td style="padding:4px;border:1px solid #4b5563">50</td>
+                    </tr>
+                </table>
+
+                <br/>
+                <small style="color:#9ca3af">
+                IKPA Revisi DIPA = (50% × Nilai Semester I) + (50% × Nilai Semester II)
+                </small>
+            `,
+            
+            "Deviasi Halaman III DIPA": `
+                <b>Deviasi Halaman III DIPA</b><br/><br/>
+                <span style="color:#d1d5db">
+                Mengukur kesesuaian realisasi anggaran dengan Rencana Penarikan Dana (RPD)
+                bulanan. Deviasi dihitung dari selisih realisasi terhadap RPD pada setiap
+                jenis belanja.
+                </span>
+
+                <br/><br/>
+                <b>Nilai Optimum:</b><br/>
+                <span style="color:#e5e7eb">
+                Deviasi ≤ 5% → <b>Nilai 100</b>
+                </span>
+
+                <br/><br/>
+                <small style="color:#9ca3af">
+                Deviasi = |Realisasi – RPD| / RPD × 100%<br/>
+                IKPA = 100 – Rata-rata Deviasi Tertimbang (maksimum 100)
+                </small>
+                `,
+
+                "Penyerapan Anggaran": `
+                <b>Penyerapan Anggaran</b><br/><br/>
+                <span style="color:#d1d5db">
+                Mengukur kesesuaian realisasi anggaran dengan target triwulanan untuk
+                masing-masing jenis belanja.
+                </span>
+
+                <br/><br/>
+                <b>Target Penyerapan Minimal per Triwulan:</b>
+
+                <table style="width:100%;margin-top:6px;border-collapse:collapse;font-size:11px">
+                    <tr style="background:#374151">
+                    <th style="padding:4px;border:1px solid #4b5563">Jenis Belanja</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Tw I</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Tw II</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Tw III</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Tw IV</th>
+                    </tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Belanja Pegawai</td><td style="padding:4px;border:1px solid #4b5563">20%</td><td style="padding:4px;border:1px solid #4b5563">50%</td><td style="padding:4px;border:1px solid #4b5563">75%</td><td style="padding:4px;border:1px solid #4b5563">95%</td></tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Belanja Barang</td><td style="padding:4px;border:1px solid #4b5563">15%</td><td style="padding:4px;border:1px solid #4b5563">50%</td><td style="padding:4px;border:1px solid #4b5563">70%</td><td style="padding:4px;border:1px solid #4b5563">90%</td></tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Belanja Modal</td><td style="padding:4px;border:1px solid #4b5563">10%</td><td style="padding:4px;border:1px solid #4b5563">40%</td><td style="padding:4px;border:1px solid #4b5563">70%</td><td style="padding:4px;border:1px solid #4b5563">90%</td></tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Belanja Bansos</td><td style="padding:4px;border:1px solid #4b5563">25%</td><td style="padding:4px;border:1px solid #4b5563">50%</td><td style="padding:4px;border:1px solid #4b5563">75%</td><td style="padding:4px;border:1px solid #4b5563">95%</td></tr>
+                </table>
+
+                <br/>
+                <small style="color:#9ca3af">
+                Nilai = (Realisasi / Target) × 100 (maksimum 100)<br/>
+                IKPA = Rata-rata Tertimbang seluruh Jenis Belanja
+                </small>
+            `,
+
+                "Belanja Kontraktual": `
+                <b>Belanja Kontraktual</b><br/><br/>
+                <span style="color:#d1d5db">
+                Mengukur upaya akselerasi pengadaan barang/jasa melalui kontrak dini,
+                penyelesaian belanja modal, dan distribusi kontrak di semester I.
+                </span>
+
+                <br/><br/>
+                <table style="width:100%;border-collapse:collapse;font-size:11px">
+                    <tr style="background:#374151">
+                    <th style="padding:4px;border:1px solid #4b5563">Komponen</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Bobot</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Keterangan</th>
+                    </tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Akselerasi Kontrak Dini</td><td style="padding:4px;border:1px solid #4b5563">40%</td><td style="padding:4px;border:1px solid #4b5563">Sebelum 1 Jan = 120; Jan–Mar = 110</td></tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Akselerasi Belanja Modal</td><td style="padding:4px;border:1px solid #4b5563">40%</td><td style="padding:4px;border:1px solid #4b5563">Tw I=100, Tw II=90, Tw III=80, Tw IV=70</td></tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Distribusi Kontrak</td><td style="padding:4px;border:1px solid #4b5563">20%</td><td style="padding:4px;border:1px solid #4b5563">&gt;75%=100, 50–75%=80, 25–50%=60, 0–25%=50</td></tr>
+                </table>
+            `,
+
+                "Penyelesaian Tagihan": `
+                <b>Penyelesaian Tagihan</b><br/><br/>
+                <span style="color:#d1d5db">
+                Mengukur ketepatan waktu penyelesaian tagihan kontraktual (SPM-LS) dari
+                tanggal BAST/BAPP sampai diterima KPPN. Batas waktu tepat maksimal
+                7 hari kerja.
+                </span>
+
+                <br/><br/>
+                <small style="color:#9ca3af">
+                IKPA = (SPM-LS Tepat Waktu / Total SPM-LS) × 100
+                </small>
+            `,
+
+                "Pengelolaan UP dan TUP": `
+                <b>Pengelolaan UP dan TUP</b><br/><br/>
+                <span style="color:#d1d5db">
+                Mengukur ketepatan waktu pertanggungjawaban UP/TUP, efisiensi besaran UP,
+                serta penggunaan Kartu Kredit Pemerintah (KKP).
+                </span>
+
+                <br/><br/>
+                <b>Komponen UP/TUP Tunai (90%):</b>
+                <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:6px">
+                    <tr style="background:#374151">
+                    <th style="padding:4px;border:1px solid #4b5563">Sub Komponen</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Bobot</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Keterangan</th>
+                    </tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Ketepatan Waktu</td><td style="padding:4px;border:1px solid #4b5563">50%</td><td style="padding:4px;border:1px solid #4b5563">Tepat waktu=100; Terlambat=0</td></tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Persentase GUP</td><td style="padding:4px;border:1px solid #4b5563">25%</td><td style="padding:4px;border:1px solid #4b5563">GUP disetarakan bulanan</td></tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Setoran TUP</td><td style="padding:4px;border:1px solid #4b5563">25%</td><td style="padding:4px;border:1px solid #4b5563">Rasio setoran ke kas negara</td></tr>
+                </table>
+
+                <br/>
+                <b>Komponen KKP (10%):</b><br/>
+                <span style="color:#e5e7eb">
+                Mencapai target = 110<br/>
+                Belum mencapai target = 100
+                </span>
+            `,
+
+                "Capaian Output": `
+                <b>Capaian Output</b><br/><br/>
+                <span style="color:#d1d5db">
+                Mengukur ketepatan waktu pelaporan dan tingkat ketercapaian target
+                Rincian Output (RO).
+                </span>
+
+                <br/><br/>
+                <table style="width:100%;border-collapse:collapse;font-size:11px">
+                    <tr style="background:#374151">
+                    <th style="padding:4px;border:1px solid #4b5563">Komponen</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Bobot</th>
+                    <th style="padding:4px;border:1px solid #4b5563">Keterangan</th>
+                    </tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Ketepatan Waktu</td><td style="padding:4px;border:1px solid #4b5563">30%</td><td style="padding:4px;border:1px solid #4b5563">≤5 hari kerja = 100</td></tr>
+                    <tr><td style="padding:4px;border:1px solid #4b5563">Capaian RO</td><td style="padding:4px;border:1px solid #4b5563">70%</td><td style="padding:4px;border:1px solid #4b5563">Realisasi / Target × 100</td></tr>
+                </table>
+            `
+        };
 
             this.eGui.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -3435,7 +3586,7 @@ def page_dashboard():
                     "Pilih Kode BA (Perbandingan)",
                     options=ba_options,
                     format_func=format_ba_compare,
-                    key="filter_ba_compare"  
+                    key="filter_ba_compare"   # ✅ cukup ini
                 )
 
 
