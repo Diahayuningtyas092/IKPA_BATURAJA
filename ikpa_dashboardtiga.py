@@ -378,7 +378,6 @@ def render_table_pin_satker(df):
             this.eGui.addEventListener('click', (e) => {
                 e.stopPropagation();
 
-                // 🔥 HAPUS POPUP LAMA (DI TOP DOCUMENT)
                 window.top.document
                     .querySelectorAll('.cell-popup')
                     .forEach(el => el.remove());
@@ -394,18 +393,28 @@ def render_table_pin_satker(df):
                 popup.style.zIndex = 2147483647; // MAX
                 popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
                 popup.style.maxWidth = '380px';
-                const key = params.colDef.field || params.colDef.headerName;
+                const header = params.colDef.headerName;
+                const field  = params.colDef.field;
 
-                popup.innerHTML =
-                    popupMap[key]
-                        ? popupMap[key]
-                        : "Tidak ada keterangan";
+                let popupKey = field || header;
+
+                //  KHUSUS NILAI AKHIR
+                if (header === "Nilai Akhir (Nilai Total/Konversi Bobot)") {
+                    // SESUAIKAN DENGAN MODE TAMPILAN
+                    // kalau tabel "Berdasarkan Aspek":
+                    popupKey = "nilai_akhir_aspek";
+
+                    // kalau tabel "Berdasarkan Komponen":
+                    // popupKey = "nilai_akhir_komponen";
+                }
+
+                popup.innerHTML = popupMap[popupKey] || "Tidak ada keterangan";
 
 
-                // 🔑 TEMBUS IFRAME STREAMLIT
+                //  TEMBUS IFRAME STREAMLIT
                 window.top.document.body.appendChild(popup);
 
-                // 📍 HITUNG POSISI AMAN LAYAR
+                // HITUNG POSISI AMAN LAYAR
                 const offset = 14;
                 const vw = window.top.innerWidth;
                 const vh = window.top.innerHeight;
