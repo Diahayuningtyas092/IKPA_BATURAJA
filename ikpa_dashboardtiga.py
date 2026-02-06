@@ -397,15 +397,21 @@ def render_table_pin_satker(df):
 
                 let popupKey = field || header;
 
-                //  KHUSUS NILAI AKHIR
                 if (header === "Nilai Akhir (Nilai Total/Konversi Bobot)") {
-                    // SESUAIKAN DENGAN MODE TAMPILAN
-                    // kalau tabel "Berdasarkan Aspek":
-                    popupKey = "nilai_akhir_aspek";
 
-                    // kalau tabel "Berdasarkan Komponen":
-                    // popupKey = "nilai_akhir_komponen";
+                    // DETEKSI BERDASARKAN STRUKTUR TABEL
+                    const allFields = params.api.getColumnDefs().map(c => c.field);
+
+                    // kalau ada kolom ASPEK → popup aspek
+                    if (allFields.includes("Kualitas Perencanaan Anggaran")) {
+                        popupKey = "nilai_akhir_aspek";
+                    } 
+                    // kalau ada kolom KOMPONEN → popup komponen
+                    else if (allFields.includes("Revisi DIPA")) {
+                        popupKey = "nilai_akhir_komponen";
+                    }
                 }
+
 
                 popup.innerHTML = popupMap[popupKey] || "Tidak ada keterangan";
 
