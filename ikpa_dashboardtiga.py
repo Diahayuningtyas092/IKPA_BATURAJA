@@ -57,7 +57,10 @@ def render_table_pin_satker(df):
                 <b>Kualitas Perencanaan Anggaran</b><br/><br/>
 
                 <span style="color:#d1d5db">
-                Aspek ini mengukur kualitas perencanaan anggaran Satker.
+                Aspek ini mengukur seberapa baik Satker dalam merencanakan anggaran.
+                Penilaian dilakukan terhadap kesesuaian pelaksanaan anggaran dengan yang
+                direncanakan dalam DIPA. Semakin sedikit revisi dan semakin sesuai realisasi
+                dengan rencana, semakin tinggi nilainya.
                 </span>
 
                 <br/><br/>
@@ -71,12 +74,13 @@ def render_table_pin_satker(df):
                 <b>Total: 25%</b>
             `,
 
-
             "Kualitas Pelaksanaan Anggaran": `
                 <b>Kualitas Pelaksanaan Anggaran</b><br/><br/>
 
                 <span style="color:#d1d5db">
-                Aspek ini mengukur kemampuan Satker dalam merealisasikan anggaran yang telah ditetapkan.
+                Aspek ini mengukur kemampuan Satker dalam merealisasikan anggaran yang telah
+                ditetapkan. Mencakup kecepatan penyerapan anggaran, kelengkapan kontrak,
+                ketepatan pembayaran, dan pengelolaan uang persediaan.
                 </span>
 
                 <br/><br/>
@@ -91,7 +95,6 @@ def render_table_pin_satker(df):
                 <br/>
                 <b>Total: 50%</b>
             `,
-
 
             "Kualitas Hasil Pelaksanaan Anggaran": `
                 <b>Kualitas Hasil Pelaksanaan Anggaran</b><br/><br/>
