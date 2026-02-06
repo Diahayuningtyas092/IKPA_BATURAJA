@@ -57,49 +57,41 @@ def render_table_pin_satker(df):
                 <b>Kualitas Perencanaan Anggaran</b><br/><br/>
 
                 <span style="color:#d1d5db">
-                Aspek ini mengukur kualitas perencanaan anggaran Satker, meliputi:
+                Aspek ini mengukur kualitas perencanaan anggaran Satker.
                 </span>
 
-                <ul style="color:#e5e7eb; padding-left:18px; margin-top:6px">
-                    <li>Kesesuaian perencanaan anggaran dalam DIPA</li>
-                    <li>Frekuensi revisi DIPA dalam tahun anggaran</li>
-                    <li>Tingkat deviasi antara RPD dan realisasi anggaran</li>
-                </ul>
+                <br/><br/>
+                <b>Bobot:</b><br/>
+                <span style="color:#e5e7eb">
+                ● Revisi DIPA: <b>10%</b><br/>
+                ● Deviasi Halaman III DIPA: <b>15%</b><br/>
+                </span>
 
                 <br/>
-                <b>Bobot:</b>
-                <ul style="color:#e5e7eb; padding-left:18px; margin-top:6px">
-                    <li>Revisi DIPA: <b>10%</b></li>
-                    <li>Deviasi Halaman III DIPA: <b>15%</b></li>
-                </ul>
-                <b>Total Bobot: 25%</b>
+                <b>Total: 25%</b>
             `,
+
 
             "Kualitas Pelaksanaan Anggaran": `
                 <b>Kualitas Pelaksanaan Anggaran</b><br/><br/>
 
                 <span style="color:#d1d5db">
-                Aspek ini mengukur kemampuan Satker dalam merealisasikan anggaran, meliputi:
+                Aspek ini mengukur kemampuan Satker dalam merealisasikan anggaran yang telah ditetapkan.
                 </span>
 
-                <ul style="color:#e5e7eb; padding-left:18px; margin-top:6px">
-                    <li>Kecepatan dan ketepatan penyerapan anggaran</li>
-                    <li>Kelengkapan dan ketepatan belanja kontraktual</li>
-                    <li>Ketepatan waktu penyelesaian tagihan</li>
-                    <li>Pengelolaan Uang Persediaan (UP) dan Tambahan UP (TUP)</li>
-                </ul>
+                <br/><br/>
+                <b>Bobot:</b><br/>
+                <span style="color:#e5e7eb">
+                ● Penyerapan Anggaran: <b>20%</b><br/>
+                ● Belanja Kontraktual: <b>10%</b><br/>
+                ● Penyelesaian Tagihan: <b>10%</b><br/>
+                ● Pengelolaan UP/TUP: <b>10%</b><br/>
+                </span>
 
                 <br/>
-                <b>Bobot:</b>
-                <ul style="color:#e5e7eb; padding-left:18px; margin-top:6px">
-                    <li>Penyerapan Anggaran: <b>20%</b></li>
-                    <li>Belanja Kontraktual: <b>10%</b></li>
-                    <li>Penyelesaian Tagihan: <b>10%</b></li>
-                    <li>Pengelolaan UP/TUP: <b>10%</b></li>
-                </ul>
-
-                <b>Total Bobot: 50%</b>
+                <b>Total: 50%</b>
             `,
+
 
             "Kualitas Hasil Pelaksanaan Anggaran": `
                 <b>Kualitas Hasil Pelaksanaan Anggaran</b><br/><br/>
