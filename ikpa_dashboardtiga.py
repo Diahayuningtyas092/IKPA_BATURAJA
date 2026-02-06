@@ -381,7 +381,6 @@ def render_table_pin_satker(df):
                 window.top.document
                     .querySelectorAll('.cell-popup')
                     .forEach(el => el.remove());
-
                 const popup = document.createElement('div');
                 popup.className = 'cell-popup';
                 popup.style.position = 'fixed';
