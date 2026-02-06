@@ -44,8 +44,9 @@ def render_table_pin_satker(df):
     # CELL POPUP RENDERER (KLIK = POPUP DI TABEL)
     # =====================================================
     cell_popup_renderer = JsCode("""
-    class CellPopupRenderer {
-        init(params) {
+    function CellPopupRenderer() {}
+
+    CellPopupRenderer.prototype.init = function(params) {
             this.eGui = document.createElement('span');
             this.eGui.innerText = params.value;
             this.eGui.style.cursor = 'pointer';
@@ -393,28 +394,32 @@ def render_table_pin_satker(df):
                 popup.style.maxWidth = '380px';
 
 
-                let key = params.colDef.field || params.colDef.headerName;
+                var key = params.colDef.field || params.colDef.headerName;
 
-                // 👇 SWITCH BERDASARKAN NAMA KOLOM
+                // KHUSUS NILAI AKHIR
                 if (params.colDef.headerName === "Nilai Akhir (Nilai Total/Konversi Bobot)") {
-                    key = params.data.__mode === "komponen"
-                        ? "nilai_akhir_komponen"
-                        : "nilai_akhir_aspek";
+
+                    // DEFAULT = ASPEK
+                    key = "nilai_akhir_aspek";
+
+                    // CEK MODE DARI DATA (AMAN)
+                    if (params.data && params.data.__mode === "komponen") {
+                        key = "nilai_akhir_komponen";
+                    }
                 }
 
                 popup.innerHTML = popupMap[key] || "Tidak ada keterangan";
 
-
-                //  TEMBUS IFRAME STREAMLIT
+                // TEMBUS IFRAME STREAMLIT
                 window.top.document.body.appendChild(popup);
 
-                // HITUNG POSISI AMAN LAYAR
-                const offset = 14;
-                const vw = window.top.innerWidth;
-                const vh = window.top.innerHeight;
+                // POSISI AMAN (ES5)
+                var offset = 14;
+                var vw = window.top.document.documentElement.clientWidth;
+                var vh = window.top.document.documentElement.clientHeight;
 
-                let left = e.clientX + offset;
-                let top  = e.clientY - popup.offsetHeight - offset;
+                var left = e.clientX + offset;
+                var top  = e.clientY - popup.offsetHeight - offset;
 
                 if (left + popup.offsetWidth > vw - 8) {
                     left = e.clientX - popup.offsetWidth - offset;
@@ -432,10 +437,14 @@ def render_table_pin_satker(df):
                 popup.style.left = left + 'px';
                 popup.style.top  = top  + 'px';
 
+                // TUTUP SAAT KLIK LUAR
                 window.top.document.addEventListener(
                     'click',
-                    () => popup.remove(),
+                    function () {
+                        popup.remove();
+                    },
                     { once: true }
+
                 );
             });
         }
