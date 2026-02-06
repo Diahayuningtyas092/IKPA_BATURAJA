@@ -44,15 +44,15 @@ def render_table_pin_satker(df):
     # CELL POPUP RENDERER (KLIK = POPUP DI TABEL)
     # =====================================================
     cell_popup_renderer = JsCode("""
-    function CellPopupRenderer() {}
-
-    CellPopupRenderer.prototype.init = function(params) {
+    class CellPopupRenderer {
+        init(params) {
             this.eGui = document.createElement('span');
             this.eGui.innerText = params.value;
             this.eGui.style.cursor = 'pointer';
             this.eGui.style.fontWeight = '600';
-            
-            const popupMap = {      
+
+            const popupMap = {
+
             "Kualitas Perencanaan Anggaran": `
                 <b>Kualitas Perencanaan Anggaran</b><br/><br/>
                 <span style="color:#d1d5db">
@@ -373,7 +373,7 @@ def render_table_pin_satker(df):
                 Nilai Akhir = [Σ(Indikator × Bobot) × Konversi Bobot] − Dispensasi SPM
                 </small>
             `          
-        }};
+        };
 
             this.eGui.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -392,34 +392,34 @@ def render_table_pin_satker(df):
                 popup.style.zIndex = 2147483647; // MAX
                 popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
                 popup.style.maxWidth = '380px';
+                const header = params.colDef.headerName;
+                const field  = params.colDef.field;
 
+                let popupKey = field || header;
 
-                var key = params.colDef.field || params.colDef.headerName;
+                //  KHUSUS NILAI AKHIR
+                if (header === "Nilai Akhir (Nilai Total/Konversi Bobot)") {
+                    // SESUAIKAN DENGAN MODE TAMPILAN
+                    // kalau tabel "Berdasarkan Aspek":
+                    popupKey = "nilai_akhir_aspek";
 
-                // KHUSUS NILAI AKHIR
-                if (params.colDef.headerName === "Nilai Akhir (Nilai Total/Konversi Bobot)") {
-
-                    // DEFAULT = ASPEK
-                    key = "nilai_akhir_aspek";
-
-                    // CEK MODE DARI DATA (AMAN)
-                    if (params.data && params.data.__mode === "komponen") {
-                        key = "nilai_akhir_komponen";
-                    }
+                    // kalau tabel "Berdasarkan Komponen":
+                    // popupKey = "nilai_akhir_komponen";
                 }
 
-                popup.innerHTML = popupMap[key] || "Tidak ada keterangan";
+                popup.innerHTML = popupMap[popupKey] || "Tidak ada keterangan";
 
-                // TEMBUS IFRAME STREAMLIT
+
+                //  TEMBUS IFRAME STREAMLIT
                 window.top.document.body.appendChild(popup);
 
-                // POSISI AMAN (ES5)
-                var offset = 14;
-                var vw = window.top.document.documentElement.clientWidth;
-                var vh = window.top.document.documentElement.clientHeight;
+                // HITUNG POSISI AMAN LAYAR
+                const offset = 14;
+                const vw = window.top.innerWidth;
+                const vh = window.top.innerHeight;
 
-                var left = e.clientX + offset;
-                var top  = e.clientY - popup.offsetHeight - offset;
+                let left = e.clientX + offset;
+                let top  = e.clientY - popup.offsetHeight - offset;
 
                 if (left + popup.offsetWidth > vw - 8) {
                     left = e.clientX - popup.offsetWidth - offset;
@@ -437,14 +437,10 @@ def render_table_pin_satker(df):
                 popup.style.left = left + 'px';
                 popup.style.top  = top  + 'px';
 
-                // TUTUP SAAT KLIK LUAR
                 window.top.document.addEventListener(
                     'click',
-                    function () {
-                        popup.remove();
-                    },
+                    () => popup.remove(),
                     { once: true }
-
                 );
             });
         }
@@ -3924,7 +3920,6 @@ def page_dashboard():
                 horizontal=True,
                 key="detail_view_mode"
             )
-
 
             # ===============================
             # KOLOM IDENTITAS (WAJIB)
