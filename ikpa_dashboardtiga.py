@@ -55,32 +55,50 @@ def render_table_pin_satker(df):
 
             "Kualitas Perencanaan Anggaran": `
                 <b>Kualitas Perencanaan Anggaran</b><br/><br/>
+
                 <span style="color:#d1d5db">
-                Aspek ini mengukur seberapa baik Satker dalam merencanakan anggaran.
-                Penilaian dilakukan terhadap kesesuaian pelaksanaan anggaran dengan yang
-                direncanakan dalam DIPA. Semakin sedikit revisi dan semakin sesuai
-                realisasi dengan rencana, semakin tinggi nilainya.
+                Aspek ini mengukur kualitas perencanaan anggaran Satker, meliputi:
                 </span>
-                <br/><br/>
-                <b>Bobot:</b><br/>
-                <span style="color:#e5e7eb">
-                25% (Revisi DIPA 10% + Deviasi Halaman III DIPA 15%)
-                </span>
+
+                <ul style="color:#e5e7eb; padding-left:18px; margin-top:6px">
+                    <li>Kesesuaian perencanaan anggaran dalam DIPA</li>
+                    <li>Frekuensi revisi DIPA dalam tahun anggaran</li>
+                    <li>Tingkat deviasi antara RPD dan realisasi anggaran</li>
+                </ul>
+
+                <br/>
+                <b>Bobot:</b>
+                <ul style="color:#e5e7eb; padding-left:18px; margin-top:6px">
+                    <li>Revisi DIPA: <b>10%</b></li>
+                    <li>Deviasi Halaman III DIPA: <b>15%</b></li>
+                </ul>
+                <b>Total Bobot: 25%</b>
             `,
 
             "Kualitas Pelaksanaan Anggaran": `
                 <b>Kualitas Pelaksanaan Anggaran</b><br/><br/>
+
                 <span style="color:#d1d5db">
-                Aspek ini mengukur kemampuan Satker dalam merealisasikan anggaran yang telah
-                ditetapkan. Penilaian mencakup kecepatan penyerapan anggaran, kelengkapan
-                belanja kontraktual, ketepatan penyelesaian tagihan, serta pengelolaan
-                Uang Persediaan dan Tambahan Uang Persediaan.
+                Aspek ini mengukur kemampuan Satker dalam merealisasikan anggaran, meliputi:
                 </span>
-                <br/><br/>
-                <b>Bobot:</b><br/>
-                <span style="color:#e5e7eb">
-                50% (Penyerapan 20% + Belanja Kontraktual 10% + Penyelesaian Tagihan 10% + Pengelolaan UP/TUP 10%)
-                </span>
+
+                <ul style="color:#e5e7eb; padding-left:18px; margin-top:6px">
+                    <li>Kecepatan dan ketepatan penyerapan anggaran</li>
+                    <li>Kelengkapan dan ketepatan belanja kontraktual</li>
+                    <li>Ketepatan waktu penyelesaian tagihan</li>
+                    <li>Pengelolaan Uang Persediaan (UP) dan Tambahan UP (TUP)</li>
+                </ul>
+
+                <br/>
+                <b>Bobot:</b>
+                <ul style="color:#e5e7eb; padding-left:18px; margin-top:6px">
+                    <li>Penyerapan Anggaran: <b>20%</b></li>
+                    <li>Belanja Kontraktual: <b>10%</b></li>
+                    <li>Penyelesaian Tagihan: <b>10%</b></li>
+                    <li>Pengelolaan UP/TUP: <b>10%</b></li>
+                </ul>
+
+                <b>Total Bobot: 50%</b>
             `,
 
             "Kualitas Hasil Pelaksanaan Anggaran": `
@@ -294,7 +312,7 @@ def render_table_pin_satker(df):
             `,
             
             "nilai_akhir_aspek": `
-                <b>Nilai Akhir (Berdasarkan Aspek)</b><br/><br/>
+                <b>Nilai Akhir (Konversi Bobot)</b><br/><br/>
 
                 <span style="color:#d1d5db">
                 Nilai akhir IKPA dihitung berdasarkan pengelompokan aspek utama
