@@ -107,7 +107,6 @@ def render_table_pin_satker(df):
                 </span>
                 `,
 
-
             "Dispensasi SPM (Pengurang)": `
                 <b>Dispensasi SPM (Pengurang Nilai)</b><br/><br/>
                 <span style="color:#d1d5db">
@@ -136,7 +135,11 @@ def render_table_pin_satker(df):
                 <small style="color:#9ca3af">
                 Rasio = (Jumlah SPM Dispensasi / Jumlah SPM Triwulan IV) × 1.000
                 </small>
-            `
+            `,
+            
+            "
+            
+            
             };
 
 
@@ -3432,12 +3435,9 @@ def page_dashboard():
                     "Pilih Kode BA (Perbandingan)",
                     options=ba_options,
                     format_func=format_ba_compare,
-                    default=st.session_state["filter_ba_compare"],
-                    key="filter_ba_compare"
+                    key="filter_ba_compare"  
                 )
 
-                if "SEMUA BA" not in selected_ba_compare:
-                    df_full = df_full[df_full["Kode BA"].isin(selected_ba_compare)]
 
                 # ===============================
                 # 4. VALIDASI TAHUN
