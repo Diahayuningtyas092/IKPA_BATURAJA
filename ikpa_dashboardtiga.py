@@ -44,15 +44,16 @@ def render_table_pin_satker(df):
     # CELL POPUP RENDERER (KLIK = POPUP DI TABEL)
     # =====================================================
     cell_popup_renderer = JsCode("""
-    class CellPopupRenderer {
-        init(params) {
+    const VIEW_MODE = "{view_mode}";
+    
+    class CellPopupRenderer {{
+        init(params) {{
             this.eGui = document.createElement('span');
             this.eGui.innerText = params.value;
             this.eGui.style.cursor = 'pointer';
             this.eGui.style.fontWeight = '600';
-
-            const popupMap = {
-
+            const popupMap = {{
+                
             "Kualitas Perencanaan Anggaran": `
                 <b>Kualitas Perencanaan Anggaran</b><br/><br/>
                 <span style="color:#d1d5db">
@@ -373,7 +374,7 @@ def render_table_pin_satker(df):
                 Nilai Akhir = [Σ(Indikator × Bobot) × Konversi Bobot] − Dispensasi SPM
                 </small>
             `          
-        };
+        }};
 
             this.eGui.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -394,18 +395,14 @@ def render_table_pin_satker(df):
                 popup.style.maxWidth = '380px';
                 const header = params.colDef.headerName;
                 const field  = params.colDef.field;
+                let popupKey = field;
 
-                let popupKey = field || header;
-
-                //  KHUSUS NILAI AKHIR
-                if (header === "Nilai Akhir (Nilai Total/Konversi Bobot)") {
-                    // SESUAIKAN DENGAN MODE TAMPILAN
-                    // kalau tabel "Berdasarkan Aspek":
-                    popupKey = "nilai_akhir_aspek";
-
-                    // kalau tabel "Berdasarkan Komponen":
-                    // popupKey = "nilai_akhir_komponen";
-                }
+                // KHUSUS NILAI AKHIR
+                if (field === "nilai_akhir") {{
+                    popupKey = VIEW_MODE === "aspek"
+                        ? "nilai_akhir_aspek"
+                        : "nilai_akhir_komponen";
+                }}
 
                 popup.innerHTML = popupMap[popupKey] || "Tidak ada keterangan";
 
@@ -442,13 +439,13 @@ def render_table_pin_satker(df):
                     () => popup.remove(),
                     { once: true }
                 );
-            });
-        }
+            }});
+        }}
 
-        getGui() {
+        getGui() {{
             return this.eGui;
-        }
-    }
+        }}
+    }}
     """)
 
 
@@ -3920,6 +3917,7 @@ def page_dashboard():
                 horizontal=True,
                 key="detail_view_mode"
             )
+
 
             # ===============================
             # KOLOM IDENTITAS (WAJIB)
