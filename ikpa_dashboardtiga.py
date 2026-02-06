@@ -184,7 +184,7 @@ def render_table_pin_satker(df):
                 "Penyerapan Anggaran": `
                 <b>Penyerapan Anggaran</b><br/><br/>
                 <span style="color:#d1d5db">
-                Mengukur kesesuaian realisasi anggaran dengan <b>TARGET MINIMUM</b><br/><br/> triwulanan untuk
+                Mengukur kesesuaian realisasi anggaran dengan <b>TARGET MINIMUM</b><span style="color:#d1d5db"> triwulanan untuk
                 masing-masing jenis belanja.
                 </span>
 
