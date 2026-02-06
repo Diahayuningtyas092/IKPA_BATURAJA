@@ -394,7 +394,13 @@ def render_table_pin_satker(df):
                 popup.style.zIndex = 2147483647; // MAX
                 popup.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
                 popup.style.maxWidth = '380px';
-                popup.innerHTML = popupMap[params.colDef.headerName] || "Tidak ada keterangan";
+                const key = params.colDef.field || params.colDef.headerName;
+
+                popup.innerHTML =
+                    popupMap[key]
+                        ? popupMap[key]
+                        : "Tidak ada keterangan";
+
 
                 // 🔑 TEMBUS IFRAME STREAMLIT
                 window.top.document.body.appendChild(popup);
