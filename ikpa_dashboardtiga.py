@@ -1947,35 +1947,16 @@ def find_header_row_kkp(uploaded_file, max_rows=10):
     return None
 
 def normalize_kkp_for_dashboard(df):
-    """
-    Standarisasi kolom agar konsisten seperti Kartu Pengawasan KKP
-    """
     df = df.copy()
 
-    # Pastikan kolom inti ada
-    REQUIRED_ORDER = [
-        "BA/KL",
-        "Satker",
-        "Nomor Kartu",
-        "Nama Pemegang KKP",
-        "Limit KKP",
-        "Jenis KKP",
-        "Bank Penerbit KKP",
-        "Periode",
-        "Total Transaksi (nilai tagihan terkait APBN)",
-        "Nilai Transaksi (nilai SPM)"
-    ]
-
-    for col in REQUIRED_ORDER:
-        if col not in df.columns:
-            df[col] = None
-
-    # Urutkan kolom seperti kartu pengawasan
-    df = df[REQUIRED_ORDER]
-
-    # Tambahan kolom bantu
+    # Bulan & Tahun
     df["Bulan"] = df["Periode"].dt.strftime("%Y-%m")
     df["Tahun"] = df["Periode"].dt.year
+
+    # Pastikan string rapi
+    for col in ["BA/KL", "Satker", "Nama Pemegang KKP", "Bank Penerbit KKP"]:
+        if col in df.columns:
+            df[col] = df[col].astype(str).str.strip()
 
     return df
 
@@ -2014,29 +1995,25 @@ def process_excel_kkp(uploaded_file):
     # =========================
     # 4. RENAME KOLOM BERBASIS KEYWORD
     # =========================
-    COLUMN_KEYWORDS = {
-        "No": ["NO"],
-        "BA/KL": ["BA/KL"],
-        "Satker": ["SATKER"],
-        "Nomor Kartu": ["KARTU"],
-        "Nama Pemegang KKP": ["PEMEGANG"],
-        "Limit KKP": ["LIMIT"],
-        "Jenis KKP": ["JENIS"],
-        "Bank Penerbit KKP": ["BANK"],
-        "Periode": ["PERIODE"],
-        "Total Transaksi (nilai tagihan terkait APBN)": ["TAGIHAN"],
-        "Nilai Transaksi (nilai SPM)": ["SPM"]
+    # =========================
+    # 4. RENAME KOLOM (EXACT MATCH – AMAN)
+    # =========================
+    RENAME_MAP_EXACT = {
+        "NO": "No",
+        "BA/KL": "BA/KL",
+        "SATKER": "Satker",
+        "NOMOR KARTU": "Nomor Kartu",
+        "NAMA PEMEGANG KKP": "Nama Pemegang KKP",
+        "LIMIT KKP": "Limit KKP",
+        "JENIS KKP": "Jenis KKP",
+        "BANK PENERBIT KKP": "Bank Penerbit KKP",
+        "PERIODE": "Periode",
+        "TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)": "Total Transaksi (nilai tagihan terkait APBN)",
+        "NILAI TRANSAKSI (NILAI SPM)": "Nilai Transaksi (nilai SPM)",
     }
 
-    rename_map = {}
-    for col in df.columns:
-        for std, keys in COLUMN_KEYWORDS.items():
-            if any(k in col for k in keys):
-                rename_map[col] = std
-                break
+    df = df.rename(columns=RENAME_MAP_EXACT)
 
-    df = df.rename(columns=rename_map)
-    
 
     # =========================
     # =========================
