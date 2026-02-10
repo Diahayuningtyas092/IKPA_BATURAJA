@@ -1995,24 +1995,30 @@ def process_excel_kkp(uploaded_file):
     df = df.rename(columns=rename_map)
 
     # =========================
-    # 4. VALIDASI KOLOM WAJIB (REALISTIS)
+    # 4. VALIDASI KOLOM
     # =========================
-    REQUIRED_COLS = [
+    CORE_COLS = [
         "BA/KL",
         "Satker",
         "Nomor Kartu",
-        "Nama Pemegang KKP",
-        "Limit KKP",
-        "Periode"
+        "Nama Pemegang KKP"
     ]
 
-    missing = [c for c in REQUIRED_COLS if c not in df.columns]
+    core_missing = [c for c in CORE_COLS if c not in df.columns]
 
-    if missing:
+    if core_missing:
         raise ValueError(
-            "Kolom wajib tidak ditemukan:\n" +
-            "\n".join(f"- {c}" for c in missing)
+            "File KKP tidak valid. Kolom inti tidak ditemukan:\n" +
+            "\n".join(f"- {c}" for c in core_missing)
         )
+
+    # Kolom administratif → isi default
+    OPTIONAL_COLS = ["Limit KKP", "Periode"]
+
+    for col in OPTIONAL_COLS:
+        if col not in df.columns:
+            df[col] = None
+
 
     # =========================
     # 5. CAST TIPE DATA
