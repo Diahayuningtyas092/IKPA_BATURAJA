@@ -1953,13 +1953,22 @@ def process_excel_kkp(uploaded_file):
     import re
 
     # =========================
-    # 1. BACA EXCEL
+    # 1. TEMUKAN BARIS HEADER
     # =========================
     uploaded_file.seek(0)
-    df = pd.read_excel(uploaded_file)
+    header_row = find_header_row_kkp(uploaded_file)
+
+    if header_row is None:
+        raise Exception("Header tabel KKP tidak ditemukan.")
 
     # =========================
-    # 2. AMANKAN HEADER
+    # 2. BACA EXCEL DENGAN HEADER BENAR
+    # =========================
+    uploaded_file.seek(0)
+    df = pd.read_excel(uploaded_file, header=header_row)
+
+    # =========================
+    # 3. AMANKAN HEADER
     # =========================
     df.columns = (
         df.columns
@@ -1970,7 +1979,7 @@ def process_excel_kkp(uploaded_file):
     )
 
     # =========================
-    # 3. RENAME BERBASIS KEYWORD (AMAN)
+    # 4. RENAME KOLOM BERBASIS KEYWORD
     # =========================
     COLUMN_KEYWORDS = {
         "No": ["NO"],
@@ -1979,13 +1988,14 @@ def process_excel_kkp(uploaded_file):
         "Nomor Kartu": ["KARTU"],
         "Nama Pemegang KKP": ["PEMEGANG"],
         "Limit KKP": ["LIMIT"],
+        "Jenis KKP": ["JENIS"],
+        "Bank Penerbit KKP": ["BANK"],
         "Periode": ["PERIODE"],
-        "Total Transaksi (nilai tagihan terkait APBN)": ["TOTAL", "TAGIHAN"],
+        "Total Transaksi (nilai tagihan terkait APBN)": ["TAGIHAN"],
         "Nilai Transaksi (nilai SPM)": ["SPM"]
     }
 
     rename_map = {}
-
     for col in df.columns:
         for std, keys in COLUMN_KEYWORDS.items():
             if any(k in col for k in keys):
@@ -1995,9 +2005,8 @@ def process_excel_kkp(uploaded_file):
     df = df.rename(columns=rename_map)
 
     # =========================
-    # 4. VALIDASI KOLOM
+    # 5. VALIDASI KOLOM INTI
     # =========================
-    # VALIDASI INTI SAJA
     CORE_COLS = [
         "BA/KL",
         "Satker",
@@ -2005,25 +2014,25 @@ def process_excel_kkp(uploaded_file):
         "Nama Pemegang KKP"
     ]
 
-    core_missing = [c for c in CORE_COLS if c not in df.columns]
-
-    if core_missing:
+    missing = [c for c in CORE_COLS if c not in df.columns]
+    if missing:
         raise Exception(
-            "File KKP tidak valid (kolom inti hilang):\n" +
-            "\n".join(f"- {c}" for c in core_missing)
+            "File KKP tidak valid. Kolom inti tidak ditemukan:\n" +
+            "\n".join(f"- {c}" for c in missing)
         )
 
     # =========================
-    # 5. CAST TIPE DATA
+    # 6. CAST TIPE DATA
     # =========================
     df["Nomor Kartu"] = (
         df["Nomor Kartu"]
         .astype(str)
+        .str.replace(",", "")
         .str.replace(".0", "", regex=False)
         .str.strip()
     )
 
-    df["Periode"] = pd.to_datetime(df["Periode"], errors="coerce")
+    df["Periode"] = pd.to_datetime(df.get("Periode"), errors="coerce")
 
     NUM_COLS = [
         "Limit KKP",
@@ -2041,10 +2050,10 @@ def process_excel_kkp(uploaded_file):
                 .astype(int)
             )
         else:
-            df[col] = 0   # ⬅️ fallback aman
+            df[col] = 0
 
     # =========================
-    # 6. FINAL CLEAN
+    # 7. FINAL CLEAN
     # =========================
     df = df.dropna(subset=["Nama Pemegang KKP", "Nomor Kartu"])
     df = df.reset_index(drop=True)
