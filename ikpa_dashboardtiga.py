@@ -1989,14 +1989,25 @@ def process_excel_kkp(uploaded_file):
             if key.lower() in col.lower():
                 df.rename(columns={col: COLUMN_MAP[key]}, inplace=True)
 
-    # =========================
-    # 3. VALIDASI KOLOM WAJIB
-    # =========================
-    missing_cols = [c for c in COLUMN_MAP.values() if c not in df.columns]
-    if missing_cols:
-        raise ValueError(f"Kolom tidak ditemukan: {missing_cols}")
 
-    df = df[list(COLUMN_MAP.values())]
+    # =========================
+    # 3. VALIDASI KOLOM WAJIB (KEYWORD-BASED)
+    # =========================
+    missing_cols = []
+
+    for std_col, keywords in COLUMN_MAP.items():
+        if not any(
+            any(k in col.upper() for k in keywords)
+            for col in df.columns
+        ):
+            missing_cols.append(std_col)
+
+    if missing_cols:
+        raise ValueError(
+            "Kolom tidak ditemukan:\n" +
+            "\n".join(f"- {c}" for c in missing_cols)
+        )
+
 
     # =========================
     # 4. PERBAIKAN TIPE DATA
