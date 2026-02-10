@@ -1947,6 +1947,7 @@ def find_header_row_kkp(uploaded_file, max_rows=10):
     return None
 
 
+# FILE KKP
 def process_excel_kkp(uploaded_file):
     import pandas as pd
     import re
@@ -1977,12 +1978,15 @@ def process_excel_kkp(uploaded_file):
         "Nomor Kartu": ["KARTU"],
         "Nama Pemegang KKP": ["PEMEGANG"],
         "Limit KKP": ["LIMIT"],
-        "Jenis KKP": ["JENIS"],
-        "Bank Penerbit KKP": ["BANK"],
         "Periode": ["PERIODE"],
         "Total Transaksi (nilai tagihan terkait APBN)": ["TAGIHAN"],
-        "Nilai Transaksi (nilai SPM)": ["SPM"]
+        "Nilai Transaksi (nilai SPM)": ["SPM"],
+
+        # OPSIONAL
+        "Jenis KKP": ["JENIS"],
+        "Bank Penerbit KKP": ["BANK"],
     }
+
 
     # =========================
     # 4. RENAME KOLOM (BENAR)
@@ -6079,67 +6083,32 @@ def page_admin():
                 # ===============================
                 # VALIDASI KOLOM WAJIB
                 # ===============================
-                REQUIRED_KEYWORDS = {
-                    "BA/KL": ["BA/KL"],
-                    "Satker": ["SATKER"],
-                    "Nomor Kartu": ["KARTU"],
-                    "Nama Pemegang KKP": ["PEMEGANG"],
-                    "Limit KKP": ["LIMIT"],
-                    "Periode": ["PERIODE"],
-                    "Nilai Tagihan": ["TAGIHAN"],
-                    "Nilai SPM": ["SPM"]
-                }
+                REQUIRED_COLS = [
+                    "No",
+                    "BA/KL",
+                    "Satker",
+                    "Nomor Kartu",
+                    "Nama Pemegang KKP",
+                    "Limit KKP",
+                    "Periode",
+                    "Total Transaksi (nilai tagihan terkait APBN)",
+                    "Nilai Transaksi (nilai SPM)"
+                ]
 
-                missing = []
+                missing_cols = [c for c in REQUIRED_COLS if c not in df.columns]
 
-                for logical_col, keywords in REQUIRED_KEYWORDS.items():
-                    if not any(
-                        any(k in col.upper() for k in keywords)
-                        for col in df_check.columns
-                    ):
-                        missing.append(logical_col)
-
-                if missing:
-                    st.error(
-                        "GAGAL UPLOAD!\n\n"
-                        "Kolom wajib tidak ditemukan:\n"
-                        + "\n".join(f"- {m}" for m in missing)
+                if missing_cols:
+                    raise ValueError(
+                        "Kolom wajib tidak ditemukan:\n" +
+                        "\n".join(f"- {c}" for c in missing_cols)
                     )
-                    st.stop()
-
 
                 # ===============================
-                # 🔍 DETEKSI BULAN (HEADER / DATA)
+                # PERIODE KKP (RENTANG TAHUNAN)
                 # ===============================
-                uploaded_file_kkp.seek(0)
-                df_info = pd.read_excel(uploaded_file_kkp, header=None)
-
-                MONTH_MAP = {
-                    "JAN": "JANUARI", "FEB": "FEBRUARI", "MAR": "MARET",
-                    "APR": "APRIL", "MEI": "MEI", "JUN": "JUNI",
-                    "JUL": "JULI", "AGU": "AGUSTUS",
-                    "SEP": "SEPTEMBER", "OKT": "OKTOBER",
-                    "NOV": "NOVEMBER", "DES": "DESEMBER"
-                }
-
-                month_preview = None
-
-                for r in range(min(6, df_info.shape[0])):
-                    for c in range(min(6, df_info.shape[1])):
-                        cell = str(df_info.iloc[r, c]).upper()
-                        for k, v in MONTH_MAP.items():
-                            if k in cell:
-                                month_preview = v
-                                break
-                        if month_preview:
-                            break
-                    if month_preview:
-                        break
-
-                if not month_preview:
-                    month_preview = "UNKNOWN"
-
+                month_preview = "JAN–DES"
                 period_key_preview = (month_preview, str(upload_year_kkp))
+
 
                 # ===============================
                 # ℹ️ INFO DUPLIKASI
