@@ -2059,12 +2059,7 @@ def process_excel_kkp(uploaded_file):
             )
         else:
             df[col] = 0
-
-    # =========================
-    # 7. FINAL CLEAN
-    # =========================
-    df = df.reset_index(drop=True)
-
+            
 
     return df
 
