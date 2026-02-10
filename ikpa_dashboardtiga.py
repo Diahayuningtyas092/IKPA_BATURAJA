@@ -6095,13 +6095,14 @@ def page_admin():
                     "Nilai Transaksi (nilai SPM)"
                 ]
 
-                missing_cols = [c for c in REQUIRED_COLS if c not in df_check.columns]
+                missing_cols = [c for c in REQUIRED_COLS if c not in df.columns]
 
                 if missing_cols:
                     raise ValueError(
                         "Kolom wajib tidak ditemukan:\n" +
                         "\n".join(f"- {c}" for c in missing_cols)
                     )
+
 
                 # ===============================
                 # PERIODE KKP (RENTANG TAHUNAN)
