@@ -1997,6 +1997,7 @@ def process_excel_kkp(uploaded_file):
     # =========================
     # 4. VALIDASI KOLOM
     # =========================
+    # VALIDASI INTI SAJA
     CORE_COLS = [
         "BA/KL",
         "Satker",
@@ -2007,18 +2008,10 @@ def process_excel_kkp(uploaded_file):
     core_missing = [c for c in CORE_COLS if c not in df.columns]
 
     if core_missing:
-        raise ValueError(
-            "File KKP tidak valid. Kolom inti tidak ditemukan:\n" +
+        raise Exception(
+            "File KKP tidak valid (kolom inti hilang):\n" +
             "\n".join(f"- {c}" for c in core_missing)
         )
-
-    # Kolom administratif → isi default
-    OPTIONAL_COLS = ["Limit KKP", "Periode"]
-
-    for col in OPTIONAL_COLS:
-        if col not in df.columns:
-            df[col] = None
-
 
     # =========================
     # 5. CAST TIPE DATA
