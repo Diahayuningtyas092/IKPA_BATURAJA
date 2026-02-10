@@ -2004,11 +2004,18 @@ def process_excel_kkp(uploaded_file):
 
     df = df.rename(columns=rename_map)
     
+
     # =========================
-    # FILTER BARIS DATA SEBENARNYA (KRUSIAL)
     # =========================
-    if "No" in df.columns:
-        df = df[pd.to_numeric(df["No"], errors="coerce").notna()]
+    # FILTER BARIS DATA VALID (AMAN UNTUK DUPLIKAT KOLOM)
+    # =========================
+    no_col = df.loc[:, "No"]
+
+    if isinstance(no_col, pd.DataFrame):
+        no_col = no_col.iloc[:, 0]   # ambil kolom No pertama
+
+    df = df[pd.to_numeric(no_col, errors="coerce").notna()]
+
 
 
     # =========================
