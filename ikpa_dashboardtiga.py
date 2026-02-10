@@ -6095,7 +6095,7 @@ def page_admin():
                     "Nilai Transaksi (nilai SPM)"
                 ]
 
-                missing_cols = [c for c in REQUIRED_COLS if c not in df.columns]
+                missing_cols = [c for c in REQUIRED_COLS if c not in df_check.columns]
 
                 if missing_cols:
                     raise ValueError(
