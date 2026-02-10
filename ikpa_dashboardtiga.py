@@ -2007,9 +2007,6 @@ def process_excel_kkp(uploaded_file):
     # =========================
     # 5. VALIDASI KOLOM INTI
     # =========================
-    # =========================
-    # VALIDASI KOLOM INTI (KEYWORD-BASED)
-    # =========================
     CORE_KEYWORDS = {
         "BA/KL": ["BA/KL"],
         "Satker": ["SATKER"],
@@ -2017,21 +2014,13 @@ def process_excel_kkp(uploaded_file):
         "Nama Pemegang KKP": ["PEMEGANG"]
     }
 
-    missing_core = []
-
     for name, keys in CORE_KEYWORDS.items():
         if not any(
             any(k in col for k in keys)
             for col in df.columns
         ):
-            missing_core.append(name)
-
-    if missing_core:
-        raise Exception(
-            "File KKP tidak valid. Kolom inti tidak ditemukan:\n" +
-            "\n".join(f"- {c}" for c in missing_core)
-        )
-
+            # fallback: buat kolom kosong
+            df[name] = None
 
     # =========================
     # 6. CAST TIPE DATA
