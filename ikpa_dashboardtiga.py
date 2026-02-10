@@ -1931,6 +1931,20 @@ def load_data_ikpa_kppn_from_github():
 
     return data
 
+def find_header_row_kkp(uploaded_file, max_rows=10):
+    uploaded_file.seek(0)
+    preview = pd.read_excel(uploaded_file, header=None, nrows=max_rows)
+
+    for i in range(preview.shape[0]):
+        row = preview.iloc[i].astype(str).str.upper()
+        if (
+            row.str.contains("BA/KL").any()
+            and row.str.contains("SATKER").any()
+            and row.str.contains("PERIODE").any()
+        ):
+            return i
+    return None
+
 
 # FILE KKP
 import pandas as pd
@@ -1955,18 +1969,19 @@ def process_excel_kkp(uploaded_file):
 
     # Mapping header Excel → header standar
     COLUMN_MAP = {
-        "No": "No",
-        "BA/KL": "BA/KL",
-        "Satker": "Satker",
-        "Nomor Kartu": "Nomor Kartu",
-        "Nama Pemegang KKP": "Nama Pemegang KKP",
-        "Limit KKP": "Limit KKP",
-        "Jenis KKP": "Jenis KKP",
-        "Bank Penerbit KKP": "Bank Penerbit KKP",
-        "Periode": "Periode",
-        "Total Transaksi (nilai tagihan terkait APBN)": "Total Transaksi (nilai tagihan terkait APBN)",
-        "Nilai Transaksi (nilai SPM)": "Nilai Transaksi (nilai SPM)",
+        "No": ["NO"],
+        "BA/KL": ["BA/KL"],
+        "Satker": ["SATKER"],
+        "Nomor Kartu": ["KARTU"],
+        "Nama Pemegang KKP": ["PEMEGANG"],
+        "Limit KKP": ["LIMIT"],
+        "Jenis KKP": ["JENIS"],
+        "Bank Penerbit KKP": ["BANK"],
+        "Periode": ["PERIODE"],
+        "Total Transaksi (nilai tagihan terkait APBN)": ["TAGIHAN"],
+        "Nilai Transaksi (nilai SPM)": ["SPM"]
     }
+
 
     # Rename kolom jika cocok
     for col in df.columns:
@@ -6020,7 +6035,21 @@ def page_admin():
                 # ===============================
                 # 🔍 BACA PREVIEW HEADER
                 # ===============================
-                df_check = pd.read_excel(uploaded_file_kkp)
+                header_row = find_header_row_kkp(uploaded_file_kkp)
+
+                if header_row is None:
+                    st.error(
+                        "GAGAL UPLOAD!\n\n"
+                        "Header tabel KKP tidak ditemukan.\n"
+                        "Pastikan file adalah laporan KKP resmi KPPN."
+                    )
+                    st.stop()
+
+                uploaded_file_kkp.seek(0)
+                df_check = pd.read_excel(
+                    uploaded_file_kkp,
+                    header=header_row
+                )
 
                 df_check.columns = (
                     df_check.columns.astype(str)
@@ -6040,28 +6069,36 @@ def page_admin():
                     st.stop()
 
                 # ===============================
-                # ✅ VALIDASI KOLOM WAJIB
+                # VALIDASI KOLOM WAJIB
                 # ===============================
-                REQUIRED_COLS = [
-                    "BA/KL",
-                    "Satker",
-                    "Nomor Kartu",
-                    "Nama Pemegang KKP",
-                    "Limit KKP",
-                    "Periode"
-                ]
+                REQUIRED_KEYWORDS = {
+                    "BA/KL": ["BA/KL"],
+                    "Satker": ["SATKER"],
+                    "Nomor Kartu": ["KARTU"],
+                    "Nama Pemegang KKP": ["PEMEGANG"],
+                    "Limit KKP": ["LIMIT"],
+                    "Periode": ["PERIODE"],
+                    "Nilai Tagihan": ["TAGIHAN"],
+                    "Nilai SPM": ["SPM"]
+                }
 
-                missing = [
-                    c for c in REQUIRED_COLS
-                    if not any(c.lower() in col.lower() for col in df_check.columns)
-                ]
+                missing = []
+
+                for logical_col, keywords in REQUIRED_KEYWORDS.items():
+                    if not any(
+                        any(k in col.upper() for k in keywords)
+                        for col in df_check.columns
+                    ):
+                        missing.append(logical_col)
 
                 if missing:
                     st.error(
                         "GAGAL UPLOAD!\n\n"
-                        f"Kolom wajib tidak ditemukan:\n{missing}"
+                        "Kolom wajib tidak ditemukan:\n"
+                        + "\n".join(f"- {m}" for m in missing)
                     )
                     st.stop()
+
 
                 # ===============================
                 # 🔍 DETEKSI BULAN (HEADER / DATA)
