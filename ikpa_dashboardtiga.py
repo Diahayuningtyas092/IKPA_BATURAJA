@@ -583,7 +583,6 @@ MONTH_ORDER = {
 TEMPLATE_PATH = r"C:\Users\KEMENKEU\Desktop\INDIKATOR PELAKSANAAN ANGGARAN.xlsx"
 
 
-
 # Normalize kode satker
 def normalize_kode_satker(k, width=6):
     if pd.isna(k):
@@ -5983,7 +5982,7 @@ def page_admin():
         # 🧾 SUBMENU UPLOAD DATA KKP
         # ===============================
         st.markdown("---")
-        st.subheader("💳 Upload Data Kartu Kredit Pemerintah (KKP)")
+        st.subheader("💳 Upload Data KKP")
 
         # ===============================
         # 📅 PILIH TAHUN
@@ -5995,10 +5994,11 @@ def page_admin():
             key="tahun_kkp"
         )
 
-        st.caption(
-            "Sistem menerima data Kartu Kredit Pemerintah (KKP) "
-            "berdasarkan Satker, Pemegang Kartu, dan Periode Transaksi."
-        )
+        # ===============================
+        # 🔐 DEFAULT STATE (WAJIB)
+        # ===============================
+        confirm_replace_kkp = False
+        month_preview = "UNKNOWN"
 
         # ===============================
         # 📂 UPLOAD FILE
