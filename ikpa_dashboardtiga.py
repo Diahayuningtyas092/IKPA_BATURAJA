@@ -6470,6 +6470,74 @@ def page_admin():
                     })
                 except Exception as e:
                     st.error(f"❌ Gagal menghapus data DIPA: {e}")
+        
+        # ===============================
+        # 🗑️ SUBMENU HAPUS DATA KKP
+        # ===============================
+        st.markdown("---")
+        st.subheader("🗑️ Hapus Data KKP")
+
+        if not st.session_state.data_storage_kkp:
+            st.info("Belum ada data KKP yang tersimpan.")
+        else:
+            # daftar periode tersedia
+            periode_list = sorted(
+                st.session_state.data_storage_kkp.keys(),
+                key=lambda x: (x[1], x[0])
+            )
+
+            selected_period = st.selectbox(
+                "Pilih periode KKP yang akan dihapus",
+                periode_list,
+                format_func=lambda x: f"{x[0]} {x[1]}"
+            )
+
+            confirm_delete = st.checkbox(
+                f"Saya yakin ingin menghapus data KKP periode {selected_period[0]} {selected_period[1]}"
+            )
+
+            if st.button(
+                "🗑️ Hapus Data KKP",
+                type="primary",
+                disabled=not confirm_delete
+            ):
+                try:
+                    # hapus dari session
+                    del st.session_state.data_storage_kkp[selected_period]
+
+                    # hapus file di GitHub
+                    filename = f"DATA_KKP_{selected_period[0]}_{selected_period[1]}.xlsx"
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo_name = st.secrets["GITHUB_REPO"]
+
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
+                    path = f"data_kkp/{filename}"
+
+                    try:
+                        file = repo.get_contents(path)
+                        repo.delete_file(
+                            file.path,
+                            f"Delete {filename}",
+                            file.sha
+                        )
+                    except Exception:
+                        pass  # kalau file belum ada, tidak error
+
+                    log_activity(
+                        menu="Hapus Data",
+                        action="Hapus Data KKP",
+                        detail=f"{selected_period[0]} {selected_period[1]}"
+                    )
+
+                    st.success(
+                        f"Data KKP {selected_period[0]} {selected_period[1]} berhasil dihapus."
+                    )
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"Gagal menghapus data KKP: {e}")
+
 
     # ============================================================
     # TAB 3: DOWNLOAD DATA
@@ -6646,6 +6714,46 @@ def page_admin():
         
         if st.button("📥 Generate & Download Laporan"):
             st.info("ℹ️ Fitur ini menggunakan data dari session state untuk performa optimal.")
+
+        # ===============================
+        # 📥 SUBMENU DOWNLOAD DATA KKP
+        # ===============================
+        st.markdown("---")
+        st.subheader("📥 Download Data KKP")
+
+        if not st.session_state.data_storage_kkp:
+            st.info("Belum ada data KKP yang bisa diunduh.")
+        else:
+            periode_list = sorted(
+                st.session_state.data_storage_kkp.keys(),
+                key=lambda x: (x[1], x[0])
+            )
+
+            selected_period = st.selectbox(
+                "Pilih periode KKP",
+                periode_list,
+                format_func=lambda x: f"{x[0]} {x[1]}",
+                key="download_kkp"
+            )
+
+            df_download = st.session_state.data_storage_kkp[selected_period]
+
+            excel_buffer = io.BytesIO()
+            with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+                df_download.to_excel(
+                    writer,
+                    index=False,
+                    sheet_name="Data KKP"
+                )
+            excel_buffer.seek(0)
+
+            st.download_button(
+                label="⬇️ Download Data KKP",
+                data=excel_buffer,
+                file_name=f"DATA_KKP_{selected_period[0]}_{selected_period[1]}.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
 
     # ============================================================
     # TAB 4: DOWNLOAD TEMPLATE
