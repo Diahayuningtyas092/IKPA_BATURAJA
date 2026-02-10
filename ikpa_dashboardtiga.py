@@ -1931,6 +1931,7 @@ def load_data_ikpa_kppn_from_github():
 
     return data
 
+
 def find_header_row_kkp(uploaded_file, max_rows=10):
     uploaded_file.seek(0)
     preview = pd.read_excel(uploaded_file, header=None, nrows=max_rows)
@@ -1946,28 +1947,29 @@ def find_header_row_kkp(uploaded_file, max_rows=10):
     return None
 
 
-# FILE KKP
-import pandas as pd
-import streamlit as st
-import re
-
 def process_excel_kkp(uploaded_file):
+    import pandas as pd
+    import re
+
     # =========================
     # 1. BACA EXCEL
     # =========================
     df = pd.read_excel(uploaded_file)
 
     # =========================
-    # 2. NORMALISASI HEADER
+    # 2. AMANKAN HEADER (WAJIB)
     # =========================
     df.columns = (
         df.columns
-        .astype(str)
-        .str.replace(r"\s+", " ", regex=True)   # hapus newline & spasi ganda
+        .map(lambda x: str(x) if pd.notna(x) else "")
+        .str.upper()
+        .str.replace(r"\s+", " ", regex=True)
         .str.strip()
     )
 
-    # Mapping header Excel → header standar
+    # =========================
+    # 3. DEFINISI KOLOM (KEYWORD)
+    # =========================
     COLUMN_MAP = {
         "No": ["NO"],
         "BA/KL": ["BA/KL"],
@@ -1982,25 +1984,23 @@ def process_excel_kkp(uploaded_file):
         "Nilai Transaksi (nilai SPM)": ["SPM"]
     }
 
+    # =========================
+    # 4. RENAME KOLOM (BENAR)
+    # =========================
+    rename_map = {}
 
-    # Rename kolom jika cocok
     for col in df.columns:
-        for key in COLUMN_MAP:
-            if key.lower() in col.lower():
-                df.rename(columns={col: COLUMN_MAP[key]}, inplace=True)
+        for std_col, keywords in COLUMN_MAP.items():
+            if any(k in col for k in keywords):
+                rename_map[col] = std_col
+                break
 
+    df = df.rename(columns=rename_map)
 
     # =========================
-    # 3. VALIDASI KOLOM WAJIB (KEYWORD-BASED)
+    # 5. VALIDASI KOLOM WAJIB
     # =========================
-    missing_cols = []
-
-    for std_col, keywords in COLUMN_MAP.items():
-        if not any(
-            any(k in col.upper() for k in keywords)
-            for col in df.columns
-        ):
-            missing_cols.append(std_col)
+    missing_cols = [c for c in COLUMN_MAP if c not in df.columns]
 
     if missing_cols:
         raise ValueError(
@@ -2008,21 +2008,18 @@ def process_excel_kkp(uploaded_file):
             "\n".join(f"- {c}" for c in missing_cols)
         )
 
-
     # =========================
-    # 4. PERBAIKAN TIPE DATA
+    # 6. PERBAIKAN TIPE DATA
     # =========================
-    # Nomor kartu → STRING (supaya tidak rusak)
     df["Nomor Kartu"] = (
         df["Nomor Kartu"]
         .astype(str)
         .str.replace(".0", "", regex=False)
+        .str.strip()
     )
 
-    # Periode → datetime bulanan
     df["Periode"] = pd.to_datetime(df["Periode"], errors="coerce")
 
-    # Kolom numerik
     NUM_COLS = [
         "Limit KKP",
         "Total Transaksi (nilai tagihan terkait APBN)",
@@ -2039,7 +2036,7 @@ def process_excel_kkp(uploaded_file):
         )
 
     # =========================
-    # 5. FINAL CLEAN
+    # 7. FINAL CLEAN
     # =========================
     df = df.dropna(subset=["Nama Pemegang KKP", "Nomor Kartu"])
     df = df.reset_index(drop=True)
