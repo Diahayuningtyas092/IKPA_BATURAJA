@@ -6025,7 +6025,7 @@ def page_admin():
         # 🔐 DEFAULT STATE (WAJIB)
         # ===============================
         confirm_replace_kkp = False
-        month_preview = "UNKNOWN"
+        month_preview = "JAN–DES"
 
         # ===============================
         # 📂 UPLOAD FILE
@@ -6042,11 +6042,12 @@ def page_admin():
         if "data_storage_kkp" not in st.session_state:
             st.session_state.data_storage_kkp = {}
 
+        # ===============================
+        # 🔍 VALIDASI FILE (UI LAYER)
+        # ===============================
         if uploaded_file_kkp is not None:
             try:
-                # ===============================
-                # 🔍 BACA PREVIEW HEADER
-                # ===============================
+                # Cari baris header tabel KKP
                 header_row = find_header_row_kkp(uploaded_file_kkp)
 
                 if header_row is None:
@@ -6063,15 +6064,15 @@ def page_admin():
                     header=header_row
                 )
 
+                # Normalisasi header untuk validasi
                 df_check.columns = (
-                    df_check.columns.astype(str)
+                    df_check.columns
+                    .astype(str)
                     .str.strip()
                     .str.replace(r"\s+", " ", regex=True)
                 )
 
-                # ===============================
                 # ❌ SALAH FILE (IKPA)
-                # ===============================
                 if any("nilai akhir" in c.lower() for c in df_check.columns):
                     st.error(
                         "GAGAL UPLOAD!\n\n"
@@ -6081,7 +6082,7 @@ def page_admin():
                     st.stop()
 
                 # ===============================
-                # VALIDASI KOLOM WAJIB
+                # VALIDASI KOLOM WAJIB (PAKAI df_check)
                 # ===============================
                 REQUIRED_COLS = [
                     "No",
@@ -6091,11 +6092,14 @@ def page_admin():
                     "Nama Pemegang KKP",
                     "Limit KKP",
                     "Periode",
-                    "Total Transaksi (nilai tagihan terkait APBN)",
-                    "Nilai Transaksi (nilai SPM)"
+                    "Total Transaksi",
+                    "Nilai Transaksi"
                 ]
 
-                missing_cols = [c for c in REQUIRED_COLS if c not in df.columns]
+                missing_cols = [
+                    c for c in REQUIRED_COLS
+                    if not any(c.lower() in col.lower() for col in df_check.columns)
+                ]
 
                 if missing_cols:
                     raise ValueError(
@@ -6103,13 +6107,10 @@ def page_admin():
                         "\n".join(f"- {c}" for c in missing_cols)
                     )
 
-
                 # ===============================
-                # PERIODE KKP (RENTANG TAHUNAN)
+                # PERIODE KKP (TAHUNAN)
                 # ===============================
-                month_preview = "JAN–DES"
                 period_key_preview = (month_preview, str(upload_year_kkp))
-
 
                 # ===============================
                 # ℹ️ INFO DUPLIKASI
@@ -6133,6 +6134,9 @@ def page_admin():
                 st.error(f"Gagal membaca file KKP: {e}")
                 confirm_replace_kkp = False
 
+        # ===============================
+        # 🔄 PROSES DATA (DATA LAYER)
+        # ===============================
         if st.button(
             " Proses Data KKP",
             type="primary",
@@ -6144,7 +6148,7 @@ def page_admin():
                 df_kkp = process_excel_kkp(uploaded_file_kkp)
 
                 if df_kkp is None or df_kkp.empty:
-                    st.error(" Gagal memproses data KKP.")
+                    st.error("Gagal memproses data KKP.")
                     st.stop()
 
                 period_key = (month_preview, str(upload_year_kkp))
@@ -6177,12 +6181,12 @@ def page_admin():
                     )
 
                     st.success(
-                        f" Data KKP {month_preview} {upload_year_kkp} berhasil disimpan."
+                        f"Data KKP {month_preview} {upload_year_kkp} berhasil disimpan."
                     )
                     st.snow()
 
                 except Exception as e:
-                    st.error(f" Gagal menyimpan data KKP: {e}")
+                    st.error(f"Gagal menyimpan data KKP: {e}")
 
 
         # ============================================================
