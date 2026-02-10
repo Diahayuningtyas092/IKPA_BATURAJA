@@ -2056,8 +2056,13 @@ def process_excel_kkp(uploaded_file):
     # =========================
     # 7. FINAL CLEAN
     # =========================
-    df = df.dropna(subset=["Nama Pemegang KKP", "Nomor Kartu"])
+    df = df.dropna(
+        how="all",
+        subset=["Satker", "Nama Pemegang KKP"]
+    )
+
     df = df.reset_index(drop=True)
+
 
     return df
 
