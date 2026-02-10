@@ -2003,6 +2003,13 @@ def process_excel_kkp(uploaded_file):
                 break
 
     df = df.rename(columns=rename_map)
+    
+    # =========================
+    # FILTER BARIS DATA SEBENARNYA (KRUSIAL)
+    # =========================
+    if "No" in df.columns:
+        df = df[pd.to_numeric(df["No"], errors="coerce").notna()]
+
 
     # =========================
     # 5. VALIDASI KOLOM INTI
@@ -2056,16 +2063,10 @@ def process_excel_kkp(uploaded_file):
     # =========================
     # 7. FINAL CLEAN
     # =========================
-    df = df.dropna(
-        how="all",
-        subset=["Satker", "Nama Pemegang KKP"]
-    )
-
     df = df.reset_index(drop=True)
 
 
     return df
-
 
 
 # ============================
