@@ -1932,6 +1932,96 @@ def load_data_ikpa_kppn_from_github():
 
     return data
 
+
+# FILE KKP
+import pandas as pd
+import streamlit as st
+import re
+
+def process_excel_kkp(uploaded_file):
+    # =========================
+    # 1. BACA EXCEL
+    # =========================
+    df = pd.read_excel(uploaded_file)
+
+    # =========================
+    # 2. NORMALISASI HEADER
+    # =========================
+    df.columns = (
+        df.columns
+        .astype(str)
+        .str.replace(r"\s+", " ", regex=True)   # hapus newline & spasi ganda
+        .str.strip()
+    )
+
+    # Mapping header Excel → header standar
+    COLUMN_MAP = {
+        "No": "No",
+        "BA/KL": "BA/KL",
+        "Satker": "Satker",
+        "Nomor Kartu": "Nomor Kartu",
+        "Nama Pemegang KKP": "Nama Pemegang KKP",
+        "Limit KKP": "Limit KKP",
+        "Jenis KKP": "Jenis KKP",
+        "Bank Penerbit KKP": "Bank Penerbit KKP",
+        "Periode": "Periode",
+        "Total Transaksi (nilai tagihan terkait APBN)": "Total Transaksi (nilai tagihan terkait APBN)",
+        "Nilai Transaksi (nilai SPM)": "Nilai Transaksi (nilai SPM)",
+    }
+
+    # Rename kolom jika cocok
+    for col in df.columns:
+        for key in COLUMN_MAP:
+            if key.lower() in col.lower():
+                df.rename(columns={col: COLUMN_MAP[key]}, inplace=True)
+
+    # =========================
+    # 3. VALIDASI KOLOM WAJIB
+    # =========================
+    missing_cols = [c for c in COLUMN_MAP.values() if c not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Kolom tidak ditemukan: {missing_cols}")
+
+    df = df[list(COLUMN_MAP.values())]
+
+    # =========================
+    # 4. PERBAIKAN TIPE DATA
+    # =========================
+    # Nomor kartu → STRING (supaya tidak rusak)
+    df["Nomor Kartu"] = (
+        df["Nomor Kartu"]
+        .astype(str)
+        .str.replace(".0", "", regex=False)
+    )
+
+    # Periode → datetime bulanan
+    df["Periode"] = pd.to_datetime(df["Periode"], errors="coerce")
+
+    # Kolom numerik
+    NUM_COLS = [
+        "Limit KKP",
+        "Total Transaksi (nilai tagihan terkait APBN)",
+        "Nilai Transaksi (nilai SPM)"
+    ]
+
+    for col in NUM_COLS:
+        df[col] = (
+            df[col]
+            .astype(str)
+            .str.replace(r"[^\d]", "", regex=True)
+            .replace("", "0")
+            .astype(int)
+        )
+
+    # =========================
+    # 5. FINAL CLEAN
+    # =========================
+    df = df.dropna(subset=["Nama Pemegang KKP", "Nomor Kartu"])
+    df = df.reset_index(drop=True)
+
+    return df
+
+
 # ============================
 #  BACA TEMPLATE FILE
 # ============================
@@ -4736,11 +4826,9 @@ def page_trend():
         menu_highlights()
    
 # ============================================================
-# 🔐 HALAMAN 3: ADMIN 
+# HALAMAN 3: ADMIN 
 # ============================================================
-# ======================================================================================
-# PROCESS IKPA
-# ======================================================================================
+
 # ======================================================================================
 # DETECT DIPA HEADER (ROBUST VERSION)
 # ======================================================================================
@@ -5890,6 +5978,197 @@ def page_admin():
 
                     except Exception as e:
                         st.error(f"❌ Terjadi error saat memproses file DIPA: {e}")
+                        
+        # ===============================
+        # 🧾 SUBMENU UPLOAD DATA KKP
+        # ===============================
+        st.markdown("---")
+        st.subheader("💳 Upload Data Kartu Kredit Pemerintah (KKP)")
+
+        # ===============================
+        # 📅 PILIH TAHUN
+        # ===============================
+        upload_year_kkp = st.selectbox(
+            "Pilih Tahun Data KKP",
+            list(range(2020, 2031)),
+            index=list(range(2020, 2031)).index(datetime.now().year),
+            key="tahun_kkp"
+        )
+
+        st.caption(
+            "Sistem menerima data Kartu Kredit Pemerintah (KKP) "
+            "berdasarkan Satker, Pemegang Kartu, dan Periode Transaksi."
+        )
+
+        # ===============================
+        # 📂 UPLOAD FILE
+        # ===============================
+        uploaded_file_kkp = st.file_uploader(
+            "Pilih file Excel Data KKP",
+            type=["xlsx", "xls"],
+            key="file_kkp"
+        )
+
+        # ===============================
+        # 🔐 INISIALISASI SESSION
+        # ===============================
+        if "data_storage_kkp" not in st.session_state:
+            st.session_state.data_storage_kkp = {}
+
+        if uploaded_file_kkp is not None:
+            try:
+                # ===============================
+                # 🔍 BACA PREVIEW HEADER
+                # ===============================
+                df_check = pd.read_excel(uploaded_file_kkp)
+
+                df_check.columns = (
+                    df_check.columns.astype(str)
+                    .str.strip()
+                    .str.replace(r"\s+", " ", regex=True)
+                )
+
+                # ===============================
+                # ❌ SALAH FILE (IKPA)
+                # ===============================
+                if any("nilai akhir" in c.lower() for c in df_check.columns):
+                    st.error(
+                        "GAGAL UPLOAD!\n\n"
+                        "File yang Anda upload adalah **DATA IKPA**.\n"
+                        "Halaman ini hanya menerima **DATA KKP**."
+                    )
+                    st.stop()
+
+                # ===============================
+                # ✅ VALIDASI KOLOM WAJIB
+                # ===============================
+                REQUIRED_COLS = [
+                    "BA/KL",
+                    "Satker",
+                    "Nomor Kartu",
+                    "Nama Pemegang KKP",
+                    "Limit KKP",
+                    "Periode"
+                ]
+
+                missing = [
+                    c for c in REQUIRED_COLS
+                    if not any(c.lower() in col.lower() for col in df_check.columns)
+                ]
+
+                if missing:
+                    st.error(
+                        "GAGAL UPLOAD!\n\n"
+                        f"Kolom wajib tidak ditemukan:\n{missing}"
+                    )
+                    st.stop()
+
+                # ===============================
+                # 🔍 DETEKSI BULAN (HEADER / DATA)
+                # ===============================
+                uploaded_file_kkp.seek(0)
+                df_info = pd.read_excel(uploaded_file_kkp, header=None)
+
+                MONTH_MAP = {
+                    "JAN": "JANUARI", "FEB": "FEBRUARI", "MAR": "MARET",
+                    "APR": "APRIL", "MEI": "MEI", "JUN": "JUNI",
+                    "JUL": "JULI", "AGU": "AGUSTUS",
+                    "SEP": "SEPTEMBER", "OKT": "OKTOBER",
+                    "NOV": "NOVEMBER", "DES": "DESEMBER"
+                }
+
+                month_preview = None
+
+                for r in range(min(6, df_info.shape[0])):
+                    for c in range(min(6, df_info.shape[1])):
+                        cell = str(df_info.iloc[r, c]).upper()
+                        for k, v in MONTH_MAP.items():
+                            if k in cell:
+                                month_preview = v
+                                break
+                        if month_preview:
+                            break
+                    if month_preview:
+                        break
+
+                if not month_preview:
+                    month_preview = "UNKNOWN"
+
+                period_key_preview = (month_preview, str(upload_year_kkp))
+
+                # ===============================
+                # ℹ️ INFO DUPLIKASI
+                # ===============================
+                if period_key_preview in st.session_state.data_storage_kkp:
+                    st.warning(
+                        f"Data KKP periode **{month_preview} {upload_year_kkp}** sudah ada."
+                    )
+                    confirm_replace_kkp = st.checkbox(
+                        "Ganti data KKP yang sudah ada",
+                        key=f"confirm_replace_kkp_{month_preview}_{upload_year_kkp}"
+                    )
+                else:
+                    confirm_replace_kkp = True
+                    st.info(
+                        f"Akan mengunggah data KKP "
+                        f"periode **{month_preview} {upload_year_kkp}**"
+                    )
+
+            except Exception as e:
+                st.error(f"Gagal membaca file KKP: {e}")
+                confirm_replace_kkp = False
+
+        if st.button(
+            " Proses Data KKP",
+            type="primary",
+            disabled=not confirm_replace_kkp,
+            key="proses_kkp"
+        ):
+            with st.spinner("Memproses data KKP..."):
+
+                df_kkp = process_excel_kkp(uploaded_file_kkp)
+
+                if df_kkp is None or df_kkp.empty:
+                    st.error(" Gagal memproses data KKP.")
+                    st.stop()
+
+                period_key = (month_preview, str(upload_year_kkp))
+                filename = f"DATA_KKP_{month_preview}_{upload_year_kkp}.xlsx"
+
+                try:
+                    # 💾 SIMPAN KE SESSION
+                    st.session_state.data_storage_kkp[period_key] = df_kkp
+
+                    # 💾 SIMPAN KE GITHUB
+                    excel_bytes = io.BytesIO()
+                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                        df_kkp.to_excel(
+                            writer,
+                            index=False,
+                            sheet_name="Data KKP"
+                        )
+                    excel_bytes.seek(0)
+
+                    save_file_to_github(
+                        excel_bytes.getvalue(),
+                        filename,
+                        folder="data_kkp"
+                    )
+
+                    log_activity(
+                        menu="Upload Data",
+                        action="Upload Data KKP",
+                        detail=f"{uploaded_file_kkp.name} | {month_preview} {upload_year_kkp}"
+                    )
+
+                    st.success(
+                        f" Data KKP {month_preview} {upload_year_kkp} berhasil disimpan."
+                    )
+                    st.snow()
+
+                except Exception as e:
+                    st.error(f" Gagal menyimpan data KKP: {e}")
+
 
         # ============================================================
         # SUBMENU: Upload Data Referensi
