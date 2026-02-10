@@ -1946,6 +1946,39 @@ def find_header_row_kkp(uploaded_file, max_rows=10):
             return i
     return None
 
+def normalize_kkp_for_dashboard(df):
+    """
+    Standarisasi kolom agar konsisten seperti Kartu Pengawasan KKP
+    """
+    df = df.copy()
+
+    # Pastikan kolom inti ada
+    REQUIRED_ORDER = [
+        "BA/KL",
+        "Satker",
+        "Nomor Kartu",
+        "Nama Pemegang KKP",
+        "Limit KKP",
+        "Jenis KKP",
+        "Bank Penerbit KKP",
+        "Periode",
+        "Total Transaksi (nilai tagihan terkait APBN)",
+        "Nilai Transaksi (nilai SPM)"
+    ]
+
+    for col in REQUIRED_ORDER:
+        if col not in df.columns:
+            df[col] = None
+
+    # Urutkan kolom seperti kartu pengawasan
+    df = df[REQUIRED_ORDER]
+
+    # Tambahan kolom bantu
+    df["Bulan"] = df["Periode"].dt.strftime("%Y-%m")
+    df["Tahun"] = df["Periode"].dt.year
+
+    return df
+
 
 # FILE KKP
 def process_excel_kkp(uploaded_file):
@@ -6153,56 +6186,66 @@ def page_admin():
         # ===============================
         # 🔄 PROSES DATA (DATA LAYER)
         # ===============================
-        if st.button(
-            " Proses Data KKP",
-            type="primary",
-            disabled=not confirm_replace_kkp,
-            key="proses_kkp"
-        ):
-            with st.spinner("Memproses data KKP..."):
+        with st.spinner("Memproses data KKP..."):
 
-                df_kkp = process_excel_kkp(uploaded_file_kkp)
+            # ===============================
+            # 1️⃣ BACA & BERSIHKAN DATA KKP
+            # ===============================
+            df_kkp = process_excel_kkp(uploaded_file_kkp)
 
-                if df_kkp is None or df_kkp.empty:
-                    st.error("Gagal memproses data KKP.")
-                    st.stop()
+            if df_kkp is None or df_kkp.empty:
+                st.error("Gagal memproses data KKP.")
+                st.stop()
 
-                period_key = (month_preview, str(upload_year_kkp))
-                filename = f"DATA_KKP_{month_preview}_{upload_year_kkp}.xlsx"
+            # ===============================
+            # 2️⃣ NORMALISASI UNTUK DASHBOARD
+            # ===============================
+            df_kkp = normalize_kkp_for_dashboard(df_kkp)
 
-                try:
-                    # 💾 SIMPAN KE SESSION
-                    st.session_state.data_storage_kkp[period_key] = df_kkp
+            if df_kkp.empty:
+                st.error("Data KKP kosong setelah normalisasi.")
+                st.stop()
 
-                    # 💾 SIMPAN KE GITHUB
-                    excel_bytes = io.BytesIO()
-                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                        df_kkp.to_excel(
-                            writer,
-                            index=False,
-                            sheet_name="Data KKP"
-                        )
-                    excel_bytes.seek(0)
+            # ===============================
+            # 3️⃣ SIMPAN DATA
+            # ===============================
+            period_key = (month_preview, str(upload_year_kkp))
+            filename = f"DATA_KKP_{month_preview}_{upload_year_kkp}.xlsx"
 
-                    save_file_to_github(
-                        excel_bytes.getvalue(),
-                        filename,
-                        folder="data_kkp"
+            try:
+                # 💾 SIMPAN KE SESSION
+                st.session_state.data_storage_kkp[period_key] = df_kkp
+
+                # 💾 SIMPAN KE GITHUB
+                excel_bytes = io.BytesIO()
+                with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                    df_kkp.to_excel(
+                        writer,
+                        index=False,
+                        sheet_name="Data KKP"
                     )
+                excel_bytes.seek(0)
 
-                    log_activity(
-                        menu="Upload Data",
-                        action="Upload Data KKP",
-                        detail=f"{uploaded_file_kkp.name} | {month_preview} {upload_year_kkp}"
-                    )
+                save_file_to_github(
+                    excel_bytes.getvalue(),
+                    filename,
+                    folder="data_kkp"
+                )
 
-                    st.success(
-                        f"Data KKP {month_preview} {upload_year_kkp} berhasil disimpan."
-                    )
-                    st.snow()
+                log_activity(
+                    menu="Upload Data",
+                    action="Upload Data KKP",
+                    detail=f"{uploaded_file_kkp.name} | {month_preview} {upload_year_kkp}"
+                )
 
-                except Exception as e:
-                    st.error(f"Gagal menyimpan data KKP: {e}")
+                st.success(
+                    f"Data KKP {month_preview} {upload_year_kkp} berhasil disimpan."
+                )
+                st.snow()
+
+            except Exception as e:
+                st.error(f"Gagal menyimpan data KKP: {e}")
+
 
 
         # ============================================================
@@ -6706,6 +6749,33 @@ def page_admin():
                 file_name=f"DIPA_{year_to_download}.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
+            
+
+        st.markdown("---")
+        st.subheader("📥 Download Data KKP")
+
+        if not st.session_state.data_storage_kkp:
+            st.info("Belum ada data KKP yang tersimpan.")
+        else:
+            for (bulan, tahun), df in st.session_state.data_storage_kkp.items():
+                col1, col2 = st.columns([3, 1])
+
+                with col1:
+                    st.write(f"📄 **KKP {bulan} {tahun}** — {len(df)} transaksi")
+
+                with col2:
+                    buffer = io.BytesIO()
+                    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                        df.to_excel(writer, index=False, sheet_name="Kartu Pengawasan KKP")
+                    buffer.seek(0)
+
+                    st.download_button(
+                        label="⬇️ Download",
+                        data=buffer,
+                        file_name=f"DATA_KKP_{bulan}_{tahun}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key=f"download_kkp_{bulan}_{tahun}"
+                    )
 
 
         # Download Data Satker Tidak Terdaftar
@@ -6715,45 +6785,7 @@ def page_admin():
         if st.button("📥 Generate & Download Laporan"):
             st.info("ℹ️ Fitur ini menggunakan data dari session state untuk performa optimal.")
 
-        # ===============================
-        # 📥 SUBMENU DOWNLOAD DATA KKP
-        # ===============================
-        st.markdown("---")
-        st.subheader("📥 Download Data KKP")
-
-        if not st.session_state.data_storage_kkp:
-            st.info("Belum ada data KKP yang bisa diunduh.")
-        else:
-            periode_list = sorted(
-                st.session_state.data_storage_kkp.keys(),
-                key=lambda x: (x[1], x[0])
-            )
-
-            selected_period = st.selectbox(
-                "Pilih periode KKP",
-                periode_list,
-                format_func=lambda x: f"{x[0]} {x[1]}",
-                key="download_kkp"
-            )
-
-            df_download = st.session_state.data_storage_kkp[selected_period]
-
-            excel_buffer = io.BytesIO()
-            with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
-                df_download.to_excel(
-                    writer,
-                    index=False,
-                    sheet_name="Data KKP"
-                )
-            excel_buffer.seek(0)
-
-            st.download_button(
-                label="⬇️ Download Data KKP",
-                data=excel_buffer,
-                file_name=f"DATA_KKP_{selected_period[0]}_{selected_period[1]}.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-
+        
 
     # ============================================================
     # TAB 4: DOWNLOAD TEMPLATE
