@@ -6186,65 +6186,75 @@ def page_admin():
         # ===============================
         # 🔄 PROSES DATA (DATA LAYER)
         # ===============================
-        with st.spinner("Memproses data KKP..."):
-
-            # ===============================
-            # 1️⃣ BACA & BERSIHKAN DATA KKP
-            # ===============================
-            df_kkp = process_excel_kkp(uploaded_file_kkp)
-
-            if df_kkp is None or df_kkp.empty:
-                st.error("Gagal memproses data KKP.")
+        if st.button(
+            " Proses Data KKP",
+            type="primary",
+            disabled=not confirm_replace_kkp,
+            key="proses_kkp"
+        ):
+            if uploaded_file_kkp is None:
+                st.warning("Silakan upload file KKP terlebih dahulu.")
                 st.stop()
 
-            # ===============================
-            # 2️⃣ NORMALISASI UNTUK DASHBOARD
-            # ===============================
-            df_kkp = normalize_kkp_for_dashboard(df_kkp)
+            with st.spinner("Memproses data KKP..."):
 
-            if df_kkp.empty:
-                st.error("Data KKP kosong setelah normalisasi.")
-                st.stop()
+                # ===============================
+                # 1️⃣ BACA & BERSIHKAN DATA KKP
+                # ===============================
+                df_kkp = process_excel_kkp(uploaded_file_kkp)
 
-            # ===============================
-            # 3️⃣ SIMPAN DATA
-            # ===============================
-            period_key = (month_preview, str(upload_year_kkp))
-            filename = f"DATA_KKP_{month_preview}_{upload_year_kkp}.xlsx"
+                if df_kkp is None or df_kkp.empty:
+                    st.error("Gagal memproses data KKP.")
+                    st.stop()
 
-            try:
-                # 💾 SIMPAN KE SESSION
-                st.session_state.data_storage_kkp[period_key] = df_kkp
+                # ===============================
+                # 2️⃣ NORMALISASI UNTUK DASHBOARD
+                # ===============================
+                df_kkp = normalize_kkp_for_dashboard(df_kkp)
 
-                # 💾 SIMPAN KE GITHUB
-                excel_bytes = io.BytesIO()
-                with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                    df_kkp.to_excel(
-                        writer,
-                        index=False,
-                        sheet_name="Data KKP"
+                if df_kkp.empty:
+                    st.error("Data KKP kosong setelah normalisasi.")
+                    st.stop()
+
+                # ===============================
+                # 3️⃣ SIMPAN DATA
+                # ===============================
+                period_key = (month_preview, str(upload_year_kkp))
+                filename = f"DATA_KKP_{month_preview}_{upload_year_kkp}.xlsx"
+
+                try:
+                    # 💾 SIMPAN KE SESSION
+                    st.session_state.data_storage_kkp[period_key] = df_kkp
+
+                    # 💾 SIMPAN KE GITHUB
+                    excel_bytes = io.BytesIO()
+                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                        df_kkp.to_excel(
+                            writer,
+                            index=False,
+                            sheet_name="Data KKP"
+                        )
+                    excel_bytes.seek(0)
+
+                    save_file_to_github(
+                        excel_bytes.getvalue(),
+                        filename,
+                        folder="data_kkp"
                     )
-                excel_bytes.seek(0)
 
-                save_file_to_github(
-                    excel_bytes.getvalue(),
-                    filename,
-                    folder="data_kkp"
-                )
+                    log_activity(
+                        menu="Upload Data",
+                        action="Upload Data KKP",
+                        detail=f"{uploaded_file_kkp.name} | {month_preview} {upload_year_kkp}"
+                    )
 
-                log_activity(
-                    menu="Upload Data",
-                    action="Upload Data KKP",
-                    detail=f"{uploaded_file_kkp.name} | {month_preview} {upload_year_kkp}"
-                )
+                    st.success(
+                        f"Data KKP {month_preview} {upload_year_kkp} berhasil disimpan."
+                    )
+                    st.snow()
 
-                st.success(
-                    f"Data KKP {month_preview} {upload_year_kkp} berhasil disimpan."
-                )
-                st.snow()
-
-            except Exception as e:
-                st.error(f"Gagal menyimpan data KKP: {e}")
+                except Exception as e:
+                    st.error(f"Gagal menyimpan data KKP: {e}")
 
 
 
