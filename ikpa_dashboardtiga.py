@@ -2007,19 +2007,31 @@ def process_excel_kkp(uploaded_file):
     # =========================
     # 5. VALIDASI KOLOM INTI
     # =========================
-    CORE_COLS = [
-        "BA/KL",
-        "Satker",
-        "Nomor Kartu",
-        "Nama Pemegang KKP"
-    ]
+    # =========================
+    # VALIDASI KOLOM INTI (KEYWORD-BASED)
+    # =========================
+    CORE_KEYWORDS = {
+        "BA/KL": ["BA/KL"],
+        "Satker": ["SATKER"],
+        "Nomor Kartu": ["KARTU"],
+        "Nama Pemegang KKP": ["PEMEGANG"]
+    }
 
-    missing = [c for c in CORE_COLS if c not in df.columns]
-    if missing:
+    missing_core = []
+
+    for name, keys in CORE_KEYWORDS.items():
+        if not any(
+            any(k in col for k in keys)
+            for col in df.columns
+        ):
+            missing_core.append(name)
+
+    if missing_core:
         raise Exception(
             "File KKP tidak valid. Kolom inti tidak ditemukan:\n" +
-            "\n".join(f"- {c}" for c in missing)
+            "\n".join(f"- {c}" for c in missing_core)
         )
+
 
     # =========================
     # 6. CAST TIPE DATA
@@ -6098,28 +6110,21 @@ def page_admin():
                 # ===============================
                 # VALIDASI KOLOM WAJIB (PAKAI df_check)
                 # ===============================
-                REQUIRED_COLS = [
-                    "No",
-                    "BA/KL",
-                    "Satker",
-                    "Nomor Kartu",
-                    "Nama Pemegang KKP",
-                    "Limit KKP",
-                    "Periode",
-                    "Total Transaksi",
-                    "Nilai Transaksi"
-                ]
+                # ===============================
+                # VALIDASI RINGAN SAJA (UI)
+                # ===============================
+                REQUIRED_KEYWORDS = ["BA/KL", "SATKER", "PERIODE"]
 
-                missing_cols = [
-                    c for c in REQUIRED_COLS
-                    if not any(c.lower() in col.lower() for col in df_check.columns)
-                ]
-
-                if missing_cols:
-                    raise ValueError(
-                        "Kolom wajib tidak ditemukan:\n" +
-                        "\n".join(f"- {c}" for c in missing_cols)
+                if not all(
+                    any(k.lower() in col.lower() for col in df_check.columns)
+                    for k in REQUIRED_KEYWORDS
+                ):
+                    st.error(
+                        "GAGAL UPLOAD!\n\n"
+                        "Struktur file tidak dikenali sebagai laporan KKP KPPN."
                     )
+                    st.stop()
+
 
                 # ===============================
                 # PERIODE KKP (TAHUNAN)
