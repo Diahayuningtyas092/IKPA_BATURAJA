@@ -6220,35 +6220,60 @@ def page_admin():
                 # SIMPAN REFERENSI KE GITHUB
                 # ============================================================
                 try:
-                    excel_bytes_ref = io.BytesIO()
-                    with pd.ExcelWriter(excel_bytes_ref, engine='openpyxl') as writer:
-                        st.session_state.reference_df.to_excel(
-                            writer,
-                            index=False,
-                            sheet_name='Data Referensi'
-                        )
+                    # ===============================
+                    # 1️⃣ LOAD FILE REFERENSI DARI GITHUB
+                    # ===============================
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo_name = st.secrets["GITHUB_REPO"]
 
-                        workbook = writer.book
-                        worksheet = writer.sheets['Data Referensi']
-                        for cell in worksheet[1]:
-                            cell.font = Font(bold=True, color="FFFFFF")
-                            cell.fill = PatternFill(
-                                start_color="366092",
-                                end_color="366092",
-                                fill_type="solid"
-                            )
-                            cell.alignment = Alignment(horizontal="center", vertical="center")
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
 
-                    excel_bytes_ref.seek(0)
+                    file_path = "templates/Template_Data_Referensi.xlsx"
 
-                    save_file_to_github(
-                        excel_bytes_ref.getvalue(),
-                        "Template_Data_Referensi.xlsx",
-                        folder="templates"
+                    existing_file = repo.get_contents(file_path)
+                    file_content = base64.b64decode(existing_file.content)
+
+                    df_existing = pd.read_excel(io.BytesIO(file_content))
+
+                    # ===============================
+                    # 2️⃣ TAMBAH ROW BARU
+                    # ===============================
+                    next_no = len(df_existing) + 1
+
+                    new_row = pd.DataFrame([{
+                        "No": next_no,
+                        "Kode BA": kode_ba,
+                        "K/L": kl,
+                        "Kode Satker": kode_satker,
+                        "Uraian Satker-SINGKAT": satker_singkat,
+                        "Uraian Satker-LENGKAP": satker_lengkap
+                    }])
+
+                    df_updated = pd.concat([df_existing, new_row], ignore_index=True)
+
+                    # ===============================
+                    # 3️⃣ SIMPAN ULANG (REPLACE FILE YANG SAMA)
+                    # ===============================
+                    excel_bytes = io.BytesIO()
+
+                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                        df_updated.to_excel(writer, index=False)
+
+                    excel_bytes.seek(0)
+
+                    repo.update_file(
+                        file_path,
+                        "Update referensi (manual input)",
+                        excel_bytes.getvalue(),
+                        existing_file.sha
                     )
-                    st.success("💾 Data Referensi berhasil disimpan ke GitHub (templates/Template_Data_Referensi.xlsx).")
+
+                    st.success("✅ Data berhasil ditambahkan dan file referensi diperbarui di GitHub")
+                    st.snow()
+
                 except Exception as e:
-                    st.error(f"❌ Gagal menyimpan Data Referensi ke GitHub: {e}")
+                    st.error(f"Gagal update referensi: {e}")
 
                 # ============================================================
                 # 🔁 CLEAR CACHE & RERUN (WAJIB)
