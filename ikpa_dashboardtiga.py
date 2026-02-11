@@ -6325,23 +6325,276 @@ def page_admin():
     
     
         #UPLOAD MANUAL DATA REFERENSI
+        # ============================================================
+        # SUBMENU: Upload Data Referensi
+        # ============================================================
+        st.markdown("---")
+        st.subheader("📚 Upload / Perbarui Data Referensi Satker & K/L")
+        st.info("""
+        - File referensi ini berisi kolom: **Kode BA, K/L, Kode Satker, Uraian Satker-SINGKAT, Uraian Satker-LENGKAP**  
+        - Saat diupload, sistem akan **menggabungkan** dengan data lama:  
+        🔹 Jika `Kode Satker` sudah ada → baris lama akan **diganti**  
+        🔹 Jika `Kode Satker` belum ada → akan **ditambahkan baru**
+        """)
+
+        uploaded_ref = st.file_uploader(
+            "📤 Pilih File Data Referensi Satker & K/L",
+            type=['xlsx', 'xls'],
+            key="ref_upload"
+        )
+
+        if uploaded_ref is not None:
+            try:
+                new_ref = pd.read_excel(uploaded_ref)
+                new_ref.columns = [c.strip() for c in new_ref.columns]
+
+                required = [
+                    'Kode BA', 'K/L', 'Kode Satker',
+                    'Uraian Satker-SINGKAT', 'Uraian Satker-LENGKAP'
+                ]
+                if not all(col in new_ref.columns for col in required):
+                    st.error("❌ Kolom wajib tidak lengkap dalam file referensi.")
+                    st.stop()
+
+                # Normalisasi Kode Satker
+                new_ref['Kode Satker'] = new_ref['Kode Satker'].apply(normalize_kode_satker)
+
+                # ============================================================
+                # MERGE DENGAN REFERENSI LAMA
+                # ============================================================
+                if 'reference_df' in st.session_state and st.session_state.reference_df is not None:
+                    old_ref = st.session_state.reference_df.copy()
+
+                    if 'Kode Satker' in old_ref.columns:
+                        old_ref['Kode Satker'] = old_ref['Kode Satker'].apply(normalize_kode_satker)
+
+                    merged = pd.concat([old_ref, new_ref], ignore_index=True)
+                    merged = merged.drop_duplicates(subset=['Kode Satker'], keep='last')
+                    merged['Kode Satker'] = merged['Kode Satker'].astype(str).str.strip()
+
+                    st.session_state.reference_df = merged
+                    st.success(f"✅ Data Referensi diperbarui ({len(merged)} total baris).")
+                else:
+                    st.session_state.reference_df = new_ref
+                    st.success(f"✅ Data Referensi baru dimuat ({len(new_ref)} baris).")
+
+                # ============================================================
+                # 🔄 RE-APPLY REFERENSI KE SEMUA DATA IKPA (INI KUNCINYA)
+                # ============================================================
+                if "data_storage" in st.session_state:
+                    new_storage = {}
+                    for key, df in st.session_state.data_storage.items():
+                        df = apply_reference_short_names(df)
+                        df = create_satker_column(df)
+                        new_storage[key] = df
+                    st.session_state.data_storage = new_storage
+
+                # ============================================================
+                # SIMPAN REFERENSI KE GITHUB
+                # ============================================================
+                try:
+                    # ===============================
+                    # 1️⃣ LOAD FILE REFERENSI DARI GITHUB
+                    # ===============================
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo_name = st.secrets["GITHUB_REPO"]
+
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
+
+                    file_path = "templates/Template_Data_Referensi.xlsx"
+
+                    existing_file = repo.get_contents(file_path)
+                    file_content = base64.b64decode(existing_file.content)
+
+                    df_existing = pd.read_excel(io.BytesIO(file_content))
+
+                    # ===============================
+                    # 2️⃣ TAMBAH ROW BARU
+                    # ===============================
+                    next_no = len(df_existing) + 1
+
+                    new_row = pd.DataFrame([{
+                        "No": next_no,
+                        "Kode BA": kode_ba,
+                        "K/L": kl,
+                        "Kode Satker": kode_satker,
+                        "Uraian Satker-SINGKAT": satker_singkat,
+                        "Uraian Satker-LENGKAP": satker_lengkap
+                    }])
+
+                    df_updated = pd.concat([df_existing, new_row], ignore_index=True)
+
+                    # ===============================
+                    # 3️⃣ SIMPAN ULANG (REPLACE FILE YANG SAMA)
+                    # ===============================
+                    excel_bytes = io.BytesIO()
+
+                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                        df_updated.to_excel(writer, index=False)
+
+                    excel_bytes.seek(0)
+
+                    repo.update_file(
+                        file_path,
+                        "Update referensi (manual input)",
+                        excel_bytes.getvalue(),
+                        existing_file.sha
+                    )
+
+                    st.success("✅ Data berhasil ditambahkan dan file referensi diperbarui di GitHub")
+                    st.snow()
+
+                except Exception as e:
+                    st.error(f"Gagal update referensi: {e}")
+
+                # ============================================================
+                # 🔁 CLEAR CACHE & RERUN (WAJIB)
+                # ============================================================
+                st.cache_data.clear()
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"❌ Gagal memproses Data Referensi: {e}")
+    
+    
+        # ============================================================
+        # SUBMENU: Upload Data Referensi
+        # ============================================================
+        st.markdown("---")
+        st.subheader("📚 Upload / Perbarui Data Referensi Satker & K/L")
+        st.info("""
+        - File referensi ini berisi kolom: **Kode BA, K/L, Kode Satker, Uraian Satker-SINGKAT, Uraian Satker-LENGKAP**  
+        - Saat diupload, sistem akan **menggabungkan** dengan data lama:  
+        🔹 Jika `Kode Satker` sudah ada → baris lama akan **diganti**  
+        🔹 Jika `Kode Satker` belum ada → akan **ditambahkan baru**
+        """)
+
+        uploaded_ref = st.file_uploader(
+            "📤 Pilih File Data Referensi Satker & K/L",
+            type=['xlsx', 'xls'],
+            key="ref_upload"
+        )
+
+        if uploaded_ref is not None:
+            try:
+                new_ref = pd.read_excel(uploaded_ref)
+                new_ref.columns = [c.strip() for c in new_ref.columns]
+
+                required = [
+                    'Kode BA', 'K/L', 'Kode Satker',
+                    'Uraian Satker-SINGKAT', 'Uraian Satker-LENGKAP'
+                ]
+                if not all(col in new_ref.columns for col in required):
+                    st.error("❌ Kolom wajib tidak lengkap dalam file referensi.")
+                    st.stop()
+
+                # Normalisasi Kode Satker
+                new_ref['Kode Satker'] = new_ref['Kode Satker'].apply(normalize_kode_satker)
+
+                # ============================================================
+                # MERGE DENGAN REFERENSI LAMA
+                # ============================================================
+                if 'reference_df' in st.session_state and st.session_state.reference_df is not None:
+                    old_ref = st.session_state.reference_df.copy()
+
+                    if 'Kode Satker' in old_ref.columns:
+                        old_ref['Kode Satker'] = old_ref['Kode Satker'].apply(normalize_kode_satker)
+
+                    merged = pd.concat([old_ref, new_ref], ignore_index=True)
+                    merged = merged.drop_duplicates(subset=['Kode Satker'], keep='last')
+                    merged['Kode Satker'] = merged['Kode Satker'].astype(str).str.strip()
+
+                    st.session_state.reference_df = merged
+                    st.success(f"✅ Data Referensi diperbarui ({len(merged)} total baris).")
+                else:
+                    st.session_state.reference_df = new_ref
+                    st.success(f"✅ Data Referensi baru dimuat ({len(new_ref)} baris).")
+
+                # ============================================================
+                # 🔄 RE-APPLY REFERENSI KE SEMUA DATA IKPA (INI KUNCINYA)
+                # ============================================================
+                if "data_storage" in st.session_state:
+                    new_storage = {}
+                    for key, df in st.session_state.data_storage.items():
+                        df = apply_reference_short_names(df)
+                        df = create_satker_column(df)
+                        new_storage[key] = df
+                    st.session_state.data_storage = new_storage
+
+                # ============================================================
+                # SIMPAN REFERENSI KE GITHUB
+                # ============================================================
+                try:
+                    # ===============================
+                    # 1️⃣ LOAD FILE REFERENSI DARI GITHUB
+                    # ===============================
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo_name = st.secrets["GITHUB_REPO"]
+
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
+
+                    file_path = "templates/Template_Data_Referensi.xlsx"
+
+                    existing_file = repo.get_contents(file_path)
+                    file_content = base64.b64decode(existing_file.content)
+
+                    df_existing = pd.read_excel(io.BytesIO(file_content))
+
+                    # ===============================
+                    # 2️⃣ TAMBAH ROW BARU
+                    # ===============================
+                    next_no = len(df_existing) + 1
+
+                    new_row = pd.DataFrame([{
+                        "No": next_no,
+                        "Kode BA": kode_ba,
+                        "K/L": kl,
+                        "Kode Satker": kode_satker,
+                        "Uraian Satker-SINGKAT": satker_singkat,
+                        "Uraian Satker-LENGKAP": satker_lengkap
+                    }])
+
+                    df_updated = pd.concat([df_existing, new_row], ignore_index=True)
+
+                    # ===============================
+                    # 3️⃣ SIMPAN ULANG (REPLACE FILE YANG SAMA)
+                    # ===============================
+                    excel_bytes = io.BytesIO()
+
+                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                        df_updated.to_excel(writer, index=False)
+
+                    excel_bytes.seek(0)
+
+                    repo.update_file(
+                        file_path,
+                        "Update referensi (manual input)",
+                        excel_bytes.getvalue(),
+                        existing_file.sha
+                    )
+
+                    st.success("✅ Data berhasil ditambahkan dan file referensi diperbarui di GitHub")
+                    st.snow()
+
+                except Exception as e:
+                    st.error(f"Gagal update referensi: {e}")
+
+                # ============================================================
+                # 🔁 CLEAR CACHE & RERUN (WAJIB)
+                # ============================================================
+                st.cache_data.clear()
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"❌ Gagal memproses Data Referensi: {e}")
+    
+    
+        #UPLOAD MANUAL DATA REFERENSI
+        # =====================================================
         st.markdown("---")
         st.markdown("##  Input Data Referensi Manual")
-
-        # ===============================
-        # INIT SESSION REFERENSI
-        # ===============================
-        if "data_referensi" not in st.session_state:
-            st.session_state.data_referensi = pd.DataFrame(
-                columns=[
-                    "No",
-                    "Kode BA",
-                    "K/L",
-                    "Kode Satker",
-                    "Uraian Satker-SINGKAT",
-                    "Uraian Satker-LENGKAP"
-                ]
-            )
 
         with st.form("form_referensi_manual", clear_on_submit=True):
 
@@ -6364,61 +6617,71 @@ def page_admin():
                     st.warning("Kode Satker dan Uraian Satker-LENGKAP wajib diisi.")
                     st.stop()
 
-                # ===============================
-                # CEK DUPLIKASI
-                # ===============================
-                if kode_satker in st.session_state.data_referensi["Kode Satker"].astype(str).values:
-                    st.warning("Kode Satker sudah ada dalam referensi.")
-                    st.stop()
-
-                # ===============================
-                # AUTO NOMOR
-                # ===============================
-                next_no = len(st.session_state.data_referensi) + 1
-
-                new_row = pd.DataFrame([{
-                    "No": next_no,
-                    "Kode BA": kode_ba,
-                    "K/L": kl,
-                    "Kode Satker": kode_satker,
-                    "Uraian Satker-SINGKAT": satker_singkat,
-                    "Uraian Satker-LENGKAP": satker_lengkap
-                }])
-
-                # ===============================
-                # TAMBAH KE SESSION
-                # ===============================
-                st.session_state.data_referensi = pd.concat(
-                    [st.session_state.data_referensi, new_row],
-                    ignore_index=True
-                )
-
-                # ===============================
-                # SIMPAN OTOMATIS KE GITHUB
-                # ===============================
                 try:
-                    excel_bytes = io.BytesIO()
+                    # ===============================
+                    # 1️⃣ LOAD FILE TEMPLATE DARI GITHUB
+                    # ===============================
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo_name = st.secrets["GITHUB_REPO"]
 
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
+
+                    file_path = "templates/Template_Data_Referensi.xlsx"
+                    existing_file = repo.get_contents(file_path)
+
+                    file_content = base64.b64decode(existing_file.content)
+                    df_existing = pd.read_excel(io.BytesIO(file_content), dtype=str)
+
+                    # Pastikan kolom string
+                    df_existing["Kode Satker"] = df_existing["Kode Satker"].astype(str)
+
+                    # ===============================
+                    # 2️⃣ CEK DUPLIKASI DI FILE ASLI
+                    # ===============================
+                    if kode_satker in df_existing["Kode Satker"].values:
+                        st.warning("Kode Satker sudah ada dalam template.")
+                        st.stop()
+
+                    # ===============================
+                    # 3️⃣ AUTO NOMOR DARI FILE ASLI
+                    # ===============================
+                    next_no = len(df_existing) + 1
+
+                    new_row = pd.DataFrame([{
+                        "No": next_no,
+                        "Kode BA": kode_ba,
+                        "K/L": kl,
+                        "Kode Satker": kode_satker,
+                        "Uraian Satker-SINGKAT": satker_singkat,
+                        "Uraian Satker-LENGKAP": satker_lengkap
+                    }])
+
+                    df_updated = pd.concat([df_existing, new_row], ignore_index=True)
+
+                    # ===============================
+                    # 4️⃣ UPDATE FILE YANG SAMA
+                    # ===============================
+                    excel_bytes = io.BytesIO()
                     with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                        st.session_state.data_referensi.to_excel(
-                            writer,
-                            index=False,
-                            sheet_name="Referensi"
-                        )
+                        df_updated.to_excel(writer, index=False)
 
                     excel_bytes.seek(0)
 
-                    save_file_to_github(
+                    repo.update_file(
+                        file_path,
+                        f"Tambah referensi manual: {kode_satker}",
                         excel_bytes.getvalue(),
-                        "Template_Data_Referensi.xlsx",
-                        folder="data_referensi"
+                        existing_file.sha
                     )
 
-                    st.success("✅ Data referensi berhasil ditambahkan & otomatis diupdate ke GitHub")
+                    st.success("✅ Data berhasil ditambahkan ke template dan diperbarui di GitHub")
                     st.snow()
+                    st.rerun()
 
                 except Exception as e:
-                    st.error(f"Gagal update GitHub: {e}")
+                    st.error(f"Gagal update template: {e}")
+
 
 
     # ============================================================
