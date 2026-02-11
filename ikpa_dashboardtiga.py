@@ -6606,6 +6606,86 @@ def page_admin():
 
                 except Exception as e:
                     st.error(f"Gagal menghapus data KKP: {e}")
+        
+        # HAPUS DATA REFERENSI
+        st.markdown("---")
+        st.markdown("## 🗑 Hapus Data Referensi")
+
+        try:
+            # ===============================
+            # 1️⃣ LOAD DATA DARI GITHUB
+            # ===============================
+            token = st.secrets["GITHUB_TOKEN"]
+            repo_name = st.secrets["GITHUB_REPO"]
+
+            g = Github(auth=Auth.Token(token))
+            repo = g.get_repo(repo_name)
+
+            file_path = "templates/Template_Data_Referensi.xlsx"
+            existing_file = repo.get_contents(file_path)
+            file_content = base64.b64decode(existing_file.content)
+
+            df_referensi = pd.read_excel(io.BytesIO(file_content))
+
+            if df_referensi.empty:
+                st.info("Data referensi kosong.")
+            else:
+
+                # ===============================
+                # 2️⃣ BUAT PILIHAN DROPDOWN
+                # ===============================
+                df_referensi["Label"] = (
+                    df_referensi["Kode Satker"].astype(str)
+                    + " - "
+                    + df_referensi["Uraian Satker-SINGKAT"].astype(str)
+                )
+
+                selected_label = st.selectbox(
+                    "Pilih Satker yang akan dihapus",
+                    df_referensi["Label"].tolist()
+                )
+
+                if st.button("Hapus Data Referensi", type="primary"):
+
+                    # ===============================
+                    # 3️⃣ FILTER DATA
+                    # ===============================
+                    df_updated = df_referensi[
+                        df_referensi["Label"] != selected_label
+                    ].copy()
+
+                    # Hapus kolom Label
+                    df_updated = df_updated.drop(columns=["Label"])
+
+                    # ===============================
+                    # 4️⃣ RAPIKAN NOMOR
+                    # ===============================
+                    df_updated = df_updated.reset_index(drop=True)
+                    df_updated["No"] = df_updated.index + 1
+
+                    # ===============================
+                    # 5️⃣ UPDATE FILE DI GITHUB
+                    # ===============================
+                    excel_bytes = io.BytesIO()
+
+                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                        df_updated.to_excel(writer, index=False)
+
+                    excel_bytes.seek(0)
+
+                    repo.update_file(
+                        file_path,
+                        f"Hapus referensi: {selected_label}",
+                        excel_bytes.getvalue(),
+                        existing_file.sha
+                    )
+
+                    st.success("✅ Data berhasil dihapus dan file diperbarui di GitHub")
+                    st.experimental_rerun()
+
+        except Exception as e:
+            st.error(f"Gagal memuat atau menghapus referensi: {e}")
+
 
 
     # ============================================================
