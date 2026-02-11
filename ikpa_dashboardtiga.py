@@ -1731,6 +1731,45 @@ def load_DATA_DIPA_from_github():
     return True
 
 
+# ============================================================
+# LOAD TEMPLATE REFERENSI (TEMPLATES FOLDER SAJA)
+# ============================================================
+def load_template_referensi_from_github():
+    token = st.secrets["GITHUB_TOKEN"]
+    repo_name = st.secrets["GITHUB_REPO"]
+
+    g = Github(auth=Auth.Token(token))
+    repo = g.get_repo(repo_name)
+
+    file_path = "templates/Template_Data_Referensi.xlsx"
+    existing_file = repo.get_contents(file_path)
+
+    file_content = base64.b64decode(existing_file.content)
+    df = pd.read_excel(io.BytesIO(file_content), dtype=str)
+
+    return df, repo, existing_file
+
+
+# ============================================================
+# UPDATE TEMPLATE REFERENSI (REPLACE FILE YANG SAMA)
+# ============================================================
+def update_template_referensi_github(df_updated, repo, existing_file, message):
+    file_path = "templates/Template_Data_Referensi.xlsx"
+
+    excel_bytes = io.BytesIO()
+    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+        df_updated.to_excel(writer, index=False)
+
+    excel_bytes.seek(0)
+
+    repo.update_file(
+        file_path,
+        message,
+        excel_bytes.getvalue(),
+        existing_file.sha
+    )
+
+
 # Save any file (Excel/template) to your GitHub repo
 def save_file_to_github(content_bytes, filename, folder):
     token = st.secrets["GITHUB_TOKEN"]
@@ -6608,8 +6647,9 @@ def page_admin():
                     st.error(f"Gagal menghapus data KKP: {e}")
         
         # HAPUS DATA REFERENSI
+        # =====================================================
         st.markdown("---")
-        st.markdown("## 🗑 Hapus Data Referensi")
+        st.markdown("## Hapus Data Referensi")
 
         try:
             # ===============================
@@ -6623,38 +6663,40 @@ def page_admin():
 
             file_path = "templates/Template_Data_Referensi.xlsx"
             existing_file = repo.get_contents(file_path)
-            file_content = base64.b64decode(existing_file.content)
 
-            df_referensi = pd.read_excel(io.BytesIO(file_content))
+            file_content = base64.b64decode(existing_file.content)
+            df_referensi = pd.read_excel(io.BytesIO(file_content), dtype=str)
 
             if df_referensi.empty:
                 st.info("Data referensi kosong.")
             else:
+                # ===============================
+                # 2️⃣ BUAT LABEL DROPDOWN
+                # ===============================
+                df_referensi["Kode Satker"] = df_referensi["Kode Satker"].astype(str)
 
-                # ===============================
-                # 2️⃣ BUAT PILIHAN DROPDOWN
-                # ===============================
                 df_referensi["Label"] = (
-                    df_referensi["Kode Satker"].astype(str)
+                    df_referensi["Kode Satker"]
                     + " - "
                     + df_referensi["Uraian Satker-SINGKAT"].astype(str)
                 )
 
                 selected_label = st.selectbox(
                     "Pilih Satker yang akan dihapus",
-                    df_referensi["Label"].tolist()
+                    df_referensi["Label"]
                 )
 
+                # ===============================
+                # 3️⃣ TOMBOL HAPUS
+                # ===============================
                 if st.button("Hapus Data Referensi", type="primary"):
 
-                    # ===============================
-                    # 3️⃣ FILTER DATA
-                    # ===============================
+                    # Filter data
                     df_updated = df_referensi[
                         df_referensi["Label"] != selected_label
                     ].copy()
 
-                    # Hapus kolom Label
+                    # Hapus kolom helper
                     df_updated = df_updated.drop(columns=["Label"])
 
                     # ===============================
@@ -6664,7 +6706,7 @@ def page_admin():
                     df_updated["No"] = df_updated.index + 1
 
                     # ===============================
-                    # 5️⃣ UPDATE FILE DI GITHUB
+                    # 5️⃣ UPDATE FILE YANG SAMA
                     # ===============================
                     excel_bytes = io.BytesIO()
 
@@ -6680,11 +6722,12 @@ def page_admin():
                         existing_file.sha
                     )
 
-                    st.success("✅ Data berhasil dihapus dan file diperbarui di GitHub")
-                    st.experimental_rerun()
+                    st.success("✅ Data berhasil dihapus dan file template diperbarui")
+                    st.rerun()
 
         except Exception as e:
             st.error(f"Gagal memuat atau menghapus referensi: {e}")
+
 
 
 
