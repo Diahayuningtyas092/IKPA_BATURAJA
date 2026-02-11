@@ -6259,18 +6259,22 @@ def page_admin():
             except Exception as e:
                 st.error(f"❌ Gagal memproses Data Referensi: {e}")
     
-        st.markdown("## ➕ Input Data Referensi Manual")
+    
+        #UPLOAD MANUAL DATA REFERENSI
+        st.markdown("##  Input Data Referensi Manual")
 
-        # Pastikan session ada
+        # ===============================
+        # INIT SESSION REFERENSI
+        # ===============================
         if "data_referensi" not in st.session_state:
             st.session_state.data_referensi = pd.DataFrame(
                 columns=[
+                    "No",
                     "Kode BA",
-                    "Nama BA",
+                    "K/L",
                     "Kode Satker",
-                    "Nama Satker",
-                    "Kode KPPN",
-                    "Nama KPPN"
+                    "Uraian Satker-SINGKAT",
+                    "Uraian Satker-LENGKAP"
                 ]
             )
 
@@ -6280,37 +6284,45 @@ def page_admin():
 
             with col1:
                 kode_ba = st.text_input("Kode BA")
-                nama_ba = st.text_input("Nama BA")
+                kl = st.text_input("K/L")
                 kode_satker = st.text_input("Kode Satker")
 
             with col2:
-                nama_satker = st.text_input("Nama Satker")
-                kode_kppn = st.text_input("Kode KPPN")
-                nama_kppn = st.text_input("Nama KPPN")
+                satker_singkat = st.text_input("Uraian Satker-SINGKAT")
+                satker_lengkap = st.text_area("Uraian Satker-LENGKAP")
 
             submitted = st.form_submit_button("💾 Simpan Data Referensi")
 
             if submitted:
 
-                if not kode_satker or not nama_satker:
-                    st.warning("Kode Satker dan Nama Satker wajib diisi.")
+                if not kode_satker or not satker_lengkap:
+                    st.warning("Kode Satker dan Uraian Satker-LENGKAP wajib diisi.")
                     st.stop()
 
-                # Cek duplikasi
-                if kode_satker in st.session_state.data_referensi["Kode Satker"].values:
-                    st.warning("Kode Satker sudah ada dalam data referensi.")
+                # ===============================
+                # CEK DUPLIKASI
+                # ===============================
+                if kode_satker in st.session_state.data_referensi["Kode Satker"].astype(str).values:
+                    st.warning("Kode Satker sudah ada dalam referensi.")
                     st.stop()
+
+                # ===============================
+                # AUTO NOMOR
+                # ===============================
+                next_no = len(st.session_state.data_referensi) + 1
 
                 new_row = pd.DataFrame([{
+                    "No": next_no,
                     "Kode BA": kode_ba,
-                    "Nama BA": nama_ba,
+                    "K/L": kl,
                     "Kode Satker": kode_satker,
-                    "Nama Satker": nama_satker,
-                    "Kode KPPN": kode_kppn,
-                    "Nama KPPN": nama_kppn
+                    "Uraian Satker-SINGKAT": satker_singkat,
+                    "Uraian Satker-LENGKAP": satker_lengkap
                 }])
 
-                # Tambah ke session
+                # ===============================
+                # TAMBAH KE SESSION
+                # ===============================
                 st.session_state.data_referensi = pd.concat(
                     [st.session_state.data_referensi, new_row],
                     ignore_index=True
@@ -6337,12 +6349,11 @@ def page_admin():
                         folder="data_referensi"
                     )
 
-                    st.success("✅ Data referensi berhasil ditambahkan & diupdate ke GitHub")
+                    st.success("✅ Data referensi berhasil ditambahkan & otomatis diupdate ke GitHub")
                     st.snow()
 
                 except Exception as e:
                     st.error(f"Gagal update GitHub: {e}")
-
 
 
     # ============================================================
