@@ -1995,80 +1995,69 @@ def normalize_kkp_for_dashboard(df):
 # FILE KKP
 def process_excel_file_kkp(uploaded_file):
     """
-    PARSER KKP (AUTO HEADER + NORMALISASI)
+    PARSER KKP FINAL — SESUAI FORMAT FILE KAMU
     """
 
-    # ===============================
-    # 1️⃣ DETEKSI HEADER OTOMATIS
-    # ===============================
     uploaded_file.seek(0)
-    preview = pd.read_excel(uploaded_file, header=None, nrows=15)
-
-    header_row = None
-    for i in range(len(preview)):
-        row = preview.iloc[i].astype(str).str.upper()
-        if "SATKER" in " ".join(row) and "KARTU" in " ".join(row):
-            header_row = i
-            break
-
-    if header_row is None:
-        header_row = 0  # fallback aman
+    df_raw = pd.read_excel(uploaded_file, header=None)
 
     # ===============================
-    # 2️⃣ BACA ULANG DENGAN HEADER BENAR
+    # 1️⃣ HEADER ADA DI BARIS 0
     # ===============================
-    uploaded_file.seek(0)
-    df = pd.read_excel(uploaded_file, header=header_row)
+    df = df_raw.copy()
+    df.columns = df.iloc[0]  # baris pertama jadi header
+    df = df.iloc[1:]         # hapus baris header
 
     # ===============================
-    # 3️⃣ NORMALISASI NAMA KOLOM
+    # 2️⃣ NORMALISASI KOLOM
     # ===============================
     df.columns = (
         df.columns.astype(str)
         .str.strip()
-        .str.replace(r"\s+", " ", regex=True)
         .str.upper()
     )
 
     # ===============================
-    # 4️⃣ MAP KOLOM KE FORMAT STANDAR
+    # 3️⃣ AMBIL KOLOM YANG BENAR
     # ===============================
-    def find_col(keywords):
-        for col in df.columns:
-            for k in keywords:
-                if k in col:
-                    return col
-        return None
-
-    col_satker = find_col(["SATKER"])
-    col_kartu = find_col(["KARTU"])
-    col_nama = find_col(["NAMA"])
-    col_ba = find_col(["BA", "K/L"])
-
-    out = pd.DataFrame()
-
-    out["Kode BA"] = df[col_ba].astype(str).str.extract(r"(\d{3})")[0] if col_ba else ""
-    out["Satker"] = df[col_satker].astype(str) if col_satker else ""
-    out["Nomor Kartu"] = df[col_kartu].astype(str) if col_kartu else ""
-    out["Nama Pemegang KKP"] = df[col_nama].astype(str) if col_nama else ""
-
-    # ===============================
-    # 5️⃣ BERSIHKAN NAN / NONE
-    # ===============================
-    out = out.replace(["nan", "None", "NaN"], "")
-    out = out.fillna("")
-
-    # ===============================
-    # 6️⃣ BUANG BARIS KOSONG TOTAL
-    # ===============================
-    out = out[
-        (out["Satker"] != "") |
-        (out["Nomor Kartu"] != "") |
-        (out["Nama Pemegang KKP"] != "")
+    required_columns = [
+        "KODE BA",
+        "SATKER",
+        "NOMOR KARTU",
+        "PEMEGANG KKP"
     ]
 
-    return out.reset_index(drop=True)
+    available_cols = [c for c in required_columns if c in df.columns]
 
+    if len(available_cols) < 4:
+        return pd.DataFrame()  # struktur tidak cocok
+
+    df = df[required_columns].copy()
+
+    # ===============================
+    # 4️⃣ BERSIHKAN DATA
+    # ===============================
+    df = df.replace(["nan", "None", None], "")
+    df = df.fillna("")
+
+    # Buang baris kosong
+    df = df[
+        (df["SATKER"] != "") |
+        (df["NOMOR KARTU"] != "") |
+        (df["PEMEGANG KKP"] != "")
+    ]
+
+    # ===============================
+    # 5️⃣ RENAME KE FORMAT DASHBOARD
+    # ===============================
+    df = df.rename(columns={
+        "KODE BA": "Kode BA",
+        "SATKER": "Satker",
+        "NOMOR KARTU": "Nomor Kartu",
+        "PEMEGANG KKP": "Nama Pemegang KKP"
+    })
+
+    return df.reset_index(drop=True)
 
 
 # ============================
