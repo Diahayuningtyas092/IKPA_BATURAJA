@@ -663,6 +663,9 @@ if "DATA_DIPA_by_year" not in st.session_state:
 # Flag merge IKPA–DIPA
 if "ikpa_dipa_merged" not in st.session_state:
     st.session_state.ikpa_dipa_merged = False
+    
+if "data_storage_kkp" not in st.session_state:
+    st.session_state.data_storage_kkp = {}
 
 # Log aktivitas
 if "activity_log" not in st.session_state:
@@ -685,6 +688,7 @@ if "_reference_loaded" not in st.session_state:
     st.session_state.reference_df = load_reference_satker()
     st.session_state["_reference_loaded"] = True
     st.rerun()
+    
 
 
 def clean_invalid_satker_rows(df):
@@ -1930,6 +1934,33 @@ def load_data_ikpa_kppn_from_github():
                 data[key] = df
 
     return data
+
+
+def load_data_kkp_from_github():
+    token = st.secrets.get("GITHUB_TOKEN")
+    repo_name = st.secrets.get("GITHUB_REPO")
+
+    if not token or not repo_name:
+        return {}
+
+    g = Github(auth=Auth.Token(token))
+    repo = g.get_repo(repo_name)
+
+    try:
+        contents = repo.get_contents("data_kkp")
+    except:
+        return {}
+
+    data_storage_kkp = {}
+
+    for file in contents:
+        if file.name.endswith(".xlsx"):
+            raw = base64.b64decode(file.content)
+            df = pd.read_excel(io.BytesIO(raw))
+            data_storage_kkp[file.name] = df
+
+    return data_storage_kkp
+
 
 
 def find_header_row_kkp(uploaded_file, max_rows=10):
