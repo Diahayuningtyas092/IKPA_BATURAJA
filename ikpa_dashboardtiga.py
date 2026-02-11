@@ -7039,6 +7039,16 @@ def main():
     # ============================================================
     if st.session_state.get("ikpa_dipa_merged", False):
         st.success(" Data IKPA & DIPA berhasil dimuat dan siap digunakan")
+        
+        # Load KKP
+    if "data_storage_kkp" not in st.session_state:
+        st.session_state.data_storage_kkp = load_data_kkp_from_github()
+
+    # Notifikasi
+    if st.session_state.data_storage_kkp:
+        jumlah_file = len(st.session_state.data_storage_kkp)
+        st.success(f"✅ Data KKP berhasil dimuat dari GitHub ({jumlah_file} file)")
+
 
 
     # ============================================================
