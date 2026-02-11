@@ -5591,7 +5591,7 @@ def page_admin():
     # 📌 TAB MENU
     # ===============================
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📤 Upload Data",
+        "📤 Tambah Data",
         "🗑️ Hapus Data",
         "📥 Download Data",
         "📋 Download Template",
@@ -6258,6 +6258,91 @@ def page_admin():
 
             except Exception as e:
                 st.error(f"❌ Gagal memproses Data Referensi: {e}")
+    
+        st.markdown("## ➕ Input Data Referensi Manual")
+
+        # Pastikan session ada
+        if "data_referensi" not in st.session_state:
+            st.session_state.data_referensi = pd.DataFrame(
+                columns=[
+                    "Kode BA",
+                    "Nama BA",
+                    "Kode Satker",
+                    "Nama Satker",
+                    "Kode KPPN",
+                    "Nama KPPN"
+                ]
+            )
+
+        with st.form("form_referensi_manual", clear_on_submit=True):
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                kode_ba = st.text_input("Kode BA")
+                nama_ba = st.text_input("Nama BA")
+                kode_satker = st.text_input("Kode Satker")
+
+            with col2:
+                nama_satker = st.text_input("Nama Satker")
+                kode_kppn = st.text_input("Kode KPPN")
+                nama_kppn = st.text_input("Nama KPPN")
+
+            submitted = st.form_submit_button("💾 Simpan Data Referensi")
+
+            if submitted:
+
+                if not kode_satker or not nama_satker:
+                    st.warning("Kode Satker dan Nama Satker wajib diisi.")
+                    st.stop()
+
+                # Cek duplikasi
+                if kode_satker in st.session_state.data_referensi["Kode Satker"].values:
+                    st.warning("Kode Satker sudah ada dalam data referensi.")
+                    st.stop()
+
+                new_row = pd.DataFrame([{
+                    "Kode BA": kode_ba,
+                    "Nama BA": nama_ba,
+                    "Kode Satker": kode_satker,
+                    "Nama Satker": nama_satker,
+                    "Kode KPPN": kode_kppn,
+                    "Nama KPPN": nama_kppn
+                }])
+
+                # Tambah ke session
+                st.session_state.data_referensi = pd.concat(
+                    [st.session_state.data_referensi, new_row],
+                    ignore_index=True
+                )
+
+                # ===============================
+                # SIMPAN OTOMATIS KE GITHUB
+                # ===============================
+                try:
+                    excel_bytes = io.BytesIO()
+
+                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                        st.session_state.data_referensi.to_excel(
+                            writer,
+                            index=False,
+                            sheet_name="Referensi"
+                        )
+
+                    excel_bytes.seek(0)
+
+                    save_file_to_github(
+                        excel_bytes.getvalue(),
+                        "Template_Data_Referensi.xlsx",
+                        folder="data_referensi"
+                    )
+
+                    st.success("✅ Data referensi berhasil ditambahkan & diupdate ke GitHub")
+                    st.snow()
+
+                except Exception as e:
+                    st.error(f"Gagal update GitHub: {e}")
+
 
 
     # ============================================================
