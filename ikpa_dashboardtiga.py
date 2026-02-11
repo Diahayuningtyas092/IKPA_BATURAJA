@@ -1995,21 +1995,38 @@ def normalize_kkp_for_dashboard(df):
 # FILE KKP
 def process_excel_file_kkp(uploaded_file):
     """
-    PARSER KKP FINAL — FLEXIBLE HEADER MATCH
+    PARSER KKP SUPER ROBUST
+    Auto-detect header di baris manapun
     """
 
     uploaded_file.seek(0)
     df_raw = pd.read_excel(uploaded_file, header=None)
 
     # ===============================
-    # 1️⃣ HEADER DI BARIS PERTAMA
+    # 1️⃣ CARI BARIS HEADER OTOMATIS
     # ===============================
-    df = df_raw.copy()
-    df.columns = df.iloc[0]
-    df = df.iloc[1:]
+    header_row = None
+
+    for i in range(min(15, len(df_raw))):
+        row = df_raw.iloc[i].astype(str).str.upper().tolist()
+        row_text = " ".join(row)
+
+        if "SATKER" in row_text and ("KART" in row_text or "PEMEGANG" in row_text):
+            header_row = i
+            break
+
+    if header_row is None:
+        return pd.DataFrame()
 
     # ===============================
-    # 2️⃣ NORMALISASI KOLOM
+    # 2️⃣ SET HEADER
+    # ===============================
+    df = df_raw.copy()
+    df.columns = df.iloc[header_row]
+    df = df.iloc[header_row + 1:]
+
+    # ===============================
+    # 3️⃣ NORMALISASI KOLOM
     # ===============================
     df.columns = (
         df.columns.astype(str)
@@ -2019,7 +2036,7 @@ def process_excel_file_kkp(uploaded_file):
     )
 
     # ===============================
-    # 3️⃣ CARI KOLOM SECARA FLEXIBLE
+    # 4️⃣ CARI KOLOM FLEXIBLE
     # ===============================
     def find_column(keyword):
         for col in df.columns:
@@ -2036,7 +2053,7 @@ def process_excel_file_kkp(uploaded_file):
         return pd.DataFrame()
 
     # ===============================
-    # 4️⃣ BENTUK DATA FINAL
+    # 5️⃣ BENTUK DATA FINAL
     # ===============================
     out = pd.DataFrame()
     out["Kode BA"] = df[col_ba].astype(str)
@@ -2045,7 +2062,7 @@ def process_excel_file_kkp(uploaded_file):
     out["Nama Pemegang KKP"] = df[col_nama].astype(str)
 
     # ===============================
-    # 5️⃣ BERSIHKAN DATA
+    # 6️⃣ BERSIHKAN DATA
     # ===============================
     out = out.replace(["nan", "None", None], "")
     out = out.fillna("")
