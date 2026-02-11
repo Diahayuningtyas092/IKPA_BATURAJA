@@ -6594,20 +6594,20 @@ def page_admin():
         #UPLOAD MANUAL DATA REFERENSI
         # =====================================================
         st.markdown("---")
-        st.markdown("##  Input Data Referensi Manual")
+        st.markdown("## ➕ Input Data Referensi Manual")
 
-        with st.form("form_referensi_manual", clear_on_submit=True):
+        with st.form("admin_form_input_referensi_manual", clear_on_submit=True):
 
             col1, col2 = st.columns(2)
 
             with col1:
-                kode_ba = st.text_input("Kode BA")
-                kl = st.text_input("K/L")
-                kode_satker = st.text_input("Kode Satker")
+                kode_ba = st.text_input("Kode BA", key="admin_input_kode_ba")
+                kl = st.text_input("K/L", key="admin_input_kl")
+                kode_satker = st.text_input("Kode Satker", key="admin_input_kode_satker")
 
             with col2:
-                satker_singkat = st.text_input("Uraian Satker-SINGKAT")
-                satker_lengkap = st.text_area("Uraian Satker-LENGKAP")
+                satker_singkat = st.text_input("Uraian Satker-SINGKAT", key="admin_input_satker_singkat")
+                satker_lengkap = st.text_area("Uraian Satker-LENGKAP", key="admin_input_satker_lengkap")
 
             submitted = st.form_submit_button("Simpan Data Referensi")
 
@@ -6619,7 +6619,7 @@ def page_admin():
 
                 try:
                     # ===============================
-                    # 1️⃣ LOAD FILE TEMPLATE DARI GITHUB
+                    # 1️⃣ LOAD TEMPLATE DARI GITHUB
                     # ===============================
                     token = st.secrets["GITHUB_TOKEN"]
                     repo_name = st.secrets["GITHUB_REPO"]
@@ -6633,18 +6633,17 @@ def page_admin():
                     file_content = base64.b64decode(existing_file.content)
                     df_existing = pd.read_excel(io.BytesIO(file_content), dtype=str)
 
-                    # Pastikan kolom string
                     df_existing["Kode Satker"] = df_existing["Kode Satker"].astype(str)
 
                     # ===============================
-                    # 2️⃣ CEK DUPLIKASI DI FILE ASLI
+                    # 2️⃣ CEK DUPLIKASI
                     # ===============================
                     if kode_satker in df_existing["Kode Satker"].values:
                         st.warning("Kode Satker sudah ada dalam template.")
                         st.stop()
 
                     # ===============================
-                    # 3️⃣ AUTO NOMOR DARI FILE ASLI
+                    # 3️⃣ AUTO NOMOR
                     # ===============================
                     next_no = len(df_existing) + 1
 
@@ -6681,7 +6680,6 @@ def page_admin():
 
                 except Exception as e:
                     st.error(f"Gagal update template: {e}")
-
 
 
     # ============================================================
