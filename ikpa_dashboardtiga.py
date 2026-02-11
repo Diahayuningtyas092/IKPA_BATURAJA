@@ -6261,6 +6261,7 @@ def page_admin():
     
     
         #UPLOAD MANUAL DATA REFERENSI
+        st.markdown("---")
         st.markdown("##  Input Data Referensi Manual")
 
         # ===============================
@@ -6291,7 +6292,7 @@ def page_admin():
                 satker_singkat = st.text_input("Uraian Satker-SINGKAT")
                 satker_lengkap = st.text_area("Uraian Satker-LENGKAP")
 
-            submitted = st.form_submit_button("💾 Simpan Data Referensi")
+            submitted = st.form_submit_button("Simpan Data Referensi")
 
             if submitted:
 
