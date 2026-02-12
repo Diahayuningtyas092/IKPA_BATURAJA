@@ -6598,7 +6598,7 @@ def page_admin():
         # ===============================
         # INIT SESSION REFERENSI
         # ===============================
-        if "data_referensi" not in st.session_state:
+        if "templates" not in st.session_state:
             st.session_state.data_referensi = pd.DataFrame(
                 columns=[
                     "No",
@@ -6634,14 +6634,14 @@ def page_admin():
                 # ===============================
                 # CEK DUPLIKASI
                 # ===============================
-                if kode_satker in st.session_state.data_referensi["Kode Satker"].astype(str).values:
+                if kode_satker in st.session_state.templates["Kode Satker"].astype(str).values:
                     st.warning("Kode Satker sudah ada dalam referensi.")
                     st.stop()
 
                 # ===============================
                 # AUTO NOMOR
                 # ===============================
-                next_no = len(st.session_state.data_referensi) + 1
+                next_no = len(st.session_state.templates) + 1
 
                 new_row = pd.DataFrame([{
                     "No": next_no,
@@ -6655,8 +6655,8 @@ def page_admin():
                 # ===============================
                 # TAMBAH KE SESSION
                 # ===============================
-                st.session_state.data_referensi = pd.concat(
-                    [st.session_state.data_referensi, new_row],
+                st.session_state.templates = pd.concat(
+                    [st.session_state.templates, new_row],
                     ignore_index=True
                 )
 
@@ -6667,10 +6667,10 @@ def page_admin():
                     excel_bytes = io.BytesIO()
 
                     with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                        st.session_state.data_referensi.to_excel(
+                        st.session_state.templates.to_excel(
                             writer,
                             index=False,
-                            sheet_name="Referensi"
+                            sheet_name="Data Referensi"
                         )
 
                     excel_bytes.seek(0)
@@ -6678,7 +6678,7 @@ def page_admin():
                     save_file_to_github(
                         excel_bytes.getvalue(),
                         "Template_Data_Referensi.xlsx",
-                        folder="data_referensi"
+                        folder="templates"
                     )
 
                     st.success("✅ Data referensi berhasil ditambahkan & otomatis diupdate ke GitHub")
