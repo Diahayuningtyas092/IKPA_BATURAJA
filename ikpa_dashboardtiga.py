@@ -6430,10 +6430,8 @@ def page_admin():
                 except Exception as e:
                     st.error(f"Gagal update template: {e}")
     
-    
-    st.subheader("💳 Upload Data Digipay")
-    st.caption("Khusus KPPN 109 - BATURAJA")
-
+    st.markdown("---")
+    st.subheader("Upload Data Digipay")
     # =========================================
     # INIT STORAGE
     # =========================================
@@ -6839,8 +6837,49 @@ def page_admin():
 
         except Exception as e:
             st.error(f"Gagal memuat atau menghapus referensi: {e}")
+        
+        # ==========================================
+        # HAPUS DATABASE DIGIPAY
+        # ==========================================
+        st.markdown("---")
+        st.subheader("🗑️ Hapus Data Digipay")
 
+        if "digipay_master" not in st.session_state or st.session_state.digipay_master.empty:
 
+            st.info("ℹ️ Belum ada Data Digipay tersimpan.")
+
+        else:
+
+            confirm_delete = st.checkbox(
+                "⚠️ Hapus seluruh Data Digipay dari sistem dan GitHub.",
+                key="confirm_delete_digipay"
+            )
+
+            if st.button("🗑️ Hapus Data Digipay", type="primary") and confirm_delete:
+
+                try:
+                    # Hapus dari session
+                    st.session_state.digipay_master = pd.DataFrame()
+
+                    # Hapus dari GitHub (jika disimpan)
+                    token = st.secrets.get("GITHUB_TOKEN")
+                    repo_name = st.secrets.get("GITHUB_REPO")
+
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
+
+                    contents = repo.get_contents("data/DIGIPAY_MASTER.xlsx")
+                    repo.delete_file(
+                        contents.path,
+                        "Delete DIGIPAY_MASTER.xlsx",
+                        contents.sha
+                    )
+
+                    st.success("✅ Data Digipay berhasil dihapus dari sistem & GitHub.")
+                    st.snow()
+
+                except Exception as e:
+                    st.error(f"❌ Gagal menghapus Data Digipay: {e}")
 
 
     # ============================================================
@@ -7037,6 +7076,33 @@ def page_admin():
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         key=f"download_kkp_{bulan}_{tahun}"
                     )
+        
+        # ==========================================
+        #  DOWNLOAD DATABASE DIGIPAY
+        # ==========================================
+        st.subheader("Download Data Digipay")
+
+        if "digipay_master" in st.session_state and not st.session_state.digipay_master.empty:
+
+            buffer = io.BytesIO()
+
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                st.session_state.digipay_master.to_excel(
+                    writer,
+                    index=False,
+                    sheet_name="DIGIPAY_109_BATURAJA"
+                )
+
+            st.download_button(
+                label="Download Data Digipay",
+                data=buffer.getvalue(),
+                file_name="DIGIPAY_KPPN_109_BATURAJA.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+        else:
+            st.info("ℹ️ Database Digipay kosong.")
+
 
 
         # Download Data Satker Tidak Terdaftar
