@@ -6377,7 +6377,14 @@ def page_admin():
                     # ===============================
                     # AUTO NOMOR
                     # ===============================
-                    next_no = len(df_existing) + 1
+                    df_existing["No"] = pd.to_numeric(df_existing["No"], errors="coerce")
+
+                    max_no = df_existing["No"].max()
+
+                    if pd.isna(max_no):
+                        next_no = 1
+                    else:
+                        next_no = int(max_no) + 1
 
                     new_row = pd.DataFrame([{
                         "No": next_no,
@@ -6389,6 +6396,7 @@ def page_admin():
                     }])
 
                     df_updated = pd.concat([df_existing, new_row], ignore_index=True)
+
 
                     # ===============================
                     # UPDATE FILE YANG SAMA
