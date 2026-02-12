@@ -6397,6 +6397,15 @@ def page_admin():
 
                     df_updated = pd.concat([df_existing, new_row], ignore_index=True)
 
+                    # ===============================
+                    # PASTIKAN KOLOM "No" DI PALING KIRI
+                    # ===============================
+                    cols = df_updated.columns.tolist()
+
+                    if "No" in cols:
+                        cols.remove("No")
+                        df_updated = df_updated[["No"] + cols]
+
 
                     # ===============================
                     # UPDATE FILE YANG SAMA
