@@ -6551,45 +6551,32 @@ def page_admin():
                 # ====================================
                 # 💾 SIMPAN OTOMATIS KE GITHUB
                 # ====================================
-                try:
-                    token = st.secrets["GITHUB_TOKEN"]
-                    repo_name = st.secrets["GITHUB_REPO"]
+                # ====================================
+                # 💾 SIMPAN KE GITHUB (PAKAI FUNGSI ANDA)
+                # ====================================
+                excel_bytes = io.BytesIO()
 
-                    g = Github(auth=Auth.Token(token))
-                    repo = g.get_repo(repo_name)
+                with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                    st.session_state.digipay_master.to_excel(
+                        writer,
+                        index=False,
+                        sheet_name="DIGIPAY_109_BATURAJA"
+                    )
 
-                    file_path = "data/DIGIPAY_MASTER.xlsx"
+                excel_bytes.seek(0)
 
-                    # Buat file excel
-                    excel_bytes = io.BytesIO()
-                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                        st.session_state.digipay_master.to_excel(
-                            writer,
-                            index=False,
-                            sheet_name="DIGIPAY_109_BATURAJA"
-                        )
+                save_file_to_github(
+                    excel_bytes.getvalue(),
+                    "DIGIPAY_MASTER.xlsx",
+                    folder="data"
+                )
 
-                    excel_bytes.seek(0)
+                log_activity(
+                    menu="Upload Data",
+                    action="Upload Data Digipay",
+                    detail=f"{uploaded_digipay.name} | {len(df_all)} baris"
+                )
 
-                    try:
-                        # Jika file sudah ada → update
-                        existing_file = repo.get_contents(file_path)
-                        repo.update_file(
-                            file_path,
-                            "Update DIGIPAY_MASTER",
-                            excel_bytes.getvalue(),
-                            existing_file.sha
-                        )
-                    except:
-                        # Jika belum ada → create
-                        repo.create_file(
-                            file_path,
-                            "Create DIGIPAY_MASTER",
-                            excel_bytes.getvalue()
-                        )
-
-                except Exception as e:
-                    st.warning(f"Data tersimpan di sistem, tapi gagal upload ke GitHub: {e}")
 
             st.success(f"✅ {len(df_all)} data Digipay berhasil diproses & disimpan.")
 
