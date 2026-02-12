@@ -6326,35 +6326,20 @@ def page_admin():
     
         #UPLOAD MANUAL DATA REFERENSI
         st.markdown("---")
-        st.markdown("##  Input Data Referensi Manual")
+        st.markdown("## Input Data Referensi Manual")
 
-        # ===============================
-        # INIT SESSION REFERENSI
-        # ===============================
-        if "templates" not in st.session_state:
-            st.session_state.data_referensi = pd.DataFrame(
-                columns=[
-                    "No",
-                    "Kode BA",
-                    "K/L",
-                    "Kode Satker",
-                    "Uraian Satker-SINGKAT",
-                    "Uraian Satker-LENGKAP"
-                ]
-            )
+        with st.form("admin_form_referensi_manual", clear_on_submit=True):
 
-        with st.form("form_referensi_manual_admin", clear_on_submit=True):
-            
             col1, col2 = st.columns(2)
 
             with col1:
-                kode_ba = st.text_input("Kode BA")
-                kl = st.text_input("K/L")
-                kode_satker = st.text_input("Kode Satker")
+                kode_ba = st.text_input("Kode BA", key="admin_kode_ba")
+                kl = st.text_input("K/L", key="admin_kl")
+                kode_satker = st.text_input("Kode Satker", key="admin_kode_satker")
 
             with col2:
-                satker_singkat = st.text_input("Uraian Satker-SINGKAT")
-                satker_lengkap = st.text_area("Uraian Satker-LENGKAP")
+                satker_singkat = st.text_input("Uraian Satker-SINGKAT", key="admin_singkat")
+                satker_lengkap = st.text_area("Uraian Satker-LENGKAP", key="admin_lengkap")
 
             submitted = st.form_submit_button("Simpan Data Referensi")
 
@@ -6364,61 +6349,70 @@ def page_admin():
                     st.warning("Kode Satker dan Uraian Satker-LENGKAP wajib diisi.")
                     st.stop()
 
-                # ===============================
-                # CEK DUPLIKASI
-                # ===============================
-                if kode_satker in st.session_state.templates["Kode Satker"].astype(str).values:
-                    st.warning("Kode Satker sudah ada dalam referensi.")
-                    st.stop()
-
-                # ===============================
-                # AUTO NOMOR
-                # ===============================
-                next_no = len(st.session_state.templates) + 1
-
-                new_row = pd.DataFrame([{
-                    "No": next_no,
-                    "Kode BA": kode_ba,
-                    "K/L": kl,
-                    "Kode Satker": kode_satker,
-                    "Uraian Satker-SINGKAT": satker_singkat,
-                    "Uraian Satker-LENGKAP": satker_lengkap
-                }])
-
-                # ===============================
-                # TAMBAH KE SESSION
-                # ===============================
-                st.session_state.templates = pd.concat(
-                    [st.session_state.templates, new_row],
-                    ignore_index=True
-                )
-
-                # ===============================
-                # SIMPAN OTOMATIS KE GITHUB
-                # ===============================
                 try:
-                    excel_bytes = io.BytesIO()
+                    # ===============================
+                    # LOAD FILE TEMPLATE DARI GITHUB
+                    # ===============================
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo_name = st.secrets["GITHUB_REPO"]
 
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
+
+                    file_path = "templates/Template_Data_Referensi.xlsx"
+                    existing_file = repo.get_contents(file_path)
+
+                    file_content = base64.b64decode(existing_file.content)
+                    df_existing = pd.read_excel(io.BytesIO(file_content), dtype=str)
+
+                    df_existing["Kode Satker"] = df_existing["Kode Satker"].astype(str)
+
+                    # ===============================
+                    # CEK DUPLIKASI LANGSUNG DI FILE
+                    # ===============================
+                    if kode_satker in df_existing["Kode Satker"].values:
+                        st.warning("Kode Satker sudah ada dalam template.")
+                        st.stop()
+
+                    # ===============================
+                    # AUTO NOMOR
+                    # ===============================
+                    next_no = len(df_existing) + 1
+
+                    new_row = pd.DataFrame([{
+                        "No": next_no,
+                        "Kode BA": kode_ba,
+                        "K/L": kl,
+                        "Kode Satker": kode_satker,
+                        "Uraian Satker-SINGKAT": satker_singkat,
+                        "Uraian Satker-LENGKAP": satker_lengkap
+                    }])
+
+                    df_updated = pd.concat([df_existing, new_row], ignore_index=True)
+
+                    # ===============================
+                    # UPDATE FILE YANG SAMA
+                    # ===============================
+                    excel_bytes = io.BytesIO()
                     with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                        st.session_state.templates.to_excel(
-                            writer,
-                            index=False,
-                            sheet_name="Data Referensi"
-                        )
+                        df_updated.to_excel(writer, index=False)
 
                     excel_bytes.seek(0)
 
-                    save_file_to_github(
+                    repo.update_file(
+                        file_path,
+                        f"Tambah referensi manual: {kode_satker}",
                         excel_bytes.getvalue(),
-                        "Template_Data_Referensi.xlsx",
-                        folder="templates"
+                        existing_file.sha
                     )
 
-                    st.success("✅ Data referensi berhasil ditambahkan & otomatis diupdate ke GitHub")
+                    st.success("✅ Data berhasil ditambahkan ke template dan diperbarui di GitHub")
                     st.snow()
+                    st.rerun()
 
                 except Exception as e:
-                    st.error(f"Gagal update GitHub: {e}")
+                    st.error(f"Gagal update template: {e}")
+
 
 
     # ============================================================
