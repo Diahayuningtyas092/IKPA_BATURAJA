@@ -6429,106 +6429,107 @@ def page_admin():
 
                 except Exception as e:
                     st.error(f"Gagal update template: {e}")
+                    
     
-    st.markdown("---")
-    st.subheader("Upload Data Digipay")
-    # =========================================
-    # INIT STORAGE
-    # =========================================
-    if "digipay_master" not in st.session_state:
-        st.session_state.digipay_master = pd.DataFrame()
+        st.markdown("---")
+        st.subheader("Upload Data Digipay")
+        # =========================================
+        # INIT STORAGE
+        # =========================================
+        if "digipay_master" not in st.session_state:
+            st.session_state.digipay_master = pd.DataFrame()
 
-    uploaded_digipay = st.file_uploader(
-        "Upload File Excel Digipay (Multi Sheet)",
-        type=["xlsx"],
-        key="upload_digipay_admin"
-    )
+        uploaded_digipay = st.file_uploader(
+            "Upload File Excel Digipay (Multi Sheet)",
+            type=["xlsx"],
+            key="upload_digipay_admin"
+        )
 
-    if uploaded_digipay:
+        if uploaded_digipay:
 
-        with st.spinner("Memproses Data Digipay..."):
+            with st.spinner("Memproses Data Digipay..."):
 
-            xls = pd.ExcelFile(uploaded_digipay)
-            all_sheets = []
+                xls = pd.ExcelFile(uploaded_digipay)
+                all_sheets = []
 
-            for sheet in xls.sheet_names:
-                df_sheet = pd.read_excel(xls, sheet_name=sheet)
-                df_sheet["SOURCE_SHEET"] = sheet
-                all_sheets.append(df_sheet)
+                for sheet in xls.sheet_names:
+                    df_sheet = pd.read_excel(xls, sheet_name=sheet)
+                    df_sheet["SOURCE_SHEET"] = sheet
+                    all_sheets.append(df_sheet)
 
-            df_all = pd.concat(all_sheets, ignore_index=True)
+                df_all = pd.concat(all_sheets, ignore_index=True)
 
-            # ====================================
-            # NORMALISASI KOLOM
-            # ====================================
-            df_all.columns = (
-                df_all.columns.astype(str)
-                .str.strip()
-                .str.upper()
-            )
-
-            # ====================================
-            # FILTER OTOMATIS KPPN 109 BATURAJA
-            # ====================================
-            df_all = df_all[
-                (df_all["KDKPPN"].astype(str) == "109") &
-                (df_all["NMKPPN"].astype(str).str.upper() == "BATURAJA")
-            ]
-
-            # ====================================
-            # UNIQUE KEY (ANTI DOUBLE)
-            # ====================================
-            UNIQUE_KEY = [
-                "KDSATKER",
-                "NOINVOICE",
-                "NOMINVOICE",
-                "TGLINVOICE"
-            ]
-
-            df_all = df_all.drop_duplicates(subset=UNIQUE_KEY)
-
-            # ====================================
-            # CEK DATA BARU
-            # ====================================
-            if not st.session_state.digipay_master.empty:
-
-                existing_keys = st.session_state.digipay_master[UNIQUE_KEY]
-
-                df_all = df_all.merge(
-                    existing_keys,
-                    on=UNIQUE_KEY,
-                    how="left",
-                    indicator=True
+                # ====================================
+                # NORMALISASI KOLOM
+                # ====================================
+                df_all.columns = (
+                    df_all.columns.astype(str)
+                    .str.strip()
+                    .str.upper()
                 )
 
-                df_all = df_all[df_all["_merge"] == "left_only"]
-                df_all = df_all.drop(columns=["_merge"])
+                # ====================================
+                # FILTER OTOMATIS KPPN 109 BATURAJA
+                # ====================================
+                df_all = df_all[
+                    (df_all["KDKPPN"].astype(str) == "109") &
+                    (df_all["NMKPPN"].astype(str).str.upper() == "BATURAJA")
+                ]
 
-            # ====================================
-            # SIMPAN KE MASTER
-            # ====================================
-            st.session_state.digipay_master = pd.concat(
-                [st.session_state.digipay_master, df_all],
-                ignore_index=True
-            )
+                # ====================================
+                # UNIQUE KEY (ANTI DOUBLE)
+                # ====================================
+                UNIQUE_KEY = [
+                    "KDSATKER",
+                    "NOINVOICE",
+                    "NOMINVOICE",
+                    "TGLINVOICE"
+                ]
 
-        st.success(f"✅ {len(df_all)} data Digipay berhasil ditambahkan.")
-        
-        # ===============================
-        # PREVIEW TARUH DI SINI
-        # ===============================
-        if not st.session_state.digipay_master.empty:
+                df_all = df_all.drop_duplicates(subset=UNIQUE_KEY)
 
-            st.subheader("Preview Data Digipay")
+                # ====================================
+                # CEK DATA BARU
+                # ====================================
+                if not st.session_state.digipay_master.empty:
 
-            st.dataframe(
-                st.session_state.digipay_master,
-                use_container_width=True
-            )
+                    existing_keys = st.session_state.digipay_master[UNIQUE_KEY]
 
-            st.info(
-                f"Total Data Tersimpan: {len(st.session_state.digipay_master)}"
-            )
+                    df_all = df_all.merge(
+                        existing_keys,
+                        on=UNIQUE_KEY,
+                        how="left",
+                        indicator=True
+                    )
+
+                    df_all = df_all[df_all["_merge"] == "left_only"]
+                    df_all = df_all.drop(columns=["_merge"])
+
+                # ====================================
+                # SIMPAN KE MASTER
+                # ====================================
+                st.session_state.digipay_master = pd.concat(
+                    [st.session_state.digipay_master, df_all],
+                    ignore_index=True
+                )
+
+            st.success(f"✅ {len(df_all)} data Digipay berhasil ditambahkan.")
+            
+            # ===============================
+            # PREVIEW TARUH DI SINI
+            # ===============================
+            if not st.session_state.digipay_master.empty:
+
+                st.subheader("Preview Data Digipay")
+
+                st.dataframe(
+                    st.session_state.digipay_master,
+                    use_container_width=True
+                )
+
+                st.info(
+                    f"Total Data Tersimpan: {len(st.session_state.digipay_master)}"
+                )
 
 
     # ============================================================
