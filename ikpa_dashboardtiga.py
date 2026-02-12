@@ -6433,6 +6433,7 @@ def page_admin():
     
         st.markdown("---")
         st.subheader("Upload Data Digipay")
+
         # =========================================
         # INIT STORAGE
         # =========================================
@@ -6453,7 +6454,7 @@ def page_admin():
                 all_sheets = []
 
                 for sheet in xls.sheet_names:
-                    df_sheet = pd.read_excel(xls, sheet_name=sheet)
+                    df_sheet = pd.read_excel(xls, sheet_name=sheet, dtype=str)
                     df_sheet["SOURCE_SHEET"] = sheet
                     all_sheets.append(df_sheet)
 
@@ -6469,11 +6470,45 @@ def page_admin():
                 )
 
                 # ====================================
+                # 🔥 PERBAIKI LEADING ZERO OTOMATIS
+                # ====================================
+
+                # KDKANWIL → 2 digit
+                if "KDKANWIL" in df_all.columns:
+                    df_all["KDKANWIL"] = (
+                        df_all["KDKANWIL"]
+                        .astype(str)
+                        .str.replace(".0", "", regex=False)
+                        .str.strip()
+                        .str.zfill(2)
+                    )
+
+                # KDKPPN → 3 digit
+                if "KDKPPN" in df_all.columns:
+                    df_all["KDKPPN"] = (
+                        df_all["KDKPPN"]
+                        .astype(str)
+                        .str.replace(".0", "", regex=False)
+                        .str.strip()
+                        .str.zfill(3)
+                    )
+
+                # KDSATKER → 6 digit
+                if "KDSATKER" in df_all.columns:
+                    df_all["KDSATKER"] = (
+                        df_all["KDSATKER"]
+                        .astype(str)
+                        .str.replace(".0", "", regex=False)
+                        .str.strip()
+                        .str.zfill(6)
+                    )
+
+                # ====================================
                 # FILTER OTOMATIS KPPN 109 BATURAJA
                 # ====================================
                 df_all = df_all[
-                    (df_all["KDKPPN"].astype(str) == "109") &
-                    (df_all["NMKPPN"].astype(str).str.upper() == "BATURAJA")
+                    (df_all["KDKPPN"] == "109") &
+                    (df_all["NMKPPN"].str.upper() == "BATURAJA")
                 ]
 
                 # ====================================
@@ -6506,30 +6541,58 @@ def page_admin():
                     df_all = df_all.drop(columns=["_merge"])
 
                 # ====================================
-                # SIMPAN KE MASTER
+                # SIMPAN KE SESSION
                 # ====================================
                 st.session_state.digipay_master = pd.concat(
                     [st.session_state.digipay_master, df_all],
                     ignore_index=True
                 )
 
-            st.success(f"✅ {len(df_all)} data Digipay berhasil ditambahkan.")
-            
-            # ===============================
-            # PREVIEW TARUH DI SINI
-            # ===============================
-            if not st.session_state.digipay_master.empty:
+                # ====================================
+                # 💾 SIMPAN OTOMATIS KE GITHUB
+                # ====================================
+                try:
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo_name = st.secrets["GITHUB_REPO"]
 
-                st.subheader("Preview Data Digipay")
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
 
-                st.dataframe(
-                    st.session_state.digipay_master,
-                    use_container_width=True
-                )
+                    file_path = "data/DIGIPAY_MASTER.xlsx"
 
-                st.info(
-                    f"Total Data Tersimpan: {len(st.session_state.digipay_master)}"
-                )
+                    # Buat file excel
+                    excel_bytes = io.BytesIO()
+                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                        st.session_state.digipay_master.to_excel(
+                            writer,
+                            index=False,
+                            sheet_name="DIGIPAY_109_BATURAJA"
+                        )
+
+                    excel_bytes.seek(0)
+
+                    try:
+                        # Jika file sudah ada → update
+                        existing_file = repo.get_contents(file_path)
+                        repo.update_file(
+                            file_path,
+                            "Update DIGIPAY_MASTER",
+                            excel_bytes.getvalue(),
+                            existing_file.sha
+                        )
+                    except:
+                        # Jika belum ada → create
+                        repo.create_file(
+                            file_path,
+                            "Create DIGIPAY_MASTER",
+                            excel_bytes.getvalue()
+                        )
+
+                except Exception as e:
+                    st.warning(f"Data tersimpan di sistem, tapi gagal upload ke GitHub: {e}")
+
+            st.success(f"✅ {len(df_all)} data Digipay berhasil diproses & disimpan.")
+
 
 
     # ============================================================
@@ -6968,7 +7031,7 @@ def page_admin():
             data=file_bytes,
             file_name=selected_file,
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+        )
                 
         # ===========================
         # Submenu Download Data DIPA
@@ -7081,6 +7144,7 @@ def page_admin():
         # ==========================================
         #  DOWNLOAD DATABASE DIGIPAY
         # ==========================================
+        st.markdown("---")
         st.subheader("Download Data Digipay")
 
         if "digipay_master" in st.session_state and not st.session_state.digipay_master.empty:
