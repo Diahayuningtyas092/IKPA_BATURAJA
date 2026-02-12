@@ -6473,7 +6473,7 @@ def page_admin():
         uploaded_ref = st.file_uploader(
             "📤 Pilih File Data Referensi Satker & K/L",
             type=['xlsx', 'xls'],
-            key="ref_upload"
+            key="admin_upload_referensi_file"
         )
 
         if uploaded_ref is not None:
@@ -6610,8 +6610,7 @@ def page_admin():
                 ]
             )
 
-        with st.form("form_referensi_manual", clear_on_submit=True):
-
+        with st.form("admin_form_referensi_manual_v2", clear_on_submit=True):
             col1, col2 = st.columns(2)
 
             with col1:
