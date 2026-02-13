@@ -6430,16 +6430,13 @@ def page_admin():
                 except Exception as e:
                     st.error(f"Gagal update template: {e}")
                     
-    
+
         # ============================================================
-        # UPLOAD DATA DIGIPAY 
+        # UPLOAD DATA DIGIPAY
         # ============================================================
         st.markdown("---")
         st.subheader("Upload Data Digipay")
 
-        # ==============================
-        # INIT STORAGE
-        # ==============================
         if "digipay_master" not in st.session_state:
             st.session_state.digipay_master = pd.DataFrame()
 
@@ -6457,113 +6454,108 @@ def page_admin():
                 all_sheets = []
 
                 for sheet in xls.sheet_names:
-                    try:
-                        df_sheet = pd.read_excel(xls, sheet_name=sheet, dtype=str)
-                        df_sheet["SOURCE_SHEET"] = sheet
-                        all_sheets.append(df_sheet)
-                    except:
-                        continue
-
-                if not all_sheets:
-                    st.error("❌ Tidak ada sheet yang dapat dibaca.")
-                    st.stop()
+                    df_sheet = pd.read_excel(xls, sheet_name=sheet, dtype=str)
+                    df_sheet["SOURCE_SHEET"] = sheet
+                    all_sheets.append(df_sheet)
 
                 df_all = pd.concat(all_sheets, ignore_index=True)
 
-                # ==============================
-                # NORMALISASI KOLOM
-                # ==============================
+                # ==================================================
+                # NORMALISASI HEADER (ANTI NEWLINE & TYPO)
+                # ==================================================
                 df_all.columns = (
                     df_all.columns.astype(str)
+                    .str.replace("\n", " ", regex=False)
+                    .str.replace("\r", " ", regex=False)
                     .str.strip()
                     .str.upper()
                 )
 
-                # ==============================
-                # PERBAIKI LEADING ZERO OTOMATIS
-                # ==============================
+                # ==================================================
+                # DETEKSI KOLOM KPPN OTOMATIS
+                # ==================================================
+                col_kppn = next(
+                    (c for c in df_all.columns if "KPPN" in c),
+                    None
+                )
 
-                def clean_numeric_column(df, col, digit):
-                    if col in df.columns:
-                        df[col] = (
-                            df[col]
-                            .astype(str)
-                            .str.replace(".0", "", regex=False)
-                            .str.replace("nan", "", regex=False)
-                            .str.strip()
-                            .str.extract(r"(\d+)")[0]
-                            .fillna("")
-                            .str.zfill(digit)
-                        )
-                    return df
-
-                df_all = clean_numeric_column(df_all, "KDKANWIL", 2)
-                df_all = clean_numeric_column(df_all, "KDKPPN", 3)
-                df_all = clean_numeric_column(df_all, "KDSATKER", 6)
-
-                # ==============================
-                # FILTER OTOMATIS KPPN 109 BATURAJA
-                # ==============================
-                if "KDKPPN" not in df_all.columns:
-                    st.error("❌ Kolom KDKPPN tidak ditemukan.")
+                if col_kppn is None:
+                    st.error("❌ Kolom KPPN tidak ditemukan.")
                     st.stop()
 
-                if "NMKPPN" in df_all.columns:
-                    df_all["NMKPPN"] = df_all["NMKPPN"].astype(str).str.upper().str.strip()
-                    df_all = df_all[
-                        (df_all["KDKPPN"] == "109") &
-                        (df_all["NMKPPN"] == "BATURAJA")
-                    ]
-                else:
-                    df_all = df_all[df_all["KDKPPN"] == "109"]
+                # ==================================================
+                # NORMALISASI KODE KPPN
+                # ==================================================
+                df_all[col_kppn] = (
+                    df_all[col_kppn]
+                    .astype(str)
+                    .str.extract(r"(\d+)")[0]
+                    .fillna("")
+                    .str.strip()
+                )
+
+                # ==================================================
+                # FILTER HANYA KPPN 109
+                # ==================================================
+                df_all = df_all[df_all[col_kppn] == "109"]
 
                 if df_all.empty:
-                    st.warning("⚠️ Tidak ada data KPPN 109 BATURAJA dalam file.")
+                    st.error("❌ Tidak ada data KPPN 109 ditemukan.")
                     st.stop()
 
-                # ==============================
-                # UNIQUE KEY (ANTI DOUBLE)
-                # ==============================
-                UNIQUE_KEY = [
-                    col for col in [
-                        "KDSATKER",
-                        "NOINVOICE",
-                        "NOMINVOICE",
-                        "TGLINVOICE"
-                    ] if col in df_all.columns
-                ]
+                # ==================================================
+                # NORMALISASI KODE SATKER (JIKA ADA)
+                # ==================================================
+                col_satker = next(
+                    (c for c in df_all.columns if "SATKER" in c and "KODE" in c),
+                    None
+                )
 
-                if UNIQUE_KEY:
-                    df_all = df_all.drop_duplicates(subset=UNIQUE_KEY)
-
-                # ==============================
-                # CEK DATA BARU
-                # ==============================
-                if not st.session_state.digipay_master.empty and UNIQUE_KEY:
-
-                    existing_keys = st.session_state.digipay_master[UNIQUE_KEY]
-
-                    df_all = df_all.merge(
-                        existing_keys,
-                        on=UNIQUE_KEY,
-                        how="left",
-                        indicator=True
+                if col_satker:
+                    df_all[col_satker] = (
+                        df_all[col_satker]
+                        .astype(str)
+                        .str.extract(r"(\d+)")[0]
+                        .fillna("")
+                        .str.zfill(6)
                     )
 
-                    df_all = df_all[df_all["_merge"] == "left_only"]
-                    df_all = df_all.drop(columns=["_merge"])
+                # ==================================================
+                # UNIQUE KEY (ANTI DOUBLE)
+                # ==================================================
+                unique_cols = []
 
-                # ==============================
+                for key in ["KDSATKER", "NOINVOICE", "NOMINVOICE", "TGLINVOICE"]:
+                    if key in df_all.columns:
+                        unique_cols.append(key)
+
+                if unique_cols:
+                    df_all = df_all.drop_duplicates(subset=unique_cols)
+
+                    if not st.session_state.digipay_master.empty:
+                        existing = st.session_state.digipay_master[unique_cols]
+
+                        df_all = df_all.merge(
+                            existing,
+                            on=unique_cols,
+                            how="left",
+                            indicator=True
+                        )
+
+                        df_all = df_all[df_all["_merge"] == "left_only"]
+                        df_all = df_all.drop(columns=["_merge"])
+
+                # ==================================================
                 # SIMPAN KE SESSION
-                # ==============================
+                # ==================================================
                 st.session_state.digipay_master = pd.concat(
                     [st.session_state.digipay_master, df_all],
                     ignore_index=True
                 )
 
-                # ==============================
-                # 💾 SIMPAN OTOMATIS KE GITHUB
-                # ==============================
+                # ==================================================
+                # SIMPAN KE GITHUB
+                # ==================================================
                 excel_bytes = io.BytesIO()
 
                 with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
@@ -6588,6 +6580,9 @@ def page_admin():
                 )
 
             st.success(f"✅ {len(df_all)} data Digipay berhasil diproses & disimpan.")
+            st.dataframe(st.session_state.digipay_master, use_container_width=True)
+            st.info(f"Total Data Tersimpan: {len(st.session_state.digipay_master)}")
+
 
         
         
