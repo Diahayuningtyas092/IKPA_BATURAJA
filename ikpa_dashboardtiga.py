@@ -6583,10 +6583,12 @@ def page_admin():
         
         #UPLOAD DATA CMS
         # ============================================================
+        # ============================================================
+        # UPLOAD DATA CMS 
+        # ============================================================
         st.markdown("---")
-        st.subheader("📥 Upload Data CMS")
+        st.subheader("Upload Data CMS")
 
-        # INIT STORAGE
         if "cms_master" not in st.session_state:
             st.session_state.cms_master = pd.DataFrame()
 
@@ -6605,124 +6607,115 @@ def page_admin():
 
                 for sheet in xls.sheet_names:
 
-                    df_preview = pd.read_excel(xls, sheet_name=sheet, header=None, dtype=str)
+                    df = pd.read_excel(xls, sheet_name=sheet, dtype=str)
 
-                    header_row = None
-
-                    # 🔍 DETEKSI HEADER OTOMATIS
-                    for i in range(min(15, len(df_preview))):
-                        row_text = " ".join(df_preview.iloc[i].astype(str).str.upper())
-                        if (
-                            "KODE KKPN" in row_text and
-                            "KODE SATKER" in row_text and
-                            "TRANSAKSI CMS" in row_text
-                        ):
-                            header_row = i
-                            break
-
-                    if header_row is None:
-                        continue
-
-                    df = pd.read_excel(
-                        xls,
-                        sheet_name=sheet,
-                        header=header_row,
-                        dtype=str
-                    )
-
-                    # ====================================
-                    # NORMALISASI KOLOM
-                    # ====================================
+                    # ==========================================
+                    # NORMALISASI HEADER SUPER AMAN
+                    # ==========================================
                     df.columns = (
                         df.columns.astype(str)
+                        .str.replace("\n", " ")
+                        .str.replace("\r", " ")
                         .str.strip()
                         .str.upper()
                     )
 
-                    # ====================================
-                    # NORMALISASI KODE (ANTI HILANG 0)
-                    # ====================================
-                    if "KODE KANWIL" in df.columns:
-                        df["KODE KANWIL"] = (
-                            df["KODE KANWIL"]
-                            .str.extract(r"(\d+)")
-                            .str.zfill(2)
-                        )
+                    # ==========================================
+                    # DETEKSI KOLOM DINAMIS
+                    # ==========================================
+                    col_kppn = next((c for c in df.columns if "KKPN" in c), None)
+                    col_satker = next((c for c in df.columns if "KODE SATKER" in c), None)
+                    col_jml = next((c for c in df.columns if "JUMLAH" in c and "CMS" in c), None)
+                    col_nilai = next((c for c in df.columns if "NILAI" in c and "CMS" in c), None)
+                    col_rek_va = next((c for c in df.columns if "REKENING VA" in c), None)
+                    col_nama_va = next((c for c in df.columns if "NAMA REKENING VA" in c), None)
 
-                    if "KODE KKPN MITRA SATKER" in df.columns:
-                        df["KODE KKPN MITRA SATKER"] = (
-                            df["KODE KKPN MITRA SATKER"]
-                            .str.extract(r"(\d+)")
-                            .str.zfill(3)
-                        )
+                    if not col_kppn or not col_satker:
+                        continue
 
-                    if "KODE SATKER" in df.columns:
-                        df["KODE SATKER"] = (
-                            df["KODE SATKER"]
-                            .str.extract(r"(\d+)")
-                            .str.zfill(6)
-                        )
+                    # ==========================================
+                    # NORMALISASI KODE
+                    # ==========================================
+                    df[col_kppn] = (
+                        df[col_kppn]
+                        .astype(str)
+                        .str.extract(r"(\d+)")
+                        .str.zfill(3)
+                    )
 
-                    # ====================================
-                    # FILTER OTOMATIS KPPN 109
-                    # ====================================
-                    if "KODE KKPN MITRA SATKER" in df.columns:
-                        df = df[df["KODE KKPN MITRA SATKER"] == "109"]
+                    df[col_satker] = (
+                        df[col_satker]
+                        .astype(str)
+                        .str.extract(r"(\d+)")
+                        .str.zfill(6)
+                    )
+
+                    # ==========================================
+                    # FILTER KPPN 109
+                    # ==========================================
+                    df = df[df[col_kppn] == "109"]
 
                     if df.empty:
                         continue
 
-                    df["SOURCE_SHEET"] = sheet
-                    all_valid_data.append(df)
-
-                # ====================================================
-                # GABUNG SEMUA SHEET VALID
-                # ====================================================
-                if not all_valid_data:
-                    st.error("❌ Tidak ada data CMS KPPN 109 yang valid.")
-                    st.stop()
-
-                df_final = pd.concat(all_valid_data, ignore_index=True)
-
-                # ====================================================
-                # NORMALISASI NUMERIK
-                # ====================================================
-                for col in [
-                    "JUMLAH TRANSAKSI CMS",
-                    "NILAI TRANSAKSI CMS"
-                ]:
-                    if col in df_final.columns:
-                        df_final[col] = (
-                            df_final[col]
+                    # ==========================================
+                    # NORMALISASI NUMERIK
+                    # ==========================================
+                    if col_jml:
+                        df[col_jml] = (
+                            df[col_jml]
                             .astype(str)
                             .str.replace(".", "", regex=False)
                             .str.replace(",", "", regex=False)
                             .str.extract(r"(\d+)")
                         )
 
-                # ====================================================
-                # UNIQUE KEY CMS
-                # ====================================================
-                UNIQUE_KEY_CMS = [
-                    "KODE SATKER",
-                    "NOMOR REKENING VA",
-                    "NAMA REKENING VA",
-                    "JUMLAH TRANSAKSI CMS",
-                    "NILAI TRANSAKSI CMS"
+                    if col_nilai:
+                        df[col_nilai] = (
+                            df[col_nilai]
+                            .astype(str)
+                            .str.replace(".", "", regex=False)
+                            .str.replace(",", "", regex=False)
+                            .str.extract(r"(\d+)")
+                        )
+
+                    df["SOURCE_SHEET"] = sheet
+                    all_valid_data.append(df)
+
+                # ==========================================
+                # CEK HASIL
+                # ==========================================
+                if not all_valid_data:
+                    st.error("❌ Tidak ada data CMS KPPN 109 yang valid.")
+                    st.stop()
+
+                df_final = pd.concat(all_valid_data, ignore_index=True)
+
+                # ==========================================
+                # UNIQUE KEY DINAMIS
+                # ==========================================
+                unique_cols = [
+                    col_satker,
+                    col_rek_va,
+                    col_nama_va,
+                    col_jml,
+                    col_nilai
                 ]
 
-                df_final = df_final.drop_duplicates(subset=UNIQUE_KEY_CMS)
+                unique_cols = [c for c in unique_cols if c]
 
-                # ====================================================
-                # CEK DATA BARU VS MASTER
-                # ====================================================
+                df_final = df_final.drop_duplicates(subset=unique_cols)
+
+                # ==========================================
+                # CEK DATA BARU
+                # ==========================================
                 if not st.session_state.cms_master.empty:
 
-                    existing_keys = st.session_state.cms_master[UNIQUE_KEY_CMS]
+                    existing_cols = [c for c in unique_cols if c in st.session_state.cms_master.columns]
 
                     df_final = df_final.merge(
-                        existing_keys,
-                        on=UNIQUE_KEY_CMS,
+                        st.session_state.cms_master[existing_cols],
+                        on=existing_cols,
                         how="left",
                         indicator=True
                     )
@@ -6730,17 +6723,17 @@ def page_admin():
                     df_final = df_final[df_final["_merge"] == "left_only"]
                     df_final = df_final.drop(columns=["_merge"])
 
-                # ====================================================
+                # ==========================================
                 # SIMPAN KE MASTER
-                # ====================================================
+                # ==========================================
                 st.session_state.cms_master = pd.concat(
                     [st.session_state.cms_master, df_final],
                     ignore_index=True
                 )
 
-                # ====================================================
-                # 💾 SIMPAN KE GITHUB
-                # ====================================================
+                # ==========================================
+                # SIMPAN KE GITHUB
+                # ==========================================
                 excel_bytes = io.BytesIO()
 
                 with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
@@ -6760,19 +6753,9 @@ def page_admin():
 
             st.success(f"✅ {len(df_final)} data CMS berhasil ditambahkan.")
 
-            # ====================================================
-            # PREVIEW
-            # ====================================================
-            if not st.session_state.cms_master.empty:
-                st.subheader("Preview Database CMS")
-                st.dataframe(
-                    st.session_state.cms_master,
-                    use_container_width=True
-                )
-                st.info(
-                    f"Total Data Tersimpan: {len(st.session_state.cms_master)}"
-                )
-
+            st.subheader("Preview Database CMS")
+            st.dataframe(st.session_state.cms_master, use_container_width=True)
+            st.info(f"Total Data Tersimpan: {len(st.session_state.cms_master)}")
 
 
     # ============================================================
