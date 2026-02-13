@@ -6549,10 +6549,7 @@ def page_admin():
                 )
 
                 # ====================================
-                # 💾 SIMPAN OTOMATIS KE GITHUB
-                # ====================================
-                # ====================================
-                # 💾 SIMPAN KE GITHUB (PAKAI FUNGSI ANDA)
+                # SIMPAN OTOMATIS KE GITHUB
                 # ====================================
                 excel_bytes = io.BytesIO()
 
@@ -6583,9 +6580,6 @@ def page_admin():
         
         # ============================================================
         # UPLOAD DATA CMS 
-        # ============================================================
-        # ============================================================
-        # UPLOAD DATA CMS (FIX FINAL - TANPA BERGANTUNG NAMA KOLOM)
         # ============================================================
         st.markdown("---")
         st.subheader("Upload Data CMS")
@@ -6741,10 +6735,6 @@ def page_admin():
                 )
 
             st.success(f"✅ {len(df_final)} data CMS berhasil diproses & disimpan.")
-            st.dataframe(st.session_state.cms_master, use_container_width=True)
-            st.info(f"Total Data Tersimpan: {len(st.session_state.cms_master)}")
-
-
 
 
     # ============================================================
@@ -6971,6 +6961,124 @@ def page_admin():
 
                 except Exception as e:
                     st.error(f"Gagal menghapus data KKP: {e}")
+                    
+        
+        # ============================================================
+        # 🗑️ HAPUS DATA DIGIPAY
+        # ============================================================
+        st.markdown("---")
+        st.subheader("🗑️ Hapus Data Digipay")
+
+        if "digipay_master" not in st.session_state or st.session_state.digipay_master.empty:
+
+            st.info("ℹ️ Belum ada Data Digipay tersimpan.")
+
+        else:
+
+            confirm_delete_digipay = st.checkbox(
+                "⚠️ Hapus seluruh Data Digipay dari sistem dan GitHub.",
+                key="confirm_delete_digipay"
+            )
+
+            if st.button("🗑️ Hapus Data Digipay", type="primary") and confirm_delete_digipay:
+
+                try:
+                    # ======================================
+                    # 1️⃣ Hapus dari session
+                    # ======================================
+                    st.session_state.digipay_master = pd.DataFrame()
+
+                    # ======================================
+                    # 2️⃣ Hapus dari GitHub
+                    # ======================================
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo_name = st.secrets["GITHUB_REPO"]
+
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
+
+                    file_path = "data_Digipay/DIGIPAY_MASTER.xlsx"
+
+                    try:
+                        file = repo.get_contents(file_path)
+                        repo.delete_file(
+                            file.path,
+                            "Delete DIGIPAY_MASTER.xlsx",
+                            file.sha
+                        )
+                    except Exception:
+                        pass  # Jika file belum ada, tidak error
+
+                    # ======================================
+                    # 3️⃣ Log Aktivitas (optional)
+                    # ======================================
+                    if "activity_log" not in st.session_state:
+                        st.session_state.activity_log = []
+
+                    st.session_state.activity_log.append({
+                        "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Menu": "Hapus Data",
+                        "Aksi": "Hapus Data Digipay",
+                        "Status": "✅ Sukses"
+                    })
+
+                    st.success("✅ Data Digipay berhasil dihapus dari sistem & GitHub.")
+                    st.snow()
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"❌ Gagal menghapus Data Digipay: {e}")
+                    
+        
+        # ============================================================
+        # 🗑️ HAPUS DATA CMS
+        # ============================================================
+        st.markdown("---")
+        st.subheader("🗑️ Hapus Data CMS")
+
+        if "cms_master" not in st.session_state or st.session_state.cms_master.empty:
+
+            st.info("ℹ️ Belum ada data CMS tersimpan.")
+
+        else:
+
+            confirm_delete_cms = st.checkbox(
+                "⚠️ Hapus seluruh Data CMS dari sistem dan GitHub.",
+                key="confirm_delete_cms"
+            )
+
+            if st.button("🗑️ Hapus Data CMS", type="primary") and confirm_delete_cms:
+
+                try:
+                    # Hapus dari session
+                    st.session_state.cms_master = pd.DataFrame()
+
+                    # Hapus dari GitHub
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo_name = st.secrets["GITHUB_REPO"]
+
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
+
+                    file_path = "data_CMS/CMS_MASTER.xlsx"
+
+                    try:
+                        file = repo.get_contents(file_path)
+                        repo.delete_file(
+                            file.path,
+                            "Delete CMS_MASTER.xlsx",
+                            file.sha
+                        )
+                    except Exception:
+                        pass
+
+                    st.success("✅ Data CMS berhasil dihapus dari sistem & GitHub.")
+                    st.snow()
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"❌ Gagal menghapus Data CMS: {e}")
+
         
         # HAPUS DATA REFERENSI
         # =====================================================
@@ -7319,6 +7427,35 @@ def page_admin():
 
         else:
             st.info("ℹ️ Database Digipay kosong.")
+            
+        
+        # ============================================================
+        # DOWNLOAD DATA CMS
+        # ============================================================
+        st.markdown("---")
+        st.subheader("Download Data CMS")
+
+        try:
+            token = st.secrets["GITHUB_TOKEN"]
+            repo_name = st.secrets["GITHUB_REPO"]
+
+            g = Github(auth=Auth.Token(token))
+            repo = g.get_repo(repo_name)
+
+            file_path = "data_CMS/CMS_MASTER.xlsx"
+
+            file_content = repo.get_contents(file_path)
+            file_bytes = file_content.decoded_content
+
+            st.download_button(
+                label="Download Data CMS",
+                data=file_bytes,
+                file_name="CMS_MASTER.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+        except Exception:
+            st.info("ℹ️ Belum ada data CMS tersedia untuk diunduh.")
 
 
 
