@@ -7549,9 +7549,6 @@ def page_admin():
 
             st.success("✅ Data referensi berhasil dimuat dari GitHub")
 
-            # Preview 10 baris pertama
-            st.dataframe(df_ref.head(10), use_container_width=True)
-
             # ============================
             # CONVERT TO EXCEL (IN-MEMORY)
             # ============================
