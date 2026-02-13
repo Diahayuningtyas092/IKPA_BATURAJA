@@ -6568,7 +6568,7 @@ def page_admin():
                 save_file_to_github(
                     excel_bytes.getvalue(),
                     "DIGIPAY_MASTER.xlsx",
-                    folder="data"
+                    folder="data_Digipay"
                 )
 
                 log_activity(
@@ -6672,16 +6672,20 @@ def page_admin():
                     df[col_kppn] = (
                         df[col_kppn]
                         .astype(str)
-                        .str.extract(r"(\d+)")
+                        .str.extract(r"(\d+)")[0]
+                        .fillna("")
                         .str.zfill(3)
                     )
+
 
                     df[col_satker] = (
                         df[col_satker]
                         .astype(str)
-                        .str.extract(r"(\d+)")
+                        .str.extract(r"(\d+)")[0]
+                        .fillna("")
                         .str.zfill(6)
                     )
+
 
                     # ==========================================
                     # FILTER KPPN 109
