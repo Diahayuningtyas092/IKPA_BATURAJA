@@ -6581,7 +6581,8 @@ def page_admin():
             st.success(f"✅ {len(df_all)} data Digipay berhasil diproses & disimpan.")
         
         
-        #UPLOAD DATA CMS
+        # ============================================================
+        # 📥 UPLOAD DATA CMS 
         # ============================================================
         st.markdown("---")
         st.subheader("Upload Data CMS")
@@ -6604,21 +6605,24 @@ def page_admin():
 
                 for sheet in xls.sheet_names:
 
+                    # ==================================================
+                    # 1️⃣ Cari header otomatis (biasanya baris 3-5)
+                    # ==================================================
                     df_raw = pd.read_excel(xls, sheet_name=sheet, header=None, dtype=str)
 
-                    # ===============================
-                    # 🔎 Cari baris header otomatis
-                    # ===============================
                     header_row = None
-                    for i in range(min(30, len(df_raw))):
+                    for i in range(min(20, len(df_raw))):
                         row_text = " ".join(df_raw.iloc[i].astype(str)).upper()
-                        if "SATKER" in row_text and "KPPN" in row_text:
+                        if "KODE" in row_text and "SATKER" in row_text:
                             header_row = i
                             break
 
                     if header_row is None:
                         continue
 
+                    # ==================================================
+                    # 2️⃣ Baca ulang dengan header benar
+                    # ==================================================
                     df = pd.read_excel(
                         xls,
                         sheet_name=sheet,
@@ -6626,33 +6630,29 @@ def page_admin():
                         dtype=str
                     )
 
-                    # ===============================
-                    # Normalisasi kolom
-                    # ===============================
+                    # ==================================================
+                    # 3️⃣ Normalisasi kolom
+                    # ==================================================
                     df.columns = (
                         df.columns.astype(str)
                         .str.replace("\n", " ")
+                        .str.replace("\r", " ")
                         .str.strip()
                         .str.upper()
                     )
 
-                    # ===============================
-                    # 🔎 Deteksi kolom KPPN
-                    # ===============================
+                    # ==================================================
+                    # 4️⃣ Pastikan kolom yang kita butuh ada
+                    # ==================================================
                     col_kppn = next((c for c in df.columns if "KPPN" in c), None)
-                    if not col_kppn:
+                    col_satker = next((c for c in df.columns if "KODE SATKER" in c), None)
+
+                    if not col_kppn or not col_satker:
                         continue
 
-                    # ===============================
-                    # 🔎 Deteksi kolom Satker
-                    # ===============================
-                    col_satker = next((c for c in df.columns if "SATKER" in c and "KODE" in c), None)
-                    if not col_satker:
-                        continue
-
-                    # ===============================
-                    # Normalisasi kode
-                    # ===============================
+                    # ==================================================
+                    # 5️⃣ Normalisasi kode (anti hilang 0)
+                    # ==================================================
                     df[col_kppn] = (
                         df[col_kppn]
                         .astype(str)
@@ -6669,19 +6669,20 @@ def page_admin():
                         .str.zfill(6)
                     )
 
-                    # ===============================
-                    # 🎯 Filter hanya KPPN 109
-                    # ===============================
+                    # ==================================================
+                    # 6️⃣ Filter hanya KPPN 109
+                    # ==================================================
                     df = df[df[col_kppn] == "109"]
+
                     if df.empty:
                         continue
 
-                    # ===============================
-                    # 🔎 Deteksi kolom CMS
-                    # ===============================
+                    # ==================================================
+                    # 7️⃣ Deteksi kolom CMS
+                    # ==================================================
                     col_jml = next((c for c in df.columns if "JUMLAH" in c and "CMS" in c), None)
                     col_nilai = next((c for c in df.columns if "NILAI" in c and "CMS" in c), None)
-                    col_rek_va = next((c for c in df.columns if "REKENING VA" in c and "NOMOR" in c), None)
+                    col_rek_va = next((c for c in df.columns if "NOMOR REKENING VA" in c), None)
                     col_nama_va = next((c for c in df.columns if "NAMA REKENING VA" in c), None)
 
                     # Bersihkan angka
@@ -6698,62 +6699,63 @@ def page_admin():
                     df["SOURCE_SHEET"] = sheet
                     all_valid_data.append(df)
 
-                # ===============================
-                # Jika tidak ada data
-                # ===============================
+                # ==================================================
+                # 8️⃣ Jika tidak ada data
+                # ==================================================
                 if not all_valid_data:
                     st.error("❌ Tidak ada data CMS KPPN 109 ditemukan.")
                     st.stop()
 
                 df_final = pd.concat(all_valid_data, ignore_index=True)
 
-                # ===============================
-                # 🔐 Unique key
-                # ===============================
-                unique_cols = [
-                    col for col in [
-                        col_satker,
-                        col_rek_va,
-                        col_nama_va,
-                        col_jml,
-                        col_nilai
-                    ] if col
-                ]
+                # ==================================================
+                # 9️⃣ Unique key lebih aman (tidak over ketat)
+                # ==================================================
+                unique_cols = [col_satker]
 
-                if unique_cols:
-                    df_final = df_final.drop_duplicates(subset=unique_cols)
+                if col_rek_va:
+                    unique_cols.append(col_rek_va)
 
-                # ===============================
-                # Cek data baru
-                # ===============================
-                if not st.session_state.cms_master.empty and unique_cols:
+                if col_jml:
+                    unique_cols.append(col_jml)
+
+                if col_nilai:
+                    unique_cols.append(col_nilai)
+
+                df_final = df_final.drop_duplicates(subset=unique_cols)
+
+                # ==================================================
+                # 🔄 Cek data baru
+                # ==================================================
+                if not st.session_state.cms_master.empty:
 
                     existing_cols = [
                         c for c in unique_cols
                         if c in st.session_state.cms_master.columns
                     ]
 
-                    df_final = df_final.merge(
-                        st.session_state.cms_master[existing_cols],
-                        on=existing_cols,
-                        how="left",
-                        indicator=True
-                    )
+                    if existing_cols:
+                        df_final = df_final.merge(
+                            st.session_state.cms_master[existing_cols],
+                            on=existing_cols,
+                            how="left",
+                            indicator=True
+                        )
 
-                    df_final = df_final[df_final["_merge"] == "left_only"]
-                    df_final = df_final.drop(columns=["_merge"])
+                        df_final = df_final[df_final["_merge"] == "left_only"]
+                        df_final = df_final.drop(columns=["_merge"])
 
-                # ===============================
-                # Simpan ke session
-                # ===============================
+                # ==================================================
+                # 💾 Simpan ke session
+                # ==================================================
                 st.session_state.cms_master = pd.concat(
                     [st.session_state.cms_master, df_final],
                     ignore_index=True
                 )
 
-                # ===============================
+                # ==================================================
                 # 💾 Simpan ke GitHub
-                # ===============================
+                # ==================================================
                 excel_bytes = io.BytesIO()
 
                 with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
@@ -6774,7 +6776,6 @@ def page_admin():
             st.success(f"✅ {len(df_final)} data CMS berhasil diproses & disimpan.")
             st.dataframe(st.session_state.cms_master, use_container_width=True)
             st.info(f"Total Data Tersimpan: {len(st.session_state.cms_master)}")
-
 
 
     # ============================================================
