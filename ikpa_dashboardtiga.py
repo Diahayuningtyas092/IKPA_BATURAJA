@@ -6583,9 +6583,6 @@ def page_admin():
         
         #UPLOAD DATA CMS
         # ============================================================
-        # ============================================================
-        # UPLOAD DATA CMS (FINAL FIX HEADER DETECT)
-        # ============================================================
         st.markdown("---")
         st.subheader("Upload Data CMS")
 
@@ -6607,28 +6604,26 @@ def page_admin():
 
                 for sheet in xls.sheet_names:
 
-                    # ====================================================
-                    # 1️⃣ BACA TANPA HEADER
-                    # ====================================================
-                    df_temp = pd.read_excel(xls, sheet_name=sheet, header=None, dtype=str)
+                    # ==========================================
+                    # 1️⃣ BACA TANPA HEADER DULU
+                    # ==========================================
+                    df_raw = pd.read_excel(xls, sheet_name=sheet, header=None, dtype=str)
 
                     header_row = None
 
-                    # ====================================================
-                    # 2️⃣ CARI BARIS HEADER YANG BENAR
-                    # ====================================================
-                    for i in range(min(20, len(df_temp))):
-                        row_text = " ".join(df_temp.iloc[i].astype(str).str.upper())
-                        if "KODE KKPN" in row_text and "KODE SATKER" in row_text:
+                    # Cari baris yang mengandung kata "No" dan "Satker"
+                    for i in range(min(25, len(df_raw))):
+                        row_text = " ".join(df_raw.iloc[i].astype(str))
+                        if "No" in row_text and "Satker" in row_text:
                             header_row = i
                             break
 
                     if header_row is None:
-                        continue  # skip sheet bukan CMS
+                        continue
 
-                    # ====================================================
-                    # 3️⃣ BACA ULANG DENGAN HEADER YANG BENAR
-                    # ====================================================
+                    # ==========================================
+                    # 2️⃣ BACA ULANG DENGAN HEADER BENAR
+                    # ==========================================
                     df = pd.read_excel(
                         xls,
                         sheet_name=sheet,
@@ -6636,9 +6631,6 @@ def page_admin():
                         dtype=str
                     )
 
-                    # ====================================================
-                    # NORMALISASI HEADER
-                    # ====================================================
                     df.columns = (
                         df.columns.astype(str)
                         .str.replace("\n", " ")
@@ -6646,22 +6638,37 @@ def page_admin():
                         .str.upper()
                     )
 
-                    # ====================================================
-                    # DETEKSI KOLOM DINAMIS
-                    # ====================================================
-                    col_kppn = next((c for c in df.columns if "KKPN" in c), None)
-                    col_satker = next((c for c in df.columns if "KODE SATKER" in c), None)
-                    col_jml = next((c for c in df.columns if "JUMLAH" in c and "CMS" in c), None)
-                    col_nilai = next((c for c in df.columns if "NILAI" in c and "CMS" in c), None)
-                    col_rek_va = next((c for c in df.columns if "REKENING VA" in c and "NOMOR" in c), None)
-                    col_nama_va = next((c for c in df.columns if "NAMA REKENING VA" in c), None)
+                    # ==========================================
+                    # 3️⃣ DETEKSI KOLOM KPPN BERDASARKAN POLA DATA
+                    # ==========================================
+                    col_kppn = None
 
-                    if not col_kppn or not col_satker:
+                    for col in df.columns:
+                        values = df[col].astype(str).str.extract(r"(\d{3})")[0]
+                        if values.notna().sum() > 10:
+                            if values.value_counts().get("109", 0) > 3:
+                                col_kppn = col
+                                break
+
+                    if not col_kppn:
                         continue
 
-                    # ====================================================
+                    # ==========================================
+                    # DETEKSI KOLOM SATKER (6 DIGIT)
+                    # ==========================================
+                    col_satker = None
+
+                    for col in df.columns:
+                        if df[col].astype(str).str.match(r"\d{6}").sum() > 5:
+                            col_satker = col
+                            break
+
+                    if not col_satker:
+                        continue
+
+                    # ==========================================
                     # NORMALISASI KODE
-                    # ====================================================
+                    # ==========================================
                     df[col_kppn] = (
                         df[col_kppn]
                         .astype(str)
@@ -6676,17 +6683,23 @@ def page_admin():
                         .str.zfill(6)
                     )
 
-                    # ====================================================
+                    # ==========================================
                     # FILTER KPPN 109
-                    # ====================================================
+                    # ==========================================
                     df = df[df[col_kppn] == "109"]
 
                     if df.empty:
                         continue
 
-                    # ====================================================
-                    # NORMALISASI NUMERIK
-                    # ====================================================
+                    # ==========================================
+                    # DETEKSI KOLOM CMS
+                    # ==========================================
+                    col_jml = next((c for c in df.columns if "JUMLAH" in c and "CMS" in c), None)
+                    col_nilai = next((c for c in df.columns if "NILAI" in c and "CMS" in c), None)
+                    col_rek_va = next((c for c in df.columns if "REKENING VA" in c and "NOMOR" in c), None)
+                    col_nama_va = next((c for c in df.columns if "NAMA REKENING VA" in c), None)
+
+                    # Normalisasi angka
                     for col in [col_jml, col_nilai]:
                         if col:
                             df[col] = (
@@ -6700,33 +6713,28 @@ def page_admin():
                     df["SOURCE_SHEET"] = sheet
                     all_valid_data.append(df)
 
-                # ====================================================
+                # ==========================================
                 # CEK HASIL
-                # ====================================================
+                # ==========================================
                 if not all_valid_data:
                     st.error("❌ Tidak ada data CMS KPPN 109 yang valid.")
                     st.stop()
 
                 df_final = pd.concat(all_valid_data, ignore_index=True)
 
-                # ====================================================
+                # ==========================================
                 # UNIQUE KEY
-                # ====================================================
-                unique_cols = [
-                    col_satker,
-                    col_rek_va,
-                    col_nama_va,
-                    col_jml,
-                    col_nilai
-                ]
+                # ==========================================
+                unique_cols = [col_satker, col_rek_va, col_nama_va, col_jml, col_nilai]
                 unique_cols = [c for c in unique_cols if c]
 
                 df_final = df_final.drop_duplicates(subset=unique_cols)
 
-                # ====================================================
+                # ==========================================
                 # CEK DATA BARU
-                # ====================================================
+                # ==========================================
                 if not st.session_state.cms_master.empty:
+
                     existing_cols = [c for c in unique_cols if c in st.session_state.cms_master.columns]
 
                     df_final = df_final.merge(
@@ -6739,17 +6747,17 @@ def page_admin():
                     df_final = df_final[df_final["_merge"] == "left_only"]
                     df_final = df_final.drop(columns=["_merge"])
 
-                # ====================================================
+                # ==========================================
                 # SIMPAN KE MASTER
-                # ====================================================
+                # ==========================================
                 st.session_state.cms_master = pd.concat(
                     [st.session_state.cms_master, df_final],
                     ignore_index=True
                 )
 
-                # ====================================================
+                # ==========================================
                 # SIMPAN KE GITHUB
-                # ====================================================
+                # ==========================================
                 excel_bytes = io.BytesIO()
 
                 with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
@@ -6764,7 +6772,7 @@ def page_admin():
                 save_file_to_github(
                     excel_bytes.getvalue(),
                     "CMS_MASTER.xlsx",
-                    folder="data"
+                    folder="data_CMS"
                 )
 
             st.success(f"✅ {len(df_final)} data CMS berhasil ditambahkan.")
