@@ -7541,6 +7541,39 @@ def page_admin():
             file_name="Template_Data_Referensi.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
+        
+        
+        st.subheader("📥 Download Data Referensi Terbaru")
+        try:
+            df_ref, repo, existing_file = load_template_referensi_from_github()
+
+            st.success("✅ Data referensi berhasil dimuat dari GitHub")
+
+            # Preview 10 baris pertama
+            st.dataframe(df_ref.head(10), use_container_width=True)
+
+            # ============================
+            # CONVERT TO EXCEL (IN-MEMORY)
+            # ============================
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                df_ref.to_excel(writer, index=False)
+
+            output.seek(0)
+
+            # ============================
+            # DOWNLOAD BUTTON
+            # ============================
+            st.download_button(
+                label="⬇️ Download Data Referensi (Terbaru)",
+                data=output,
+                file_name="Template_Data_Referensi_TERBARU.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
+        except Exception as e:
+            st.error(f"❌ Gagal memuat data referensi: {e}")
+
     
     # ===============================
     # 🕓 TAB RIWAYAT AKTIVITAS
