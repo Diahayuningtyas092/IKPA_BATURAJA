@@ -7405,7 +7405,7 @@ def page_admin():
         #  DOWNLOAD DATABASE DIGIPAY
         # ==========================================
         st.markdown("---")
-        st.subheader("Download Data Digipay")
+        st.subheader("📥 Download Data Digipay")
 
         if "digipay_master" in st.session_state and not st.session_state.digipay_master.empty:
 
@@ -7433,7 +7433,7 @@ def page_admin():
         # DOWNLOAD DATA CMS
         # ============================================================
         st.markdown("---")
-        st.subheader("Download Data CMS")
+        st.subheader("📥 Download Data CMS")
 
         try:
             token = st.secrets["GITHUB_TOKEN"]
