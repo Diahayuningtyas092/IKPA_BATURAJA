@@ -6639,19 +6639,16 @@ def page_admin():
                     )
 
                     # ==========================================
-                    # 3️⃣ DETEKSI KOLOM KPPN BERDASARKAN POLA DATA
+                    # DETEKSI KOLOM KPPN BERDASARKAN POLA DATA
                     # ==========================================
-                    col_kppn = None
-
-                    for col in df.columns:
-                        values = df[col].astype(str).str.extract(r"(\d{3})")[0]
-                        if values.notna().sum() > 10:
-                            if values.value_counts().get("109", 0) > 3:
-                                col_kppn = col
-                                break
+                    col_kppn = next(
+                        (c for c in df.columns if "KPPN" in c),
+                        None
+                    )
 
                     if not col_kppn:
                         continue
+
 
                     # ==========================================
                     # DETEKSI KOLOM SATKER (6 DIGIT)
@@ -6676,6 +6673,7 @@ def page_admin():
                         .fillna("")
                         .str.zfill(3)
                     )
+
 
 
                     df[col_satker] = (
