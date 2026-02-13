@@ -6641,10 +6641,6 @@ def page_admin():
                         .str.upper()
                     )
                     
-                    # 🔍 DEBUG KOLOM
-                    st.write("SHEET:", sheet)
-                    st.write("KOLOM TERBACA:", df.columns.tolist())
-                    st.write(df.head())
 
                     # ==================================================
                     # 3️⃣ Cari kolom KPPN berdasarkan isi (bukan nama)
