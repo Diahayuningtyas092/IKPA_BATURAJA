@@ -2003,33 +2003,6 @@ def load_data_ikpa_kppn_from_github():
     return data
 
 
-def load_data_kkp_from_github():
-    token = st.secrets.get("GITHUB_TOKEN")
-    repo_name = st.secrets.get("GITHUB_REPO")
-
-    if not token or not repo_name:
-        return {}
-
-    g = Github(auth=Auth.Token(token))
-    repo = g.get_repo(repo_name)
-
-    try:
-        contents = repo.get_contents("data_kkp")
-    except:
-        return {}
-
-    data_storage_kkp = {}
-
-    for file in contents:
-        if file.name.endswith(".xlsx"):
-            raw = base64.b64decode(file.content)
-            df = pd.read_excel(io.BytesIO(raw))
-            data_storage_kkp[file.name] = df
-
-    return data_storage_kkp
-
-
-
 def find_header_row_kkp(uploaded_file, max_rows=10):
     uploaded_file.seek(0)
     preview = pd.read_excel(uploaded_file, header=None, nrows=max_rows)
@@ -2062,39 +2035,43 @@ def normalize_kkp_for_dashboard(df):
 # FILE KKP
 def process_excel_file_kkp(uploaded_file):
     """
-    PARSER KKP SUPER ROBUST
-    Auto-detect header di baris manapun
+    PARSER KKP SUPER CLEAN & ROBUST
+    - Auto detect header
+    - Extract kode BA & Satker
+    - Clean NaN
+    - Parse periode
+    - Remove garbage rows
     """
 
     uploaded_file.seek(0)
     df_raw = pd.read_excel(uploaded_file, header=None)
 
-    # ===============================
-    # 1️⃣ CARI BARIS HEADER OTOMATIS
-    # ===============================
+    # =========================================
+    # 1️⃣ DETEKSI HEADER OTOMATIS
+    # =========================================
     header_row = None
 
-    for i in range(min(15, len(df_raw))):
-        row = df_raw.iloc[i].astype(str).str.upper().tolist()
-        row_text = " ".join(row)
+    for i in range(min(20, len(df_raw))):
+        row_text = " ".join(df_raw.iloc[i].astype(str)).upper()
 
-        if "SATKER" in row_text and ("KART" in row_text or "PEMEGANG" in row_text):
+        if (
+            "SATKER" in row_text
+            and "KART" in row_text
+            and ("PEMEGANG" in row_text or "NOMOR" in row_text)
+        ):
             header_row = i
             break
 
     if header_row is None:
         return pd.DataFrame()
 
-    # ===============================
-    # 2️⃣ SET HEADER
-    # ===============================
+    # =========================================
+    # 2️⃣ SET HEADER YANG BENAR
+    # =========================================
     df = df_raw.copy()
     df.columns = df.iloc[header_row]
-    df = df.iloc[header_row + 1:]
+    df = df.iloc[header_row + 1:].reset_index(drop=True)
 
-    # ===============================
-    # 3️⃣ NORMALISASI KOLOM
-    # ===============================
     df.columns = (
         df.columns.astype(str)
         .str.strip()
@@ -2102,46 +2079,82 @@ def process_excel_file_kkp(uploaded_file):
         .str.replace(r"\s+", " ", regex=True)
     )
 
-    # ===============================
-    # 4️⃣ CARI KOLOM FLEXIBLE
-    # ===============================
-    def find_column(keyword):
+    # =========================================
+    # 3️⃣ HELPER CARI KOLOM FLEKSIBEL
+    # =========================================
+    def find_col(keyword_list):
         for col in df.columns:
-            if keyword in col:
-                return col
+            for key in keyword_list:
+                if key in col:
+                    return col
         return None
 
-    col_ba = find_column("BA")
-    col_satker = find_column("SATKER")
-    col_kartu = find_column("KART")
-    col_nama = find_column("PEMEGANG")
+    col_ba = find_col(["BA"])
+    col_satker = find_col(["SATKER"])
+    col_kartu = find_col(["KART"])
+    col_nama = find_col(["PEMEGANG"])
+    col_bank = find_col(["BANK"])
+    col_periode = find_col(["PERIODE"])
 
     if not all([col_ba, col_satker, col_kartu, col_nama]):
         return pd.DataFrame()
 
-    # ===============================
-    # 5️⃣ BENTUK DATA FINAL
-    # ===============================
+    # =========================================
+    # 4️⃣ BENTUK OUTPUT BERSIH
+    # =========================================
     out = pd.DataFrame()
-    out["Kode BA"] = df[col_ba].astype(str)
-    out["Satker"] = df[col_satker].astype(str)
-    out["Nomor Kartu"] = df[col_kartu].astype(str)
-    out["Nama Pemegang KKP"] = df[col_nama].astype(str)
 
-    # ===============================
-    # 6️⃣ BERSIHKAN DATA
-    # ===============================
-    out = out.replace(["nan", "None", None], "")
-    out = out.fillna("")
+    # 🔢 Ekstrak kode BA (3 digit)
+    out["Kode BA"] = (
+        df[col_ba]
+        .astype(str)
+        .str.extract(r"(\d{3})")[0]
+        .fillna("")
+    )
 
-    # Buang baris kosong
+    # 🔢 Ekstrak kode Satker (6 digit)
+    out["Kode Satker"] = (
+        df[col_satker]
+        .astype(str)
+        .str.extract(r"(\d{6})")[0]
+        .fillna("")
+    )
+
+    out["Nomor Kartu"] = df[col_kartu].astype(str).str.strip().fillna("")
+    out["Nama Pemegang KKP"] = df[col_nama].astype(str).str.strip().fillna("")
+
+    if col_bank:
+        out["Bank Penerbit KKP"] = df[col_bank].astype(str).str.strip().fillna("")
+    else:
+        out["Bank Penerbit KKP"] = ""
+
+    # =========================================
+    # 5️⃣ PARSE PERIODE (JIKA ADA)
+    # =========================================
+    if col_periode:
+        out["Periode"] = pd.to_datetime(
+            df[col_periode],
+            errors="coerce"
+        )
+    else:
+        out["Periode"] = pd.NaT
+
+    # =========================================
+    # 6️⃣ HAPUS BARIS SAMPAH
+    # =========================================
     out = out[
-        (out["Satker"] != "") |
-        (out["Nomor Kartu"] != "") |
-        (out["Nama Pemegang KKP"] != "")
+        (out["Kode Satker"] != "") &
+        (out["Nomor Kartu"] != "")
     ]
 
-    return out.reset_index(drop=True)
+    # =========================================
+    # 7️⃣ FINAL CLEAN
+    # =========================================
+    out = out.replace(["nan", "None", None], "")
+    out = out.reset_index(drop=True)
+
+    return out
+
 
 
 # ============================
@@ -6217,8 +6230,6 @@ def page_admin():
                     st.error(f"Gagal memproses atau menyimpan data KKP: {e}")
 
 
-
-
         # ============================================================
         # SUBMENU: Upload Data Referensi
         # ============================================================
@@ -7432,6 +7443,7 @@ def page_admin():
             )
             
 
+        # DOWNLOAD DATA KKP
         st.markdown("---")
         st.subheader("📥 Download Data KKP")
 
