@@ -2035,39 +2035,16 @@ def normalize_kkp_for_dashboard(df):
 # FILE KKP
 def process_excel_file_kkp(uploaded_file):
     """
-    Parser KKP versi sederhana:
-    - Tidak wajib kolom Nama Pemegang KKP
-    - Fokus hanya BA & Satker
+    Parser KKP khusus format OMSPAN yang sudah rapi.
+    Tidak perlu deteksi header.
     """
 
     uploaded_file.seek(0)
-    df_raw = pd.read_excel(uploaded_file, header=None)
+    df = pd.read_excel(uploaded_file)
 
-    # ===============================
-    # 1️⃣ DETEKSI HEADER
-    # ===============================
-    header_row = None
-
-    for i in range(min(20, len(df_raw))):
-        row = df_raw.iloc[i].astype(str).str.upper()
-
-        if (
-            row.str.contains("BA/KL").any()
-            and row.str.contains("SATKER").any()
-        ):
-            header_row = i
-            break
-
-    if header_row is None:
-        return pd.DataFrame()
-
-    # ===============================
-    # 2️⃣ SET HEADER
-    # ===============================
-    df = df_raw.copy()
-    df.columns = df.iloc[header_row]
-    df = df.iloc[header_row + 1:].reset_index(drop=True)
-
+    # ==========================================
+    # 1️⃣ NORMALISASI NAMA KOLOM
+    # ==========================================
     df.columns = (
         df.columns.astype(str)
         .str.strip()
@@ -2075,49 +2052,75 @@ def process_excel_file_kkp(uploaded_file):
         .str.replace(r"\s+", " ", regex=True)
     )
 
-    # ===============================
-    # 3️⃣ CARI KOLOM
-    # ===============================
-    def find_col(keyword):
-        for col in df.columns:
-            if keyword in col:
-                return col
-        return None
-
-    col_ba = find_col("BA")
-    col_satker = find_col("SATKER")
-
-    if not col_ba or not col_satker:
-        return pd.DataFrame()
-
-    # ===============================
-    # 4️⃣ BENTUK OUTPUT
-    # ===============================
-    out = pd.DataFrame()
-
-    out["Kode BA"] = (
-        df[col_ba]
+    # ==========================================
+    # 2️⃣ EKSTRAK KODE BA (3 digit)
+    # ==========================================
+    df["Kode BA"] = (
+        df["BA/KL"]
         .astype(str)
         .str.extract(r"(\d{3})")[0]
-        .fillna("")
     )
 
-    out["Kode Satker"] = (
-        df[col_satker]
+    # ==========================================
+    # 3️⃣ EKSTRAK KODE SATKER (6 digit)
+    # ==========================================
+    df["Kode Satker"] = (
+        df["SATKER"]
         .astype(str)
         .str.extract(r"(\d{6})")[0]
-        .fillna("")
     )
 
-    # ===============================
-    # 5️⃣ HAPUS BARIS TIDAK VALID
-    # ===============================
-    out = out[
-        (out["Kode BA"] != "") &
-        (out["Kode Satker"] != "")
+    # ==========================================
+    # 4️⃣ NORMALISASI NOMOR KARTU (ANTI SCIENTIFIC)
+    # ==========================================
+    df["Nomor Kartu"] = (
+        df["NOMOR KARTU"]
+        .astype(str)
+        .str.replace(r"\.0$", "", regex=True)
+    )
+
+    # ==========================================
+    # 5️⃣ NORMALISASI NUMERIK
+    # ==========================================
+    numeric_cols = [
+        "LIMIT KKP",
+        "TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)",
+        "NILAI TRANSAKSI (NILAI SPM)"
     ]
 
-    return out.reset_index(drop=True)
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = (
+                df[col]
+                .astype(str)
+                .str.replace(",", "", regex=False)
+                .str.replace(r"[^\d]", "", regex=True)
+                .replace("", "0")
+                .astype(float)
+            )
+
+    # ==========================================
+    # 6️⃣ PILIH KOLOM FINAL
+    # ==========================================
+    final_columns = [
+        "Kode BA",
+        "Kode Satker",
+        "Nomor Kartu",
+        "NAMA PEMEGANG KKP",
+        "LIMIT KKP",
+        "JENIS KKP",
+        "BANK PENERBIT KKP",
+        "PERIODE",
+        "TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)",
+        "NILAI TRANSAKSI (NILAI SPM)"
+    ]
+
+    df_final = df[[c for c in final_columns if c in df.columns]]
+
+    df_final = df_final.dropna(subset=["Kode Satker"])
+
+    return df_final.reset_index(drop=True)
+
 
 
 # ============================
