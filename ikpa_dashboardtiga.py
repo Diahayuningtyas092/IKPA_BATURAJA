@@ -6577,9 +6577,9 @@ def page_admin():
                     (df_all["KDKPPN"] == "109") &
                     (df_all["NMKPPN"].str.upper() == "BATURAJA")
                 ]
-
+                
                 # ====================================
-                # UNIQUE KEY (ANTI DOUBLE)
+                # UNIQUE KEY
                 # ====================================
                 UNIQUE_KEY = [
                     "KDSATKER",
@@ -6591,29 +6591,84 @@ def page_admin():
                 df_all = df_all.drop_duplicates(subset=UNIQUE_KEY)
 
                 # ====================================
-                # CEK DATA BARU
+                # SMART MERGE UPDATE DATABASE
                 # ====================================
-                if not st.session_state.digipay_master.empty:
 
-                    existing_keys = st.session_state.digipay_master[UNIQUE_KEY]
+                # Jika database kosong → langsung simpan
+                if st.session_state.digipay_master.empty:
+                    st.session_state.digipay_master = df_all.copy()
+                    new_count = len(df_all)
+                    update_count = 0
 
-                    df_all = df_all.merge(
-                        existing_keys,
+                else:
+                    master_df = st.session_state.digipay_master.copy()
+
+                    merged = df_all.merge(
+                        master_df,
                         on=UNIQUE_KEY,
                         how="left",
-                        indicator=True
+                        indicator=True,
+                        suffixes=("", "_old")
                     )
 
-                    df_all = df_all[df_all["_merge"] == "left_only"]
-                    df_all = df_all.drop(columns=["_merge"])
+                    # Data baru
+                    new_rows = merged[merged["_merge"] == "left_only"]
+                    new_count = len(new_rows)
 
-                # ====================================
-                # SIMPAN KE SESSION
-                # ====================================
-                st.session_state.digipay_master = pd.concat(
-                    [st.session_state.digipay_master, df_all],
-                    ignore_index=True
-                )
+                    # Data sudah ada → cek perubahan
+                    existing_rows = merged[merged["_merge"] == "both"]
+                    updated_rows = []
+
+                    for _, row in existing_rows.iterrows():
+
+                        key_filter = (
+                            (master_df["KDSATKER"] == row["KDSATKER"]) &
+                            (master_df["NOINVOICE"] == row["NOINVOICE"]) &
+                            (master_df["NOMINVOICE"] == row["NOMINVOICE"]) &
+                            (master_df["TGLINVOICE"] == row["TGLINVOICE"])
+                        )
+
+                        master_row = master_df.loc[key_filter]
+
+                        if not master_row.empty:
+                            master_row = master_row.iloc[0]
+
+                            different = False
+                            for col in df_all.columns:
+                                if col not in UNIQUE_KEY:
+                                    if str(master_row[col]) != str(row[col]):
+                                        different = True
+                                        break
+
+                            if different:
+                                updated_rows.append(row[df_all.columns])
+
+                    update_count = len(updated_rows)
+
+                    # Hapus data lama yang akan diupdate
+                    if update_count > 0:
+                        update_df = pd.DataFrame(updated_rows)
+
+                        master_df = master_df.merge(
+                            update_df[UNIQUE_KEY],
+                            on=UNIQUE_KEY,
+                            how="left",
+                            indicator=True
+                        )
+
+                        master_df = master_df[master_df["_merge"] == "left_only"]
+                        master_df = master_df.drop(columns=["_merge"])
+
+                        master_df = pd.concat([master_df, update_df], ignore_index=True)
+
+                    # Tambahkan data baru
+                    if new_count > 0:
+                        master_df = pd.concat(
+                            [master_df, new_rows[df_all.columns]],
+                            ignore_index=True
+                        )
+
+                    st.session_state.digipay_master = master_df.copy()
 
                 # ====================================
                 # SIMPAN OTOMATIS KE GITHUB
@@ -6638,11 +6693,13 @@ def page_admin():
                 log_activity(
                     menu="Upload Data",
                     action="Upload Data Digipay",
-                    detail=f"{uploaded_digipay.name} | {len(df_all)} baris"
+                    detail=f"{uploaded_digipay.name} | {new_count} baru | {update_count} diperbarui"
                 )
 
+                st.success(
+                    f"✅ Upload selesai | {new_count} data baru | {update_count} data diperbarui"
+                )
 
-            st.success(f"✅ {len(df_all)} data Digipay berhasil diproses & disimpan.")
         
         
         # ============================================================
