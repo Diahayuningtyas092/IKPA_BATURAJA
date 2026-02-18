@@ -1728,6 +1728,36 @@ def load_DATA_DIPA_from_github():
 
     return True
 
+# ===============================
+# HELPER EXPORT EXCEL
+# ===============================
+def to_excel_bytes(df):
+    import io
+    from openpyxl.utils import get_column_letter
+
+    output = io.BytesIO()
+    df = df.copy()
+
+    if "Kode Satker" in df.columns:
+        df["Kode Satker"] = (
+            df["Kode Satker"]
+            .astype(str)
+            .str.zfill(6)
+        )
+
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Data IKPA")
+
+        worksheet = writer.sheets["Data IKPA"]
+
+        for col_idx, col_name in enumerate(df.columns, 1):
+            if col_name == "Kode Satker":
+                col_letter = get_column_letter(col_idx)
+                for row in range(2, len(df) + 2):
+                    worksheet[f"{col_letter}{row}"].number_format = "@"
+
+    output.seek(0)
+    return output.getvalue()
 
 # ============================================================
 # LOAD TEMPLATE REFERENSI (TEMPLATES FOLDER SAJA)
