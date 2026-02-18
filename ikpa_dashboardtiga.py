@@ -2035,16 +2035,17 @@ def normalize_kkp_for_dashboard(df):
 # FILE KKP
 def process_excel_file_kkp(uploaded_file):
     """
-    Parser KKP yang benar-benar fleksibel.
-    Tidak tergantung posisi header.
+    Parser KKP versi sederhana:
+    - Tidak wajib kolom Nama Pemegang KKP
+    - Fokus hanya BA & Satker
     """
 
     uploaded_file.seek(0)
     df_raw = pd.read_excel(uploaded_file, header=None)
 
-    # ==========================================
-    # 1️⃣ DETEKSI HEADER BERDASARKAN BA/KL + SATKER
-    # ==========================================
+    # ===============================
+    # 1️⃣ DETEKSI HEADER
+    # ===============================
     header_row = None
 
     for i in range(min(20, len(df_raw))):
@@ -2060,14 +2061,13 @@ def process_excel_file_kkp(uploaded_file):
     if header_row is None:
         return pd.DataFrame()
 
-    # ==========================================
+    # ===============================
     # 2️⃣ SET HEADER
-    # ==========================================
+    # ===============================
     df = df_raw.copy()
     df.columns = df.iloc[header_row]
     df = df.iloc[header_row + 1:].reset_index(drop=True)
 
-    # Bersihkan nama kolom
     df.columns = (
         df.columns.astype(str)
         .str.strip()
@@ -2075,29 +2075,24 @@ def process_excel_file_kkp(uploaded_file):
         .str.replace(r"\s+", " ", regex=True)
     )
 
-    # ==========================================
-    # 3️⃣ CARI KOLOM DINAMIS
-    # ==========================================
-    def find_col(keywords):
+    # ===============================
+    # 3️⃣ CARI KOLOM
+    # ===============================
+    def find_col(keyword):
         for col in df.columns:
-            for key in keywords:
-                if key in col:
-                    return col
+            if keyword in col:
+                return col
         return None
 
-    col_ba = find_col(["BA"])
-    col_satker = find_col(["SATKER"])
-    col_kartu = find_col(["KARTU"])
-    col_nama = find_col(["PEMEGANG"])
-    col_bank = find_col(["BANK"])
-    col_periode = find_col(["PERIODE"])
+    col_ba = find_col("BA")
+    col_satker = find_col("SATKER")
 
     if not col_ba or not col_satker:
         return pd.DataFrame()
 
-    # ==========================================
-    # 4️⃣ BANGUN OUTPUT
-    # ==========================================
+    # ===============================
+    # 4️⃣ BENTUK OUTPUT
+    # ===============================
     out = pd.DataFrame()
 
     out["Kode BA"] = (
@@ -2114,28 +2109,12 @@ def process_excel_file_kkp(uploaded_file):
         .fillna("")
     )
 
-    if col_kartu:
-        out["Nomor Kartu"] = df[col_kartu].astype(str).str.strip()
-    else:
-        out["Nomor Kartu"] = ""
-
-    if col_nama:
-        out["Nama Pemegang KKP"] = df[col_nama].astype(str).str.strip()
-    else:
-        out["Nama Pemegang KKP"] = ""
-
-    if col_bank:
-        out["Bank Penerbit KKP"] = df[col_bank].astype(str).str.strip()
-    else:
-        out["Bank Penerbit KKP"] = ""
-
-    # ==========================================
-    # 5️⃣ HAPUS BARIS SAMPAH
-    # ==========================================
-    out = out.replace(["nan", "None", None], "")
+    # ===============================
+    # 5️⃣ HAPUS BARIS TIDAK VALID
+    # ===============================
     out = out[
-        (out["Kode Satker"] != "") &
-        (out["Kode BA"] != "")
+        (out["Kode BA"] != "") &
+        (out["Kode Satker"] != "")
     ]
 
     return out.reset_index(drop=True)
