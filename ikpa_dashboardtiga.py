@@ -2077,7 +2077,7 @@ def load_digipay_from_github():
 # LOAD CMS FROM GITHUB
 # ============================================================
 def load_cms_from_github():
-
+    
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
@@ -2088,8 +2088,7 @@ def load_cms_from_github():
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
         contents = repo.get_contents("data_CMS")
-    except Exception as e:
-        st.error(f"Gagal akses folder data_CMS: {e}")
+    except Exception:
         return 0
 
     all_df = []
@@ -2097,15 +2096,12 @@ def load_cms_from_github():
 
     for file in contents:
         if file.name.endswith(".xlsx"):
-            try:
-                file_content = base64.b64decode(file.content)
-                df = pd.read_excel(io.BytesIO(file_content), dtype=str)
+            file_content = base64.b64decode(file.content)
+            df = pd.read_excel(io.BytesIO(file_content), dtype=str)
 
-                if not df.empty:
-                    all_df.append(df)
-                    file_count += 1
-            except Exception as e:
-                st.error(f"Gagal baca {file.name}: {e}")
+            if not df.empty:
+                all_df.append(df)
+                file_count += 1
 
     if all_df:
         st.session_state.cms_master = pd.concat(all_df, ignore_index=True)
@@ -2113,6 +2109,7 @@ def load_cms_from_github():
         st.session_state.cms_master = pd.DataFrame()
 
     return file_count
+
 
 
 
@@ -5692,6 +5689,8 @@ def page_admin():
                     st.warning(" Status merge direset. Data akan diproses ulang.")
                     st.rerun()
 
+    if "cms_master" not in st.session_state:
+        load_cms_from_github()
 
     # ===============================
     # 📌 TAB MENU
