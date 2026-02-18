@@ -2036,7 +2036,7 @@ def normalize_kkp_for_dashboard(df):
 # LOAD DIGIPAY FROM GITHUB
 # ============================================================
 def load_digipay_from_github():
-
+    
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
@@ -2046,9 +2046,8 @@ def load_digipay_from_github():
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
-        contents = repo.get_contents("data_Digipay")  # <-- SESUAI REPO KAMU
-    except Exception as e:
-        st.error(f"Gagal akses folder data_Digipay: {e}")
+        contents = repo.get_contents("data_Digipay")
+    except:
         return 0
 
     all_df = []
@@ -2063,16 +2062,15 @@ def load_digipay_from_github():
                 if not df.empty:
                     all_df.append(df)
                     file_count += 1
-            except Exception as e:
-                st.error(f"Gagal baca {file.name}: {e}")
+            except:
+                continue
 
     if all_df:
-        st.session_state.data_storage_digipay = pd.concat(all_df, ignore_index=True)
+        st.session_state.digipay_master = pd.concat(all_df, ignore_index=True)
     else:
-        st.session_state.data_storage_digipay = pd.DataFrame()
+        st.session_state.digipay_master = pd.DataFrame()
 
     return file_count
-
 
 
 # ============================================================
