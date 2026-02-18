@@ -2032,6 +2032,84 @@ def normalize_kkp_for_dashboard(df):
     return df
 
 
+def load_digipay_from_github():
+    
+    token = st.secrets.get("GITHUB_TOKEN")
+    repo_name = st.secrets.get("GITHUB_REPO")
+
+    if not token or not repo_name:
+        return 0
+
+    try:
+        g = Github(auth=Auth.Token(token))
+        repo = g.get_repo(repo_name)
+        files = repo.get_contents("data_DIGIPAY")
+    except:
+        return 0
+
+    all_df = []
+    file_count = 0
+
+    for file in files:
+        if file.name.endswith(".xlsx"):
+            try:
+                file_content = base64.b64decode(file.content)
+                df = pd.read_excel(io.BytesIO(file_content), dtype=str)
+
+                if not df.empty:
+                    all_df.append(df)
+                    file_count += 1
+            except:
+                continue
+
+    if all_df:
+        st.session_state.data_storage_digipay = pd.concat(all_df, ignore_index=True)
+    else:
+        st.session_state.data_storage_digipay = pd.DataFrame()
+
+    return file_count
+
+
+
+def load_cms_from_github():
+    token = st.secrets.get("GITHUB_TOKEN")
+    repo_name = st.secrets.get("GITHUB_REPO")
+
+    if not token or not repo_name:
+        return 0
+
+    try:
+        g = Github(auth=Auth.Token(token))
+        repo = g.get_repo(repo_name)
+        files = repo.get_contents("data_CMS")
+    except:
+        return 0
+
+    all_df = []
+    file_count = 0
+
+    for file in files:
+        if file.name.endswith(".xlsx"):
+            try:
+                file_content = base64.b64decode(file.content)
+                df = pd.read_excel(io.BytesIO(file_content), dtype=str)
+
+                if not df.empty:
+                    all_df.append(df)
+                    file_count += 1
+            except:
+                continue
+
+    if all_df:
+        st.session_state.cms_master = pd.concat(all_df, ignore_index=True)
+    else:
+        st.session_state.cms_master = pd.DataFrame()
+
+    return file_count
+
+
+
+
 # FILE KKP
 def process_excel_file_kkp(uploaded_file):
     
@@ -7743,15 +7821,36 @@ def main():
     # ============================================================
     if st.session_state.get("ikpa_dipa_merged", False):
         st.success(" Data IKPA & DIPA berhasil dimuat dan siap digunakan")
-        
-        # Load KKP
-    if "data_storage_kkp" not in st.session_state:
-        st.session_state.data_storage_kkp = load_data_kkp_from_github()
 
     # Notifikasi
     if st.session_state.data_storage_kkp:
         jumlah_file = len(st.session_state.data_storage_kkp)
         st.success(f"✅ Data KKP berhasil dimuat dari GitHub ({jumlah_file} file)")
+        
+
+    # ============================================================
+    # AUTO LOAD + NOTIFIKASI CMS & DIGIPAY
+    # ============================================================
+
+    if "cms_loaded" not in st.session_state:
+        cms_count = load_cms_from_github()
+        st.session_state.cms_loaded = True
+
+        if cms_count > 0:
+            st.success(f"✅ {cms_count} file CMS berhasil dimuat")
+
+    if "digipay_loaded" not in st.session_state:
+        digipay_count = load_digipay_from_github()
+        st.session_state.digipay_loaded = True
+
+        if digipay_count > 0:
+            st.success(f"✅ {digipay_count} file DIGIPAY berhasil dimuat")
+
+    if (
+        st.session_state.get("cms_loaded") 
+        or st.session_state.get("digipay_loaded")
+    ):
+        st.success("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
 
 
 
