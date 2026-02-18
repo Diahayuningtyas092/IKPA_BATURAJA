@@ -6583,6 +6583,27 @@ def page_admin():
         # ============================================================
         st.markdown("---")
         st.subheader("Upload Data CMS")
+        
+        st.markdown("### Filter Periode Data")
+        col1, col2 = st.columns(2)
+
+        with col1:
+            selected_year = st.selectbox(
+                "Pilih Tahun",
+                options=[2022, 2023, 2024, 2025],
+                index=3
+            )
+
+        with col2:
+            selected_triwulan = st.selectbox(
+                "Pilih Triwulan",
+                options=["TW I", "TW II", "TW III", "TW IV"],
+                index=0
+            )
+
+        # Simpan ke session state agar bisa dipakai global
+        st.session_state.selected_year = selected_year
+        st.session_state.selected_triwulan = selected_triwulan
 
         if "cms_master" not in st.session_state:
             st.session_state.cms_master = pd.DataFrame()
