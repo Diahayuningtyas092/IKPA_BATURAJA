@@ -7272,8 +7272,9 @@ def page_admin():
 
             confirm_delete = st.checkbox(
                 "⚠️ Hapus seluruh Data Digipay dari sistem dan GitHub.",
-                key="confirm_delete_digipay"
+                key=f"confirm_delete_digipay_{id(st.session_state.digipay_master)}"
             )
+
 
             if st.button("🗑️ Hapus Data Digipay", type="primary") and confirm_delete:
 
