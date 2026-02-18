@@ -6715,7 +6715,6 @@ def page_admin():
         current_year = now.year
         current_month = now.month
 
-        # Tentukan triwulan otomatis
         if current_month <= 3:
             default_tw = "TW1"
         elif current_month <= 6:
@@ -6746,7 +6745,7 @@ def page_admin():
         st.session_state.selected_triwulan = selected_triwulan
 
         # ============================================================
-        # SESSION STATE
+        # INIT DATABASE UTAMA
         # ============================================================
         if "cms_master" not in st.session_state:
             st.session_state.cms_master = pd.DataFrame()
@@ -6771,7 +6770,6 @@ def page_admin():
 
                     df_raw = pd.read_excel(xls, sheet_name=sheet, header=None, dtype=str)
 
-                    # 1️⃣ Cari header otomatis
                     header_row = None
                     for i in range(min(20, len(df_raw))):
                         row_text = " ".join(df_raw.iloc[i].astype(str)).upper()
@@ -6789,7 +6787,6 @@ def page_admin():
                         dtype=str
                     )
 
-                    # 2️⃣ Normalisasi kolom
                     df.columns = (
                         df.columns.astype(str)
                         .str.replace("\n", " ")
@@ -6798,7 +6795,7 @@ def page_admin():
                         .str.upper()
                     )
 
-                    # 3️⃣ Cari kolom KPPN berdasarkan isi
+                    # Cari kolom KPPN
                     col_kppn = None
                     for col in df.columns:
                         test = (
@@ -6808,7 +6805,6 @@ def page_admin():
                             .fillna("")
                             .str.zfill(3)
                         )
-
                         if (test == "109").sum() > 5:
                             col_kppn = col
                             df[col] = test
@@ -6817,7 +6813,7 @@ def page_admin():
                     if not col_kppn:
                         continue
 
-                    # 4️⃣ Cari kolom Satker (6 digit)
+                    # Cari kolom Satker
                     col_satker = None
                     for col in df.columns:
                         test = (
@@ -6827,7 +6823,6 @@ def page_admin():
                             .fillna("")
                             .str.zfill(6)
                         )
-
                         if test.str.len().eq(6).sum() > 5:
                             col_satker = col
                             df[col] = test
@@ -6836,33 +6831,51 @@ def page_admin():
                     if not col_satker:
                         continue
 
-                    # 5️⃣ Filter hanya KPPN 109
                     df = df[df[col_kppn] == "109"]
 
                     if df.empty:
                         continue
 
+                    df["TAHUN"] = selected_year
+                    df["TRIWULAN"] = selected_triwulan
                     df["SOURCE_SHEET"] = sheet
+
                     all_valid_data.append(df)
 
-                # 6️⃣ Jika kosong
                 if not all_valid_data:
                     st.error("❌ Tidak ada data CMS KPPN 109 ditemukan.")
                     st.stop()
 
                 df_final = pd.concat(all_valid_data, ignore_index=True)
 
-                # 7️⃣ Drop duplicate Satker
-                df_final = df_final.drop_duplicates(subset=[col_satker])
+                # ============================================================
+                # 🔥 SMART OVERWRITE CMS MASTER
+                # ============================================================
+                UNIQUE_KEY = col_satker
+                df_final = df_final.drop_duplicates(subset=[UNIQUE_KEY])
 
-                # 8️⃣ Simpan ke session
-                st.session_state.cms_master = pd.concat(
-                    [st.session_state.cms_master, df_final],
-                    ignore_index=True
-                )
+                if st.session_state.cms_master.empty:
+                    st.session_state.cms_master = df_final.copy()
+                    new_count = len(df_final)
+                    overwrite_count = 0
+                else:
+                    master_df = st.session_state.cms_master.copy()
+
+                    overwrite_mask = master_df[UNIQUE_KEY].isin(df_final[UNIQUE_KEY])
+                    overwrite_count = overwrite_mask.sum()
+
+                    master_df = master_df[~overwrite_mask]
+
+                    master_df = pd.concat(
+                        [master_df, df_final],
+                        ignore_index=True
+                    )
+
+                    new_count = len(df_final) - overwrite_count
+                    st.session_state.cms_master = master_df.copy()
 
                 # ============================================================
-                # 9️⃣ Simpan ke GitHub (NAMA OTOMATIS)
+                # SIMPAN KE GITHUB
                 # ============================================================
                 excel_bytes = io.BytesIO()
 
@@ -6884,7 +6897,13 @@ def page_admin():
                     folder="data_CMS"
                 )
 
-            st.success(f"✅ {len(df_final)} data CMS berhasil diproses & disimpan sebagai {file_name}")
+            st.success(
+                f"✅ Upload CMS selesai | "
+                f"{new_count} data baru | "
+                f"{overwrite_count} data diperbarui | "
+                f"Disimpan sebagai {file_name}"
+            )
+
 
 
 
