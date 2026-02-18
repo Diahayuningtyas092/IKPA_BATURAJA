@@ -6583,28 +6583,49 @@ def page_admin():
         # ============================================================
         st.markdown("---")
         st.subheader("Upload Data CMS")
-        
+
+        # ============================================================
+        # FILTER PERIODE (AUTO DEFAULT TAHUN & TRIWULAN)
+        # ============================================================
+        from datetime import datetime
+
+        now = datetime.now()
+        current_year = now.year
+        current_month = now.month
+
+        # Tentukan triwulan otomatis
+        if current_month <= 3:
+            default_tw = "TW1"
+        elif current_month <= 6:
+            default_tw = "TW2"
+        elif current_month <= 9:
+            default_tw = "TW3"
+        else:
+            default_tw = "TW4"
+
         st.markdown("### Filter Periode Data")
         col1, col2 = st.columns(2)
 
         with col1:
             selected_year = st.selectbox(
                 "Pilih Tahun",
-                options=[2022, 2023, 2024, 2025],
-                index=3
+                options=list(range(2022, current_year + 1)),
+                index=len(list(range(2022, current_year + 1))) - 1
             )
 
         with col2:
             selected_triwulan = st.selectbox(
                 "Pilih Triwulan",
-                options=["TW I", "TW II", "TW III", "TW IV"],
-                index=0
+                options=["TW1", "TW2", "TW3", "TW4"],
+                index=["TW1", "TW2", "TW3", "TW4"].index(default_tw)
             )
 
-        # Simpan ke session state agar bisa dipakai global
         st.session_state.selected_year = selected_year
         st.session_state.selected_triwulan = selected_triwulan
 
+        # ============================================================
+        # SESSION STATE
+        # ============================================================
         if "cms_master" not in st.session_state:
             st.session_state.cms_master = pd.DataFrame()
 
@@ -6614,6 +6635,9 @@ def page_admin():
             key="upload_cms_admin"
         )
 
+        # ============================================================
+        # PROSES FILE
+        # ============================================================
         if uploaded_cms:
 
             with st.spinner("Memproses Data CMS..."):
@@ -6625,9 +6649,7 @@ def page_admin():
 
                     df_raw = pd.read_excel(xls, sheet_name=sheet, header=None, dtype=str)
 
-                    # ==================================================
                     # 1️⃣ Cari header otomatis
-                    # ==================================================
                     header_row = None
                     for i in range(min(20, len(df_raw))):
                         row_text = " ".join(df_raw.iloc[i].astype(str)).upper()
@@ -6645,9 +6667,7 @@ def page_admin():
                         dtype=str
                     )
 
-                    # ==================================================
                     # 2️⃣ Normalisasi kolom
-                    # ==================================================
                     df.columns = (
                         df.columns.astype(str)
                         .str.replace("\n", " ")
@@ -6655,13 +6675,9 @@ def page_admin():
                         .str.strip()
                         .str.upper()
                     )
-                    
 
-                    # ==================================================
-                    # 3️⃣ Cari kolom KPPN berdasarkan isi (bukan nama)
-                    # ==================================================
+                    # 3️⃣ Cari kolom KPPN berdasarkan isi
                     col_kppn = None
-
                     for col in df.columns:
                         test = (
                             df[col]
@@ -6671,7 +6687,6 @@ def page_admin():
                             .str.zfill(3)
                         )
 
-                        # jika banyak nilai 109, ini kolom KPPN
                         if (test == "109").sum() > 5:
                             col_kppn = col
                             df[col] = test
@@ -6680,11 +6695,8 @@ def page_admin():
                     if not col_kppn:
                         continue
 
-                    # ==================================================
                     # 4️⃣ Cari kolom Satker (6 digit)
-                    # ==================================================
                     col_satker = None
-
                     for col in df.columns:
                         test = (
                             df[col]
@@ -6702,9 +6714,7 @@ def page_admin():
                     if not col_satker:
                         continue
 
-                    # ==================================================
                     # 5️⃣ Filter hanya KPPN 109
-                    # ==================================================
                     df = df[df[col_kppn] == "109"]
 
                     if df.empty:
@@ -6713,49 +6723,47 @@ def page_admin():
                     df["SOURCE_SHEET"] = sheet
                     all_valid_data.append(df)
 
-                # ==================================================
-                # 6️⃣ Jika tetap kosong
-                # ==================================================
+                # 6️⃣ Jika kosong
                 if not all_valid_data:
                     st.error("❌ Tidak ada data CMS KPPN 109 ditemukan.")
                     st.stop()
 
                 df_final = pd.concat(all_valid_data, ignore_index=True)
 
-                # ==================================================
-                # 7️⃣ Drop duplicate aman (berdasarkan Satker saja)
-                # ==================================================
+                # 7️⃣ Drop duplicate Satker
                 df_final = df_final.drop_duplicates(subset=[col_satker])
 
-                # ==================================================
                 # 8️⃣ Simpan ke session
-                # ==================================================
                 st.session_state.cms_master = pd.concat(
                     [st.session_state.cms_master, df_final],
                     ignore_index=True
                 )
 
-                # ==================================================
-                # 9️⃣ Simpan ke GitHub
-                # ==================================================
+                # ============================================================
+                # 9️⃣ Simpan ke GitHub (NAMA OTOMATIS)
+                # ============================================================
                 excel_bytes = io.BytesIO()
+
+                sheet_name = f"CMS_109_{selected_triwulan}_{selected_year}"
+                file_name = f"CMS_109_{selected_triwulan}_{selected_year}.xlsx"
 
                 with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
                     st.session_state.cms_master.to_excel(
                         writer,
                         index=False,
-                        sheet_name="CMS_109_BATURAJA"
+                        sheet_name=sheet_name
                     )
 
                 excel_bytes.seek(0)
 
                 save_file_to_github(
                     excel_bytes.getvalue(),
-                    "CMS_MASTER.xlsx",
+                    file_name,
                     folder="data_CMS"
                 )
 
-            st.success(f"✅ {len(df_final)} data CMS berhasil diproses & disimpan.")
+            st.success(f"✅ {len(df_final)} data CMS berhasil diproses & disimpan sebagai {file_name}")
+
 
 
     # ============================================================
