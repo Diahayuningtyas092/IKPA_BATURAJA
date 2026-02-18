@@ -6587,8 +6587,6 @@ def page_admin():
         # ============================================================
         # FILTER PERIODE (AUTO DEFAULT TAHUN & TRIWULAN)
         # ============================================================
-        from datetime import datetime
-
         now = datetime.now()
         current_year = now.year
         current_month = now.month
