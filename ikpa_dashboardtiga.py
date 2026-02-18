@@ -7272,35 +7272,57 @@ def page_admin():
 
             confirm_delete = st.checkbox(
                 "⚠️ Hapus seluruh Data Digipay dari sistem dan GitHub.",
-                key=f"confirm_delete_digipay_{id(st.session_state.digipay_master)}"
+                key="confirm_delete_digipay_admin"
             )
 
-
-            if st.button("🗑️ Hapus Data Digipay", type="primary") and confirm_delete:
+            if st.button(
+                "🗑️ Hapus Data Digipay",
+                type="primary",
+                key="delete_button_digipay_admin"
+            ) and confirm_delete:
 
                 try:
-                    # Hapus dari session
+                    # ==========================================
+                    # 1️⃣ Hapus dari session
+                    # ==========================================
                     st.session_state.digipay_master = pd.DataFrame()
 
-                    # Hapus dari GitHub (jika disimpan)
+                    # ==========================================
+                    # 2️⃣ Hapus dari GitHub
+                    # ==========================================
                     token = st.secrets.get("GITHUB_TOKEN")
                     repo_name = st.secrets.get("GITHUB_REPO")
 
                     g = Github(auth=Auth.Token(token))
                     repo = g.get_repo(repo_name)
 
-                    contents = repo.get_contents("data/DIGIPAY_MASTER.xlsx")
-                    repo.delete_file(
-                        contents.path,
-                        "Delete DIGIPAY_MASTER.xlsx",
-                        contents.sha
-                    )
+                    try:
+                        contents = repo.get_contents(
+                            "data_Digipay/DIGIPAY_MASTER.xlsx"
+                        )
+
+                        repo.delete_file(
+                            contents.path,
+                            "Delete DIGIPAY_MASTER.xlsx",
+                            contents.sha
+                        )
+
+                    except Exception:
+                        pass  # jika file tidak ada, abaikan
+
+                    # ==========================================
+                    # 3️⃣ Reset loader flag (agar sinkron)
+                    # ==========================================
+                    st.session_state.auto_loaded_digipay = False
 
                     st.success("✅ Data Digipay berhasil dihapus dari sistem & GitHub.")
                     st.snow()
 
+                    st.rerun()
+
                 except Exception as e:
                     st.error(f"❌ Gagal menghapus Data Digipay: {e}")
+
 
 
     # ============================================================
