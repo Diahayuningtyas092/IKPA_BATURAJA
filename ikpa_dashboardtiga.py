@@ -2035,29 +2035,24 @@ def normalize_kkp_for_dashboard(df):
 # FILE KKP
 def process_excel_file_kkp(uploaded_file):
     """
-    PARSER KKP SUPER CLEAN & ROBUST
-    - Auto detect header
-    - Extract kode BA & Satker
-    - Clean NaN
-    - Parse periode
-    - Remove garbage rows
+    Parser KKP yang benar-benar fleksibel.
+    Tidak tergantung posisi header.
     """
 
     uploaded_file.seek(0)
     df_raw = pd.read_excel(uploaded_file, header=None)
 
-    # =========================================
-    # 1️⃣ DETEKSI HEADER OTOMATIS
-    # =========================================
+    # ==========================================
+    # 1️⃣ DETEKSI HEADER BERDASARKAN BA/KL + SATKER
+    # ==========================================
     header_row = None
 
     for i in range(min(20, len(df_raw))):
-        row_text = " ".join(df_raw.iloc[i].astype(str)).upper()
+        row = df_raw.iloc[i].astype(str).str.upper()
 
         if (
-            "SATKER" in row_text
-            and "KART" in row_text
-            and ("PEMEGANG" in row_text or "NOMOR" in row_text)
+            row.str.contains("BA/KL").any()
+            and row.str.contains("SATKER").any()
         ):
             header_row = i
             break
@@ -2065,13 +2060,14 @@ def process_excel_file_kkp(uploaded_file):
     if header_row is None:
         return pd.DataFrame()
 
-    # =========================================
-    # 2️⃣ SET HEADER YANG BENAR
-    # =========================================
+    # ==========================================
+    # 2️⃣ SET HEADER
+    # ==========================================
     df = df_raw.copy()
     df.columns = df.iloc[header_row]
     df = df.iloc[header_row + 1:].reset_index(drop=True)
 
+    # Bersihkan nama kolom
     df.columns = (
         df.columns.astype(str)
         .str.strip()
@@ -2079,32 +2075,31 @@ def process_excel_file_kkp(uploaded_file):
         .str.replace(r"\s+", " ", regex=True)
     )
 
-    # =========================================
-    # 3️⃣ HELPER CARI KOLOM FLEKSIBEL
-    # =========================================
-    def find_col(keyword_list):
+    # ==========================================
+    # 3️⃣ CARI KOLOM DINAMIS
+    # ==========================================
+    def find_col(keywords):
         for col in df.columns:
-            for key in keyword_list:
+            for key in keywords:
                 if key in col:
                     return col
         return None
 
     col_ba = find_col(["BA"])
     col_satker = find_col(["SATKER"])
-    col_kartu = find_col(["KART"])
+    col_kartu = find_col(["KARTU"])
     col_nama = find_col(["PEMEGANG"])
     col_bank = find_col(["BANK"])
     col_periode = find_col(["PERIODE"])
 
-    if not all([col_ba, col_satker, col_kartu, col_nama]):
+    if not col_ba or not col_satker:
         return pd.DataFrame()
 
-    # =========================================
-    # 4️⃣ BENTUK OUTPUT BERSIH
-    # =========================================
+    # ==========================================
+    # 4️⃣ BANGUN OUTPUT
+    # ==========================================
     out = pd.DataFrame()
 
-    # 🔢 Ekstrak kode BA (3 digit)
     out["Kode BA"] = (
         df[col_ba]
         .astype(str)
@@ -2112,7 +2107,6 @@ def process_excel_file_kkp(uploaded_file):
         .fillna("")
     )
 
-    # 🔢 Ekstrak kode Satker (6 digit)
     out["Kode Satker"] = (
         df[col_satker]
         .astype(str)
@@ -2120,41 +2114,31 @@ def process_excel_file_kkp(uploaded_file):
         .fillna("")
     )
 
-    out["Nomor Kartu"] = df[col_kartu].astype(str).str.strip().fillna("")
-    out["Nama Pemegang KKP"] = df[col_nama].astype(str).str.strip().fillna("")
+    if col_kartu:
+        out["Nomor Kartu"] = df[col_kartu].astype(str).str.strip()
+    else:
+        out["Nomor Kartu"] = ""
+
+    if col_nama:
+        out["Nama Pemegang KKP"] = df[col_nama].astype(str).str.strip()
+    else:
+        out["Nama Pemegang KKP"] = ""
 
     if col_bank:
-        out["Bank Penerbit KKP"] = df[col_bank].astype(str).str.strip().fillna("")
+        out["Bank Penerbit KKP"] = df[col_bank].astype(str).str.strip()
     else:
         out["Bank Penerbit KKP"] = ""
 
-    # =========================================
-    # 5️⃣ PARSE PERIODE (JIKA ADA)
-    # =========================================
-    if col_periode:
-        out["Periode"] = pd.to_datetime(
-            df[col_periode],
-            errors="coerce"
-        )
-    else:
-        out["Periode"] = pd.NaT
-
-    # =========================================
-    # 6️⃣ HAPUS BARIS SAMPAH
-    # =========================================
+    # ==========================================
+    # 5️⃣ HAPUS BARIS SAMPAH
+    # ==========================================
+    out = out.replace(["nan", "None", None], "")
     out = out[
         (out["Kode Satker"] != "") &
-        (out["Nomor Kartu"] != "")
+        (out["Kode BA"] != "")
     ]
 
-    # =========================================
-    # 7️⃣ FINAL CLEAN
-    # =========================================
-    out = out.replace(["nan", "None", None], "")
-    out = out.reset_index(drop=True)
-
-    return out
-
+    return out.reset_index(drop=True)
 
 
 # ============================
