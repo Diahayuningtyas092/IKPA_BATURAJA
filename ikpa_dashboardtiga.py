@@ -2032,8 +2032,11 @@ def normalize_kkp_for_dashboard(df):
     return df
 
 
+# ============================================================
+# LOAD DIGIPAY FROM GITHUB
+# ============================================================
 def load_digipay_from_github():
-    
+
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
@@ -2043,14 +2046,15 @@ def load_digipay_from_github():
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
-        files = repo.get_contents("data_DIGIPAY")
-    except:
+        contents = repo.get_contents("data_Digipay")  # <-- SESUAI REPO KAMU
+    except Exception as e:
+        st.error(f"Gagal akses folder data_Digipay: {e}")
         return 0
 
     all_df = []
     file_count = 0
 
-    for file in files:
+    for file in contents:
         if file.name.endswith(".xlsx"):
             try:
                 file_content = base64.b64decode(file.content)
@@ -2059,8 +2063,8 @@ def load_digipay_from_github():
                 if not df.empty:
                     all_df.append(df)
                     file_count += 1
-            except:
-                continue
+            except Exception as e:
+                st.error(f"Gagal baca {file.name}: {e}")
 
     if all_df:
         st.session_state.data_storage_digipay = pd.concat(all_df, ignore_index=True)
@@ -2071,7 +2075,11 @@ def load_digipay_from_github():
 
 
 
+# ============================================================
+# LOAD CMS FROM GITHUB
+# ============================================================
 def load_cms_from_github():
+
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
@@ -2081,14 +2089,15 @@ def load_cms_from_github():
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
-        files = repo.get_contents("data_CMS")
-    except:
+        contents = repo.get_contents("data_CMS")
+    except Exception as e:
+        st.error(f"Gagal akses folder data_CMS: {e}")
         return 0
 
     all_df = []
     file_count = 0
 
-    for file in files:
+    for file in contents:
         if file.name.endswith(".xlsx"):
             try:
                 file_content = base64.b64decode(file.content)
@@ -2097,8 +2106,8 @@ def load_cms_from_github():
                 if not df.empty:
                     all_df.append(df)
                     file_count += 1
-            except:
-                continue
+            except Exception as e:
+                st.error(f"Gagal baca {file.name}: {e}")
 
     if all_df:
         st.session_state.cms_master = pd.concat(all_df, ignore_index=True)
@@ -2106,7 +2115,6 @@ def load_cms_from_github():
         st.session_state.cms_master = pd.DataFrame()
 
     return file_count
-
 
 
 
@@ -7829,26 +7837,26 @@ def main():
         
 
     # ============================================================
-    # AUTO LOAD + NOTIFIKASI CMS & DIGIPAY
+    # AUTO LOAD CMS & DIGIPAY
     # ============================================================
 
-    if "cms_loaded" not in st.session_state:
+    if "auto_loaded_cms" not in st.session_state:
         cms_count = load_cms_from_github()
-        st.session_state.cms_loaded = True
+        st.session_state.auto_loaded_cms = True
 
         if cms_count > 0:
             st.success(f"✅ {cms_count} file CMS berhasil dimuat")
 
-    if "digipay_loaded" not in st.session_state:
+    if "auto_loaded_digipay" not in st.session_state:
         digipay_count = load_digipay_from_github()
-        st.session_state.digipay_loaded = True
+        st.session_state.auto_loaded_digipay = True
 
         if digipay_count > 0:
             st.success(f"✅ {digipay_count} file DIGIPAY berhasil dimuat")
 
     if (
-        st.session_state.get("cms_loaded") 
-        or st.session_state.get("digipay_loaded")
+        st.session_state.get("auto_loaded_cms") or
+        st.session_state.get("auto_loaded_digipay")
     ):
         st.success("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
 
