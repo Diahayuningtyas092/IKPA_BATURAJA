@@ -2034,92 +2034,68 @@ def normalize_kkp_for_dashboard(df):
 
 # FILE KKP
 def process_excel_file_kkp(uploaded_file):
-    """
-    Parser KKP khusus format OMSPAN yang sudah rapi.
-    Tidak perlu deteksi header.
-    """
-
+    
     uploaded_file.seek(0)
     df = pd.read_excel(uploaded_file)
 
-    # ==========================================
-    # 1️⃣ NORMALISASI NAMA KOLOM
-    # ==========================================
+    if df.empty:
+        return pd.DataFrame()
+
+    # ==========================
+    # NORMALISASI HEADER
+    # ==========================
     df.columns = (
         df.columns.astype(str)
         .str.strip()
         .str.upper()
+        .str.replace("\n", " ")
         .str.replace(r"\s+", " ", regex=True)
     )
 
-    # ==========================================
-    # 2️⃣ EKSTRAK KODE BA (3 digit)
-    # ==========================================
+
+    # ==========================
+    # CEK KOLOM WAJIB
+    # ==========================
+    required_cols = ["BA/KL", "SATKER"]
+
+    for col in required_cols:
+        if col not in df.columns:
+            return pd.DataFrame()
+
+    # ==========================
+    # EKSTRAK KODE
+    # ==========================
     df["Kode BA"] = (
         df["BA/KL"]
         .astype(str)
         .str.extract(r"(\d{3})")[0]
+        .fillna("")
     )
 
-    # ==========================================
-    # 3️⃣ EKSTRAK KODE SATKER (6 digit)
-    # ==========================================
     df["Kode Satker"] = (
         df["SATKER"]
         .astype(str)
         .str.extract(r"(\d{6})")[0]
+        .fillna("")
     )
 
-    # ==========================================
-    # 4️⃣ NORMALISASI NOMOR KARTU (ANTI SCIENTIFIC)
-    # ==========================================
-    df["Nomor Kartu"] = (
-        df["NOMOR KARTU"]
-        .astype(str)
-        .str.replace(r"\.0$", "", regex=True)
-    )
+    # ==========================
+    # NOMOR KARTU
+    # ==========================
+    if "NOMOR KARTU" in df.columns:
+        df["Nomor Kartu"] = df["NOMOR KARTU"].astype(str)
+    else:
+        df["Nomor Kartu"] = ""
 
-    # ==========================================
-    # 5️⃣ NORMALISASI NUMERIK
-    # ==========================================
-    numeric_cols = [
-        "LIMIT KKP",
-        "TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)",
-        "NILAI TRANSAKSI (NILAI SPM)"
-    ]
+    # ==========================
+    # BERSIHKAN BARIS KOSONG
+    # ==========================
+    df = df[df["Kode Satker"] != ""]
 
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = (
-                df[col]
-                .astype(str)
-                .str.replace(",", "", regex=False)
-                .str.replace(r"[^\d]", "", regex=True)
-                .replace("", "0")
-                .astype(float)
-            )
+    if df.empty:
+        return pd.DataFrame()
 
-    # ==========================================
-    # 6️⃣ PILIH KOLOM FINAL
-    # ==========================================
-    final_columns = [
-        "Kode BA",
-        "Kode Satker",
-        "Nomor Kartu",
-        "NAMA PEMEGANG KKP",
-        "LIMIT KKP",
-        "JENIS KKP",
-        "BANK PENERBIT KKP",
-        "PERIODE",
-        "TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)",
-        "NILAI TRANSAKSI (NILAI SPM)"
-    ]
-
-    df_final = df[[c for c in final_columns if c in df.columns]]
-
-    df_final = df_final.dropna(subset=["Kode Satker"])
-
-    return df_final.reset_index(drop=True)
+    return df.reset_index(drop=True)
 
 
 
