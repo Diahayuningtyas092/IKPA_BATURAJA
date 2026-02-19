@@ -2035,6 +2035,9 @@ def normalize_kkp_for_dashboard(df):
 # ============================================================
 # LOAD DATA KKP FROM GITHUB
 # ============================================================
+# ============================================================
+# LOAD KKP FROM GITHUB
+# ============================================================
 def load_kkp_from_github():
 
     token = st.secrets.get("GITHUB_TOKEN")
@@ -2046,11 +2049,9 @@ def load_kkp_from_github():
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
-
-        # ⚠️ HARUS SAMA DENGAN folder save Anda
         contents = repo.get_contents("data_kkp")
-
-    except Exception:
+    except Exception as e:
+        st.error(f"Gagal akses folder data_kkp: {e}")
         return 0
 
     all_df = []
@@ -2058,7 +2059,6 @@ def load_kkp_from_github():
 
     for file in contents:
         if file.name.endswith(".xlsx"):
-
             try:
                 file_content = base64.b64decode(file.content)
                 df = pd.read_excel(io.BytesIO(file_content), dtype=str)
@@ -2066,16 +2066,24 @@ def load_kkp_from_github():
                 if not df.empty:
                     all_df.append(df)
                     file_count += 1
+            except Exception as e:
+                st.error(f"Gagal baca {file.name}: {e}")
 
-            except:
-                continue
-
+    # 🔥 PENTING: SIMPAN KE SESSION
     if all_df:
-        st.session_state.kkp_master = pd.concat(all_df, ignore_index=True)
+        combined_df = pd.concat(all_df, ignore_index=True)
+
+        # OPTIONAL: drop duplicate jika ada 2 file lama
+        UNIQUE_KEY = ["PERIODE", "Kode Satker", "JENIS KKP"]
+        if all(col in combined_df.columns for col in UNIQUE_KEY):
+            combined_df = combined_df.drop_duplicates(subset=UNIQUE_KEY)
+
+        st.session_state.kkp_master = combined_df
     else:
         st.session_state.kkp_master = pd.DataFrame()
 
     return file_count
+
 
 
 
@@ -8051,24 +8059,21 @@ def main():
     # ============================================================
     if st.session_state.get("ikpa_dipa_merged", False):
         st.success(" Data IKPA & DIPA berhasil dimuat dan siap digunakan")
+        
 
     # ============================================================
-    # AUTO LOAD KKP
+    # AUTO LOAD KKP SAAT PAGE DIBUKA
     # ============================================================
     if "kkp_master" not in st.session_state:
-
         kkp_count = load_kkp_from_github()
 
         if kkp_count > 0:
             st.success(f"✅ {kkp_count} file KKP berhasil dimuat dari GitHub")
-        else:
-            st.info("ℹ️ Belum ada data KKP tersedia di GitHub")
 
 
     # ============================================================
     # AUTO LOAD CMS & DIGIPAY
     # ============================================================
-
     if "auto_loaded_cms" not in st.session_state:
         cms_count = load_cms_from_github()
         st.session_state.auto_loaded_cms = True
