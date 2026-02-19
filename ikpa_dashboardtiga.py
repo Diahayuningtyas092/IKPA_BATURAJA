@@ -2112,24 +2112,34 @@ def load_cms_from_github():
 
 
 # FILE KKP
-# ============================================================
-# FILE KKP - FINAL ROBUST VERSION
-# ============================================================
 def process_excel_file_kkp(uploaded_file):
-
+    
     uploaded_file.seek(0)
 
-    try:
-        df = pd.read_excel(uploaded_file, dtype=str)
-    except Exception:
+    # ==========================
+    # 1️⃣ DETEKSI HEADER OTOMATIS
+    # ==========================
+    df_raw = pd.read_excel(uploaded_file, header=None, dtype=str)
+
+    header_row = None
+    for i in range(min(10, len(df_raw))):
+        row_text = " ".join(df_raw.iloc[i].astype(str)).upper()
+        if "BA/KL" in row_text and "SATKER" in row_text:
+            header_row = i
+            break
+
+    if header_row is None:
         return pd.DataFrame()
 
-    if df.empty:
-        return pd.DataFrame()
+    # ==========================
+    # 2️⃣ BACA ULANG DENGAN HEADER YANG BENAR
+    # ==========================
+    uploaded_file.seek(0)
+    df = pd.read_excel(uploaded_file, header=header_row, dtype=str)
 
-    # =========================================================
-    # 1️⃣ NORMALISASI HEADER
-    # =========================================================
+    # ==========================
+    # 3️⃣ NORMALISASI HEADER
+    # ==========================
     df.columns = (
         df.columns.astype(str)
         .str.strip()
@@ -2138,97 +2148,50 @@ def process_excel_file_kkp(uploaded_file):
         .str.replace(r"\s+", " ", regex=True)
     )
 
-    # =========================================================
-    # 2️⃣ VALIDASI KOLOM WAJIB
-    # =========================================================
-    required = ["BA/KL", "SATKER", "PERIODE"]
+    # ==========================
+    # 4️⃣ EKSTRAK KODE BA & SATKER
+    # ==========================
+    if "BA/KL" in df.columns:
+        df["Kode BA"] = (
+            df["BA/KL"]
+            .astype(str)
+            .str.extract(r"(\d{3})")[0]
+            .fillna("")
+        )
+    else:
+        return pd.DataFrame()
 
-    for col in required:
-        if col not in df.columns:
-            return pd.DataFrame()
+    if "SATKER" in df.columns:
+        df["Kode Satker"] = (
+            df["SATKER"]
+            .astype(str)
+            .str.extract(r"(\d{6})")[0]
+            .fillna("")
+        )
+    else:
+        return pd.DataFrame()
 
-    # =========================================================
-    # 3️⃣ EKSTRAK KODE BA (3 digit)
-    # =========================================================
-    df["Kode BA"] = (
-        df["BA/KL"]
-        .astype(str)
-        .str.extract(r"(\d{3})")[0]
-        .fillna("")
-    )
-
-    # =========================================================
-    # 4️⃣ EKSTRAK KODE SATKER (6 digit)
-    # =========================================================
-    df["Kode Satker"] = (
-        df["SATKER"]
-        .astype(str)
-        .str.extract(r"(\d{6})")[0]
-        .fillna("")
-        .str.zfill(6)
-    )
-
-    # =========================================================
-    # 5️⃣ NORMALISASI NOMOR KARTU (ANTI SCIENTIFIC)
-    # =========================================================
+    # ==========================
+    # 5️⃣ NOMOR KARTU (ANTI SCIENTIFIC)
+    # ==========================
     if "NOMOR KARTU" in df.columns:
         df["Nomor Kartu"] = (
             df["NOMOR KARTU"]
             .astype(str)
-            .str.replace(",", "", regex=False)
             .str.replace(r"\.0$", "", regex=True)
-            .str.replace("E+15", "", regex=False)
         )
     else:
         df["Nomor Kartu"] = ""
 
-    # =========================================================
-    # 6️⃣ NORMALISASI NUMERIK
-    # =========================================================
-    numeric_cols = [
-        "LIMIT KKP",
-        "TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)",
-        "NILAI TRANSAKSI (NILAI SPM)"
-    ]
-
-    for col in numeric_cols:
-        if col in df.columns:
-            df[col] = (
-                df[col]
-                .astype(str)
-                .str.replace(",", "", regex=False)
-                .str.replace(r"[^\d]", "", regex=True)
-                .replace("", "0")
-                .astype(float)
-            )
-
-    # =========================================================
-    # 7️⃣ BERSIHKAN BARIS KOSONG
-    # =========================================================
+    # ==========================
+    # 6️⃣ BERSIHKAN BARIS KOSONG
+    # ==========================
     df = df[df["Kode Satker"] != ""]
 
     if df.empty:
         return pd.DataFrame()
 
-    # =========================================================
-    # 8️⃣ PILIH KOLOM FINAL
-    # =========================================================
-    final_columns = [
-        "Kode BA",
-        "Kode Satker",
-        "Nomor Kartu",
-        "NAMA PEMEGANG KKP",
-        "LIMIT KKP",
-        "JENIS KKP",
-        "BANK PENERBIT KKP",
-        "PERIODE",
-        "TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)",
-        "NILAI TRANSAKSI (NILAI SPM)"
-    ]
-
-    df_final = df[[c for c in final_columns if c in df.columns]]
-
-    return df_final.reset_index(drop=True)
+    return df.reset_index(drop=True)
 
 
 # ============================
