@@ -2031,6 +2031,40 @@ def normalize_kkp_for_dashboard(df):
 
     return df
 
+# ============================================================
+# LOAD KKP MASTER FROM GITHUB
+# ============================================================
+def load_kkp_from_github():
+
+    token = st.secrets.get("GITHUB_TOKEN")
+    repo_name = st.secrets.get("GITHUB_REPO")
+
+    if not token or not repo_name:
+        return 0
+
+    try:
+        g = Github(auth=Auth.Token(token))
+        repo = g.get_repo(repo_name)
+
+        file_path = "data_kkp/KKP_MASTER.xlsx"
+        file_content = repo.get_contents(file_path)
+
+        df = pd.read_excel(
+            io.BytesIO(file_content.decoded_content),
+            dtype=str
+        )
+
+        if not df.empty:
+            st.session_state.kkp_master = df
+            return len(df)
+        else:
+            st.session_state.kkp_master = pd.DataFrame()
+            return 0
+
+    except:
+        st.session_state.kkp_master = pd.DataFrame()
+        return 0
+
 
 # ============================================================
 # LOAD DIGIPAY FROM GITHUB
@@ -6207,7 +6241,7 @@ def page_admin():
                 file_valid = False
 
         # ===============================
-        # 🔄 PROSES DATA FINAL
+        # PROSES DATA FINAL
         # ===============================
         if st.button(
             " Proses Data KKP",
@@ -6223,27 +6257,90 @@ def page_admin():
             with st.spinner("Memproses data KKP..."):
 
                 try:
-                    # ✅ PAKAI FUNGSI YANG BENAR
                     df_kkp = process_excel_file_kkp(uploaded_file_kkp)
 
                     if df_kkp.empty:
                         st.error("Data KKP kosong setelah diproses.")
                         st.stop()
 
-                    # ===============================
-                    # SIMPAN KE SESSION
-                    # ===============================
-                    period_key = (month_preview, str(upload_year_kkp))
-                    st.session_state.data_storage_kkp[period_key] = df_kkp
+                    # ============================================================
+                    # 🔥 SMART MERGE KKP
+                    # UNIQUE = PERIODE + Kode Satker + JENIS KKP
+                    # Ambil NILAI SPM terbesar
+                    # ============================================================
 
-                    # ===============================
-                    # SIMPAN KE GITHUB
-                    # ===============================
-                    filename = f"DATA_KKP_JAN_DES_{upload_year_kkp}.xlsx"
+                    UNIQUE_KEY = ["PERIODE", "Kode Satker", "JENIS KKP"]
+                    SPM_COL = "NILAI TRANSAKSI (NILAI SPM)"
+
+                    # Pastikan kolom ada
+                    for col in UNIQUE_KEY:
+                        if col not in df_kkp.columns:
+                            st.error(f"Kolom {col} tidak ditemukan.")
+                            st.stop()
+
+                    # Pastikan numeric
+                    df_kkp[SPM_COL] = pd.to_numeric(
+                        df_kkp[SPM_COL],
+                        errors="coerce"
+                    ).fillna(0)
+
+                    # Urutkan supaya nilai terbesar di atas
+                    df_kkp = df_kkp.sort_values(SPM_COL, ascending=False)
+
+                    # Buang duplicate dalam file upload sendiri
+                    df_kkp = df_kkp.drop_duplicates(subset=UNIQUE_KEY)
+
+                    # Init master
+                    if "kkp_master" not in st.session_state:
+                        st.session_state.kkp_master = pd.DataFrame()
+
+                    if st.session_state.kkp_master.empty:
+
+                        final_df = df_kkp.copy()
+                        new_count = len(df_kkp)
+                        update_count = 0
+
+                    else:
+
+                        master_df = st.session_state.kkp_master.copy()
+
+                        master_df[SPM_COL] = pd.to_numeric(
+                            master_df[SPM_COL],
+                            errors="coerce"
+                        ).fillna(0)
+
+                        # Gabungkan lama + baru
+                        combined = pd.concat(
+                            [master_df, df_kkp],
+                            ignore_index=True
+                        )
+
+                        # Urutkan supaya terbesar di atas
+                        combined = combined.sort_values(SPM_COL, ascending=False)
+
+                        # Ambil 1 saja per UNIQUE_KEY
+                        final_df = combined.drop_duplicates(subset=UNIQUE_KEY)
+
+                        new_count = len(final_df) - len(master_df)
+                        update_count = len(master_df) - len(
+                            master_df.merge(final_df, on=UNIQUE_KEY).index
+                        )
+
+                    st.session_state.kkp_master = final_df.reset_index(drop=True)
+
+                    # ============================================================
+                    # 💾 SIMPAN KE GITHUB (HANYA 1 MASTER FILE)
+                    # ============================================================
+
+                    filename = "KKP_MASTER.xlsx"
 
                     excel_bytes = io.BytesIO()
                     with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                        df_kkp.to_excel(writer, index=False, sheet_name="Data KKP")
+                        st.session_state.kkp_master.to_excel(
+                            writer,
+                            index=False,
+                            sheet_name="Data KKP"
+                        )
 
                     excel_bytes.seek(0)
 
@@ -6256,12 +6353,13 @@ def page_admin():
                     log_activity(
                         menu="Upload Data",
                         action="Upload Data KKP",
-                        detail=f"{uploaded_file_kkp.name} | {month_preview} {upload_year_kkp}"
+                        detail=f"{uploaded_file_kkp.name} | {upload_year_kkp}"
                     )
 
                     st.success(
-                        f"✅ Data KKP {month_preview} {upload_year_kkp} berhasil disimpan "
-                        f"({len(df_kkp)} baris)"
+                        f"✅ Proses selesai | "
+                        f"{new_count} data baru | "
+                        f"{update_count} data diperbarui"
                     )
                     st.snow()
 
@@ -7941,11 +8039,23 @@ def main():
     if st.session_state.get("ikpa_dipa_merged", False):
         st.success(" Data IKPA & DIPA berhasil dimuat dan siap digunakan")
 
-    # Notifikasi
-    if st.session_state.data_storage_kkp:
-        jumlah_file = len(st.session_state.data_storage_kkp)
-        st.success(f"✅ Data KKP berhasil dimuat dari GitHub ({jumlah_file} file)")
-        
+    # ============================================================
+    # AUTO LOAD KKP
+    # ============================================================
+
+    if "auto_loaded_kkp" not in st.session_state:
+
+        kkp_count = load_kkp_from_github()
+        st.session_state.auto_loaded_kkp = True
+
+        if kkp_count > 0:
+            st.success(f"✅ {kkp_count} data KKP berhasil dimuat dari GitHub")
+
+    # Notifikasi global (opsional, seperti CMS & Digipay)
+    if st.session_state.get("auto_loaded_kkp"):
+        if "kkp_master" in st.session_state and not st.session_state.kkp_master.empty:
+            st.success("Data KKP berhasil dimuat dan siap digunakan")
+
 
     # ============================================================
     # AUTO LOAD CMS & DIGIPAY
