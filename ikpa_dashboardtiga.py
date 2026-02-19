@@ -6209,14 +6209,11 @@ def page_admin():
                         st.error(f"❌ Terjadi error saat memproses file DIPA: {e}")
                         
         # ===============================
-        # 🧾 SUBMENU UPLOAD DATA KKP
+        # SUBMENU UPLOAD DATA KKP
         # ===============================
         st.markdown("---")
         st.subheader("💳 Upload Data KKP")
 
-        # ===============================
-        # 📅 PILIH TAHUN
-        # ===============================
         upload_year_kkp = st.selectbox(
             "Pilih Tahun Data KKP",
             list(range(2020, 2031)),
@@ -6224,11 +6221,6 @@ def page_admin():
             key="tahun_kkp"
         )
 
-        month_preview = "JAN–DES"
-
-        # ===============================
-        # 📂 UPLOAD FILE
-        # ===============================
         uploaded_file_kkp = st.file_uploader(
             "Pilih file Excel Data KKP",
             type=["xlsx", "xls"],
@@ -6236,15 +6228,15 @@ def page_admin():
         )
 
         # ===============================
-        # 🔐 INIT SESSION
+        # INIT MASTER DATABASE
         # ===============================
-        if "data_storage_kkp" not in st.session_state:
-            st.session_state.data_storage_kkp = {}
+        if "kkp_master" not in st.session_state:
+            st.session_state.kkp_master = pd.DataFrame()
 
         file_valid = False
 
         # ===============================
-        # 🔍 PREVIEW VALIDASI
+        # PREVIEW VALIDASI
         # ===============================
         if uploaded_file_kkp is not None:
 
@@ -6261,19 +6253,16 @@ def page_admin():
                 st.error(f"Gagal membaca file KKP: {e}")
                 file_valid = False
 
+
         # ===============================
         # PROSES DATA FINAL
         # ===============================
         if st.button(
-            " Proses Data KKP",
+            "Proses Data KKP",
             type="primary",
             disabled=not file_valid,
             key="proses_kkp"
         ):
-
-            if uploaded_file_kkp is None:
-                st.warning("Silakan upload file KKP terlebih dahulu.")
-                st.stop()
 
             with st.spinner("Memproses data KKP..."):
 
@@ -6285,37 +6274,35 @@ def page_admin():
                         st.stop()
 
                     # ============================================================
-                    # 🔥 SMART MERGE KKP
+                    # 🔥 SMART UPDATE DATABASE KKP
                     # UNIQUE = PERIODE + Kode Satker + JENIS KKP
-                    # Ambil NILAI SPM terbesar
                     # ============================================================
 
                     UNIQUE_KEY = ["PERIODE", "Kode Satker", "JENIS KKP"]
                     SPM_COL = "NILAI TRANSAKSI (NILAI SPM)"
 
-                    # Pastikan kolom ada
                     for col in UNIQUE_KEY:
                         if col not in df_kkp.columns:
                             st.error(f"Kolom {col} tidak ditemukan.")
                             st.stop()
 
-                    # Pastikan numeric
                     df_kkp[SPM_COL] = pd.to_numeric(
                         df_kkp[SPM_COL],
                         errors="coerce"
                     ).fillna(0)
 
-                    # Urutkan supaya nilai terbesar di atas
+                    # Urutkan supaya terbesar di atas
                     df_kkp = df_kkp.sort_values(SPM_COL, ascending=False)
 
                     # Buang duplicate dalam file upload sendiri
                     df_kkp = df_kkp.drop_duplicates(subset=UNIQUE_KEY)
 
-                    # Init master
-                    if "kkp_master" not in st.session_state:
-                        st.session_state.kkp_master = pd.DataFrame()
+                    # ===============================
+                    # MERGE DENGAN MASTER
+                    # ===============================
+                    master_df = st.session_state.kkp_master.copy()
 
-                    if st.session_state.kkp_master.empty:
+                    if master_df.empty:
 
                         final_df = df_kkp.copy()
                         new_count = len(df_kkp)
@@ -6323,34 +6310,31 @@ def page_admin():
 
                     else:
 
-                        master_df = st.session_state.kkp_master.copy()
-
                         master_df[SPM_COL] = pd.to_numeric(
                             master_df[SPM_COL],
                             errors="coerce"
                         ).fillna(0)
 
-                        # Gabungkan lama + baru
+                        before_count = len(master_df)
+
                         combined = pd.concat(
                             [master_df, df_kkp],
                             ignore_index=True
                         )
 
-                        # Urutkan supaya terbesar di atas
                         combined = combined.sort_values(SPM_COL, ascending=False)
 
-                        # Ambil 1 saja per UNIQUE_KEY
                         final_df = combined.drop_duplicates(subset=UNIQUE_KEY)
 
-                        new_count = len(final_df) - len(master_df)
-                        update_count = len(master_df) - len(
-                            master_df.merge(final_df, on=UNIQUE_KEY).index
-                        )
+                        after_count = len(final_df)
+
+                        new_count = max(after_count - before_count, 0)
+                        update_count = len(df_kkp) - new_count
 
                     st.session_state.kkp_master = final_df.reset_index(drop=True)
 
                     # ============================================================
-                    # 💾 SIMPAN KE GITHUB (HANYA 1 MASTER FILE)
+                    # 💾 SIMPAN KE GITHUB (HANYA 1 FILE MASTER)
                     # ============================================================
 
                     filename = "KKP_MASTER.xlsx"
@@ -6382,6 +6366,7 @@ def page_admin():
                         f"{new_count} data baru | "
                         f"{update_count} data diperbarui"
                     )
+
                     st.snow()
 
                 except Exception as e:
