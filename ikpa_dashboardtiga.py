@@ -7197,14 +7197,17 @@ def page_admin():
                 except Exception as e:
                     st.error(f"❌ Gagal menghapus data DIPA: {e}")
         
+
         # ===============================
-        # 🗑️ SUBMENU HAPUS DATA KKP
+        # HAPUS DATA KKP 
         # ===============================
         st.markdown("---")
         st.subheader("🗑️ Hapus Data KKP")
 
         if "kkp_master" not in st.session_state or st.session_state.kkp_master.empty:
+
             st.info("Belum ada data KKP yang tersimpan.")
+
         else:
 
             confirm_delete = st.checkbox(
@@ -7219,33 +7222,35 @@ def page_admin():
             ):
 
                 try:
-                    # Hapus dari session
+                    # 🔹 Hapus dari session
                     st.session_state.kkp_master = pd.DataFrame()
 
-                    # Hapus dari GitHub
+                    # 🔹 Hapus dari GitHub
                     token = st.secrets["GITHUB_TOKEN"]
                     repo_name = st.secrets["GITHUB_REPO"]
 
                     g = Github(auth=Auth.Token(token))
                     repo = g.get_repo(repo_name)
 
-                    path = "data_kkp/DATA_KKP_MASTER.xlsx"
+                    file_path = "data_kkp/KKP_MASTER.xlsx"
 
                     try:
-                        file = repo.get_contents(path)
+                        file = repo.get_contents(file_path)
                         repo.delete_file(
                             file.path,
-                            "Delete DATA_KKP_MASTER.xlsx",
+                            "Delete KKP_MASTER.xlsx",
                             file.sha
                         )
-                    except:
-                        pass
+                    except Exception as e:
+                        st.warning(f"File tidak ditemukan di GitHub: {e}")
 
-                    st.success("Data KKP berhasil dihapus.")
+                    st.success("✅ Data KKP berhasil dihapus dari sistem & GitHub.")
+                    st.snow()
                     st.rerun()
 
                 except Exception as e:
                     st.error(f"Gagal menghapus data KKP: {e}")
+
 
                     
         
@@ -7686,7 +7691,7 @@ def page_admin():
 
         # DOWNLOAD DATA KKP
         st.markdown("---")
-        st.subheader("📥 Download Data KKP")
+        st.subheader("Download Data KKP")
 
         if "kkp_master" not in st.session_state or st.session_state.kkp_master.empty:
             st.info("Belum ada data KKP yang tersimpan.")
@@ -7697,7 +7702,7 @@ def page_admin():
                 st.session_state.kkp_master.to_excel(
                     writer,
                     index=False,
-                    sheet_name="DATA_KKP_MASTER"
+                    sheet_name="Data KKP"
                 )
 
             buffer.seek(0)
@@ -7705,9 +7710,10 @@ def page_admin():
             st.download_button(
                 label="⬇️ Download Data KKP",
                 data=buffer,
-                file_name="DATA_KKP_MASTER.xlsx",
+                file_name="KKP_MASTER.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
+            
 
         # ==========================================
         #  DOWNLOAD DATABASE DIGIPAY
