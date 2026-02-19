@@ -7628,26 +7628,27 @@ def page_admin():
         st.markdown("---")
         st.subheader("📥 Download Data CMS")
 
-        try:
-            token = st.secrets["GITHUB_TOKEN"]
-            repo_name = st.secrets["GITHUB_REPO"]
+        if "cms_master" in st.session_state and not st.session_state.cms_master.empty:
 
-            g = Github(auth=Auth.Token(token))
-            repo = g.get_repo(repo_name)
+            buffer = io.BytesIO()
 
-            file_path = "data_CMS/CMS_MASTER.xlsx"
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                st.session_state.cms_master.to_excel(
+                    writer,
+                    index=False,
+                    sheet_name="CMS_109_BATURAJA"
+                )
 
-            file_content = repo.get_contents(file_path)
-            file_bytes = file_content.decoded_content
+            buffer.seek(0)
 
             st.download_button(
                 label="Download Data CMS",
-                data=file_bytes,
+                data=buffer,
                 file_name="CMS_MASTER.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             )
 
-        except Exception:
+        else:
             st.info("ℹ️ Belum ada data CMS tersedia untuk diunduh.")
 
 
