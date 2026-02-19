@@ -7203,23 +7203,13 @@ def page_admin():
         st.markdown("---")
         st.subheader("🗑️ Hapus Data KKP")
 
-        if not st.session_state.data_storage_kkp:
+        if "kkp_master" not in st.session_state or st.session_state.kkp_master.empty:
             st.info("Belum ada data KKP yang tersimpan.")
         else:
-            # daftar periode tersedia
-            periode_list = sorted(
-                st.session_state.data_storage_kkp.keys(),
-                key=lambda x: (x[1], x[0])
-            )
-
-            selected_period = st.selectbox(
-                "Pilih periode KKP yang akan dihapus",
-                periode_list,
-                format_func=lambda x: f"{x[0]} {x[1]}"
-            )
 
             confirm_delete = st.checkbox(
-                f"Saya yakin ingin menghapus data KKP periode {selected_period[0]} {selected_period[1]}"
+                "Saya yakin ingin menghapus seluruh data KKP dari sistem dan GitHub.",
+                key="confirm_delete_kkp_master"
             )
 
             if st.button(
@@ -7227,42 +7217,36 @@ def page_admin():
                 type="primary",
                 disabled=not confirm_delete
             ):
-                try:
-                    # hapus dari session
-                    del st.session_state.data_storage_kkp[selected_period]
 
-                    # hapus file di GitHub
-                    filename = f"DATA_KKP_{selected_period[0]}_{selected_period[1]}.xlsx"
+                try:
+                    # Hapus dari session
+                    st.session_state.kkp_master = pd.DataFrame()
+
+                    # Hapus dari GitHub
                     token = st.secrets["GITHUB_TOKEN"]
                     repo_name = st.secrets["GITHUB_REPO"]
 
                     g = Github(auth=Auth.Token(token))
                     repo = g.get_repo(repo_name)
-                    path = f"data_kkp/{filename}"
+
+                    path = "data_kkp/DATA_KKP_MASTER.xlsx"
 
                     try:
                         file = repo.get_contents(path)
                         repo.delete_file(
                             file.path,
-                            f"Delete {filename}",
+                            "Delete DATA_KKP_MASTER.xlsx",
                             file.sha
                         )
-                    except Exception:
-                        pass  # kalau file belum ada, tidak error
+                    except:
+                        pass
 
-                    log_activity(
-                        menu="Hapus Data",
-                        action="Hapus Data KKP",
-                        detail=f"{selected_period[0]} {selected_period[1]}"
-                    )
-
-                    st.success(
-                        f"Data KKP {selected_period[0]} {selected_period[1]} berhasil dihapus."
-                    )
+                    st.success("Data KKP berhasil dihapus.")
                     st.rerun()
 
                 except Exception as e:
                     st.error(f"Gagal menghapus data KKP: {e}")
+
                     
         
         # ============================================================
@@ -7704,29 +7688,27 @@ def page_admin():
         st.markdown("---")
         st.subheader("📥 Download Data KKP")
 
-        if not st.session_state.data_storage_kkp:
+        if "kkp_master" not in st.session_state or st.session_state.kkp_master.empty:
             st.info("Belum ada data KKP yang tersimpan.")
         else:
-            for (bulan, tahun), df in st.session_state.data_storage_kkp.items():
-                col1, col2 = st.columns([3, 1])
+            buffer = io.BytesIO()
 
-                with col1:
-                    st.write(f"📄 **KKP {bulan} {tahun}** — {len(df)} transaksi")
+            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                st.session_state.kkp_master.to_excel(
+                    writer,
+                    index=False,
+                    sheet_name="DATA_KKP_MASTER"
+                )
 
-                with col2:
-                    buffer = io.BytesIO()
-                    with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-                        df.to_excel(writer, index=False, sheet_name="Kartu Pengawasan KKP")
-                    buffer.seek(0)
+            buffer.seek(0)
 
-                    st.download_button(
-                        label="⬇️ Download",
-                        data=buffer,
-                        file_name=f"DATA_KKP_{bulan}_{tahun}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        key=f"download_kkp_{bulan}_{tahun}"
-                    )
-        
+            st.download_button(
+                label="⬇️ Download Data KKP",
+                data=buffer,
+                file_name="DATA_KKP_MASTER.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+
         # ==========================================
         #  DOWNLOAD DATABASE DIGIPAY
         # ==========================================
