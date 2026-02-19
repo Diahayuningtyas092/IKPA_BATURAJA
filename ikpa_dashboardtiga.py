@@ -6698,8 +6698,13 @@ def page_admin():
                 st.success(
                     f"✅ Upload selesai | {new_count} data baru | {update_count} data diperbarui"
                 )
+                
 
-        
+        # =========================================
+        # AUTO LOAD CMS SAAT PAGE DIBUKA
+        # =========================================
+        if "cms_master" not in st.session_state:
+            load_cms_from_github()
         
         # ============================================================
         # UPLOAD DATA CMS 
@@ -6743,11 +6748,6 @@ def page_admin():
         st.session_state.selected_year = selected_year
         st.session_state.selected_triwulan = selected_triwulan
 
-        # ============================================================
-        # INIT DATABASE UTAMA
-        # ============================================================
-        if "cms_master" not in st.session_state:
-            st.session_state.cms_master = pd.DataFrame()
 
         uploaded_cms = st.file_uploader(
             "Upload File Excel CMS (Multi Sheet)",
