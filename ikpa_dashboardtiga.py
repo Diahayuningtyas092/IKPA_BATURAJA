@@ -2031,8 +2031,9 @@ def normalize_kkp_for_dashboard(df):
 
     return df
 
+
 # ============================================================
-# LOAD KKP MASTER FROM GITHUB
+# LOAD DATA KKP FROM GITHUB
 # ============================================================
 def load_kkp_from_github():
 
@@ -2046,24 +2047,36 @@ def load_kkp_from_github():
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
 
-        file_path = "data_kkp/KKP_MASTER.xlsx"
-        file_content = repo.get_contents(file_path)
+        # ⚠️ HARUS SAMA DENGAN folder save Anda
+        contents = repo.get_contents("data_kkp")
 
-        df = pd.read_excel(
-            io.BytesIO(file_content.decoded_content),
-            dtype=str
-        )
-
-        if not df.empty:
-            st.session_state.kkp_master = df
-            return len(df)
-        else:
-            st.session_state.kkp_master = pd.DataFrame()
-            return 0
-
-    except:
-        st.session_state.kkp_master = pd.DataFrame()
+    except Exception:
         return 0
+
+    all_df = []
+    file_count = 0
+
+    for file in contents:
+        if file.name.endswith(".xlsx"):
+
+            try:
+                file_content = base64.b64decode(file.content)
+                df = pd.read_excel(io.BytesIO(file_content), dtype=str)
+
+                if not df.empty:
+                    all_df.append(df)
+                    file_count += 1
+
+            except:
+                continue
+
+    if all_df:
+        st.session_state.kkp_master = pd.concat(all_df, ignore_index=True)
+    else:
+        st.session_state.kkp_master = pd.DataFrame()
+
+    return file_count
+
 
 
 # ============================================================
@@ -8042,19 +8055,14 @@ def main():
     # ============================================================
     # AUTO LOAD KKP
     # ============================================================
-
-    if "auto_loaded_kkp" not in st.session_state:
+    if "kkp_master" not in st.session_state:
 
         kkp_count = load_kkp_from_github()
-        st.session_state.auto_loaded_kkp = True
 
         if kkp_count > 0:
-            st.success(f"✅ {kkp_count} data KKP berhasil dimuat dari GitHub")
-
-    # Notifikasi global (opsional, seperti CMS & Digipay)
-    if st.session_state.get("auto_loaded_kkp"):
-        if "kkp_master" in st.session_state and not st.session_state.kkp_master.empty:
-            st.success("Data KKP berhasil dimuat dan siap digunakan")
+            st.success(f"✅ {kkp_count} file KKP berhasil dimuat dari GitHub")
+        else:
+            st.info("ℹ️ Belum ada data KKP tersedia di GitHub")
 
 
     # ============================================================
