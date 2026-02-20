@@ -2041,6 +2041,7 @@ def load_kkp_master_from_github():
     repo_name = st.secrets.get("GITHUB_REPO")
 
     if not token or not repo_name:
+        st.session_state.kkp_master = pd.DataFrame()
         return False
 
     try:
@@ -2057,21 +2058,18 @@ def load_kkp_master_from_github():
         return True
 
     except Exception:
+        # Jika file memang belum ada
         st.session_state.kkp_master = pd.DataFrame()
         return False
 
 
-# LOAD SEKALI SAJA
-if "kkp_master_loaded" not in st.session_state:
-    success = load_kkp_master_from_github()
-    st.session_state.kkp_master_loaded = True
+# Selalu load setiap app jalan (tidak pakai flag session)
+load_success = load_kkp_master_from_github()
 
-    if success:
-        st.success("✅ Database utama KKP berhasil dimuat dari GitHub")
-    else:
-        st.info("ℹ️ Belum ada database utama KKP di GitHub")
-
-
+if load_success:
+    st.success("✅ Database utama KKP berhasil dimuat dari GitHub")
+else:
+    st.info("ℹ️ Belum ada database utama KKP di GitHub")
 
 
 # ============================================================
@@ -6253,11 +6251,6 @@ def page_admin():
                         st.error("Data KKP kosong setelah diproses.")
                         st.stop()
 
-                    # ============================================================
-                    # 🔥 SMART UPDATE DATABASE KKP
-                    # UNIQUE = PERIODE + Kode Satker + JENIS KKP
-                    # ============================================================
-
                     UNIQUE_KEY = ["PERIODE", "Kode Satker", "JENIS KKP"]
                     SPM_COL = "NILAI TRANSAKSI (NILAI SPM)"
 
@@ -6272,16 +6265,27 @@ def page_admin():
                     ).fillna(0)
 
                     df_kkp = df_kkp.sort_values(SPM_COL, ascending=False)
-                    df_kkp = df_kkp.drop_duplicates(subset=UNIQUE_KEY)
 
                     master_df = st.session_state.get("kkp_master", pd.DataFrame())
 
+                    # =====================================================
+                    # 🟢 UPLOAD PERTAMA (MASTER MASIH KOSONG)
+                    # =====================================================
                     if master_df.empty:
+
+                        # Simpan apa adanya (tidak buang duplicate)
                         final_df = df_kkp.copy()
                         new_count = len(df_kkp)
                         update_count = 0
 
+                    # =====================================================
+                    # 🔵 SUDAH ADA MASTER → SMART MERGE
+                    # =====================================================
                     else:
+
+                        # Baru buang duplicate di upload
+                        df_kkp = df_kkp.drop_duplicates(subset=UNIQUE_KEY)
+
                         master_df[SPM_COL] = pd.to_numeric(
                             master_df[SPM_COL],
                             errors="coerce"
@@ -6303,12 +6307,12 @@ def page_admin():
                         new_count = max(after_count - before_count, 0)
                         update_count = len(df_kkp) - new_count
 
-                    # Update master di session
+                    # Update session
                     st.session_state.kkp_master = final_df.reset_index(drop=True)
 
-                    # ============================================================
-                    # 💾 SIMPAN KE GITHUB (HANYA 1 FILE MASTER)
-                    # ============================================================
+                    # =====================================================
+                    # 💾 SIMPAN KE GITHUB (1 FILE SAJA)
+                    # =====================================================
 
                     filename = "KKP_MASTER.xlsx"
 
@@ -6326,12 +6330,6 @@ def page_admin():
                         excel_bytes.getvalue(),
                         filename,
                         folder="data_kkp"
-                    )
-
-                    log_activity(
-                        menu="Upload Data",
-                        action="Upload Data KKP",
-                        detail=f"{uploaded_file_kkp.name} | {upload_year_kkp}"
                     )
 
                     st.success(
