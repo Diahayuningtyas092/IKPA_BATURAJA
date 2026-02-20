@@ -6251,10 +6251,6 @@ def page_admin():
                         st.error("Data KKP kosong setelah diproses.")
                         st.stop()
 
-                    # ============================================================
-                    # 🔥 SMART MERGE FINAL KKP
-                    # ============================================================
-
                     UNIQUE_KEY = ["PERIODE", "Kode Satker", "JENIS KKP"]
                     SPM_COL = "NILAI TRANSAKSI (NILAI SPM)"
 
@@ -6276,16 +6272,50 @@ def page_admin():
                     master_df = st.session_state.get("kkp_master", pd.DataFrame())
 
                     # ===============================
-                    # NORMALISASI KEY (WAJIB)
+                    # NORMALISASI SUPER AMAN
                     # ===============================
                     for df in [df_kkp, master_df]:
                         if not df.empty:
-                            df["PERIODE"] = df["PERIODE"].astype(str).str.strip().str.upper()
-                            df["Kode Satker"] = df["Kode Satker"].astype(str).str.zfill(6)
-                            df["JENIS KKP"] = df["JENIS KKP"].astype(str).str.strip().str.upper()
+
+                            df["PERIODE"] = (
+                                df["PERIODE"]
+                                .astype(str)
+                                .str.replace(".0", "", regex=False)
+                                .str.strip()
+                                .str.upper()
+                            )
+
+                            df["Kode Satker"] = (
+                                df["Kode Satker"]
+                                .astype(str)
+                                .str.replace(".0", "", regex=False)
+                                .str.zfill(6)
+                            )
+
+                            df["JENIS KKP"] = (
+                                df["JENIS KKP"]
+                                .astype(str)
+                                .str.strip()
+                                .str.upper()
+                            )
+
+                    # ===============================
+                    # DEBUG INFO
+                    # ===============================
+                    st.markdown("### 🔍 DEBUG KEY INFO")
+
+                    st.write("Jumlah baris MASTER:", len(master_df))
+                    st.write("Jumlah baris UPLOAD:", len(df_kkp))
+
+                    if not master_df.empty:
+                        st.write("Sample MASTER KEY")
+                        st.write(master_df[UNIQUE_KEY].head())
+
+                    st.write("Sample UPLOAD KEY")
+                    st.write(df_kkp[UNIQUE_KEY].head())
 
                     # =====================================================
-                    # 🟢 UPLOAD PERTAMA (MASTER KOSONG)
+                    # UPLOAD PERTAMA
                     # =====================================================
                     if master_df.empty:
 
@@ -6293,8 +6323,10 @@ def page_admin():
                         new_count = len(df_kkp)
                         update_count = 0
 
+                        st.info("Master kosong → langsung simpan sebagai database utama")
+
                     # =====================================================
-                    # 🔵 SUDAH ADA MASTER → MERGE CERDAS
+                    # MERGE CERDAS
                     # =====================================================
                     else:
 
@@ -6302,6 +6334,24 @@ def page_admin():
                             master_df[SPM_COL],
                             errors="coerce"
                         ).fillna(0)
+
+                        # Hitung key sebelum merge
+                        master_keys = set(tuple(x) for x in master_df[UNIQUE_KEY].values)
+                        upload_keys = set(tuple(x) for x in df_kkp[UNIQUE_KEY].values)
+
+                        st.write("Jumlah UNIQUE KEY MASTER:", len(master_keys))
+                        st.write("Jumlah UNIQUE KEY UPLOAD:", len(upload_keys))
+
+                        common_keys = upload_keys & master_keys
+                        new_keys = upload_keys - master_keys
+
+                        st.write("Jumlah KEY SAMA:", len(common_keys))
+                        st.write("Jumlah KEY BARU:", len(new_keys))
+
+                        # Tampilkan contoh key baru
+                        if len(new_keys) > 0:
+                            st.write("Contoh KEY BARU (5 pertama):")
+                            st.write(list(new_keys)[:5])
 
                         # Gabungkan lama + baru
                         combined = pd.concat([master_df, df_kkp], ignore_index=True)
@@ -6312,17 +6362,7 @@ def page_admin():
                         # Ambil 1 saja untuk setiap UNIQUE_KEY
                         final_df = combined.drop_duplicates(subset=UNIQUE_KEY)
 
-                        # ===============================
-                        # HITUNG DATA BARU & UPDATE
-                        # ===============================
-
-                        master_keys = set(tuple(x) for x in master_df[UNIQUE_KEY].values)
-                        upload_keys = set(tuple(x) for x in df_kkp[UNIQUE_KEY].values)
-
-                        new_keys = upload_keys - master_keys
                         new_count = len(new_keys)
-
-                        common_keys = upload_keys & master_keys
                         update_count = len(common_keys)
 
                     # ===============================
@@ -6330,14 +6370,16 @@ def page_admin():
                     # ===============================
                     st.session_state.kkp_master = final_df.reset_index(drop=True)
 
+                    st.write("Jumlah baris MASTER setelah merge:", len(final_df))
+
                     # =====================================================
-                    # 💾 SIMPAN KE GITHUB (1 FILE MASTER SAJA)
+                    # SIMPAN KE GITHUB
                     # =====================================================
                     filename = "KKP_MASTER.xlsx"
 
                     excel_bytes = io.BytesIO()
                     with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                        st.session_state.kkp_master.to_excel(
+                        final_df.to_excel(
                             writer,
                             index=False,
                             sheet_name="Data KKP"
