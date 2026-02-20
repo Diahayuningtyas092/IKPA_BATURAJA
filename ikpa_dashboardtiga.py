@@ -547,63 +547,60 @@ def render_table_pin_satker(df):
     # ===============================
     # GRID + EXPORT
     # ===============================
-    grid_container = st.container()
+    st.markdown(
+        """
+        <style>
+        /* Hapus jarak antar elemen */
+        .block-container {
+            padding-top: 1rem !important;
+        }
 
-    with grid_container:
+        div.stDownloadButton {
+            margin-top: -32px !important;
+            margin-bottom: -8px !important;
+        }
 
-        col_left, col_right = st.columns([12,1])
+        div.stDownloadButton > button {
+            background: #242424 !important;
+            color: #d6d6d6 !important;
+            border: 1px solid #3a3a3a !important;
+            border-radius: 4px !important;
 
-        with col_right:
-            st.markdown(
-                """
-                <style>
-                div.stDownloadButton > button {
-                    background: #242424 !important;
-                    color: #d6d6d6 !important;
-                    border: 1px solid #3a3a3a !important;
-                    border-radius: 4px !important;
+            font-size: 8.5px !important;
+            padding: 1px 6px !important;
+            height: 20px !important;
+            line-height: 1 !important;
+        }
 
-                    font-size: 8.5px !important;
-                    padding: 1px 6px !important;
-                    height: 20px !important;
-                    line-height: 1 !important;
+        div.stDownloadButton > button:hover {
+            background: #303030 !important;
+            color: #ffffff !important;
+            border: 1px solid #555 !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-                    letter-spacing: 0.2px !important;
-                }
+    # ===== EXPORT BUTTON (DITARUH DULU) =====
+    export_button = st.download_button(
+        "Export Excel",
+        data=to_excel_bytes(filtered_df),
+        file_name="Data_Satker.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
-                div.stDownloadButton > button:hover {
-                    background: #303030 !important;
-                    color: #ffffff !important;
-                    border: 1px solid #555 !important;
-                }
-                </style>
-                """,
-                unsafe_allow_html=True
-            )
-
-        grid_response = AgGrid(
-            df,
-            gridOptions=gb.build(),
-            height=calc_grid_height(df),
-            width="100%",
-            theme="streamlit",
-            allow_unsafe_jscode=True,
-            data_return_mode="FILTERED_AND_SORTED",
-            update_mode="MODEL_CHANGED"
-        )
-
-        filtered_df = pd.DataFrame(grid_response["data"])
-
-        if "__rowNum__" in filtered_df.columns:
-            filtered_df = filtered_df.drop(columns="__rowNum__")
-
-        with col_right:
-            st.download_button(
-                "⬇ Export Excel",
-                data=to_excel_bytes(filtered_df),
-                file_name="Data_Satker.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+    # ===== GRID =====
+    grid_response = AgGrid(
+        df,
+        gridOptions=gb.build(),
+        height=calc_grid_height(df),
+        width="100%",
+        theme="streamlit",
+        allow_unsafe_jscode=True,
+        data_return_mode="FILTERED_AND_SORTED",
+        update_mode="MODEL_CHANGED"
+    )
 
 # =========================
 # AMBIL PASSWORD DARI SECRETS
