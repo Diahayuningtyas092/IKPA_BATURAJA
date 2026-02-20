@@ -545,34 +545,42 @@ def render_table_pin_satker(df):
     )
 
     # ===============================
-    # CONTAINER GRID + EXPORT
+    # GRID + EXPORT
     # ===============================
-
     grid_container = st.container()
 
     with grid_container:
 
-        # --- BAR ATAS (TOMBOL EXPORT) ---
-        col_left, col_right = st.columns([8,1])
+        col_left, col_right = st.columns([12,1])
 
         with col_right:
             st.markdown(
                 """
                 <style>
                 div.stDownloadButton > button {
-                    background: rgba(255,255,255,0.08);
-                    color: white;
-                    border: 1px solid rgba(255,255,255,0.2);
-                    border-radius: 6px;
-                    font-size: 12px;
-                    padding: 6px 12px;
+                    background: #242424 !important;
+                    color: #d6d6d6 !important;
+                    border: 1px solid #3a3a3a !important;
+                    border-radius: 4px !important;
+
+                    font-size: 8.5px !important;
+                    padding: 1px 6px !important;
+                    height: 20px !important;
+                    line-height: 1 !important;
+
+                    letter-spacing: 0.2px !important;
+                }
+
+                div.stDownloadButton > button:hover {
+                    background: #303030 !important;
+                    color: #ffffff !important;
+                    border: 1px solid #555 !important;
                 }
                 </style>
                 """,
                 unsafe_allow_html=True
             )
 
-        # --- GRID ---
         grid_response = AgGrid(
             df,
             gridOptions=gb.build(),
@@ -589,7 +597,6 @@ def render_table_pin_satker(df):
         if "__rowNum__" in filtered_df.columns:
             filtered_df = filtered_df.drop(columns="__rowNum__")
 
-        # --- EXPORT BUTTON ---
         with col_right:
             st.download_button(
                 "⬇ Export Excel",
