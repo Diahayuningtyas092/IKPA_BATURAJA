@@ -6235,9 +6235,6 @@ def page_admin():
         # ===============================
         # PROSES DATA FINAL
         # ===============================
-        # ===============================
-        # PROSES DATA FINAL (FINAL FIX)
-        # ===============================
         if st.button(
             "Proses Data KKP",
             type="primary",
@@ -6300,13 +6297,6 @@ def page_admin():
                                 .str.strip()
                                 .str.upper()
                             )
-
-                    # ===============================
-                    # DEBUG INFO
-                    # ===============================
-                    st.markdown("### 🔍 DEBUG INFO")
-                    st.write("MASTER sebelum merge:", len(master_df))
-                    st.write("UPLOAD:", len(df_kkp))
 
                     # =====================================================
                     # UPLOAD PERTAMA (MASTER KOSONG)
