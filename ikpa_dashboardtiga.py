@@ -603,7 +603,7 @@ def render_table_pin_satker(df):
 
     # ===== EXPORT BUTTON =====
     st.download_button(
-        "⬇ Export Excel",
+        "Export Excel",
         data=to_excel_bytes(filtered_df),
         file_name="Data_Satker.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
