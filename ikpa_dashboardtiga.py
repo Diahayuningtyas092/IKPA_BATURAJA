@@ -595,15 +595,48 @@ def render_table_pin_satker(df):
         onFirstDataRendered=export_button_js
     )
 
-    AgGrid(
+    grid_response = AgGrid(
         df,
         gridOptions=gb.build(),
         height=calc_grid_height(df),
         width="100%",
         theme="streamlit",
-        allow_unsafe_jscode=True
+        allow_unsafe_jscode=True,
+        data_return_mode="FILTERED_AND_SORTED",
+        update_mode="MODEL_CHANGED"
+    )
+    
+    filtered_df = pd.DataFrame(grid_response["data"])
+
+    if "__rowNum__" in filtered_df.columns:
+        filtered_df = filtered_df.drop(columns="__rowNum__")
+        
+    st.markdown(
+    """
+    <style>
+    div.stDownloadButton > button {
+        position: relative;
+        float: right;
+        margin-top: -45px;
+        margin-right: 10px;
+        background: rgba(255,255,255,0.08);
+        color: white;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 6px;
+        font-size: 12px;
+        padding: 6px 12px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
     )
 
+    st.download_button(
+        "⬇ Export Excel",
+        data=to_excel_bytes(filtered_df),
+        file_name="Data_Satker.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 # =========================
 # AMBIL PASSWORD DARI SECRETS
