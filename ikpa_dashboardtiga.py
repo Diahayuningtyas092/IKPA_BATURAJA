@@ -547,17 +547,36 @@ def render_table_pin_satker(df):
     # ===============================
     # GRID + EXPORT
     # ===============================
+    # ===============================
+    # GRID + EXPORT (FIX ERROR)
+    # ===============================
+
+    # ===== GRID DULU =====
+    grid_response = AgGrid(
+        df,
+        gridOptions=gb.build(),
+        height=calc_grid_height(df),
+        width="100%",
+        theme="streamlit",
+        allow_unsafe_jscode=True,
+        data_return_mode="FILTERED_AND_SORTED",
+        update_mode="MODEL_CHANGED"
+    )
+
+    # ===== AMBIL DATA HASIL FILTER =====
+    filtered_df = pd.DataFrame(grid_response["data"])
+
+    if "__rowNum__" in filtered_df.columns:
+        filtered_df = filtered_df.drop(columns="__rowNum__")
+
+    # ===== STYLE MINI BUTTON =====
     st.markdown(
         """
         <style>
-        /* Hapus jarak antar elemen */
-        .block-container {
-            padding-top: 1rem !important;
-        }
-
         div.stDownloadButton {
-            margin-top: -32px !important;
-            margin-bottom: -8px !important;
+            margin-top: -38px !important;
+            margin-bottom: -6px !important;
+            text-align: right;
         }
 
         div.stDownloadButton > button {
@@ -582,24 +601,12 @@ def render_table_pin_satker(df):
         unsafe_allow_html=True
     )
 
-    # ===== EXPORT BUTTON (DITARUH DULU) =====
-    export_button = st.download_button(
-        "Export Excel",
+    # ===== EXPORT BUTTON =====
+    st.download_button(
+        "⬇ Export Excel",
         data=to_excel_bytes(filtered_df),
         file_name="Data_Satker.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-
-    # ===== GRID =====
-    grid_response = AgGrid(
-        df,
-        gridOptions=gb.build(),
-        height=calc_grid_height(df),
-        width="100%",
-        theme="streamlit",
-        allow_unsafe_jscode=True,
-        data_return_mode="FILTERED_AND_SORTED",
-        update_mode="MODEL_CHANGED"
     )
 
 # =========================
