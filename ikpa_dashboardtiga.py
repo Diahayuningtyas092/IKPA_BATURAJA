@@ -6252,7 +6252,7 @@ def page_admin():
                         st.stop()
 
                     # ============================================================
-                    # SMART MERGE FINAL KKP
+                    # 🔥 SMART MERGE FINAL KKP
                     # ============================================================
 
                     UNIQUE_KEY = ["PERIODE", "Kode Satker", "JENIS KKP"]
@@ -6264,23 +6264,25 @@ def page_admin():
                             st.error(f"Kolom {col} tidak ditemukan.")
                             st.stop()
 
+                    # Pastikan numeric
                     df_kkp[SPM_COL] = pd.to_numeric(
                         df_kkp[SPM_COL],
                         errors="coerce"
                     ).fillna(0)
 
-                    df_kkp = df_kkp.sort_values(SPM_COL, ascending=False)
-
+                    # ===============================
+                    # AMBIL MASTER DARI SESSION
+                    # ===============================
                     master_df = st.session_state.get("kkp_master", pd.DataFrame())
-          
 
-                    # 🔍 DEBUG CEK KEY SEBELUM MERGE
-                    if not master_df.empty:
-                        st.write("MASTER SAMPLE")
-                        st.write(master_df[["PERIODE","Kode Satker","JENIS KKP"]].head())
-
-                    st.write("UPLOAD SAMPLE")
-                    st.write(df_kkp[["PERIODE","Kode Satker","JENIS KKP"]].head())
+                    # ===============================
+                    # NORMALISASI KEY (WAJIB)
+                    # ===============================
+                    for df in [df_kkp, master_df]:
+                        if not df.empty:
+                            df["PERIODE"] = df["PERIODE"].astype(str).str.strip().str.upper()
+                            df["Kode Satker"] = df["Kode Satker"].astype(str).str.zfill(6)
+                            df["JENIS KKP"] = df["JENIS KKP"].astype(str).str.strip().str.upper()
 
                     # =====================================================
                     # 🟢 UPLOAD PERTAMA (MASTER KOSONG)
@@ -6323,13 +6325,14 @@ def page_admin():
                         common_keys = upload_keys & master_keys
                         update_count = len(common_keys)
 
-                    # Update session
+                    # ===============================
+                    # UPDATE SESSION
+                    # ===============================
                     st.session_state.kkp_master = final_df.reset_index(drop=True)
 
                     # =====================================================
-                    # 💾 SIMPAN KE GITHUB (1 FILE SAJA)
+                    # 💾 SIMPAN KE GITHUB (1 FILE MASTER SAJA)
                     # =====================================================
-
                     filename = "KKP_MASTER.xlsx"
 
                     excel_bytes = io.BytesIO()
