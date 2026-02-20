@@ -556,11 +556,10 @@ def render_table_pin_satker(df):
     )
 
     # ===============================
-    # AMBIL DATA HASIL FILTER
+    # AMBIL DATA HASIL FILTER GRID
     # ===============================
     filtered_df = pd.DataFrame(grid_response["data"])
 
-    # HAPUS KOLOM NOMOR INTERNAL
     if "__rowNum__" in filtered_df.columns:
         filtered_df = filtered_df.drop(columns="__rowNum__")
 
@@ -568,20 +567,17 @@ def render_table_pin_satker(df):
     if "__rowNum__" in export_all_df.columns:
         export_all_df = export_all_df.drop(columns="__rowNum__")
 
-    def to_excel(dataframe):
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-            dataframe.to_excel(writer, index=False, sheet_name='Data Satker')
-        return output.getvalue()
-
-    st.markdown("### 📥 Export Data")
+    # ===============================
+    # EXPORT SECTION
+    # ===============================
+    st.markdown("### Export Data Tabel")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.download_button(
             label="⬇ Download Sesuai Filter",
-            data=to_excel(filtered_df),
+            data=to_excel_bytes(filtered_df),
             file_name="Data_Satker_Filtered.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
@@ -589,7 +585,7 @@ def render_table_pin_satker(df):
     with col2:
         st.download_button(
             label="⬇ Download Semua Data",
-            data=to_excel(export_all_df),
+            data=to_excel_bytes(export_all_df),
             file_name="Data_Satker_Semua.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
