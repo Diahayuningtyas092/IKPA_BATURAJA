@@ -35,56 +35,6 @@ def render_table_pin_satker(df):
     gb = GridOptionsBuilder.from_dataframe(df)
     
     # =====================================================
-    # EXPORT BUTTON DI DALAM GRID
-    # =====================================================
-    export_button_js = JsCode("""
-    function(params) {
-
-        const gridApi = params.api;
-
-        if (document.getElementById("exportExcelBtn")) return;
-
-        const btn = document.createElement("button");
-        btn.id = "exportExcelBtn";
-        btn.innerHTML = "⬇ Export Excel";
-
-        btn.style.position = "absolute";
-        btn.style.right = "12px";
-        btn.style.top = "6px";
-        btn.style.padding = "6px 12px";
-        btn.style.background = "rgba(255,255,255,0.08)";
-        btn.style.color = "#ffffff";
-        btn.style.border = "1px solid rgba(255,255,255,0.2)";
-        btn.style.borderRadius = "6px";
-        btn.style.cursor = "pointer";
-        btn.style.zIndex = "1000";
-        btn.style.fontSize = "12px";
-
-        btn.onmouseover = function() {
-            btn.style.background = "rgba(255,255,255,0.18)";
-        };
-
-        btn.onmouseout = function() {
-            btn.style.background = "rgba(255,255,255,0.08)";
-        };
-
-        btn.onclick = function() {
-            gridApi.exportDataAsExcel({
-                fileName: "Data_Satker.xlsx",
-                onlySelected: false,
-                allColumns: false
-            });
-        };
-
-        const gridWrapper = document.querySelector(".ag-root-wrapper");
-        if (gridWrapper) {
-            gridWrapper.style.position = "relative";
-            gridWrapper.appendChild(btn);
-        }
-    }
-    """)
-    
-    # =====================================================
     # SEMBUNYIKAN KOLOM INTERNAL (JIKA ADA)
     # =====================================================
     if "Nilai Total" in df.columns:
@@ -592,51 +542,61 @@ def render_table_pin_satker(df):
         alwaysShowHorizontalScroll=True,
         getRowStyle=zebra_dark,
         headerHeight=40,
-        onFirstDataRendered=export_button_js
     )
 
-    grid_response = AgGrid(
-        df,
-        gridOptions=gb.build(),
-        height=calc_grid_height(df),
-        width="100%",
-        theme="streamlit",
-        allow_unsafe_jscode=True,
-        data_return_mode="FILTERED_AND_SORTED",
-        update_mode="MODEL_CHANGED"
-    )
-    
-    filtered_df = pd.DataFrame(grid_response["data"])
+    # ===============================
+    # CONTAINER GRID + EXPORT
+    # ===============================
 
-    if "__rowNum__" in filtered_df.columns:
-        filtered_df = filtered_df.drop(columns="__rowNum__")
-        
-    st.markdown(
-    """
-    <style>
-    div.stDownloadButton > button {
-        position: relative;
-        float: right;
-        margin-top: -45px;
-        margin-right: 10px;
-        background: rgba(255,255,255,0.08);
-        color: white;
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 6px;
-        font-size: 12px;
-        padding: 6px 12px;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-    )
+    grid_container = st.container()
 
-    st.download_button(
-        "⬇ Export Excel",
-        data=to_excel_bytes(filtered_df),
-        file_name="Data_Satker.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    with grid_container:
+
+        # --- BAR ATAS (TOMBOL EXPORT) ---
+        col_left, col_right = st.columns([8,1])
+
+        with col_right:
+            st.markdown(
+                """
+                <style>
+                div.stDownloadButton > button {
+                    background: rgba(255,255,255,0.08);
+                    color: white;
+                    border: 1px solid rgba(255,255,255,0.2);
+                    border-radius: 6px;
+                    font-size: 12px;
+                    padding: 6px 12px;
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+
+        # --- GRID ---
+        grid_response = AgGrid(
+            df,
+            gridOptions=gb.build(),
+            height=calc_grid_height(df),
+            width="100%",
+            theme="streamlit",
+            allow_unsafe_jscode=True,
+            data_return_mode="FILTERED_AND_SORTED",
+            update_mode="MODEL_CHANGED"
+        )
+
+        filtered_df = pd.DataFrame(grid_response["data"])
+
+        if "__rowNum__" in filtered_df.columns:
+            filtered_df = filtered_df.drop(columns="__rowNum__")
+
+        # --- EXPORT BUTTON ---
+        with col_right:
+            st.download_button(
+                "⬇ Export Excel",
+                data=to_excel_bytes(filtered_df),
+                file_name="Data_Satker.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
 
 # =========================
 # AMBIL PASSWORD DARI SECRETS
