@@ -6272,6 +6272,15 @@ def page_admin():
                     df_kkp = df_kkp.sort_values(SPM_COL, ascending=False)
 
                     master_df = st.session_state.get("kkp_master", pd.DataFrame())
+          
+
+                    # 🔍 DEBUG CEK KEY SEBELUM MERGE
+                    if not master_df.empty:
+                        st.write("MASTER SAMPLE")
+                        st.write(master_df[["PERIODE","Kode Satker","JENIS KKP"]].head())
+
+                    st.write("UPLOAD SAMPLE")
+                    st.write(df_kkp[["PERIODE","Kode Satker","JENIS KKP"]].head())
 
                     # =====================================================
                     # 🟢 UPLOAD PERTAMA (MASTER KOSONG)
