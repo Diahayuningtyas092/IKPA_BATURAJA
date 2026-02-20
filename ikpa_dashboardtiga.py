@@ -6251,9 +6251,14 @@ def page_admin():
                         st.error("Data KKP kosong setelah diproses.")
                         st.stop()
 
+                    # ============================================================
+                    # SMART MERGE FINAL KKP
+                    # ============================================================
+
                     UNIQUE_KEY = ["PERIODE", "Kode Satker", "JENIS KKP"]
                     SPM_COL = "NILAI TRANSAKSI (NILAI SPM)"
 
+                    # Validasi kolom
                     for col in UNIQUE_KEY:
                         if col not in df_kkp.columns:
                             st.error(f"Kolom {col} tidak ditemukan.")
@@ -6269,43 +6274,45 @@ def page_admin():
                     master_df = st.session_state.get("kkp_master", pd.DataFrame())
 
                     # =====================================================
-                    # 🟢 UPLOAD PERTAMA (MASTER MASIH KOSONG)
+                    # 🟢 UPLOAD PERTAMA (MASTER KOSONG)
                     # =====================================================
                     if master_df.empty:
 
-                        # Simpan apa adanya (tidak buang duplicate)
                         final_df = df_kkp.copy()
                         new_count = len(df_kkp)
                         update_count = 0
 
                     # =====================================================
-                    # 🔵 SUDAH ADA MASTER → SMART MERGE
+                    # 🔵 SUDAH ADA MASTER → MERGE CERDAS
                     # =====================================================
                     else:
-
-                        # Baru buang duplicate di upload
-                        df_kkp = df_kkp.drop_duplicates(subset=UNIQUE_KEY)
 
                         master_df[SPM_COL] = pd.to_numeric(
                             master_df[SPM_COL],
                             errors="coerce"
                         ).fillna(0)
 
-                        before_count = len(master_df)
+                        # Gabungkan lama + baru
+                        combined = pd.concat([master_df, df_kkp], ignore_index=True)
 
-                        combined = pd.concat(
-                            [master_df, df_kkp],
-                            ignore_index=True
-                        )
-
+                        # Urutkan supaya nilai terbesar di atas
                         combined = combined.sort_values(SPM_COL, ascending=False)
 
+                        # Ambil 1 saja untuk setiap UNIQUE_KEY
                         final_df = combined.drop_duplicates(subset=UNIQUE_KEY)
 
-                        after_count = len(final_df)
+                        # ===============================
+                        # HITUNG DATA BARU & UPDATE
+                        # ===============================
 
-                        new_count = max(after_count - before_count, 0)
-                        update_count = len(df_kkp) - new_count
+                        master_keys = set(tuple(x) for x in master_df[UNIQUE_KEY].values)
+                        upload_keys = set(tuple(x) for x in df_kkp[UNIQUE_KEY].values)
+
+                        new_keys = upload_keys - master_keys
+                        new_count = len(new_keys)
+
+                        common_keys = upload_keys & master_keys
+                        update_count = len(common_keys)
 
                     # Update session
                     st.session_state.kkp_master = final_df.reset_index(drop=True)
