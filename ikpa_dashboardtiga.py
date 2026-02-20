@@ -2035,54 +2035,41 @@ def normalize_kkp_for_dashboard(df):
 # ============================================================
 # LOAD DATA KKP FROM GITHUB
 # ============================================================
-# ============================================================
-# LOAD KKP FROM GITHUB
-# ============================================================
-def load_kkp_from_github():
+def load_kkp_master_from_github():
 
     token = st.secrets.get("GITHUB_TOKEN")
     repo_name = st.secrets.get("GITHUB_REPO")
 
     if not token or not repo_name:
-        return 0
+        return False
 
     try:
         g = Github(auth=Auth.Token(token))
         repo = g.get_repo(repo_name)
-        contents = repo.get_contents("data_kkp")
-    except Exception as e:
-        st.error(f"Gagal akses folder data_kkp: {e}")
-        return 0
 
-    all_df = []
-    file_count = 0
+        file_path = "data_kkp/KKP_MASTER.xlsx"
+        file = repo.get_contents(file_path)
 
-    for file in contents:
-        if file.name.endswith(".xlsx"):
-            try:
-                file_content = base64.b64decode(file.content)
-                df = pd.read_excel(io.BytesIO(file_content), dtype=str)
+        file_bytes = base64.b64decode(file.content)
+        df_master = pd.read_excel(io.BytesIO(file_bytes))
 
-                if not df.empty:
-                    all_df.append(df)
-                    file_count += 1
-            except Exception as e:
-                st.error(f"Gagal baca {file.name}: {e}")
+        st.session_state.kkp_master = df_master
+        return True
 
-    # 🔥 PENTING: SIMPAN KE SESSION
-    if all_df:
-        combined_df = pd.concat(all_df, ignore_index=True)
-
-        # OPTIONAL: drop duplicate jika ada 2 file lama
-        UNIQUE_KEY = ["PERIODE", "Kode Satker", "JENIS KKP"]
-        if all(col in combined_df.columns for col in UNIQUE_KEY):
-            combined_df = combined_df.drop_duplicates(subset=UNIQUE_KEY)
-
-        st.session_state.kkp_master = combined_df
-    else:
+    except Exception:
         st.session_state.kkp_master = pd.DataFrame()
+        return False
 
-    return file_count
+
+# LOAD SEKALI SAJA
+if "kkp_master_loaded" not in st.session_state:
+    success = load_kkp_master_from_github()
+    st.session_state.kkp_master_loaded = True
+
+    if success:
+        st.success("✅ Database utama KKP berhasil dimuat dari GitHub")
+    else:
+        st.info("ℹ️ Belum ada database utama KKP di GitHub")
 
 
 
@@ -6227,19 +6214,12 @@ def page_admin():
             key="file_kkp"
         )
 
-        # ===============================
-        # INIT MASTER DATABASE
-        # ===============================
-        if "kkp_master" not in st.session_state:
-            st.session_state.kkp_master = pd.DataFrame()
-
         file_valid = False
 
         # ===============================
         # PREVIEW VALIDASI
         # ===============================
         if uploaded_file_kkp is not None:
-
             try:
                 df_preview = process_excel_file_kkp(uploaded_file_kkp)
 
@@ -6291,25 +6271,17 @@ def page_admin():
                         errors="coerce"
                     ).fillna(0)
 
-                    # Urutkan supaya terbesar di atas
                     df_kkp = df_kkp.sort_values(SPM_COL, ascending=False)
-
-                    # Buang duplicate dalam file upload sendiri
                     df_kkp = df_kkp.drop_duplicates(subset=UNIQUE_KEY)
 
-                    # ===============================
-                    # MERGE DENGAN MASTER
-                    # ===============================
-                    master_df = st.session_state.kkp_master.copy()
+                    master_df = st.session_state.get("kkp_master", pd.DataFrame())
 
                     if master_df.empty:
-
                         final_df = df_kkp.copy()
                         new_count = len(df_kkp)
                         update_count = 0
 
                     else:
-
                         master_df[SPM_COL] = pd.to_numeric(
                             master_df[SPM_COL],
                             errors="coerce"
@@ -6331,6 +6303,7 @@ def page_admin():
                         new_count = max(after_count - before_count, 0)
                         update_count = len(df_kkp) - new_count
 
+                    # Update master di session
                     st.session_state.kkp_master = final_df.reset_index(drop=True)
 
                     # ============================================================
