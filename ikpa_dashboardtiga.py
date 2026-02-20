@@ -544,14 +544,55 @@ def render_table_pin_satker(df):
         headerHeight=40
     )
 
-    AgGrid(
-        df,
-        gridOptions=gb.build(),
-        height=calc_grid_height(df),
-        width="100%",
-        theme="streamlit",
-        allow_unsafe_jscode=True
+    grid_response = AgGrid(
+    df,
+    gridOptions=gb.build(),
+    height=calc_grid_height(df),
+    width="100%",
+    theme="streamlit",
+    allow_unsafe_jscode=True,
+    update_mode="MODEL_CHANGED",
+    data_return_mode="FILTERED_AND_SORTED"
     )
+
+    # ===============================
+    # AMBIL DATA HASIL FILTER
+    # ===============================
+    filtered_df = pd.DataFrame(grid_response["data"])
+
+    # HAPUS KOLOM NOMOR INTERNAL
+    if "__rowNum__" in filtered_df.columns:
+        filtered_df = filtered_df.drop(columns="__rowNum__")
+
+    export_all_df = df.copy()
+    if "__rowNum__" in export_all_df.columns:
+        export_all_df = export_all_df.drop(columns="__rowNum__")
+
+    def to_excel(dataframe):
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            dataframe.to_excel(writer, index=False, sheet_name='Data Satker')
+        return output.getvalue()
+
+    st.markdown("### 📥 Export Data")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.download_button(
+            label="⬇ Download Sesuai Filter",
+            data=to_excel(filtered_df),
+            file_name="Data_Satker_Filtered.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    with col2:
+        st.download_button(
+            label="⬇ Download Semua Data",
+            data=to_excel(export_all_df),
+            file_name="Data_Satker_Semua.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
 
 
 # =========================
