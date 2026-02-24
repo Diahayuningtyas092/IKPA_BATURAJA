@@ -2985,10 +2985,13 @@ def page_dashboard():
     
     
     # ===============================
-    # MENU UTAMA SOFT BLUE GRADIENT
+    # MENU UTAMA
+    # ===============================
+    # ===============================
+    # MENU CARD SOFT BLUE (STABIL)
     # ===============================
 
-    # 1️⃣ INIT STATE (WAJIB DI ATAS)
+    # 1️⃣ WAJIB: INIT PALING ATAS
     if "main_menu" not in st.session_state:
         st.session_state["main_menu"] = "IKPA"
 
@@ -3004,23 +3007,21 @@ def page_dashboard():
         if st.button("💻 Digitalisasi", use_container_width=True, key="btn_digital"):
             st.session_state["main_menu"] = "Digitalisasi"
 
-
     # 2️⃣ CEK STATUS AKTIF (AMAN)
     is_ikpa = st.session_state.get("main_menu") == "IKPA"
     is_digital = st.session_state.get("main_menu") == "Digitalisasi"
 
-
-    # 3️⃣ CSS (GRADIENT SOFT BLUE)
+    # 3️⃣ STYLE
     st.markdown(f"""
     <style>
 
-    /* Base button style */
+    /* Base */
     div.stButton > button {{
-        height: 95px;
-        border-radius: 20px;
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
-        font-size: 18px;
+        height: 110px;
+        border-radius: 30px;
+        border: 1px solid #dbeafe;
+        background: #f1f5f9;
+        font-size: 20px;
         font-weight: 600;
         color: #1e293b;
         transition: all 0.25s ease;
@@ -3028,20 +3029,22 @@ def page_dashboard():
 
     /* Hover */
     div.stButton > button:hover {{
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(59,130,246,0.15);
-        border: 1px solid #93c5fd;
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(59,130,246,0.15);
     }}
 
-    {"div.stButton:nth-of-type(1) > button { background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important; border: 1px solid #7dd3fc !important; color: #0c4a6e !important; box-shadow: 0 10px 25px rgba(59,130,246,0.25); }" if is_ikpa else ""}
+    /* IKPA ACTIVE */
+    {"div.stButton:nth-of-type(1) > button { background: linear-gradient(135deg,#e0f2fe,#bae6fd) !important; color:#0c4a6e !important; border:1px solid #7dd3fc !important; box-shadow:0 10px 25px rgba(59,130,246,0.25); }" if is_ikpa else ""}
 
-    {"div.stButton:nth-of-type(2) > button { background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important; border: 1px solid #7dd3fc !important; color: #0c4a6e !important; box-shadow: 0 10px 25px rgba(59,130,246,0.25); }" if is_digital else ""}
+    /* DIGITAL ACTIVE */
+    {"div.stButton:nth-of-type(2) > button { background: linear-gradient(135deg,#e0f2fe,#bae6fd) !important; color:#0c4a6e !important; border:1px solid #7dd3fc !important; box-shadow:0 10px 25px rgba(59,130,246,0.25); }" if is_digital else ""}
 
     </style>
     """, unsafe_allow_html=True)
     
+    
     # ===============================
-    # VALIDASI & PILIH PERIODE (FINAL)
+    # VALIDASI & PILIH PERIODE 
     # ===============================
 
     data_storage = st.session_state.get("data_storage", {})
