@@ -3037,7 +3037,7 @@ def page_dashboard():
     st.markdown("### Pilih Menu")
 
     if "main_menu" not in st.session_state:
-        st.session_state.main_menu = "IKPA"
+        st.session_state.main_menu = None
 
     col1, col2 = st.columns(2)
 
@@ -3048,7 +3048,14 @@ def page_dashboard():
     with col2:
         if st.button("💻 Digitalisasi", use_container_width=True):
             st.session_state.main_menu = "Digitalisasi"
-            
+    
+    
+    # ===============================
+    # STOP DI SINI JIKA BELUM PILIH
+    # ===============================
+    if st.session_state.main_menu is None:
+        return
+
     
     # ===============================
     # VALIDASI & PILIH PERIODE (FINAL)
