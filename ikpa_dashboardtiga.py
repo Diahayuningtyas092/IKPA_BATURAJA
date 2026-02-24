@@ -2981,13 +2981,34 @@ def page_dashboard():
     </style>
     """, unsafe_allow_html=True)
     
-    # ===============================
-    # MENU UTAMA (2 TOMBOL)
-    # ===============================
+    st.markdown("""
+        <style>
+        .menu-card {
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid #e0e0e0;
+            transition: 0.2s ease-in-out;
+        }
+        .menu-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        .active-card {
+            background-color: #4F46E5;
+            color: white;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+    
+    st.markdown("### Pilih Menu")
+
     if "main_menu" not in st.session_state:
         st.session_state.main_menu = "IKPA"
 
-    col1, col2 = st.columns([1,1])
+    col1, col2 = st.columns(2)
 
     with col1:
         if st.button("📊 IKPA", use_container_width=True):
@@ -3128,8 +3149,8 @@ def page_dashboard():
     else:
         st.warning("Kolom Kode BA tidak tersedia.")
 
-    st.markdown('</div>', unsafe_allow_html=True)  # ⬅️ PENTING: tutup div
-
+    st.markdown('</div>', unsafe_allow_html=True)  
+    
     # ===============================
     # ROUTING MENU UTAMA
     # ===============================
@@ -3138,9 +3159,7 @@ def page_dashboard():
 
         st.markdown("---")
 
-        # ⬇️ SEMUA KODE YANG SUDAH ADA (Highlights, BA, Detail)
         pass
-
 
         # =================================================
         # 🔑 AMANKAN SESSION STATE RADIO (ANTI VALUEERROR)
@@ -3165,8 +3184,6 @@ def page_dashboard():
             horizontal=True
         )
 
-
-        
         # -------------------------
         # HIGHLIGHTS
         # -------------------------
@@ -3390,6 +3407,7 @@ def page_dashboard():
             # Slider
             # -----------------------------
             # Satker dengan masalah (Deviasi Hal 3 DIPA)
+            st.markdown("---")
             st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
             st.markdown("###### Atur Skala Nilai (Sumbu Y)")
 
