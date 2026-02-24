@@ -2960,9 +2960,62 @@ def page_dashboard():
     
     st.markdown("""
     <style>
+    /* Warna tombol popover */
+    div[data-testid="stPopover"] button {
+        background-color: #FFF9E6 !important;
+        border: 1px solid #E6C200 !important;
+        color: #664400 !important;
+    }
+    div[data-testid="stPopover"] button:hover {
+        background-color: #FFE4B5 !important;
+        color: black !important;
+    }
+    button[data-testid="baseButton"][kind="popover"] {
+        background-color: #FFF9E6 !important;
+        border: 1px solid #E6C200 !important;
+        color: #664400 !important;
+    }
+    button[data-testid="baseButton"][kind="popover"]:hover {
+        background-color: #FFE4B5 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    
+    
+    
+    # ===============================
+    # MENU UTAMA SOFT BLUE GRADIENT
+    # ===============================
 
-    /* Base button */
-    div.stButton > button {
+    # 1️⃣ INIT STATE (WAJIB DI ATAS)
+    if "main_menu" not in st.session_state:
+        st.session_state["main_menu"] = "IKPA"
+
+    st.markdown("### Pilih Menu")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("📊 IKPA", use_container_width=True, key="btn_ikpa"):
+            st.session_state["main_menu"] = "IKPA"
+
+    with col2:
+        if st.button("💻 Digitalisasi", use_container_width=True, key="btn_digital"):
+            st.session_state["main_menu"] = "Digitalisasi"
+
+
+    # 2️⃣ CEK STATUS AKTIF (AMAN)
+    is_ikpa = st.session_state.get("main_menu") == "IKPA"
+    is_digital = st.session_state.get("main_menu") == "Digitalisasi"
+
+
+    # 3️⃣ CSS (GRADIENT SOFT BLUE)
+    st.markdown(f"""
+    <style>
+
+    /* Base button style */
+    div.stButton > button {{
         height: 95px;
         border-radius: 20px;
         border: 1px solid #e2e8f0;
@@ -2971,60 +3024,22 @@ def page_dashboard():
         font-weight: 600;
         color: #1e293b;
         transition: all 0.25s ease;
-    }
+    }}
 
-    /* Hover effect */
-    div.stButton > button:hover {
+    /* Hover */
+    div.stButton > button:hover {{
         transform: translateY(-5px);
         box-shadow: 0 10px 25px rgba(59,130,246,0.15);
         border: 1px solid #93c5fd;
-    }
+    }}
 
-    /* IKPA active */
-    %s
+    {"div.stButton:nth-of-type(1) > button { background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important; border: 1px solid #7dd3fc !important; color: #0c4a6e !important; box-shadow: 0 10px 25px rgba(59,130,246,0.25); }" if is_ikpa else ""}
 
-    /* Digitalisasi active */
-    %s
+    {"div.stButton:nth-of-type(2) > button { background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important; border: 1px solid #7dd3fc !important; color: #0c4a6e !important; box-shadow: 0 10px 25px rgba(59,130,246,0.25); }" if is_digital else ""}
 
     </style>
-    """ % (
-
-    """
-    div[data-testid="column"]:nth-of-type(1) div.stButton > button {
-        background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important;
-        border: 1px solid #7dd3fc !important;
-        color: #0c4a6e !important;
-        box-shadow: 0 10px 25px rgba(59,130,246,0.25);
-    }
-    """ if st.session_state.get("main_menu") == "IKPA" else "",
-
-    """
-    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
-        background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important;
-        border: 1px solid #7dd3fc !important;
-        color: #0c4a6e !important;
-        box-shadow: 0 10px 25px rgba(59,130,246,0.25);
-    }
-    """ if st.session_state.get("main_menu") == "Digitalisasi" else ""
-
-    ), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
     
-    st.markdown("Pilih Menu")
-
-    if "main_menu" not in st.session_state:
-        st.session_state.main_menu = "IKPA"
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        if st.button("📊 IKPA", use_container_width=True):
-            st.session_state.main_menu = "IKPA"
-
-    with col2:
-        if st.button("💻 Digitalisasi", use_container_width=True):
-            st.session_state.main_menu = "Digitalisasi"
-        
-
     # ===============================
     # VALIDASI & PILIH PERIODE (FINAL)
     # ===============================
