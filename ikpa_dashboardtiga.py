@@ -3025,7 +3025,7 @@ def page_dashboard():
         return
 
 
-   # ===============================
+    # ===============================
     # AMBIL DF AKTIF (GLOBAL)
     # ===============================
     if "selected_period" not in st.session_state:
@@ -3036,10 +3036,6 @@ def page_dashboard():
     if df is not None:
         df = df.copy()
 
-
-    # ensure main_tab state exists
-    if "main_tab" not in st.session_state:
-        st.session_state.main_tab = "🎯 Highlights"
 
     st.markdown("""
     <style>
@@ -3134,1265 +3130,1294 @@ def page_dashboard():
 
     st.markdown('</div>', unsafe_allow_html=True)  # ⬅️ PENTING: tutup div
 
-
-    # =================================================
-    # 🔑 AMANKAN SESSION STATE RADIO (ANTI VALUEERROR)
-    # =================================================
-    VALID_MAIN_TABS = [
-        "🎯 Highlights Satker",
-        "🏢 Highlights BA",
-        "📋 Data Detail Satker"
-    ]
-
-    if "main_tab" in st.session_state:
-        if st.session_state.main_tab not in VALID_MAIN_TABS:
-            del st.session_state.main_tab
-
     # ===============================
-    # RADIO PILIH BAGIAN DASHBOARD
+    # ROUTING MENU UTAMA
     # ===============================
-    main_tab = st.radio(
-        "Pilih Bagian Dashboard",
-        VALID_MAIN_TABS,
-        key="main_tab",
-        horizontal=True
-    )
 
+    if st.session_state.main_menu == "IKPA":
 
-    
-    # -------------------------
-    # HIGHLIGHTS
-    # -------------------------
-    if main_tab == "🎯 Highlights Satker":
-        st.markdown("## 🎯 Highlights Kinerja Satker")
+        st.markdown("---")
 
-        st.selectbox(
-            "Pilih Periode",
-            options=all_periods,
-            format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-            key="selected_period"
-        )
+        # ⬇️ SEMUA KODE YANG SUDAH ADA (Highlights, BA, Detail)
+        pass
 
-        df = st.session_state.data_storage.get(st.session_state.selected_period)
-
-        if df is None or df.empty:
-            st.warning("Data IKPA belum tersedia.")
-            st.stop()
-
-        df = df.copy()
-
-
-        # ===============================
-        # NORMALISASI KODE BA (1x SAJA)
-        # ===============================
-        if 'Kode BA' in df.columns:
-            df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
-        
-        df = apply_filter_ba(df)
-
-
-        # ===============================
-        # PAKSA KOLOM SATKER (1x SAJA)
-        # ===============================
-        if 'Satker' not in df.columns:
-            df = create_satker_column(df)
-
-        # ===============================
-        # GUNAKAN JENIS SATKER DARI LOADER
-        # ===============================
-        df['Jenis Satker'] = df['Jenis Satker'].astype(str)
-
-        df_kecil  = df[df['Jenis Satker'] == 'KECIL']
-        df_sedang = df[df['Jenis Satker'] == 'SEDANG']
-        df_besar  = df[df['Jenis Satker'] == 'BESAR']
-
-
-        # ===============================
-        # METRIK UTAMA
-        # ===============================
-        nilai_col = 'Nilai Akhir (Nilai Total/Konversi Bobot)'
-
-        avg_score = df[nilai_col].mean()
-        perfect_df = df[df[nilai_col] == 100]
-        below89_df = df[df[nilai_col] < 89]
-
-        # Pastikan kolom Satker tersedia
-        def make_satker_col(dd):
-            if 'Satker' in dd.columns:
-                return dd
-            uraian = dd.get('Uraian Satker-RINGKAS', dd.index.astype(str))
-            kode = dd.get('Kode Satker', '')
-            dd = dd.copy()
-            dd['Satker'] = uraian.astype(str) + " (" + kode.astype(str) + ")"
-            return dd
-
-        perfect_df = make_satker_col(perfect_df)
-        below89_df = make_satker_col(below89_df)
-
-        jumlah_100 = len(perfect_df)
-        jumlah_below = len(below89_df)
-
-        # Tampilan metrik
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("📋 Total Satker", len(df))
-        with col2:
-            st.metric("📈 Rata-rata Nilai", f"{avg_score:.2f}")
-        with col3:
-            st.metric("⭐ Nilai 100", jumlah_100)
-            with st.popover("Lihat daftar satker"):
-                if jumlah_100 == 0:
-                    st.write("Tidak ada satker dengan nilai 100.")
-                else:
-                    display_df = perfect_df[['Satker']].reset_index(drop=True)
-                    display_df.insert(0, 'No', range(1, len(display_df) + 1))
-                    st.dataframe(
-                        display_df,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=min(400, len(display_df) * 35 + 38)
-                    )
-        with col4:
-            st.metric("⚠️ Nilai < 89 (Predikat Belum Baik)", jumlah_below)
-            with st.popover("Lihat daftar satker"):
-                if jumlah_below == 0:
-                    st.write("Tidak ada satker dengan nilai < 89.")
-                else:
-                    display_df = below89_df[['Satker']].reset_index(drop=True)
-                    display_df.insert(0, 'No', range(1, len(display_df) + 1))
-                    st.dataframe(
-                        display_df,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=min(400, len(display_df) * 35 + 38)
-                    )
-
-        # ===============================
-        # Kontrol Skala Chart
-        # ===============================
-        st.markdown("###### Atur Skala Nilai (Sumbu Y)")
-        col_min, col_max = st.columns(2)
-        with col_min:
-            y_min = st.slider("Nilai Minimum (Y-Axis)", 0, 50, 50, 1, key="high_ymin")
-        with col_max:
-            y_max = st.slider("Nilai Maksimum (Y-Axis)", 51, 110, 110, 1, key="high_ymax")
-
-        # ===============================
-        # CHART 6 DALAM 1 TAMPILAN
-        # ===============================
-        st.markdown("### 📊 Satker Terbaik & Terendah Berdasarkan Nilai IKPA")
-
-        nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
-
-        # =========================
-        # PREPARE DATA (UNIK)
-        # =========================
-        top_kecil, bottom_kecil = get_top_bottom_unique(df_kecil, nilai_col)
-        top_sedang, bottom_sedang = get_top_bottom_unique(df_sedang, nilai_col)
-        top_besar, bottom_besar = get_top_bottom_unique(df_besar, nilai_col)
-
-        # =========================
-        # BARIS 1 – TERBAIK
-        # =========================
-        c1, c2, c3 = st.columns(3)
-
-        with c1:
-            st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
-                f"{dynamic_title('Kecil','Terbaik', top_kecil)}</b></div>",
-                unsafe_allow_html=True
-            )
-            safe_chart(
-                top_kecil, "KECIL",
-                top=True, color="Greens",
-                y_min=y_min, y_max=y_max
-            )
-
-        with c2:
-            st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
-                f"{dynamic_title('Sedang','Terbaik', top_sedang)}</b></div>",
-                unsafe_allow_html=True
-            )
-            safe_chart(
-                top_sedang, "SEDANG",
-                top=True, color="Greens",
-                y_min=y_min, y_max=y_max
-            )
-
-        with c3:
-            st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
-                f"{dynamic_title('Besar','Terbaik', top_besar)}</b></div>",
-                unsafe_allow_html=True
-            )
-            safe_chart(
-                top_besar, "BESAR",
-                top=True, color="Greens",
-                y_min=y_min, y_max=y_max
-            )
-
-        # ⬇️ JARAK ANTAR BARIS
-        st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
-
-        # =========================
-        # BARIS 2 – TERENDAH
-        # =========================
-        c4, c5, c6 = st.columns(3)
-
-        with c4:
-            st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
-                f"{dynamic_title('Kecil','Terendah', bottom_kecil)}</b></div>",
-                unsafe_allow_html=True
-            )
-            safe_chart(
-                bottom_kecil, "KECIL",
-                top=False, color="Reds",
-                y_min=y_min, y_max=y_max
-            )
-
-        with c5:
-            st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
-                f"{dynamic_title('Sedang','Terendah', bottom_sedang)}</b></div>",
-                unsafe_allow_html=True
-            )
-            safe_chart(
-                bottom_sedang, "SEDANG",
-                top=False, color="Reds",
-                y_min=y_min, y_max=y_max
-            )
-
-        with c6:
-            st.markdown(
-                f"<div style='margin-top:2px; margin-bottom:6px'><b>"
-                f"{dynamic_title('Besar','Terendah', bottom_besar)}</b></div>",
-                unsafe_allow_html=True
-            )
-            safe_chart(
-                bottom_besar, "BESAR",
-                top=False, color="Reds",
-                y_min=y_min, y_max=y_max
-            )
-
-
-        # -----------------------------
-        # Slider
-        # -----------------------------
-        # Satker dengan masalah (Deviasi Hal 3 DIPA)
-        st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
-        st.markdown("###### Atur Skala Nilai (Sumbu Y)")
-
-        col_min_dev, col_max_dev = st.columns(2)
-
-        with col_min_dev:
-            st.markdown("**Nilai Minimum (Y-Axis)**")
-            y_min_dev = st.slider(
-                "",
-                min_value=0,
-                max_value=50,
-                value=40,
-                step=1,
-                key="high_ymin_dev"
-            )
-
-        with col_max_dev:
-            st.markdown("**Nilai Maksimum (Y-Axis)**")
-            y_max_dev = st.slider(
-                "",
-                min_value=51,
-                max_value=110,
-                value=110,
-                step=1,
-                key="high_ymax_dev"
-            )
-
-        # -----------------------------
-        # ⚠️ JUDUL CHART
-        # -----------------------------
-        st.markdown("###### ⚠️ Deviasi Hal 3 DIPA Belum Optimal (< 90)")
 
         # =================================================
-        # 🔑 PERBAIKAN UTAMA DIMULAI DI SINI
+        # 🔑 AMANKAN SESSION STATE RADIO (ANTI VALUEERROR)
         # =================================================
-        problem_col = "Deviasi Halaman III DIPA"
+        VALID_MAIN_TABS = [
+            "🎯 Highlights Satker",
+            "🏢 Highlights BA",
+            "📋 Data Detail Satker"
+        ]
 
-        # 1️⃣ PAKSA NUMERIK
-        df[problem_col] = pd.to_numeric(
-            df[problem_col],
-            errors="coerce"
-        )
-
-        # 2️⃣ FILTER TEGAS (INI KUNCI)
-        df_problem = df[
-            (df[problem_col].notna()) &
-            (df[problem_col] < 90)
-        ].copy()
-
-        # 3️⃣ JIKA TIDAK ADA MASALAH → SELESAI
-        if df_problem.empty:
-            st.success("✅ Semua satker sudah optimal untuk Deviasi Hal 3 DIPA")
-        else:
-            fig_dev = create_problem_chart(
-                df_problem,              # ⬅️ BUKAN df LAGI
-                column=problem_col,
-                threshold=90,
-                title="",
-                comparison="less",
-                y_min=y_min_dev,
-                y_max=y_max_dev,
-                show_yaxis=True
-            )
-
-            st.plotly_chart(fig_dev, use_container_width=True)
-            
-
-    # -------------------------
-    # HIGHLIGHTS BA
-    # -------------------------
-    elif main_tab == "🏢 Highlights BA":
-        st.markdown("## 🏢 Highlights Kinerja per BA")
-
-        # pilih periode (sama seperti highlights utama)
-        st.selectbox(
-            "Pilih Periode",
-            options=all_periods,
-            format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
-            key="selected_period"
-        )
-
-        df = st.session_state.data_storage.get(st.session_state.selected_period)
-
-        if df is None or df.empty:
-            st.warning("Data IKPA belum tersedia.")
-            st.stop()
-
-        df = df.copy()
+        if "main_tab" in st.session_state:
+            if st.session_state.main_tab not in VALID_MAIN_TABS:
+                del st.session_state.main_tab
 
         # ===============================
-        # NORMALISASI KODE BA
+        # RADIO PILIH BAGIAN DASHBOARD
         # ===============================
-        if "Kode BA" in df.columns:
-            df["Kode BA"] = df["Kode BA"].apply(normalize_kode_ba)
-        else:
-            st.warning("Kolom Kode BA tidak tersedia.")
-            st.stop()
-
-        # ===============================
-        # FILTER BA (PAKAI FILTER YANG SAMA)
-        # ===============================
-        df = apply_filter_ba(df)
-
-        # ===============================
-        # HITUNG RATA-RATA IKPA PER BA
-        # ===============================
-        nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
-        df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce")
-
-        df_ba = (
-            df.groupby("Kode BA")[nilai_col]
-            .mean()
-            .reset_index(name="Rata-rata IKPA")
-            .dropna()
-        )
-
-        # ===============================
-        # MAP NAMA BA
-        # ===============================
-        df_ba["Nama BA"] = df_ba["Kode BA"].map(BA_MAP)
-        df_ba["Label BA"] = (
-            df_ba["Kode BA"] + " – " +
-            df_ba["Nama BA"].fillna("Nama BA tidak ditemukan")
-        )
-
-        # ===============================
-        # SORT DESC (TINGGI → RENDAH)
-        # ===============================
-        df_ba = df_ba.sort_values("Rata-rata IKPA", ascending=False)
-
-        if df_ba.empty:
-            st.info("Tidak ada data BA yang dapat ditampilkan.")
-            st.stop()
-
-        # ===============================
-        # CHART VERTIKAL (KHUSUS BA)
-        # ===============================
-        fig_ba = px.bar(
-            df_ba,
-            x="Label BA",
-            y="Rata-rata IKPA",
-            color="Rata-rata IKPA",
-            color_continuous_scale="Blues",
-            text="Rata-rata IKPA"
-        )
-
-        fig_ba.update_traces(
-            texttemplate="%{text:.2f}",
-            textposition="outside"
-        )
-
-        fig_ba.update_layout(
-            title="🏢 Rata-rata Nilai IKPA per BA",
-            xaxis_title="BA",
-            yaxis_title="Rata-rata Nilai IKPA",
-            height=600,
-            xaxis_tickangle=-45,
-            coloraxis_showscale=False,
-            margin=dict(l=40, r=20, t=80, b=160)
-        )
-
-        st.plotly_chart(fig_ba, use_container_width=True)
-
-        # =================================================
-        # 🚨 BA dengan Deviasi Halaman III DIPA Bermasalah
-        # (Rata-rata < 90)
-        # =================================================
-        st.subheader("🚨 BA yang Memerlukan Perhatian Khusus")
-        st.markdown("###### Rata-rata Deviasi Halaman III DIPA < 90")
-
-        # -----------------------------
-        # Slider Skala Y
-        # -----------------------------
-        col_min_dev, col_max_dev = st.columns(2)
-
-        with col_min_dev:
-            st.markdown("**Nilai Minimum (Y-Axis)**")
-            y_min_dev = st.slider(
-                "",
-                min_value=0,
-                max_value=50,
-                value=40,
-                step=1,
-                key="ba_dev_ymin"
-            )
-
-        with col_max_dev:
-            st.markdown("**Nilai Maksimum (Y-Axis)**")
-            y_max_dev = st.slider(
-                "",
-                min_value=51,
-                max_value=110,
-                value=110,
-                step=1,
-                key="ba_dev_ymax"
-            )
-
-        # -----------------------------
-        # Hitung Rata-rata Deviasi per BA
-        # -----------------------------
-        problem_col = "Deviasi Halaman III DIPA"
-
-        df[problem_col] = pd.to_numeric(
-            df[problem_col],
-            errors="coerce"
-        )
-
-        df_ba_dev = (
-            df.groupby("Kode BA")[problem_col]
-            .mean()
-            .reset_index(name="Rata-rata Deviasi Halaman III DIPA")
-            .dropna()
-        )
-
-        # -----------------------------
-        # Filter BA Bermasalah (< 90)
-        # -----------------------------
-        df_ba_problem = df_ba_dev[
-            df_ba_dev["Rata-rata Deviasi Halaman III DIPA"] < 90
-        ].copy()
-
-        # -----------------------------
-        # Map Nama BA & Label
-        # -----------------------------
-        df_ba_problem["Nama BA"] = df_ba_problem["Kode BA"].map(BA_MAP)
-        df_ba_problem["Label BA"] = (
-            df_ba_problem["Kode BA"]
-            + " – "
-            + df_ba_problem["Nama BA"].fillna("Nama BA tidak ditemukan")
-        )
-
-        df_ba_problem = df_ba_problem.sort_values(
-            "Rata-rata Deviasi Halaman III DIPA",
-            ascending=False
-        )
-
-        # -----------------------------
-        # Render Chart
-        # -----------------------------
-        if df_ba_problem.empty:
-            st.success("✅ Seluruh BA sudah optimal (rata-rata Deviasi ≥ 90).")
-        else:
-            fig_ba_dev = px.bar(
-                df_ba_problem,
-                x="Label BA",
-                y="Rata-rata Deviasi Halaman III DIPA",
-                color="Rata-rata Deviasi Halaman III DIPA",
-                color_continuous_scale="YlOrRd",
-                text="Rata-rata Deviasi Halaman III DIPA"
-            )
-
-            fig_ba_dev.update_traces(
-                texttemplate="%{text:.2f}",
-                textposition="outside"
-            )
-
-            fig_ba_dev.update_layout(
-                title="🚨 BA dengan Rata-rata Deviasi Halaman III DIPA < 90",
-                xaxis_title="BA",
-                yaxis_title="Rata-rata Deviasi Halaman III DIPA",
-                height=600,
-                xaxis_tickangle=-45,
-                yaxis=dict(range=[y_min_dev, y_max_dev]),
-                coloraxis_showscale=False,
-                margin=dict(l=40, r=20, t=80, b=160)
-            )
-
-            st.plotly_chart(fig_ba_dev, use_container_width=True)
-
-
-    # -------------------------
-    # DATA DETAIL SATKER
-    # -------------------------
-    elif main_tab == "📋 Data Detail Satker":
-        st.markdown("## 📋 Tabel Detail Satker")
-
-        # ===============================
-        # 🔎 AMBIL FILTER KODE BA (DARI DASHBOARD UTAMA)
-        # ===============================
-        selected_ba = st.session_state.get("filter_ba_main", None)
-
-        # persistent sub-tab for Periodik / Detail Satker
-        if "active_table_tab" not in st.session_state:
-            st.session_state.active_table_tab = "📆 Periodik"
-
-        sub_tab = st.radio(
-            "Pilih Mode Tabel",
-            ["📆 Periodik", "📋 Detail Satker"],
-            key="sub_tab_choice",
+        main_tab = st.radio(
+            "Pilih Bagian Dashboard",
+            VALID_MAIN_TABS,
+            key="main_tab",
             horizontal=True
         )
-        st.session_state['active_table_tab'] = sub_tab
 
+
+        
         # -------------------------
-        # PERIODIK TABLE
+        # HIGHLIGHTS
         # -------------------------
-        if sub_tab == "📆 Periodik":
-            st.markdown("#### Periodik — ringkasan per bulan / triwulan / perbandingan")
-
-            # Tentukan tahun yang tersedia
-            years = set()
-            for k, df_period in st.session_state.data_storage.items():
-                years.update(df_period['Tahun'].astype(str).unique())
-            years = sorted([int(y) for y in years if str(y).strip() != ''], reverse=True)
-
-            if not years:
-                st.info("Tidak ada data periodik untuk ditampilkan.")
-                st.stop()
-
-            default_year = years[0]
-            selected_year = st.selectbox("Pilih Tahun", options=years, index=0, key='tab_periodik_year_select')
-
-            # session state untuk period_type
-            if "period_type" not in st.session_state:
-                st.session_state.period_type = "quarterly"
-
-            period_options = ["quarterly", "monthly", "compare"]
-            try:
-                period_index = period_options.index(st.session_state.period_type)
-            except ValueError:
-                period_index = 0
-                st.session_state.period_type = "quarterly"
-
-            # Radio button
-            period_type = st.radio(
-                "Jenis Periode",
-                options=period_options,
-                format_func=lambda x: {"quarterly": "Triwulan", "monthly": "Bulanan", "compare": "Perbandingan"}.get(x, x),
-                horizontal=True,
-                index=period_index,
-                key="period_type_radio_v2"
-            )
-            st.session_state.period_type = period_type
-
-            # Pilih indikator (satu untuk semua mode)
-            indicator_options = [
-                'Kualitas Perencanaan Anggaran', 'Kualitas Pelaksanaan Anggaran', 'Kualitas Hasil Pelaksanaan Anggaran',
-                'Revisi DIPA', 'Deviasi Halaman III DIPA', 'Penyerapan Anggaran', 'Belanja Kontraktual',
-                'Penyelesaian Tagihan', 'Pengelolaan UP dan TUP', 'Capaian Output', 'Dispensasi SPM (Pengurang)',
-                'Nilai Akhir (Nilai Total/Konversi Bobot)'
-            ]
-            default_indicator = 'Deviasi Halaman III DIPA'
-            selected_indicator = st.selectbox(
-                "Pilih Indikator", 
-                options=indicator_options, 
-                index=indicator_options.index(default_indicator) if default_indicator in indicator_options else 0,
-                key='tab_periodik_indicator_select'
-            )
-            
-            # -------------------------
-            # Monthly / Quarterly
-            # -------------------------
-            if period_type in ['monthly', 'quarterly']:
-
-                # 1. Gabungkan data per tahun
-                dfs = []
-                for (mon, yr), df_period in st.session_state.data_storage.items():
-                    try:
-                        if int(yr) == int(selected_year):
-                            temp = df_period.copy()
-
-                            # ambil kolom bulan apa pun namanya
-                            if 'Bulan' in temp.columns:
-                                temp['Bulan_raw'] = temp['Bulan']
-                            elif 'Nama Bulan' in temp.columns:
-                                temp['Bulan_raw'] = temp['Nama Bulan']
-                            else:
-                                continue
-
-                            dfs.append(temp)
-                    except:
-                        continue
-
-                if not dfs:
-                    st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
-                    st.stop()
-
-                df_year = pd.concat(dfs, ignore_index=True)
-                
-                # ===============================
-                # 2. NORMALISASI KODE BA
-                # ===============================
-                if 'Kode BA' in df_year.columns:
-                    df_year['Kode BA'] = df_year['Kode BA'].apply(normalize_kode_ba)
-
-                # ===============================
-                # 3. APPLY FILTER BA (GLOBAL)
-                # ===============================
-                df_year = apply_filter_ba(df_year)
-
-                # =========================================================
-                # 2. Normalisasi bulan (SUPER DEFENSIVE)
-                # =========================================================
-                MONTH_FIX = {
-                    "JAN": "JANUARI", "JANUARI": "JANUARI",
-                    "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
-                    "MAR": "MARET", "MRT": "MARET", "MARET": "MARET",
-                    "APR": "APRIL", "APRIL": "APRIL",
-                    "MEI": "MEI",
-                    "JUN": "JUNI", "JUNI": "JUNI",
-                    "JUL": "JULI", "JULI": "JULI",
-                    "AGT": "AGUSTUS", "AGUSTUS": "AGUSTUS",
-                    "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
-                    "OKT": "OKTOBER", "OKTOBER": "OKTOBER",
-                    "DES": "DESEMBER", "DESEMBER": "DESEMBER"
-                }
-
-                df_year['Bulan_upper'] = (
-                    df_year['Bulan_raw']
-                    .astype(str)
-                    .str.upper()
-                    .str.strip()
-                    .map(lambda x: MONTH_FIX.get(x, x))
-                )
-
-                # =========================================================
-                # 3. Period Column & Order (INI KUNCI)
-                # =========================================================
-                if period_type == 'monthly':
-                    df_year['Period_Column'] = df_year['Bulan_upper']
-                    df_year['Period_Order'] = df_year['Bulan_upper'].map(MONTH_ORDER)
-
-                else:  # quarterly
-                    def to_quarter(m):
-                        return {
-                            'MARET': 'Tw I',
-                            'JUNI': 'Tw II',
-                            'SEPTEMBER': 'Tw III',
-                            'DESEMBER': 'Tw IV'
-                        }.get(m)
-
-                    quarter_order = {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
-                    df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
-                    df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
-
-                # =========================================================
-                # 4. PIVOT LANGSUNG (FIXED)
-                # =========================================================
-
-                # --- pilih nama SATKER TERPENDEK per Kode Satker ---
-                name_map = (
-                    df_year
-                    .assign(name_len=df_year['Uraian Satker-RINGKAS'].astype(str).str.len())
-                    .sort_values('name_len')
-                    .groupby('Kode Satker')['Uraian Satker-RINGKAS']
-                    .first()
-                )
-
-                df_pivot = df_year[
-                    [
-                        'Kode BA',
-                        'Kode Satker',
-                        'Period_Column',
-                        selected_indicator
-                    ]
-                ].copy()
-
-                df_wide = (
-                    df_pivot
-                    .pivot_table(
-                        index=['Kode BA','Kode Satker'],  # ❗ IDENTIFIER ONLY
-                        columns='Period_Column',
-                        values=selected_indicator,
-                        aggfunc='last'
-                    )
-                    .reset_index()
-                )
-
-                # --- pasang kembali nama satker ---
-                df_wide['Uraian Satker-RINGKAS'] = df_wide['Kode Satker'].map(name_map)
-
-
-                # =========================================================
-                # 5. URUTKAN KOLOM PERIODE 
-                # =========================================================
-                if period_type == 'monthly':
-                    ordered_periods = sorted(
-                        [c for c in df_wide.columns if c in MONTH_ORDER],
-                        key=lambda x: MONTH_ORDER[x]
-                    )
-                else:
-                    ordered_periods = [
-                        c for c in ['Tw I', 'Tw II', 'Tw III', 'Tw IV']
-                        if c in df_wide.columns
-                    ]
-
-
-                # =========================================================
-                # 6. RANKING PERIODIK (BERDASARKAN PERIODE TERAKHIR)
-                # =========================================================
-                if ordered_periods:
-                    # pastikan numerik
-                    for c in ordered_periods:
-                        df_wide[c] = pd.to_numeric(df_wide[c], errors='coerce')
-
-                    # kolom periode TERAKHIR (AMAN: BELUM DI-RENAME)
-                    last_col = ordered_periods[-1]
-
-                    # nilai acuan ranking
-                    df_wide['Latest_Value'] = df_wide[last_col]
-
-                    # dense ranking (nilai sama = peringkat sama)
-                    df_wide['Peringkat'] = (
-                        df_wide['Latest_Value']
-                        .rank(method='dense', ascending=False)
-                        .astype('Int64')
-                    )
-
-
-                # =========================================================
-                # 7. SUSUN KOLOM DASAR
-                # =========================================================
-                fixed_cols = [
-                    "Uraian Satker-RINGKAS",
-                    "Peringkat",
-                    "Kode BA",
-                    "Kode Satker"
-                ]
-
-                month_cols = [c for c in ordered_periods]
-                df_wide = df_wide[fixed_cols + month_cols]
-
-
-                # =========================================================
-                # 8. DISPLAY DATAFRAME
-                # =========================================================
-                df_display = df_wide.copy()
-
-                # --- format peringkat ---
-                df_display['Peringkat'] = (
-                    pd.to_numeric(df_display['Peringkat'], errors='coerce')
-                    .astype('Int64')
-                    .astype(str)
-                )
-
-                # --- format kode ---
-                df_display['Kode BA'] = (
-                    df_display['Kode BA']
-                    .astype(str)
-                    .str.replace(r'\.0$', '', regex=True)
-                )
-
-                df_display['Kode Satker'] = (
-                    df_display['Kode Satker']
-                    .astype(str)
-                    .str.replace(r'\.0$', '', regex=True)
-                    .str.zfill(6)
-                )
-
-
-                # =========================================================
-                # 9. RENAME BULAN (KHUSUS DISPLAY, AMAN)
-                # =========================================================
-                for c in ordered_periods:
-                    if c in df_display.columns:
-                        df_display[c] = df_display[c].fillna("–")
-
-                # --- rename hanya untuk display (SETELAH NaN) ---
-                if period_type == 'monthly':
-                    rename_map = {
-                        c: MONTH_ABBR.get(c.upper(), c)
-                        for c in ordered_periods
-                        if c in df_display.columns
-                    }
-                    df_display.rename(columns=rename_map, inplace=True)
-
-
-
-                # =========================================================
-                # 10. SEARCH
-                # =========================================================
-                search_query = st.text_input(
-                    "🔎 Cari (Periodik) – ketik untuk filter di semua kolom",
-                    value="",
-                    key="tab_periodik_search"
-                )
-
-                if search_query:
-                    q = search_query.strip().lower()
-                    mask = df_display.apply(
-                        lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(),
-                        axis=1
-                    )
-                    df_display_filtered = df_display[mask].copy()
-                else:
-                    df_display_filtered = df_display.copy()
-
-
-                # =========================================================
-                # 11. FINAL SORT (WAJIB SEBELUM AGGRID)
-                # =========================================================
-                df_display_filtered["_rank_num"] = pd.to_numeric(
-                    df_display_filtered["Peringkat"], errors="coerce"
-                )
-
-                df_display_filtered = (
-                    df_display_filtered
-                    .sort_values(
-                        by=["_rank_num", "Uraian Satker-RINGKAS"],
-                        ascending=[True, True]
-                    )
-                    .drop(columns="_rank_num")
-                    .reset_index(drop=True)
-                )
-
-                # DATA BULAN JULI DIAMANKAN
-                if "Jul" in df_display_filtered.columns and "Jun" in df_display_filtered.columns:
-                    df_display_filtered["Jul"] = (
-                        df_display_filtered["Jul"]
-                        .replace("–", pd.NA)
-                        .fillna(df_display_filtered["Jun"])
-                    )
-                    
-                # =========================================================
-                # 12. RENDER
-                # =========================================================
-                render_table_pin_satker(df_display_filtered)
-
-
-            elif period_type == "compare":
-                st.markdown("### 📊 Perbandingan Antara Dua Tahun")
-
-                # ===============================
-                # 1. GABUNGKAN SELURUH DATA
-                # ===============================
-                all_data = []
-
-                for (mon, yr), df in st.session_state.data_storage.items():
-                    df2 = df.copy()
-
-                    df2["Bulan_upper"] = (
-                        df2["Bulan"]
-                        .astype(str)
-                        .str.upper()
-                        .str.strip()
-                    )
-
-                    df2["Tahun"] = pd.to_numeric(
-                        df2["Tahun"], errors="coerce"
-                    ).astype("Int64")
-
-                    if "Kode BA" in df2.columns:
-                        df2["Kode BA"] = df2["Kode BA"].apply(normalize_kode_ba)
-
-                    all_data.append(df2)
-
-                if not all_data:
-                    st.warning("Belum ada data IKPA.")
-                    st.stop()
-
-                df_full = pd.concat(all_data, ignore_index=True)
-
-                # ===============================
-                # 2. FILTER BA VALID (SESUI HIGHLIGHTS)
-                # ===============================
-                latest_period = max(
-                    st.session_state.data_storage.keys(),
-                    key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0], 0))
-                )
-
-                df_latest = st.session_state.data_storage[latest_period].copy()
-                df_latest["Kode BA"] = df_latest["Kode BA"].apply(normalize_kode_ba)
-                df_full["Kode BA"] = df_full["Kode BA"].apply(normalize_kode_ba)
-
-                valid_ba = df_latest["Kode BA"].dropna().unique()
-                df_full = df_full[df_full["Kode BA"].isin(valid_ba)]
-
-                # ===============================
-                # 3. FILTER BA KHUSUS COMPARE
-                # ===============================
-                if "filter_ba_compare" not in st.session_state:
-                    st.session_state["filter_ba_compare"] = ["SEMUA BA"]
-
-                ba_list = sorted(df_full["Kode BA"].dropna().unique())
-                ba_options = ["SEMUA BA"] + ba_list
-
-                def format_ba_compare(code):
-                    if code == "SEMUA BA":
-                        return "SEMUA BA"
-                    return f"{code} – {BA_MAP.get(code, 'Nama BA tidak ditemukan')}"
-
-                selected_ba_compare = st.multiselect(
-                    "Pilih Kode BA (Perbandingan)",
-                    options=ba_options,
-                    format_func=format_ba_compare,
-                    key="filter_ba_compare"   # ✅ cukup ini
-                )
-
-
-                # ===============================
-                # 4. VALIDASI TAHUN
-                # ===============================
-                available_years = sorted(
-                    df_full["Tahun"].dropna().unique().astype(int)
-                )
-
-                if len(available_years) < 2:
-                    st.info("Data tahun tidak cukup untuk perbandingan.")
-                    st.stop()
-
-                colA, colB = st.columns(2)
-                with colA:
-                    year_a = st.selectbox(
-                        "Tahun A (Awal)",
-                        available_years,
-                        index=0,
-                        key="tahunA_compare"
-                    )
-                with colB:
-                    year_b = st.selectbox(
-                        "Tahun B (Akhir)",
-                        available_years,
-                        index=1,
-                        key="tahunB_compare"
-                    )
-
-                if year_a == year_b:
-                    st.info("Pilih dua tahun yang berbeda.")
-                    st.stop()
-
-                # ===============================
-                # 5. FILTER DATA PER TAHUN
-                # ===============================
-                df_a = df_full[df_full["Tahun"] == year_a]
-                df_b = df_full[df_full["Tahun"] == year_b]
-
-                def extract_tw(df_):
-                    return {
-                        "Tw I": df_[df_["Bulan_upper"] == "MARET"],
-                        "Tw II": df_[df_["Bulan_upper"] == "JUNI"],
-                        "Tw III": df_[df_["Bulan_upper"] == "SEPTEMBER"],
-                        "Tw IV": df_[df_["Bulan_upper"] == "DESEMBER"],
-                    }
-
-                tw_a = extract_tw(df_a)
-                tw_b = extract_tw(df_b)
-
-                # ===============================
-                # 6. PILIH SATKER
-                # ===============================
-                satker_list = (
-                    df_full[["Kode Satker", "Uraian Satker-RINGKAS"]]
-                    .drop_duplicates()
-                    .sort_values("Uraian Satker-RINGKAS")
-                )
-
-                satker_options = ["SEMUA SATKER"] + satker_list["Kode Satker"].tolist()
-
-                selected_satkers = st.multiselect(
-                    "Pilih Satker",
-                    satker_options,
-                    format_func=lambda x: (
-                        "SEMUA SATKER"
-                        if x == "SEMUA SATKER"
-                        else satker_list.loc[
-                            satker_list["Kode Satker"] == x,
-                            "Uraian Satker-RINGKAS"
-                        ].values[0]
-                    ),
-                    default=["SEMUA SATKER"],
-                    key="satker_compare"
-                )
-
-                selected_satkers_final = (
-                    satker_list["Kode Satker"].tolist()
-                    if "SEMUA SATKER" in selected_satkers
-                    else selected_satkers
-                )
-
-                # ===============================
-                # 7. BANGUN TABEL PERBANDINGAN
-                # ===============================
-                rows = []
-
-                for _, m in satker_list.iterrows():
-                    kode = m["Kode Satker"]
-                    if kode not in selected_satkers_final:
-                        continue
-
-                    row = {
-                        "Kode Satker": kode,
-                        "Uraian Satker-RINGKAS": m["Uraian Satker-RINGKAS"]
-                    }
-
-                    latest_a, latest_b = None, None
-                    has_data = False
-
-                    for tw in ["Tw I", "Tw II", "Tw III", "Tw IV"]:
-
-                        if selected_indicator not in tw_a[tw].columns:
-                            continue
-
-                        valA = tw_a[tw].loc[
-                            tw_a[tw]["Kode Satker"] == kode,
-                            selected_indicator
-                        ].values
-
-                        valB = tw_b[tw].loc[
-                            tw_b[tw]["Kode Satker"] == kode,
-                            selected_indicator
-                        ].values
-
-                        valA = valA[0] if len(valA) else None
-                        valB = valB[0] if len(valB) else None
-
-                        row[f"{tw} {year_a}"] = valA
-                        row[f"{tw} {year_b}"] = valB
-
-                        if valA is not None:
-                            latest_a = valA
-                            has_data = True
-                        if valB is not None:
-                            latest_b = valB
-                            has_data = True
-
-                    if not has_data:
-                        continue
-
-                    row[f"Δ Total ({year_b}-{year_a})"] = (
-                        latest_b - latest_a
-                        if latest_a is not None and latest_b is not None
-                        else None
-                    )
-
-                    rows.append(row)
-
-                if not rows:
-                    st.info("Tidak ada data indikator untuk periode yang dipilih.")
-                    st.stop()
-
-                df_compare = pd.DataFrame(rows)
-
-                # ===============================
-                # 8. TAMPILKAN HASIL (AGGRID)
-                # ===============================
-                st.markdown("### 📋 Hasil Perbandingan")
-                render_table_pin_satker(df_compare)
-
-
-        # -------------------------
-        # DETAIL SATKER 
-        # -------------------------
-        else:
-            st.subheader("📋 Detail Satker")
-
-            # ===============================
-            # VALIDASI DATA
-            # ===============================
-            if not st.session_state.get("data_storage"):
-                st.warning("⚠️ Belum ada data IKPA.")
-                return
-
-            # ===============================
-            # PILIH TAHUN & BULAN
-            # ===============================
-            available_periods = list(st.session_state.data_storage.keys())
-            available_years = sorted({int(y) for (_, y) in available_periods}, reverse=True)
-
-            selected_year = st.selectbox(
-                "Pilih Tahun",
-                options=available_years,
-                index=0,
-                key="detail_satker_year"
+        if main_tab == "🎯 Highlights Satker":
+            st.markdown("## 🎯 Highlights Kinerja Satker")
+
+            st.selectbox(
+                "Pilih Periode",
+                options=all_periods,
+                format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+                key="selected_period"
             )
 
-            months_for_year = [
-                m for (m, y) in available_periods if int(y) == selected_year
-            ]
-
-            months_for_year = [
-                VALID_MONTHS.get(m.upper(), m.upper())
-                for (m, y) in available_periods
-                if int(y) == selected_year
-            ]
-
-            if not months_for_year:
-                st.info(f"Tidak ada data untuk tahun {selected_year}.")
-                return
-
-            months_for_year = sorted(
-                set(months_for_year),
-                key=lambda m: MONTH_ORDER.get(m, 0)
-            )
-
-
-            selected_month = st.selectbox(
-                "Pilih Bulan",
-                options=months_for_year,
-                format_func=lambda x: x.capitalize(),
-                index=len(months_for_year) - 1,
-                key="detail_satker_month"
-            )
-
-            selected_key = (selected_month, str(selected_year))
-            df = st.session_state.data_storage.get(selected_key)
+            df = st.session_state.data_storage.get(st.session_state.selected_period)
 
             if df is None or df.empty:
-                st.info("Data detail satker tidak tersedia.")
-                return
+                st.warning("Data IKPA belum tersedia.")
+                st.stop()
+
+            df = df.copy()
+
+
+            # ===============================
+            # NORMALISASI KODE BA (1x SAJA)
+            # ===============================
+            if 'Kode BA' in df.columns:
+                df['Kode BA'] = df['Kode BA'].apply(normalize_kode_ba)
+            
+            df = apply_filter_ba(df)
+
+
+            # ===============================
+            # PAKSA KOLOM SATKER (1x SAJA)
+            # ===============================
+            if 'Satker' not in df.columns:
+                df = create_satker_column(df)
+
+            # ===============================
+            # GUNAKAN JENIS SATKER DARI LOADER
+            # ===============================
+            df['Jenis Satker'] = df['Jenis Satker'].astype(str)
+
+            df_kecil  = df[df['Jenis Satker'] == 'KECIL']
+            df_sedang = df[df['Jenis Satker'] == 'SEDANG']
+            df_besar  = df[df['Jenis Satker'] == 'BESAR']
+
+
+            # ===============================
+            # METRIK UTAMA
+            # ===============================
+            nilai_col = 'Nilai Akhir (Nilai Total/Konversi Bobot)'
+
+            avg_score = df[nilai_col].mean()
+            perfect_df = df[df[nilai_col] == 100]
+            below89_df = df[df[nilai_col] < 89]
+
+            # Pastikan kolom Satker tersedia
+            def make_satker_col(dd):
+                if 'Satker' in dd.columns:
+                    return dd
+                uraian = dd.get('Uraian Satker-RINGKAS', dd.index.astype(str))
+                kode = dd.get('Kode Satker', '')
+                dd = dd.copy()
+                dd['Satker'] = uraian.astype(str) + " (" + kode.astype(str) + ")"
+                return dd
+
+            perfect_df = make_satker_col(perfect_df)
+            below89_df = make_satker_col(below89_df)
+
+            jumlah_100 = len(perfect_df)
+            jumlah_below = len(below89_df)
+
+            # Tampilan metrik
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("📋 Total Satker", len(df))
+            with col2:
+                st.metric("📈 Rata-rata Nilai", f"{avg_score:.2f}")
+            with col3:
+                st.metric("⭐ Nilai 100", jumlah_100)
+                with st.popover("Lihat daftar satker"):
+                    if jumlah_100 == 0:
+                        st.write("Tidak ada satker dengan nilai 100.")
+                    else:
+                        display_df = perfect_df[['Satker']].reset_index(drop=True)
+                        display_df.insert(0, 'No', range(1, len(display_df) + 1))
+                        st.dataframe(
+                            display_df,
+                            use_container_width=True,
+                            hide_index=True,
+                            height=min(400, len(display_df) * 35 + 38)
+                        )
+            with col4:
+                st.metric("⚠️ Nilai < 89 (Predikat Belum Baik)", jumlah_below)
+                with st.popover("Lihat daftar satker"):
+                    if jumlah_below == 0:
+                        st.write("Tidak ada satker dengan nilai < 89.")
+                    else:
+                        display_df = below89_df[['Satker']].reset_index(drop=True)
+                        display_df.insert(0, 'No', range(1, len(display_df) + 1))
+                        st.dataframe(
+                            display_df,
+                            use_container_width=True,
+                            hide_index=True,
+                            height=min(400, len(display_df) * 35 + 38)
+                        )
+
+            # ===============================
+            # Kontrol Skala Chart
+            # ===============================
+            st.markdown("###### Atur Skala Nilai (Sumbu Y)")
+            col_min, col_max = st.columns(2)
+            with col_min:
+                y_min = st.slider("Nilai Minimum (Y-Axis)", 0, 50, 50, 1, key="high_ymin")
+            with col_max:
+                y_max = st.slider("Nilai Maksimum (Y-Axis)", 51, 110, 110, 1, key="high_ymax")
+
+            # ===============================
+            # CHART 6 DALAM 1 TAMPILAN
+            # ===============================
+            st.markdown("### 📊 Satker Terbaik & Terendah Berdasarkan Nilai IKPA")
+
+            nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+
+            # =========================
+            # PREPARE DATA (UNIK)
+            # =========================
+            top_kecil, bottom_kecil = get_top_bottom_unique(df_kecil, nilai_col)
+            top_sedang, bottom_sedang = get_top_bottom_unique(df_sedang, nilai_col)
+            top_besar, bottom_besar = get_top_bottom_unique(df_besar, nilai_col)
+
+            # =========================
+            # BARIS 1 – TERBAIK
+            # =========================
+            c1, c2, c3 = st.columns(3)
+
+            with c1:
+                st.markdown(
+                    f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                    f"{dynamic_title('Kecil','Terbaik', top_kecil)}</b></div>",
+                    unsafe_allow_html=True
+                )
+                safe_chart(
+                    top_kecil, "KECIL",
+                    top=True, color="Greens",
+                    y_min=y_min, y_max=y_max
+                )
+
+            with c2:
+                st.markdown(
+                    f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                    f"{dynamic_title('Sedang','Terbaik', top_sedang)}</b></div>",
+                    unsafe_allow_html=True
+                )
+                safe_chart(
+                    top_sedang, "SEDANG",
+                    top=True, color="Greens",
+                    y_min=y_min, y_max=y_max
+                )
+
+            with c3:
+                st.markdown(
+                    f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                    f"{dynamic_title('Besar','Terbaik', top_besar)}</b></div>",
+                    unsafe_allow_html=True
+                )
+                safe_chart(
+                    top_besar, "BESAR",
+                    top=True, color="Greens",
+                    y_min=y_min, y_max=y_max
+                )
+
+            # ⬇️ JARAK ANTAR BARIS
+            st.markdown("<div style='height:2px'></div>", unsafe_allow_html=True)
+
+            # =========================
+            # BARIS 2 – TERENDAH
+            # =========================
+            c4, c5, c6 = st.columns(3)
+
+            with c4:
+                st.markdown(
+                    f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                    f"{dynamic_title('Kecil','Terendah', bottom_kecil)}</b></div>",
+                    unsafe_allow_html=True
+                )
+                safe_chart(
+                    bottom_kecil, "KECIL",
+                    top=False, color="Reds",
+                    y_min=y_min, y_max=y_max
+                )
+
+            with c5:
+                st.markdown(
+                    f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                    f"{dynamic_title('Sedang','Terendah', bottom_sedang)}</b></div>",
+                    unsafe_allow_html=True
+                )
+                safe_chart(
+                    bottom_sedang, "SEDANG",
+                    top=False, color="Reds",
+                    y_min=y_min, y_max=y_max
+                )
+
+            with c6:
+                st.markdown(
+                    f"<div style='margin-top:2px; margin-bottom:6px'><b>"
+                    f"{dynamic_title('Besar','Terendah', bottom_besar)}</b></div>",
+                    unsafe_allow_html=True
+                )
+                safe_chart(
+                    bottom_besar, "BESAR",
+                    top=False, color="Reds",
+                    y_min=y_min, y_max=y_max
+                )
+
+
+            # -----------------------------
+            # Slider
+            # -----------------------------
+            # Satker dengan masalah (Deviasi Hal 3 DIPA)
+            st.subheader("🚨 Satker yang Memerlukan Perhatian Khusus")
+            st.markdown("###### Atur Skala Nilai (Sumbu Y)")
+
+            col_min_dev, col_max_dev = st.columns(2)
+
+            with col_min_dev:
+                st.markdown("**Nilai Minimum (Y-Axis)**")
+                y_min_dev = st.slider(
+                    "",
+                    min_value=0,
+                    max_value=50,
+                    value=40,
+                    step=1,
+                    key="high_ymin_dev"
+                )
+
+            with col_max_dev:
+                st.markdown("**Nilai Maksimum (Y-Axis)**")
+                y_max_dev = st.slider(
+                    "",
+                    min_value=51,
+                    max_value=110,
+                    value=110,
+                    step=1,
+                    key="high_ymax_dev"
+                )
+
+            # -----------------------------
+            # ⚠️ JUDUL CHART
+            # -----------------------------
+            st.markdown("###### ⚠️ Deviasi Hal 3 DIPA Belum Optimal (< 90)")
+
+            # =================================================
+            # 🔑 PERBAIKAN UTAMA DIMULAI DI SINI
+            # =================================================
+            problem_col = "Deviasi Halaman III DIPA"
+
+            # 1️⃣ PAKSA NUMERIK
+            df[problem_col] = pd.to_numeric(
+                df[problem_col],
+                errors="coerce"
+            )
+
+            # 2️⃣ FILTER TEGAS (INI KUNCI)
+            df_problem = df[
+                (df[problem_col].notna()) &
+                (df[problem_col] < 90)
+            ].copy()
+
+            # 3️⃣ JIKA TIDAK ADA MASALAH → SELESAI
+            if df_problem.empty:
+                st.success("✅ Semua satker sudah optimal untuk Deviasi Hal 3 DIPA")
+            else:
+                fig_dev = create_problem_chart(
+                    df_problem,              # ⬅️ BUKAN df LAGI
+                    column=problem_col,
+                    threshold=90,
+                    title="",
+                    comparison="less",
+                    y_min=y_min_dev,
+                    y_max=y_max_dev,
+                    show_yaxis=True
+                )
+
+                st.plotly_chart(fig_dev, use_container_width=True)
+                
+
+        # -------------------------
+        # HIGHLIGHTS BA
+        # -------------------------
+        elif main_tab == "🏢 Highlights BA":
+            st.markdown("## 🏢 Highlights Kinerja per BA")
+
+            # pilih periode (sama seperti highlights utama)
+            st.selectbox(
+                "Pilih Periode",
+                options=all_periods,
+                format_func=lambda x: f"{x[0].capitalize()} {x[1]}",
+                key="selected_period"
+            )
+
+            df = st.session_state.data_storage.get(st.session_state.selected_period)
+
+            if df is None or df.empty:
+                st.warning("Data IKPA belum tersedia.")
+                st.stop()
 
             df = df.copy()
 
             # ===============================
-            # NORMALISASI & FILTER BA
+            # NORMALISASI KODE BA
             # ===============================
             if "Kode BA" in df.columns:
                 df["Kode BA"] = df["Kode BA"].apply(normalize_kode_ba)
+            else:
+                st.warning("Kolom Kode BA tidak tersedia.")
+                st.stop()
 
+            # ===============================
+            # FILTER BA (PAKAI FILTER YANG SAMA)
+            # ===============================
             df = apply_filter_ba(df)
 
-            if df.empty:
-                st.info("Tidak ada data sesuai filter BA.")
-                return
+            # ===============================
+            # HITUNG RATA-RATA IKPA PER BA
+            # ===============================
+            nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
+            df[nilai_col] = pd.to_numeric(df[nilai_col], errors="coerce")
 
-            # ===============================
-            # MODE TAMPILAN
-            # ===============================
-            view_mode = st.radio(
-                "Tampilan",
-                options=["aspek", "komponen"],
-                format_func=lambda x: "Berdasarkan Aspek" if x == "aspek" else "Berdasarkan Komponen",
-                horizontal=True,
-                key="detail_view_mode"
+            df_ba = (
+                df.groupby("Kode BA")[nilai_col]
+                .mean()
+                .reset_index(name="Rata-rata IKPA")
+                .dropna()
             )
 
             # ===============================
-            # KOLOM IDENTITAS (WAJIB)
+            # MAP NAMA BA
             # ===============================
-            base_cols = [
-                "Uraian Satker-RINGKAS",
-                "Kode Satker",
-                "Peringkat",
-                "Kode BA"
-            ]
+            df_ba["Nama BA"] = df_ba["Kode BA"].map(BA_MAP)
+            df_ba["Label BA"] = (
+                df_ba["Kode BA"] + " – " +
+                df_ba["Nama BA"].fillna("Nama BA tidak ditemukan")
+            )
 
-            if view_mode == "aspek":
-                value_cols = [
-                    "Kualitas Perencanaan Anggaran",
-                    "Kualitas Pelaksanaan Anggaran",
-                    "Kualitas Hasil Pelaksanaan Anggaran",
-                    "Nilai Total",
-                    "Dispensasi SPM (Pengurang)",
-                    "Nilai Akhir (Nilai Total/Konversi Bobot)"
-                ]
+            # ===============================
+            # SORT DESC (TINGGI → RENDAH)
+            # ===============================
+            df_ba = df_ba.sort_values("Rata-rata IKPA", ascending=False)
 
-                df_display = df[base_cols + value_cols].copy()
+            if df_ba.empty:
+                st.info("Tidak ada data BA yang dapat ditampilkan.")
+                st.stop()
 
+            # ===============================
+            # CHART VERTIKAL (KHUSUS BA)
+            # ===============================
+            fig_ba = px.bar(
+                df_ba,
+                x="Label BA",
+                y="Rata-rata IKPA",
+                color="Rata-rata IKPA",
+                color_continuous_scale="Blues",
+                text="Rata-rata IKPA"
+            )
+
+            fig_ba.update_traces(
+                texttemplate="%{text:.2f}",
+                textposition="outside"
+            )
+
+            fig_ba.update_layout(
+                title="🏢 Rata-rata Nilai IKPA per BA",
+                xaxis_title="BA",
+                yaxis_title="Rata-rata Nilai IKPA",
+                height=600,
+                xaxis_tickangle=-45,
+                coloraxis_showscale=False,
+                margin=dict(l=40, r=20, t=80, b=160)
+            )
+
+            st.plotly_chart(fig_ba, use_container_width=True)
+
+            # =================================================
+            # 🚨 BA dengan Deviasi Halaman III DIPA Bermasalah
+            # (Rata-rata < 90)
+            # =================================================
+            st.subheader("🚨 BA yang Memerlukan Perhatian Khusus")
+            st.markdown("###### Rata-rata Deviasi Halaman III DIPA < 90")
+
+            # -----------------------------
+            # Slider Skala Y
+            # -----------------------------
+            col_min_dev, col_max_dev = st.columns(2)
+
+            with col_min_dev:
+                st.markdown("**Nilai Minimum (Y-Axis)**")
+                y_min_dev = st.slider(
+                    "",
+                    min_value=0,
+                    max_value=50,
+                    value=40,
+                    step=1,
+                    key="ba_dev_ymin"
+                )
+
+            with col_max_dev:
+                st.markdown("**Nilai Maksimum (Y-Axis)**")
+                y_max_dev = st.slider(
+                    "",
+                    min_value=51,
+                    max_value=110,
+                    value=110,
+                    step=1,
+                    key="ba_dev_ymax"
+                )
+
+            # -----------------------------
+            # Hitung Rata-rata Deviasi per BA
+            # -----------------------------
+            problem_col = "Deviasi Halaman III DIPA"
+
+            df[problem_col] = pd.to_numeric(
+                df[problem_col],
+                errors="coerce"
+            )
+
+            df_ba_dev = (
+                df.groupby("Kode BA")[problem_col]
+                .mean()
+                .reset_index(name="Rata-rata Deviasi Halaman III DIPA")
+                .dropna()
+            )
+
+            # -----------------------------
+            # Filter BA Bermasalah (< 90)
+            # -----------------------------
+            df_ba_problem = df_ba_dev[
+                df_ba_dev["Rata-rata Deviasi Halaman III DIPA"] < 90
+            ].copy()
+
+            # -----------------------------
+            # Map Nama BA & Label
+            # -----------------------------
+            df_ba_problem["Nama BA"] = df_ba_problem["Kode BA"].map(BA_MAP)
+            df_ba_problem["Label BA"] = (
+                df_ba_problem["Kode BA"]
+                + " – "
+                + df_ba_problem["Nama BA"].fillna("Nama BA tidak ditemukan")
+            )
+
+            df_ba_problem = df_ba_problem.sort_values(
+                "Rata-rata Deviasi Halaman III DIPA",
+                ascending=False
+            )
+
+            # -----------------------------
+            # Render Chart
+            # -----------------------------
+            if df_ba_problem.empty:
+                st.success("✅ Seluruh BA sudah optimal (rata-rata Deviasi ≥ 90).")
             else:
-                component_cols = [
-                    "Revisi DIPA",
-                    "Deviasi Halaman III DIPA",
-                    "Penyerapan Anggaran",
-                    "Belanja Kontraktual",
-                    "Penyelesaian Tagihan",
-                    "Pengelolaan UP dan TUP",
-                    "Capaian Output"
+                fig_ba_dev = px.bar(
+                    df_ba_problem,
+                    x="Label BA",
+                    y="Rata-rata Deviasi Halaman III DIPA",
+                    color="Rata-rata Deviasi Halaman III DIPA",
+                    color_continuous_scale="YlOrRd",
+                    text="Rata-rata Deviasi Halaman III DIPA"
+                )
+
+                fig_ba_dev.update_traces(
+                    texttemplate="%{text:.2f}",
+                    textposition="outside"
+                )
+
+                fig_ba_dev.update_layout(
+                    title="🚨 BA dengan Rata-rata Deviasi Halaman III DIPA < 90",
+                    xaxis_title="BA",
+                    yaxis_title="Rata-rata Deviasi Halaman III DIPA",
+                    height=600,
+                    xaxis_tickangle=-45,
+                    yaxis=dict(range=[y_min_dev, y_max_dev]),
+                    coloraxis_showscale=False,
+                    margin=dict(l=40, r=20, t=80, b=160)
+                )
+
+                st.plotly_chart(fig_ba_dev, use_container_width=True)
+
+
+        # -------------------------
+        # DATA DETAIL SATKER
+        # -------------------------
+        elif main_tab == "📋 Data Detail Satker":
+            st.markdown("## 📋 Tabel Detail Satker")
+
+            # ===============================
+            # 🔎 AMBIL FILTER KODE BA (DARI DASHBOARD UTAMA)
+            # ===============================
+            selected_ba = st.session_state.get("filter_ba_main", None)
+
+            # persistent sub-tab for Periodik / Detail Satker
+            if "active_table_tab" not in st.session_state:
+                st.session_state.active_table_tab = "📆 Periodik"
+
+            sub_tab = st.radio(
+                "Pilih Mode Tabel",
+                ["📆 Periodik", "📋 Detail Satker"],
+                key="sub_tab_choice",
+                horizontal=True
+            )
+            st.session_state['active_table_tab'] = sub_tab
+
+            # -------------------------
+            # PERIODIK TABLE
+            # -------------------------
+            if sub_tab == "📆 Periodik":
+                st.markdown("#### Periodik — ringkasan per bulan / triwulan / perbandingan")
+
+                # Tentukan tahun yang tersedia
+                years = set()
+                for k, df_period in st.session_state.data_storage.items():
+                    years.update(df_period['Tahun'].astype(str).unique())
+                years = sorted([int(y) for y in years if str(y).strip() != ''], reverse=True)
+
+                if not years:
+                    st.info("Tidak ada data periodik untuk ditampilkan.")
+                    st.stop()
+
+                default_year = years[0]
+                selected_year = st.selectbox("Pilih Tahun", options=years, index=0, key='tab_periodik_year_select')
+
+                # session state untuk period_type
+                if "period_type" not in st.session_state:
+                    st.session_state.period_type = "quarterly"
+
+                period_options = ["quarterly", "monthly", "compare"]
+                try:
+                    period_index = period_options.index(st.session_state.period_type)
+                except ValueError:
+                    period_index = 0
+                    st.session_state.period_type = "quarterly"
+
+                # Radio button
+                period_type = st.radio(
+                    "Jenis Periode",
+                    options=period_options,
+                    format_func=lambda x: {"quarterly": "Triwulan", "monthly": "Bulanan", "compare": "Perbandingan"}.get(x, x),
+                    horizontal=True,
+                    index=period_index,
+                    key="period_type_radio_v2"
+                )
+                st.session_state.period_type = period_type
+
+                # Pilih indikator (satu untuk semua mode)
+                indicator_options = [
+                    'Kualitas Perencanaan Anggaran', 'Kualitas Pelaksanaan Anggaran', 'Kualitas Hasil Pelaksanaan Anggaran',
+                    'Revisi DIPA', 'Deviasi Halaman III DIPA', 'Penyerapan Anggaran', 'Belanja Kontraktual',
+                    'Penyelesaian Tagihan', 'Pengelolaan UP dan TUP', 'Capaian Output', 'Dispensasi SPM (Pengurang)',
+                    'Nilai Akhir (Nilai Total/Konversi Bobot)'
+                ]
+                default_indicator = 'Deviasi Halaman III DIPA'
+                selected_indicator = st.selectbox(
+                    "Pilih Indikator", 
+                    options=indicator_options, 
+                    index=indicator_options.index(default_indicator) if default_indicator in indicator_options else 0,
+                    key='tab_periodik_indicator_select'
+                )
+                
+                # -------------------------
+                # Monthly / Quarterly
+                # -------------------------
+                if period_type in ['monthly', 'quarterly']:
+
+                    # 1. Gabungkan data per tahun
+                    dfs = []
+                    for (mon, yr), df_period in st.session_state.data_storage.items():
+                        try:
+                            if int(yr) == int(selected_year):
+                                temp = df_period.copy()
+
+                                # ambil kolom bulan apa pun namanya
+                                if 'Bulan' in temp.columns:
+                                    temp['Bulan_raw'] = temp['Bulan']
+                                elif 'Nama Bulan' in temp.columns:
+                                    temp['Bulan_raw'] = temp['Nama Bulan']
+                                else:
+                                    continue
+
+                                dfs.append(temp)
+                        except:
+                            continue
+
+                    if not dfs:
+                        st.info(f"Tidak ditemukan data untuk tahun {selected_year}.")
+                        st.stop()
+
+                    df_year = pd.concat(dfs, ignore_index=True)
+                    
+                    # ===============================
+                    # 2. NORMALISASI KODE BA
+                    # ===============================
+                    if 'Kode BA' in df_year.columns:
+                        df_year['Kode BA'] = df_year['Kode BA'].apply(normalize_kode_ba)
+
+                    # ===============================
+                    # 3. APPLY FILTER BA (GLOBAL)
+                    # ===============================
+                    df_year = apply_filter_ba(df_year)
+
+                    # =========================================================
+                    # 2. Normalisasi bulan (SUPER DEFENSIVE)
+                    # =========================================================
+                    MONTH_FIX = {
+                        "JAN": "JANUARI", "JANUARI": "JANUARI",
+                        "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI",
+                        "MAR": "MARET", "MRT": "MARET", "MARET": "MARET",
+                        "APR": "APRIL", "APRIL": "APRIL",
+                        "MEI": "MEI",
+                        "JUN": "JUNI", "JUNI": "JUNI",
+                        "JUL": "JULI", "JULI": "JULI",
+                        "AGT": "AGUSTUS", "AGUSTUS": "AGUSTUS",
+                        "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER",
+                        "OKT": "OKTOBER", "OKTOBER": "OKTOBER",
+                        "DES": "DESEMBER", "DESEMBER": "DESEMBER"
+                    }
+
+                    df_year['Bulan_upper'] = (
+                        df_year['Bulan_raw']
+                        .astype(str)
+                        .str.upper()
+                        .str.strip()
+                        .map(lambda x: MONTH_FIX.get(x, x))
+                    )
+
+                    # =========================================================
+                    # 3. Period Column & Order (INI KUNCI)
+                    # =========================================================
+                    if period_type == 'monthly':
+                        df_year['Period_Column'] = df_year['Bulan_upper']
+                        df_year['Period_Order'] = df_year['Bulan_upper'].map(MONTH_ORDER)
+
+                    else:  # quarterly
+                        def to_quarter(m):
+                            return {
+                                'MARET': 'Tw I',
+                                'JUNI': 'Tw II',
+                                'SEPTEMBER': 'Tw III',
+                                'DESEMBER': 'Tw IV'
+                            }.get(m)
+
+                        quarter_order = {'Tw I':1,'Tw II':2,'Tw III':3,'Tw IV':4}
+                        df_year['Period_Column'] = df_year['Bulan_upper'].map(to_quarter)
+                        df_year['Period_Order'] = df_year['Period_Column'].map(quarter_order)
+
+                    # =========================================================
+                    # 4. PIVOT LANGSUNG (FIXED)
+                    # =========================================================
+
+                    # --- pilih nama SATKER TERPENDEK per Kode Satker ---
+                    name_map = (
+                        df_year
+                        .assign(name_len=df_year['Uraian Satker-RINGKAS'].astype(str).str.len())
+                        .sort_values('name_len')
+                        .groupby('Kode Satker')['Uraian Satker-RINGKAS']
+                        .first()
+                    )
+
+                    df_pivot = df_year[
+                        [
+                            'Kode BA',
+                            'Kode Satker',
+                            'Period_Column',
+                            selected_indicator
+                        ]
+                    ].copy()
+
+                    df_wide = (
+                        df_pivot
+                        .pivot_table(
+                            index=['Kode BA','Kode Satker'],  # ❗ IDENTIFIER ONLY
+                            columns='Period_Column',
+                            values=selected_indicator,
+                            aggfunc='last'
+                        )
+                        .reset_index()
+                    )
+
+                    # --- pasang kembali nama satker ---
+                    df_wide['Uraian Satker-RINGKAS'] = df_wide['Kode Satker'].map(name_map)
+
+
+                    # =========================================================
+                    # 5. URUTKAN KOLOM PERIODE 
+                    # =========================================================
+                    if period_type == 'monthly':
+                        ordered_periods = sorted(
+                            [c for c in df_wide.columns if c in MONTH_ORDER],
+                            key=lambda x: MONTH_ORDER[x]
+                        )
+                    else:
+                        ordered_periods = [
+                            c for c in ['Tw I', 'Tw II', 'Tw III', 'Tw IV']
+                            if c in df_wide.columns
+                        ]
+
+
+                    # =========================================================
+                    # 6. RANKING PERIODIK (BERDASARKAN PERIODE TERAKHIR)
+                    # =========================================================
+                    if ordered_periods:
+                        # pastikan numerik
+                        for c in ordered_periods:
+                            df_wide[c] = pd.to_numeric(df_wide[c], errors='coerce')
+
+                        # kolom periode TERAKHIR (AMAN: BELUM DI-RENAME)
+                        last_col = ordered_periods[-1]
+
+                        # nilai acuan ranking
+                        df_wide['Latest_Value'] = df_wide[last_col]
+
+                        # dense ranking (nilai sama = peringkat sama)
+                        df_wide['Peringkat'] = (
+                            df_wide['Latest_Value']
+                            .rank(method='dense', ascending=False)
+                            .astype('Int64')
+                        )
+
+
+                    # =========================================================
+                    # 7. SUSUN KOLOM DASAR
+                    # =========================================================
+                    fixed_cols = [
+                        "Uraian Satker-RINGKAS",
+                        "Peringkat",
+                        "Kode BA",
+                        "Kode Satker"
+                    ]
+
+                    month_cols = [c for c in ordered_periods]
+                    df_wide = df_wide[fixed_cols + month_cols]
+
+
+                    # =========================================================
+                    # 8. DISPLAY DATAFRAME
+                    # =========================================================
+                    df_display = df_wide.copy()
+
+                    # --- format peringkat ---
+                    df_display['Peringkat'] = (
+                        pd.to_numeric(df_display['Peringkat'], errors='coerce')
+                        .astype('Int64')
+                        .astype(str)
+                    )
+
+                    # --- format kode ---
+                    df_display['Kode BA'] = (
+                        df_display['Kode BA']
+                        .astype(str)
+                        .str.replace(r'\.0$', '', regex=True)
+                    )
+
+                    df_display['Kode Satker'] = (
+                        df_display['Kode Satker']
+                        .astype(str)
+                        .str.replace(r'\.0$', '', regex=True)
+                        .str.zfill(6)
+                    )
+
+
+                    # =========================================================
+                    # 9. RENAME BULAN (KHUSUS DISPLAY, AMAN)
+                    # =========================================================
+                    for c in ordered_periods:
+                        if c in df_display.columns:
+                            df_display[c] = df_display[c].fillna("–")
+
+                    # --- rename hanya untuk display (SETELAH NaN) ---
+                    if period_type == 'monthly':
+                        rename_map = {
+                            c: MONTH_ABBR.get(c.upper(), c)
+                            for c in ordered_periods
+                            if c in df_display.columns
+                        }
+                        df_display.rename(columns=rename_map, inplace=True)
+
+
+
+                    # =========================================================
+                    # 10. SEARCH
+                    # =========================================================
+                    search_query = st.text_input(
+                        "🔎 Cari (Periodik) – ketik untuk filter di semua kolom",
+                        value="",
+                        key="tab_periodik_search"
+                    )
+
+                    if search_query:
+                        q = search_query.strip().lower()
+                        mask = df_display.apply(
+                            lambda row: row.astype(str).str.lower().str.contains(q, na=False).any(),
+                            axis=1
+                        )
+                        df_display_filtered = df_display[mask].copy()
+                    else:
+                        df_display_filtered = df_display.copy()
+
+
+                    # =========================================================
+                    # 11. FINAL SORT (WAJIB SEBELUM AGGRID)
+                    # =========================================================
+                    df_display_filtered["_rank_num"] = pd.to_numeric(
+                        df_display_filtered["Peringkat"], errors="coerce"
+                    )
+
+                    df_display_filtered = (
+                        df_display_filtered
+                        .sort_values(
+                            by=["_rank_num", "Uraian Satker-RINGKAS"],
+                            ascending=[True, True]
+                        )
+                        .drop(columns="_rank_num")
+                        .reset_index(drop=True)
+                    )
+
+                    # DATA BULAN JULI DIAMANKAN
+                    if "Jul" in df_display_filtered.columns and "Jun" in df_display_filtered.columns:
+                        df_display_filtered["Jul"] = (
+                            df_display_filtered["Jul"]
+                            .replace("–", pd.NA)
+                            .fillna(df_display_filtered["Jun"])
+                        )
+                        
+                    # =========================================================
+                    # 12. RENDER
+                    # =========================================================
+                    render_table_pin_satker(df_display_filtered)
+
+
+                elif period_type == "compare":
+                    st.markdown("### 📊 Perbandingan Antara Dua Tahun")
+
+                    # ===============================
+                    # 1. GABUNGKAN SELURUH DATA
+                    # ===============================
+                    all_data = []
+
+                    for (mon, yr), df in st.session_state.data_storage.items():
+                        df2 = df.copy()
+
+                        df2["Bulan_upper"] = (
+                            df2["Bulan"]
+                            .astype(str)
+                            .str.upper()
+                            .str.strip()
+                        )
+
+                        df2["Tahun"] = pd.to_numeric(
+                            df2["Tahun"], errors="coerce"
+                        ).astype("Int64")
+
+                        if "Kode BA" in df2.columns:
+                            df2["Kode BA"] = df2["Kode BA"].apply(normalize_kode_ba)
+
+                        all_data.append(df2)
+
+                    if not all_data:
+                        st.warning("Belum ada data IKPA.")
+                        st.stop()
+
+                    df_full = pd.concat(all_data, ignore_index=True)
+
+                    # ===============================
+                    # 2. FILTER BA VALID (SESUI HIGHLIGHTS)
+                    # ===============================
+                    latest_period = max(
+                        st.session_state.data_storage.keys(),
+                        key=lambda x: (int(x[1]), MONTH_ORDER.get(x[0], 0))
+                    )
+
+                    df_latest = st.session_state.data_storage[latest_period].copy()
+                    df_latest["Kode BA"] = df_latest["Kode BA"].apply(normalize_kode_ba)
+                    df_full["Kode BA"] = df_full["Kode BA"].apply(normalize_kode_ba)
+
+                    valid_ba = df_latest["Kode BA"].dropna().unique()
+                    df_full = df_full[df_full["Kode BA"].isin(valid_ba)]
+
+                    # ===============================
+                    # 3. FILTER BA KHUSUS COMPARE
+                    # ===============================
+                    if "filter_ba_compare" not in st.session_state:
+                        st.session_state["filter_ba_compare"] = ["SEMUA BA"]
+
+                    ba_list = sorted(df_full["Kode BA"].dropna().unique())
+                    ba_options = ["SEMUA BA"] + ba_list
+
+                    def format_ba_compare(code):
+                        if code == "SEMUA BA":
+                            return "SEMUA BA"
+                        return f"{code} – {BA_MAP.get(code, 'Nama BA tidak ditemukan')}"
+
+                    selected_ba_compare = st.multiselect(
+                        "Pilih Kode BA (Perbandingan)",
+                        options=ba_options,
+                        format_func=format_ba_compare,
+                        key="filter_ba_compare"   # ✅ cukup ini
+                    )
+
+
+                    # ===============================
+                    # 4. VALIDASI TAHUN
+                    # ===============================
+                    available_years = sorted(
+                        df_full["Tahun"].dropna().unique().astype(int)
+                    )
+
+                    if len(available_years) < 2:
+                        st.info("Data tahun tidak cukup untuk perbandingan.")
+                        st.stop()
+
+                    colA, colB = st.columns(2)
+                    with colA:
+                        year_a = st.selectbox(
+                            "Tahun A (Awal)",
+                            available_years,
+                            index=0,
+                            key="tahunA_compare"
+                        )
+                    with colB:
+                        year_b = st.selectbox(
+                            "Tahun B (Akhir)",
+                            available_years,
+                            index=1,
+                            key="tahunB_compare"
+                        )
+
+                    if year_a == year_b:
+                        st.info("Pilih dua tahun yang berbeda.")
+                        st.stop()
+
+                    # ===============================
+                    # 5. FILTER DATA PER TAHUN
+                    # ===============================
+                    df_a = df_full[df_full["Tahun"] == year_a]
+                    df_b = df_full[df_full["Tahun"] == year_b]
+
+                    def extract_tw(df_):
+                        return {
+                            "Tw I": df_[df_["Bulan_upper"] == "MARET"],
+                            "Tw II": df_[df_["Bulan_upper"] == "JUNI"],
+                            "Tw III": df_[df_["Bulan_upper"] == "SEPTEMBER"],
+                            "Tw IV": df_[df_["Bulan_upper"] == "DESEMBER"],
+                        }
+
+                    tw_a = extract_tw(df_a)
+                    tw_b = extract_tw(df_b)
+
+                    # ===============================
+                    # 6. PILIH SATKER
+                    # ===============================
+                    satker_list = (
+                        df_full[["Kode Satker", "Uraian Satker-RINGKAS"]]
+                        .drop_duplicates()
+                        .sort_values("Uraian Satker-RINGKAS")
+                    )
+
+                    satker_options = ["SEMUA SATKER"] + satker_list["Kode Satker"].tolist()
+
+                    selected_satkers = st.multiselect(
+                        "Pilih Satker",
+                        satker_options,
+                        format_func=lambda x: (
+                            "SEMUA SATKER"
+                            if x == "SEMUA SATKER"
+                            else satker_list.loc[
+                                satker_list["Kode Satker"] == x,
+                                "Uraian Satker-RINGKAS"
+                            ].values[0]
+                        ),
+                        default=["SEMUA SATKER"],
+                        key="satker_compare"
+                    )
+
+                    selected_satkers_final = (
+                        satker_list["Kode Satker"].tolist()
+                        if "SEMUA SATKER" in selected_satkers
+                        else selected_satkers
+                    )
+
+                    # ===============================
+                    # 7. BANGUN TABEL PERBANDINGAN
+                    # ===============================
+                    rows = []
+
+                    for _, m in satker_list.iterrows():
+                        kode = m["Kode Satker"]
+                        if kode not in selected_satkers_final:
+                            continue
+
+                        row = {
+                            "Kode Satker": kode,
+                            "Uraian Satker-RINGKAS": m["Uraian Satker-RINGKAS"]
+                        }
+
+                        latest_a, latest_b = None, None
+                        has_data = False
+
+                        for tw in ["Tw I", "Tw II", "Tw III", "Tw IV"]:
+
+                            if selected_indicator not in tw_a[tw].columns:
+                                continue
+
+                            valA = tw_a[tw].loc[
+                                tw_a[tw]["Kode Satker"] == kode,
+                                selected_indicator
+                            ].values
+
+                            valB = tw_b[tw].loc[
+                                tw_b[tw]["Kode Satker"] == kode,
+                                selected_indicator
+                            ].values
+
+                            valA = valA[0] if len(valA) else None
+                            valB = valB[0] if len(valB) else None
+
+                            row[f"{tw} {year_a}"] = valA
+                            row[f"{tw} {year_b}"] = valB
+
+                            if valA is not None:
+                                latest_a = valA
+                                has_data = True
+                            if valB is not None:
+                                latest_b = valB
+                                has_data = True
+
+                        if not has_data:
+                            continue
+
+                        row[f"Δ Total ({year_b}-{year_a})"] = (
+                            latest_b - latest_a
+                            if latest_a is not None and latest_b is not None
+                            else None
+                        )
+
+                        rows.append(row)
+
+                    if not rows:
+                        st.info("Tidak ada data indikator untuk periode yang dipilih.")
+                        st.stop()
+
+                    df_compare = pd.DataFrame(rows)
+
+                    # ===============================
+                    # 8. TAMPILKAN HASIL (AGGRID)
+                    # ===============================
+                    st.markdown("### 📋 Hasil Perbandingan")
+                    render_table_pin_satker(df_compare)
+
+
+            # -------------------------
+            # DETAIL SATKER 
+            # -------------------------
+            else:
+                st.subheader("📋 Detail Satker")
+
+                # ===============================
+                # VALIDASI DATA
+                # ===============================
+                if not st.session_state.get("data_storage"):
+                    st.warning("⚠️ Belum ada data IKPA.")
+                    return
+
+                # ===============================
+                # PILIH TAHUN & BULAN
+                # ===============================
+                available_periods = list(st.session_state.data_storage.keys())
+                available_years = sorted({int(y) for (_, y) in available_periods}, reverse=True)
+
+                selected_year = st.selectbox(
+                    "Pilih Tahun",
+                    options=available_years,
+                    index=0,
+                    key="detail_satker_year"
+                )
+
+                months_for_year = [
+                    m for (m, y) in available_periods if int(y) == selected_year
                 ]
 
-                value_cols = (
-                    component_cols +
-                    [
-                        "NIlai Total",
+                months_for_year = [
+                    VALID_MONTHS.get(m.upper(), m.upper())
+                    for (m, y) in available_periods
+                    if int(y) == selected_year
+                ]
+
+                if not months_for_year:
+                    st.info(f"Tidak ada data untuk tahun {selected_year}.")
+                    return
+
+                months_for_year = sorted(
+                    set(months_for_year),
+                    key=lambda m: MONTH_ORDER.get(m, 0)
+                )
+
+
+                selected_month = st.selectbox(
+                    "Pilih Bulan",
+                    options=months_for_year,
+                    format_func=lambda x: x.capitalize(),
+                    index=len(months_for_year) - 1,
+                    key="detail_satker_month"
+                )
+
+                selected_key = (selected_month, str(selected_year))
+                df = st.session_state.data_storage.get(selected_key)
+
+                if df is None or df.empty:
+                    st.info("Data detail satker tidak tersedia.")
+                    return
+
+                df = df.copy()
+
+                # ===============================
+                # NORMALISASI & FILTER BA
+                # ===============================
+                if "Kode BA" in df.columns:
+                    df["Kode BA"] = df["Kode BA"].apply(normalize_kode_ba)
+
+                df = apply_filter_ba(df)
+
+                if df.empty:
+                    st.info("Tidak ada data sesuai filter BA.")
+                    return
+
+                # ===============================
+                # MODE TAMPILAN
+                # ===============================
+                view_mode = st.radio(
+                    "Tampilan",
+                    options=["aspek", "komponen"],
+                    format_func=lambda x: "Berdasarkan Aspek" if x == "aspek" else "Berdasarkan Komponen",
+                    horizontal=True,
+                    key="detail_view_mode"
+                )
+
+                # ===============================
+                # KOLOM IDENTITAS (WAJIB)
+                # ===============================
+                base_cols = [
+                    "Uraian Satker-RINGKAS",
+                    "Kode Satker",
+                    "Peringkat",
+                    "Kode BA"
+                ]
+
+                if view_mode == "aspek":
+                    value_cols = [
+                        "Kualitas Perencanaan Anggaran",
+                        "Kualitas Pelaksanaan Anggaran",
+                        "Kualitas Hasil Pelaksanaan Anggaran",
+                        "Nilai Total",
                         "Dispensasi SPM (Pengurang)",
                         "Nilai Akhir (Nilai Total/Konversi Bobot)"
                     ]
+
+                    df_display = df[base_cols + value_cols].copy()
+
+                else:
+                    component_cols = [
+                        "Revisi DIPA",
+                        "Deviasi Halaman III DIPA",
+                        "Penyerapan Anggaran",
+                        "Belanja Kontraktual",
+                        "Penyelesaian Tagihan",
+                        "Pengelolaan UP dan TUP",
+                        "Capaian Output"
+                    ]
+
+                    value_cols = (
+                        component_cols +
+                        [
+                            "NIlai Total",
+                            "Dispensasi SPM (Pengurang)",
+                            "Nilai Akhir (Nilai Total/Konversi Bobot)"
+                        ]
+                    )
+
+                    for c in component_cols:
+                        if c not in df.columns:
+                            df[c] = 0
+
+                    cols_exist = [c for c in (base_cols + value_cols) if c in df.columns]
+                    df_display = df[cols_exist].copy()
+
+
+                # ===============================
+                # SEARCH
+                # ===============================
+                search_query = st.text_input(
+                    "🔎 Cari (ketik untuk filter di semua kolom)",
+                    value="",
+                    key="detail_satker_search"
                 )
 
-                for c in component_cols:
-                    if c not in df.columns:
-                        df[c] = 0
+                if search_query:
+                    q = search_query.lower()
+                    mask = df_display.apply(
+                        lambda r: r.astype(str).str.lower().str.contains(q, na=False).any(),
+                        axis=1
+                    )
+                    df_display = df_display[mask].copy()
 
-                cols_exist = [c for c in (base_cols + value_cols) if c in df.columns]
-                df_display = df[cols_exist].copy()
-
-
-            # ===============================
-            # SEARCH
-            # ===============================
-            search_query = st.text_input(
-                "🔎 Cari (ketik untuk filter di semua kolom)",
-                value="",
-                key="detail_satker_search"
-            )
-
-            if search_query:
-                q = search_query.lower()
-                mask = df_display.apply(
-                    lambda r: r.astype(str).str.lower().str.contains(q, na=False).any(),
-                    axis=1
+                # ===============================
+                # FORMAT KODE
+                # ===============================
+                df_display["Kode Satker"] = (
+                    df_display["Kode Satker"]
+                    .astype(str)
+                    .str.replace(r"\.0$", "", regex=True)
+                    .str.zfill(6)
                 )
-                df_display = df_display[mask].copy()
 
-            # ===============================
-            # FORMAT KODE
-            # ===============================
-            df_display["Kode Satker"] = (
-                df_display["Kode Satker"]
-                .astype(str)
-                .str.replace(r"\.0$", "", regex=True)
-                .str.zfill(6)
-            )
+                df_display["Kode BA"] = (
+                    df_display["Kode BA"]
+                    .astype(str)
+                    .str.replace(r"\.0$", "", regex=True)
+                )
 
-            df_display["Kode BA"] = (
-                df_display["Kode BA"]
-                .astype(str)
-                .str.replace(r"\.0$", "", regex=True)
-            )
+                # ===============================
+                # TAMPILKAN DENGAN AGGRID
+                # ===============================
+                render_table_pin_satker(df_display)
+            
+    elif st.session_state.main_menu == "Digitalisasi":
 
-            # ===============================
-            # TAMPILKAN DENGAN AGGRID
-            # ===============================
-            render_table_pin_satker(df_display)
+        st.markdown("---")
+        st.header("💻 Dashboard Digitalisasi")
+
+        digital_tab = st.radio(
+            "Pilih Bagian Digitalisasi",
+            ["📊 Chart Utama", "📋 Tabel Detail"],
+            horizontal=True
+        )
+
+        if digital_tab == "📊 Chart Utama":
+            st.write("chart CMS, DIGIPAY, KKP, dll")
+
+        elif digital_tab == "📋 Tabel Detail":
+            st.write("tabel digitalisasi")            
+
 
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
@@ -8189,49 +8214,7 @@ def main():
         st.session_state.get("auto_loaded_digipay")
     ):
         st.success("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
-
-    # ===============================
-    # ROUTING MENU
-    # ===============================
-
-    if st.session_state.get("main_menu") == "IKPA":
-
-        st.subheader("📊 Menu IKPA")
-        sub_menu = st.radio(
-            "Pilih Bagian IKPA",
-            ["Highlights Satker", "Highlights BA", "Data Detail Satker"],
-            horizontal=True
-        )
-
-        if sub_menu == "Highlights Satker":
-            # >>> Pindahkan kode highlights satker kamu ke sini
-            pass
-
-        elif sub_menu == "Highlights BA":
-            # >>> Pindahkan kode highlights BA kamu ke sini
-            pass
-
-        elif sub_menu == "Data Detail Satker":
-            # >>> Pindahkan kode data detail satker kamu ke sini
-            pass
-
-
-    elif st.session_state.get("main_menu") == "Digitalisasi":
-
-        st.subheader("💻 Menu Digitalisasi")
-        sub_menu_digital = st.radio(
-            "Pilih Bagian Digitalisasi",
-            ["Chart Utama", "Tabel Detail"],
-            horizontal=True
-        )
-
-        if sub_menu_digital == "Chart Utama":
-            # >>> taruh plotly chart utama di sini
-            pass
-
-        elif sub_menu_digital == "Tabel Detail":
-            # >>> taruh AgGrid / tabel digitalisasi di sini
-            pass
+        
 
     # ============================================================
     # Sidebar + Routing halaman
