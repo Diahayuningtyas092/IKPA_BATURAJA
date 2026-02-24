@@ -2988,12 +2988,12 @@ def page_dashboard():
     # MENU UTAMA
     # ===============================
     # ===============================
-    # MENU CARD SOFT BLUE (STABIL)
+    # MENU CARD SOFT BLUE (FINAL FIX)
     # ===============================
 
-    # 1️⃣ WAJIB: INIT PALING ATAS
+    # INIT → DEFAULT TIDAK ADA YANG AKTIF
     if "main_menu" not in st.session_state:
-        st.session_state["main_menu"] = "IKPA"
+        st.session_state["main_menu"] = None
 
     st.markdown("### Pilih Menu")
 
@@ -3007,16 +3007,16 @@ def page_dashboard():
         if st.button("💻 Digitalisasi", use_container_width=True, key="btn_digital"):
             st.session_state["main_menu"] = "Digitalisasi"
 
-    # 2️⃣ CEK STATUS AKTIF (AMAN)
-    is_ikpa = st.session_state.get("main_menu") == "IKPA"
-    is_digital = st.session_state.get("main_menu") == "Digitalisasi"
 
-    # 3️⃣ STYLE
+    is_ikpa = st.session_state["main_menu"] == "IKPA"
+    is_digital = st.session_state["main_menu"] == "Digitalisasi"
+
     st.markdown(f"""
     <style>
 
     /* Base */
-    div.stButton > button {{
+    button[data-testid="baseButton-btn_ikpa"],
+    button[data-testid="baseButton-btn_digital"] {{
         height: 110px;
         border-radius: 30px;
         border: 1px solid #dbeafe;
@@ -3028,16 +3028,17 @@ def page_dashboard():
     }}
 
     /* Hover */
-    div.stButton > button:hover {{
+    button[data-testid="baseButton-btn_ikpa"]:hover,
+    button[data-testid="baseButton-btn_digital"]:hover {{
         transform: translateY(-4px);
         box-shadow: 0 8px 20px rgba(59,130,246,0.15);
     }}
 
     /* IKPA ACTIVE */
-    {"div.stButton:nth-of-type(1) > button { background: linear-gradient(135deg,#e0f2fe,#bae6fd) !important; color:#0c4a6e !important; border:1px solid #7dd3fc !important; box-shadow:0 10px 25px rgba(59,130,246,0.25); }" if is_ikpa else ""}
+    {"button[data-testid='baseButton-btn_ikpa'] { background: linear-gradient(135deg,#e0f2fe,#bae6fd) !important; border:1px solid #7dd3fc !important; color:#0c4a6e !important; box-shadow:0 12px 25px rgba(59,130,246,0.25); }" if is_ikpa else ""}
 
     /* DIGITAL ACTIVE */
-    {"div.stButton:nth-of-type(2) > button { background: linear-gradient(135deg,#e0f2fe,#bae6fd) !important; color:#0c4a6e !important; border:1px solid #7dd3fc !important; box-shadow:0 10px 25px rgba(59,130,246,0.25); }" if is_digital else ""}
+    {"button[data-testid='baseButton-btn_digital'] { background: linear-gradient(135deg,#e0f2fe,#bae6fd) !important; border:1px solid #7dd3fc !important; color:#0c4a6e !important; box-shadow:0 12px 25px rgba(59,130,246,0.25); }" if is_digital else ""}
 
     </style>
     """, unsafe_allow_html=True)
@@ -3179,8 +3180,7 @@ def page_dashboard():
     # ROUTING MENU UTAMA
     # ===============================
 
-    if st.session_state.main_menu == "IKPA":
-
+    if st.session_state.get("main_menu") == "IKPA": 
         st.markdown("---")
 
         pass
