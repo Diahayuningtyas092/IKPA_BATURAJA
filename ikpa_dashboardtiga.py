@@ -2980,6 +2980,22 @@ def page_dashboard():
     }
     </style>
     """, unsafe_allow_html=True)
+    
+    # ===============================
+    # MENU UTAMA (2 TOMBOL)
+    # ===============================
+    if "main_menu" not in st.session_state:
+        st.session_state.main_menu = "IKPA"
+
+    col1, col2 = st.columns([1,1])
+
+    with col1:
+        if st.button("📊 IKPA", use_container_width=True):
+            st.session_state.main_menu = "IKPA"
+
+    with col2:
+        if st.button("💻 Digitalisasi", use_container_width=True):
+            st.session_state.main_menu = "Digitalisasi"
 
 
     # ===============================
@@ -8174,7 +8190,48 @@ def main():
     ):
         st.success("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
 
+    # ===============================
+    # ROUTING MENU
+    # ===============================
 
+    if st.session_state.get("main_menu") == "IKPA":
+
+        st.subheader("📊 Menu IKPA")
+        sub_menu = st.radio(
+            "Pilih Bagian IKPA",
+            ["Highlights Satker", "Highlights BA", "Data Detail Satker"],
+            horizontal=True
+        )
+
+        if sub_menu == "Highlights Satker":
+            # >>> Pindahkan kode highlights satker kamu ke sini
+            pass
+
+        elif sub_menu == "Highlights BA":
+            # >>> Pindahkan kode highlights BA kamu ke sini
+            pass
+
+        elif sub_menu == "Data Detail Satker":
+            # >>> Pindahkan kode data detail satker kamu ke sini
+            pass
+
+
+    elif st.session_state.get("main_menu") == "Digitalisasi":
+
+        st.subheader("💻 Menu Digitalisasi")
+        sub_menu_digital = st.radio(
+            "Pilih Bagian Digitalisasi",
+            ["Chart Utama", "Tabel Detail"],
+            horizontal=True
+        )
+
+        if sub_menu_digital == "Chart Utama":
+            # >>> taruh plotly chart utama di sini
+            pass
+
+        elif sub_menu_digital == "Tabel Detail":
+            # >>> taruh AgGrid / tabel digitalisasi di sini
+            pass
 
     # ============================================================
     # Sidebar + Routing halaman
