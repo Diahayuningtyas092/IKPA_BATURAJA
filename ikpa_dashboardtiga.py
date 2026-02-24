@@ -2982,26 +2982,43 @@ def page_dashboard():
     """, unsafe_allow_html=True)
     
     st.markdown("""
-        <style>
-        .menu-card {
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid #e0e0e0;
-            transition: 0.2s ease-in-out;
-        }
-        .menu-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-        }
-        .active-card {
-            background-color: #4F46E5;
-            color: white;
-        }
-        </style>
-        """, unsafe_allow_html=True)
+    <style>
+    .menu-container {
+        margin-top: 10px;
+        margin-bottom: 20px;
+    }
+    .menu-card {
+        padding: 30px 20px;
+        border-radius: 16px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        transition: all 0.25s ease;
+        cursor: pointer;
+    }
+    .menu-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+    }
+    .menu-title {
+        font-size: 22px;
+        font-weight: 700;
+    }
+    .menu-sub {
+        font-size: 14px;
+        color: #6b7280;
+        margin-top: 6px;
+    }
+    .active-card {
+        background: linear-gradient(135deg, #4F46E5, #6366F1);
+        color: white !important;
+        border: none !important;
+    }
+    .active-card .menu-sub {
+        color: #e0e7ff !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     
     st.markdown("### Pilih Menu")
 
@@ -3010,12 +3027,16 @@ def page_dashboard():
 
     col1, col2 = st.columns(2)
 
+    # IKPA CARD
     with col1:
-        if st.button("📊 IKPA", use_container_width=True):
+        ikpa_active = "active-card" if st.session_state.main_menu == "IKPA" else ""
+        if st.button("📊 IKPA\nAnalisis Kinerja Satker", use_container_width=True):
             st.session_state.main_menu = "IKPA"
 
+    # DIGITAL CARD
     with col2:
-        if st.button("💻 Digitalisasi", use_container_width=True):
+        digital_active = "active-card" if st.session_state.main_menu == "Digitalisasi" else ""
+        if st.button("💻 Digitalisasi\nCMS • DIGIPAY • KKP", use_container_width=True):
             st.session_state.main_menu = "Digitalisasi"
 
 
