@@ -570,36 +570,29 @@ def render_table_pin_satker(df):
         filtered_df = filtered_df.drop(columns="__rowNum__")
 
     # ===== STYLE MINI BUTTON =====
-    st.markdown(
-        """
+    st.markdown("""
         <style>
         div.stDownloadButton {
-            margin-top: -38px !important;
-            margin-bottom: -6px !important;
             text-align: right;
         }
 
         div.stDownloadButton > button {
-            background: #242424 !important;
-            color: #d6d6d6 !important;
-            border: 1px solid #3a3a3a !important;
-            border-radius: 4px !important;
+            background: #4F46E5 !important;
+            color: white !important;
+            border: none !important;
+            border-radius: 20px !important;
 
-            font-size: 8.5px !important;
-            padding: 1px 6px !important;
-            height: 20px !important;
-            line-height: 1 !important;
+            font-size: 11px !important;
+            padding: 6px 18px !important;
+            height: 36px !important;
+            font-weight: 500 !important;
         }
 
         div.stDownloadButton > button:hover {
-            background: #303030 !important;
-            color: #ffffff !important;
-            border: 1px solid #555 !important;
+            background: #4338CA !important;
         }
         </style>
-        """,
-        unsafe_allow_html=True
-    )
+        """, unsafe_allow_html=True)
 
     # ===== EXPORT BUTTON =====
     st.download_button(
