@@ -2983,69 +2983,73 @@ def page_dashboard():
     
     
     
+    st.markdown("""
+    <style>
+
+    /* Styling dasar tombol */
+    div.stButton > button {
+        height: 90px;
+        border-radius: 18px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        font-size: 18px;
+        font-weight: 600;
+        transition: all 0.25s ease;
+    }
+
+    /* Hover */
+    div.stButton > button:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 12px 25px rgba(0,0,0,0.08);
+    }
+
+    /* Tombol pertama aktif (IKPA) */
+    div[data-testid="column"]:nth-of-type(1) div.stButton > button {
+        %s
+    }
+
+    /* Tombol kedua aktif (Digitalisasi) */
+    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
+        %s
+    }
+
+    </style>
+    """ % (
+
+        # Style untuk tombol IKPA
+        """
+        background: linear-gradient(135deg, #4F46E5, #6366F1);
+        color: white;
+        border: none;
+        """ if st.session_state.get("main_menu") == "IKPA" else "",
+
+        # Style untuk tombol Digitalisasi
+        """
+        background: linear-gradient(135deg, #4F46E5, #6366F1);
+        color: white;
+        border: none;
+        """ if st.session_state.get("main_menu") == "Digitalisasi" else ""
+
+    ), unsafe_allow_html=True)
     
-    # ===============================
-    # MENU UTAMA
-    # ===============================
-    # ===============================
-    # MENU CARD SOFT BLUE (FINAL FIX)
-    # ===============================
+    st.markdown("##Pilih Menu")
 
-    # INIT → DEFAULT TIDAK ADA YANG AKTIF
     if "main_menu" not in st.session_state:
-        st.session_state["main_menu"] = None
-
-    st.markdown("### Pilih Menu")
+        st.session_state.main_menu = "IKPA"
 
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("📊 IKPA", use_container_width=True, key="btn_ikpa"):
-            st.session_state["main_menu"] = "IKPA"
+        if st.button("📊 IKPA", use_container_width=True):
+            st.session_state.main_menu = "IKPA"
 
     with col2:
-        if st.button("💻 Digitalisasi", use_container_width=True, key="btn_digital"):
-            st.session_state["main_menu"] = "Digitalisasi"
-
-
-    is_ikpa = st.session_state["main_menu"] == "IKPA"
-    is_digital = st.session_state["main_menu"] == "Digitalisasi"
-
-    st.markdown(f"""
-    <style>
-
-    /* Base */
-    button[data-testid="baseButton-btn_ikpa"],
-    button[data-testid="baseButton-btn_digital"] {{
-        height: 110px;
-        border-radius: 30px;
-        border: 1px solid #dbeafe;
-        background: #f1f5f9;
-        font-size: 20px;
-        font-weight: 600;
-        color: #1e293b;
-        transition: all 0.25s ease;
-    }}
-
-    /* Hover */
-    button[data-testid="baseButton-btn_ikpa"]:hover,
-    button[data-testid="baseButton-btn_digital"]:hover {{
-        transform: translateY(-4px);
-        box-shadow: 0 8px 20px rgba(59,130,246,0.15);
-    }}
-
-    /* IKPA ACTIVE */
-    {"button[data-testid='baseButton-btn_ikpa'] { background: linear-gradient(135deg,#e0f2fe,#bae6fd) !important; border:1px solid #7dd3fc !important; color:#0c4a6e !important; box-shadow:0 12px 25px rgba(59,130,246,0.25); }" if is_ikpa else ""}
-
-    /* DIGITAL ACTIVE */
-    {"button[data-testid='baseButton-btn_digital'] { background: linear-gradient(135deg,#e0f2fe,#bae6fd) !important; border:1px solid #7dd3fc !important; color:#0c4a6e !important; box-shadow:0 12px 25px rgba(59,130,246,0.25); }" if is_digital else ""}
-
-    </style>
-    """, unsafe_allow_html=True)
-    
+        if st.button("💻 Digitalisasi", use_container_width=True):
+            st.session_state.main_menu = "Digitalisasi"
+            
     
     # ===============================
-    # VALIDASI & PILIH PERIODE 
+    # VALIDASI & PILIH PERIODE (FINAL)
     # ===============================
 
     data_storage = st.session_state.get("data_storage", {})
@@ -3180,7 +3184,8 @@ def page_dashboard():
     # ROUTING MENU UTAMA
     # ===============================
 
-    if st.session_state.get("main_menu") == "IKPA": 
+    if st.session_state.main_menu == "IKPA":
+
         st.markdown("---")
 
         pass
