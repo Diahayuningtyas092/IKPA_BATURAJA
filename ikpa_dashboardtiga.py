@@ -2986,53 +2986,55 @@ def page_dashboard():
     st.markdown("""
     <style>
 
-    /* Styling dasar tombol */
+    /* Base button */
     div.stButton > button {
-        height: 90px;
-        border-radius: 18px;
-        border: 1px solid #e5e7eb;
-        background: white;
+        height: 95px;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
         font-size: 18px;
         font-weight: 600;
+        color: #1e293b;
         transition: all 0.25s ease;
     }
 
-    /* Hover */
+    /* Hover effect */
     div.stButton > button:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 12px 25px rgba(0,0,0,0.08);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(59,130,246,0.15);
+        border: 1px solid #93c5fd;
     }
 
-    /* Tombol pertama aktif (IKPA) */
-    div[data-testid="column"]:nth-of-type(1) div.stButton > button {
-        %s
-    }
+    /* IKPA active */
+    %s
 
-    /* Tombol kedua aktif (Digitalisasi) */
-    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
-        %s
-    }
+    /* Digitalisasi active */
+    %s
 
     </style>
     """ % (
 
-        # Style untuk tombol IKPA
-        """
-        background: linear-gradient(135deg, #4F46E5, #6366F1);
-        color: white;
-        border: none;
-        """ if st.session_state.get("main_menu") == "IKPA" else "",
+    """
+    div[data-testid="column"]:nth-of-type(1) div.stButton > button {
+        background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important;
+        border: 1px solid #7dd3fc !important;
+        color: #0c4a6e !important;
+        box-shadow: 0 10px 25px rgba(59,130,246,0.25);
+    }
+    """ if st.session_state.get("main_menu") == "IKPA" else "",
 
-        # Style untuk tombol Digitalisasi
-        """
-        background: linear-gradient(135deg, #4F46E5, #6366F1);
-        color: white;
-        border: none;
-        """ if st.session_state.get("main_menu") == "Digitalisasi" else ""
+    """
+    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
+        background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important;
+        border: 1px solid #7dd3fc !important;
+        color: #0c4a6e !important;
+        box-shadow: 0 10px 25px rgba(59,130,246,0.25);
+    }
+    """ if st.session_state.get("main_menu") == "Digitalisasi" else ""
 
     ), unsafe_allow_html=True)
     
-    st.markdown("##Pilih Menu")
+    st.markdown("### Pilih Menu")
 
     if "main_menu" not in st.session_state:
         st.session_state.main_menu = "IKPA"
