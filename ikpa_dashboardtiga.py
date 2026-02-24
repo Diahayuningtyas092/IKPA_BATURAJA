@@ -3171,6 +3171,7 @@ def page_dashboard():
         # HIGHLIGHTS
         # -------------------------
         if main_tab == "🎯 Highlights Satker":
+            st.markdown("---")
             st.markdown("## 🎯 Highlights Kinerja Satker")
 
             st.selectbox(
@@ -3277,6 +3278,7 @@ def page_dashboard():
             # ===============================
             # Kontrol Skala Chart
             # ===============================
+            st.markdown("---")
             st.markdown("###### Atur Skala Nilai (Sumbu Y)")
             col_min, col_max = st.columns(2)
             with col_min:
