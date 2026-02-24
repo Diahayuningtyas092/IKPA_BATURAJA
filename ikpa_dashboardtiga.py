@@ -2981,44 +2981,51 @@ def page_dashboard():
     </style>
     """, unsafe_allow_html=True)
     
-    st.markdown("Pilih Menu")
-
-    if "main_menu" not in st.session_state:
-        st.session_state.main_menu = "IKPA"
-
     st.markdown("""
     <style>
-    .card {
-        padding: 28px;
-        border-radius: 16px;
-        border: 1px solid #e5e7eb;
-        text-align: center;
-        transition: all 0.25s ease;
-        cursor: pointer;
-        background: white;
+    /* Container jarak */
+    div.stButton {
+        margin-top: 5px;
     }
-    .card:hover {
+
+    /* Ubah bentuk tombol jadi card */
+    div.stButton > button {
+        height: 90px;
+        border-radius: 18px;
+        border: 1px solid #e5e7eb;
+        background: white;
+        font-size: 18px;
+        font-weight: 600;
+        transition: all 0.25s ease;
+    }
+
+    /* Hover effect */
+    div.stButton > button:hover {
         transform: translateY(-6px);
         box-shadow: 0 12px 25px rgba(0,0,0,0.08);
-    }
-    .active {
-        background: linear-gradient(135deg, #4F46E5, #6366F1);
-        color: white;
         border: none;
+    }
+
+    /* Aktif */
+    .active-menu > button {
+        background: linear-gradient(135deg, #4F46E5, #6366F1) !important;
+        color: white !important;
+        border: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
+    
+    st.markdown("Pilih Menu")
+    tab1, tab2 = st.tabs([
+        "📊 IKPA",
+        "💻 Digitalisasi"
+    ])
 
-    col1, col2 = st.columns(2)
+    with tab1:
+        st.session_state.main_menu = "IKPA"
 
-    with col1:
-        if st.button("📊 IKPA\nAnalisis Kinerja Satker", use_container_width=True):
-            st.session_state.main_menu = "IKPA"
-
-    with col2:
-        if st.button("💻 Digitalisasi\nCMS • DIGIPAY • KKP", use_container_width=True):
-            st.session_state.main_menu = "Digitalisasi"
-
+    with tab2:
+        st.session_state.main_menu = "Digitalisasi"
 
     # ===============================
     # VALIDASI & PILIH PERIODE (FINAL)
