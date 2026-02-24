@@ -3016,16 +3016,20 @@ def page_dashboard():
     """, unsafe_allow_html=True)
     
     st.markdown("Pilih Menu")
-    tab1, tab2 = st.tabs([
-        "📊 IKPA",
-        "💻 Digitalisasi"
-    ])
 
-    with tab1:
+    if "main_menu" not in st.session_state:
         st.session_state.main_menu = "IKPA"
 
-    with tab2:
-        st.session_state.main_menu = "Digitalisasi"
+    col1, col2 = st.columns(2)
+
+    with col1:
+        if st.button("📊 IKPA\nAnalisis Kinerja Satker", use_container_width=True):
+            st.session_state.main_menu = "IKPA"
+
+    with col2:
+        if st.button("💻 Digitalisasi\nCMS • DIGIPAY • KKP", use_container_width=True):
+            st.session_state.main_menu = "Digitalisasi"
+        
 
     # ===============================
     # VALIDASI & PILIH PERIODE (FINAL)
