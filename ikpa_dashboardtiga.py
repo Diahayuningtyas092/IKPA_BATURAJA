@@ -4538,37 +4538,72 @@ def page_dashboard():
             
 
         elif digital_tab == "📋 Tabel Detail":
-            st.markdown("## 📋 Tabel Digipay per Bulan")
+            st.markdown("## 📋 Tabel Digipay")
 
             if "digipay_master" not in st.session_state:
                 st.warning("Data Digipay belum tersedia")
             else:
-                df_raw = st.session_state.digipay_master
+                df_raw = st.session_state.digipay_master.copy()
 
-                df_raw["TANGGAL"] = pd.to_datetime(df_raw["TANGGAL"], errors="coerce")
+                # Pastikan numerik
+                df_raw["NOMINVOICE"] = pd.to_numeric(df_raw["NOMINVOICE"], errors="coerce")
 
-                tahun_list = sorted(
-                    df_raw["TANGGAL"].dt.year.dropna().unique()
-                )
-
+                # Pilih Tahun
+                tahun_list = sorted(df_raw["TAHUN"].dropna().unique())
                 tahun = st.selectbox("Pilih Tahun", tahun_list)
 
+                # Filter Tahun
+                df_raw = df_raw[df_raw["TAHUN"] == tahun]
+
+                # Pilih Jenis Tampilan
                 tipe = st.radio(
                     "Tampilkan",
                     ["Jumlah Transaksi", "Nilai Transaksi"],
                     horizontal=True
                 )
 
-                tipe_param = "trx" if tipe == "Jumlah Transaksi" else "nilai"
+                # =========================
+                # AGREGASI
+                # =========================
+                if tipe == "Jumlah Transaksi":
+                    df_grouped = (
+                        df_raw.groupby(["NMSATKER", "BULAN"])["NOINVOICE"]
+                        .nunique()
+                        .reset_index(name="Jumlah Transaksi")
+                    )
+                    value_col = "Jumlah Transaksi"
 
-                df_summary = generate_digipay_monthly_from_session(
-                    df_raw,
-                    tahun_filter=tahun,
-                    tipe=tipe_param
-                )
+                else:
+                    df_grouped = (
+                        df_raw.groupby(["NMSATKER", "BULAN"])["NOMINVOICE"]
+                        .sum()
+                        .reset_index(name="Nilai Transaksi")
+                    )
+                    value_col = "Nilai Transaksi"
 
-                render_table_pin_satker(df_summary)
+                # =========================
+                # PIVOT BULAN → KOLOM
+                # =========================
+                df_pivot = df_grouped.pivot(
+                    index="NMSATKER",
+                    columns="BULAN",
+                    values=value_col
+                ).fillna(0)
 
+                # Urutkan bulan Jan–Des
+                urutan_bulan = [
+                    "JANUARI","FEBRUARI","MARET","APRIL","MEI","JUNI",
+                    "JULI","AGUSTUS","SEPTEMBER","OKTOBER","NOVEMBER","DESEMBER"
+                ]
+
+                kolom_ada = [b for b in urutan_bulan if b in df_pivot.columns]
+                df_pivot = df_pivot[kolom_ada]
+
+                df_pivot = df_pivot.reset_index()
+
+                render_table_pin_satker(df_pivot)
+        
+        
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
 def menu_ews_satker():
