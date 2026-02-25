@@ -2939,6 +2939,79 @@ def format_ikpa_display(x):
     except:
         return x
 
+
+#Agregasi DIGIPAY  
+def generate_digipay_monthly(df_raw, tahun_filter=None, tipe="trx"):
+    df = df_raw.copy()
+
+    REQUIRED = ["SATKER", "NOINVOICE", "NOMINVOICE", "TANGGAL"]
+    for col in REQUIRED:
+        if col not in df.columns:
+            raise ValueError(f"Kolom {col} tidak ditemukan")
+
+    # =========================
+    # Bersihkan data
+    # =========================
+    df["NOMINVOICE"] = (
+        df["NOMINVOICE"]
+        .astype(str)
+        .str.replace(r"[^\d]", "", regex=True)
+        .replace("", "0")
+        .astype(float)
+    )
+
+    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
+    df["Tahun"] = df["TANGGAL"].dt.year
+    df["Bulan"] = df["TANGGAL"].dt.month
+
+    if tahun_filter:
+        df = df[df["Tahun"] == tahun_filter]
+
+    # =========================
+    # AGREGASI
+    # =========================
+    if tipe == "trx":
+        agg_df = (
+            df.groupby(["SATKER", "Bulan"])
+            .agg(Jumlah_Transaksi=("NOINVOICE", "nunique"))
+            .reset_index()
+        )
+        value_col = "Jumlah_Transaksi"
+
+    else:
+        agg_df = (
+            df.groupby(["SATKER", "Bulan"])
+            .agg(Nilai_Transaksi=("NOMINVOICE", "sum"))
+            .reset_index()
+        )
+        value_col = "Nilai_Transaksi"
+
+    # =========================
+    # PIVOT JAN–DES
+    # =========================
+    pivot = agg_df.pivot(
+        index="SATKER",
+        columns="Bulan",
+        values=value_col
+    ).fillna(0)
+
+    # Pastikan urut 1–12
+    pivot = pivot.reindex(columns=range(1,13), fill_value=0)
+
+    # Rename bulan
+    bulan_map = {
+        1:"JAN",2:"FEB",3:"MAR",4:"APR",
+        5:"MEI",6:"JUN",7:"JUL",8:"AGU",
+        9:"SEP",10:"OKT",11:"NOV",12:"DES"
+    }
+
+    pivot.columns = [bulan_map[i] for i in pivot.columns]
+
+    pivot = pivot.reset_index()
+
+    return pivot
+
+
 # HALAMAN 1: DASHBOARD UTAMA
 def page_dashboard():
     
@@ -4474,8 +4547,36 @@ def page_dashboard():
             st.write("chart CMS, DIGIPAY, KKP, dll")
 
         elif digital_tab == "📋 Tabel Detail":
-            st.write("tabel digitalisasi")            
+            st.markdown("## 📋 Tabel Digipay per Bulan")
 
+            uploaded_file = st.file_uploader(
+                "Upload Data Digipay Mentah",
+                type=["xlsx"]
+            )
+
+            if uploaded_file:
+                df_raw = pd.read_excel(uploaded_file)
+
+                tahun = st.selectbox(
+                    "Pilih Tahun",
+                    sorted(pd.to_datetime(df_raw["TANGGAL"], errors="coerce").dt.year.dropna().unique())
+                )
+
+                tipe = st.radio(
+                    "Tampilkan",
+                    ["Jumlah Transaksi", "Nilai Transaksi"]
+                )
+
+                tipe_param = "trx" if tipe == "Jumlah Transaksi" else "nilai"
+
+                df_summary = generate_digipay_monthly(
+                    df_raw,
+                    tahun_filter=tahun,
+                    tipe=tipe_param
+                )
+
+                render_table_pin_satker(df_summary)
+            
 
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
