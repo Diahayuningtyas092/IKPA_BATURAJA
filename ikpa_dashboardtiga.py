@@ -4584,10 +4584,11 @@ def page_dashboard():
 
                 # Pilih Jenis Tampilan
                 tipe = st.radio(
+                    "Tampilkan",
                     ["Jumlah Transaksi", "Nilai Transaksi"],
-                    horizontal=True
+                    index=0,
+                    key="digipay_tipe_radio"
                 )
-
                 # =========================
                 # AGREGASI
                 # =========================
