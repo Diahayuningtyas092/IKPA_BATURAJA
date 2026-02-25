@@ -3029,7 +3029,7 @@ def page_dashboard():
         st.info("🔄 Data baru dimuat, mempersiapkan grafik...")
         st.rerun()
 
-    st.title("📊 Dashboard Utama Kinerja Keuangan<br>Satker Mitra KPPN Baturaja")
+    st.title("Dashboard Utama Kinerja Keuangan Satker Mitra KPPN Baturaja")
     
     st.markdown("""
     <style>
