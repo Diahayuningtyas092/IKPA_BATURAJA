@@ -7108,6 +7108,26 @@ def page_admin():
                         )
 
                     st.session_state.digipay_master = master_df.copy()
+                    
+                    # ==========================================
+                    # BERSIHKAN DATABASE DIGIPAY FINAL
+                    # ==========================================
+
+                    clean_df = st.session_state.digipay_master.copy()
+
+                    # 1️⃣ Potong mulai dari kolom TAHUN
+                    if "TAHUN" in clean_df.columns:
+                        start_index = clean_df.columns.get_loc("TAHUN")
+                        clean_df = clean_df.iloc[:, start_index:]
+
+                    # 2️⃣ Drop kolom UNNAMED kalau masih ada
+                    clean_df = clean_df.loc[:, ~clean_df.columns.str.contains("UNNAMED", case=False)]
+
+                    # 3️⃣ Drop kolom kosong total
+                    clean_df = clean_df.dropna(axis=1, how="all")
+
+                    # Simpan kembali yang sudah bersih
+                    st.session_state.digipay_master = clean_df.copy()
 
                 # ====================================
                 # SIMPAN OTOMATIS KE GITHUB
