@@ -6965,24 +6965,16 @@ def page_admin():
                     .str.strip()
                     .str.upper()
                 )
-
+                
                 # ==========================================
-                #  HAPUS KOLOM UNNAMED & KOLOM KOSONG
+                # 🔥 POTONG KOLOM SEBELUM "TAHUN"
                 # ==========================================
 
-                # Hapus kolom UNNAMED
-                df_all = df_all.loc[:, ~df_all.columns.str.contains("UNNAMED", case=False)]
-
-                # Hapus kolom yang seluruh isinya NaN
-                df_all = df_all.dropna(axis=1, how="all")
-
-                # Hapus kolom yang seluruh isinya kosong / spasi
-                df_all = df_all.loc[
-                    :, 
-                    ~(df_all.astype(str)
-                        .apply(lambda col: col.str.strip().eq("").all()))
-                ]
-
+                if "TAHUN" in df_all.columns:
+                    start_index = df_all.columns.get_loc("TAHUN")
+                    df_all = df_all.iloc[:, start_index:]
+                    
+        
                 # ====================================
                 #  PERBAIKI LEADING ZERO OTOMATIS
                 # ====================================
