@@ -6966,8 +6966,25 @@ def page_admin():
                     .str.upper()
                 )
 
+                # ==========================================
+                #  HAPUS KOLOM UNNAMED & KOLOM KOSONG
+                # ==========================================
+
+                # Hapus kolom UNNAMED
+                df_all = df_all.loc[:, ~df_all.columns.str.contains("UNNAMED", case=False)]
+
+                # Hapus kolom yang seluruh isinya NaN
+                df_all = df_all.dropna(axis=1, how="all")
+
+                # Hapus kolom yang seluruh isinya kosong / spasi
+                df_all = df_all.loc[
+                    :, 
+                    ~(df_all.astype(str)
+                        .apply(lambda col: col.str.strip().eq("").all()))
+                ]
+
                 # ====================================
-                # 🔥 PERBAIKI LEADING ZERO OTOMATIS
+                #  PERBAIKI LEADING ZERO OTOMATIS
                 # ====================================
 
                 # KDKANWIL → 2 digit
