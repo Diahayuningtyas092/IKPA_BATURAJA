@@ -1324,19 +1324,25 @@ def post_process_ikpa_satker(df, source="Upload"):
                 .astype(str)
                 .str.replace(",", ".", regex=False)
             )
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+            df[col] = (
+                df[col]
+                .astype(str)
+                .str.replace(".", "", regex=False)   # hapus pemisah ribuan
+                .str.replace(",", ".", regex=False)  # koma jadi titik
+            )
+
+            df[col] = pd.to_numeric(df[col], errors="coerce")
 
     # =========================
     # 🔤 2. NORMALISASI BULAN (FIX UTAMA)
     # =========================
     if "Bulan" in df.columns:
-        df["Bulan"] = (
-        df["Bulan"]
+        df["Kode Satker"] = (
+        df["Kode Satker"]
         .astype(str)
-        .str.upper()
-        .apply(lambda x: VALID_MONTHS.get(x, x))
+        .str.extract(r"(\d+)")[0]
+        .str.zfill(6)
     )
-
 
     # =========================
     # 3. RANKING (DENSE)
