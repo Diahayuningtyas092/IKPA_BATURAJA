@@ -4536,10 +4536,16 @@ def page_dashboard():
             st.write("chart CMS, DIGIPAY, KKP, dll")
 
         elif digital_tab == "📋 Tabel Detail":
+
             st.markdown("## 📋 Tabel Digipay per Bulan")
+
+            # 🔍 DEBUG SESSION
+            st.write("ISI SESSION:")
+            st.write(st.session_state.keys())
 
             if "data_storage_digipay" not in st.session_state:
                 st.warning("Data Digipay belum tersedia")
+                
             else:
                 df_raw = st.session_state.data_storage_digipay
 
