@@ -4558,29 +4558,30 @@ def page_dashboard():
                 # =========================
                 # NORMALISASI BULAN
                 # =========================
-                MONTH_FIX = {
-                    "JAN": "JANUARI", "JANUARI": "JANUARI", "1": "JANUARI", "01": "JANUARI",
-                    "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI", "2": "FEBRUARI", "02": "FEBRUARI",
-                    "MAR": "MARET", "MARET": "MARET", "3": "MARET", "03": "MARET",
-                    "APR": "APRIL", "APRIL": "APRIL", "4": "APRIL", "04": "APRIL",
-                    "MEI": "MEI", "5": "MEI", "05": "MEI",
-                    "JUN": "JUNI", "JUNI": "JUNI", "6": "JUNI", "06": "JUNI",
-                    "JUL": "JULI", "JULI": "JULI", "7": "JULI", "07": "JULI",
-                    "AGT": "AGUSTUS", "AGUSTUS": "AGUSTUS", "8": "AGUSTUS", "08": "AGUSTUS",
-                    "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER", "9": "SEPTEMBER", "09": "SEPTEMBER",
-                    "OKT": "OKTOBER", "OKTOBER": "OKTOBER", "10": "OKTOBER",
-                    "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER", "11": "NOVEMBER",
-                    "DES": "DESEMBER", "DESEMBER": "DESEMBER", "12": "DESEMBER"
+                # =========================
+                # NORMALISASI BULAN (ANGKA → NAMA)
+                # =========================
+
+                df_raw["BULAN"] = pd.to_numeric(df_raw["BULAN"], errors="coerce").astype("Int64")
+
+                MONTH_MAP = {
+                    1: "JANUARI",
+                    2: "FEBRUARI",
+                    3: "MARET",
+                    4: "APRIL",
+                    5: "MEI",
+                    6: "JUNI",
+                    7: "JULI",
+                    8: "AGUSTUS",
+                    9: "SEPTEMBER",
+                    10: "OKTOBER",
+                    11: "NOVEMBER",
+                    12: "DESEMBER"
                 }
 
-                df_raw["BULAN"] = (
-                    df_raw["BULAN"]
-                    .astype(str)
-                    .str.upper()
-                    .str.strip()
-                    .map(lambda x: MONTH_FIX.get(x, x))
-                )
-                
+                df_raw["BULAN"] = df_raw["BULAN"].map(MONTH_MAP)
+
+
 
                 # Pilih Jenis Tampilan
                 tipe = st.radio(
