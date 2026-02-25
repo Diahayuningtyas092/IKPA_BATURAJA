@@ -7009,6 +7009,21 @@ def page_admin():
                         .str.zfill(6)
                     )
 
+                # ==========================================
+                # AMBIL HANYA KOLOM RESMI DIGIPAY
+                # ==========================================
+
+                valid_columns = [
+                    "TAHUN","KDKANWIL","NMKANWIL","KDKPPN","NMKPPN",
+                    "KDSATKER","NMSATKER","NOINVOICE","NOMINVOICE",
+                    "NMVENDOR","STSBAYAR","TGLBAYAR","BULAN",
+                    "TGLINVOICE","KATEGORI","BANK_SATKER",
+                    "BANK_VENDOR","SUBKATEGORI","CARA BAYAR"
+                ]
+
+                df_all = df_all[[col for col in valid_columns if col in df_all.columns]]
+                
+                
                 # ====================================
                 # FILTER OTOMATIS KPPN 109 BATURAJA
                 # ====================================
@@ -7021,6 +7036,7 @@ def page_admin():
                 # UNIQUE KEY
                 # ====================================
                 UNIQUE_KEY = [
+                    "TAHUN",
                     "KDSATKER",
                     "NOINVOICE",
                     "NOMINVOICE",
