@@ -4534,26 +4534,21 @@ def page_dashboard():
 
         if digital_tab == "📊 Chart Utama":
             st.write("chart CMS, DIGIPAY, KKP, dll")
+            
+            
 
         elif digital_tab == "📋 Tabel Detail":
-
             st.markdown("## 📋 Tabel Digipay per Bulan")
 
-            # 🔍 DEBUG SESSION
-            st.write("ISI SESSION:")
-            st.write(st.session_state.keys())
-
-            if "data_storage_digipay" not in st.session_state:
+            if "digipay_master" not in st.session_state:
                 st.warning("Data Digipay belum tersedia")
-                
             else:
-                df_raw = st.session_state.data_storage_digipay
+                df_raw = st.session_state.digipay_master
+
+                df_raw["TANGGAL"] = pd.to_datetime(df_raw["TANGGAL"], errors="coerce")
 
                 tahun_list = sorted(
-                    pd.to_datetime(df_raw["TANGGAL"], errors="coerce")
-                    .dt.year
-                    .dropna()
-                    .unique()
+                    df_raw["TANGGAL"].dt.year.dropna().unique()
                 )
 
                 tahun = st.selectbox("Pilih Tahun", tahun_list)
