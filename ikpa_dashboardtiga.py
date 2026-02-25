@@ -4554,10 +4554,36 @@ def page_dashboard():
 
                 # Filter Tahun
                 df_raw = df_raw[df_raw["TAHUN"] == tahun]
+                
+                # =========================
+                # NORMALISASI BULAN
+                # =========================
+                MONTH_FIX = {
+                    "JAN": "JANUARI", "JANUARI": "JANUARI", "1": "JANUARI", "01": "JANUARI",
+                    "FEB": "FEBRUARI", "FEBRUARI": "FEBRUARI", "2": "FEBRUARI", "02": "FEBRUARI",
+                    "MAR": "MARET", "MARET": "MARET", "3": "MARET", "03": "MARET",
+                    "APR": "APRIL", "APRIL": "APRIL", "4": "APRIL", "04": "APRIL",
+                    "MEI": "MEI", "5": "MEI", "05": "MEI",
+                    "JUN": "JUNI", "JUNI": "JUNI", "6": "JUNI", "06": "JUNI",
+                    "JUL": "JULI", "JULI": "JULI", "7": "JULI", "07": "JULI",
+                    "AGT": "AGUSTUS", "AGUSTUS": "AGUSTUS", "8": "AGUSTUS", "08": "AGUSTUS",
+                    "SEP": "SEPTEMBER", "SEPTEMBER": "SEPTEMBER", "9": "SEPTEMBER", "09": "SEPTEMBER",
+                    "OKT": "OKTOBER", "OKTOBER": "OKTOBER", "10": "OKTOBER",
+                    "NOV": "NOVEMBER", "NOVEMBER": "NOVEMBER", "11": "NOVEMBER",
+                    "DES": "DESEMBER", "DESEMBER": "DESEMBER", "12": "DESEMBER"
+                }
+
+                df_raw["BULAN"] = (
+                    df_raw["BULAN"]
+                    .astype(str)
+                    .str.upper()
+                    .str.strip()
+                    .map(lambda x: MONTH_FIX.get(x, x))
+                )
+                
 
                 # Pilih Jenis Tampilan
                 tipe = st.radio(
-                    "Tampilkan",
                     ["Jumlah Transaksi", "Nilai Transaksi"],
                     horizontal=True
                 )
