@@ -1194,59 +1194,59 @@ def find_header_row_by_keywords(uploaded_file, keywords, max_rows=15):
 
 def process_excel_digipay(uploaded_file, upload_year):
     """
-    PARSER KHUSUS DIGIPAY (AMAN & TERISOLASI)
-    Sudah difilter berdasarkan tahun yang dipilih
+    Parser DIGIPAY stabil
+    - Tidak pakai break
+    - Tidak berhenti di tengah
+    - Filter tahun langsung saat parsing
     """
 
     df_raw = pd.read_excel(uploaded_file, header=None)
-    df_data = df_raw.copy()
-
     processed_rows = []
 
-    for i in range(len(df_data)):
+    for i in range(len(df_raw)):
 
-        row = df_data.iloc[i]
+        row = df_raw.iloc[i]
 
         # =============================
-        # Ambil Tahun (kolom pertama dari screenshot)
+        # Ambil Tahun
         # =============================
         try:
             tahun_row = int(row[0])
         except:
-            continue  # skip kalau bukan angka tahun
+            continue
+
+        # Skip jika bukan tahun yang dipilih
+        if tahun_row != upload_year:
+            continue
 
         # =============================
-        # Ambil Kode Satker (kolom ke-4 sesuai kode kamu)
+        # Ambil Kode Satker
         # =============================
-        kode_satker = str(row[3]).strip()
-        kode_satker = normalize_kode_satker(kode_satker)
+        kode_satker = normalize_kode_satker(str(row[3]).strip())
 
-        # STOP jika kosong
-        if not kode_satker:
-            break
-
-        # FILTER invalid
+        # Lewati jika kosong / invalid
         if (
-            not kode_satker.isdigit()
+            not kode_satker
+            or not kode_satker.isdigit()
             or len(kode_satker) != 6
             or kode_satker == "000000"
         ):
             continue
 
         # =============================
-        # Simpan hanya data sesuai tahun upload
+        # Simpan data valid
         # =============================
-        if tahun_row == upload_year:
-            processed_rows.append({
-                "Tahun": tahun_row,
-                "Kode Satker": kode_satker,
-                "Nama Satker": str(row[4]).strip(),
-                "Nilai Digipay": row[5],  # sesuaikan jika beda
-            })
+        processed_rows.append({
+            "Tahun": tahun_row,
+            "Kode Satker": kode_satker,
+            "Nama Satker": str(row[4]).strip(),
+            "Nilai Digipay": row[5],
+        })
 
     df_final = pd.DataFrame(processed_rows)
 
     return df_final
+
 
 # ===============================
 # PARSER IKPA SATKER (INI KUNCI)
