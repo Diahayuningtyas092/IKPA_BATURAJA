@@ -1190,6 +1190,57 @@ def find_header_row_by_keywords(uploaded_file, keywords, max_rows=15):
 
     return None
 
+def process_excel_digipay(uploaded_file):
+    """
+    PARSER KHUSUS DIGIPAY (AMAN & TERISOLASI)
+    Tidak mempengaruhi parser lain
+    """
+
+    df_raw = pd.read_excel(uploaded_file, header=None)
+
+    # Misal data mulai baris ke-1 (sesuaikan jika beda)
+    df_data = df_raw.copy()
+
+    processed_rows = []
+
+    for i in range(len(df_data)):
+
+        row = df_data.iloc[i]
+
+        # Ambil kode satker (misal di kolom ke-3 → sesuaikan)
+        kode_satker = str(row[3]).strip()
+
+        # Normalisasi
+        kode_satker = normalize_kode_satker(kode_satker)
+
+        # =============================
+        # STOP TOTAL JIKA KOSONG
+        # =============================
+        if not kode_satker:
+            break
+
+        # =============================
+        # FILTER INVALID
+        # =============================
+        if (
+            not kode_satker.isdigit()
+            or len(kode_satker) != 6
+            or kode_satker == "000000"
+        ):
+            continue
+
+        # =============================
+        # SIMPAN DATA VALID SAJA
+        # =============================
+        processed_rows.append({
+            "Kode Satker": kode_satker,
+            "Nama Satker": str(row[4]).strip(),
+            "Nilai Digipay": row[5],  # sesuaikan kolom
+        })
+
+    df_final = pd.DataFrame(processed_rows)
+
+    return df_final
 
 # ===============================
 # PARSER IKPA SATKER (INI KUNCI)
