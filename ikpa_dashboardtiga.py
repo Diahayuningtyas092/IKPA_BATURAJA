@@ -4727,7 +4727,9 @@ def page_dashboard():
                 tahun_list = sorted(df_raw["TAHUN"].dropna().unique())
                 tahun = st.selectbox("Pilih Tahun", tahun_list)
 
-                df_raw = df_raw[df_raw["TAHUN"] == tahun]
+
+                if periode in ["Bulanan", "Triwulan"]:
+                    df_raw = df_raw[df_raw["TAHUN"] == tahun]
 
                 # =============================
                 # PILIH PERIODE
