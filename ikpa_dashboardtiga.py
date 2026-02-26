@@ -7136,6 +7136,11 @@ def page_admin():
                     (df_all["KDKPPN"] == "109") &
                     (df_all["NMKPPN"].str.upper() == "BATURAJA")
                 ]
+
+                df_all = df_all[
+                    df_all["NOINVOICE"].notna() &
+                    (df_all["NOINVOICE"].astype(str).str.strip() != "")
+                ]
                 
                 # ====================================
                 # UNIQUE KEY
