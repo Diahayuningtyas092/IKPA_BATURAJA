@@ -3195,16 +3195,20 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
 #-----------------------------------
 #Agregasi KKP
 #-----------------------------------
-def generate_kkp_from_session(df, periode="Bulanan", tipe="Nominal", tahun_filter=None):
-
+def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahun_filter=None):
+    
     df = df.copy()
 
     # =============================
-    # NORMALISASI TANGGAL
+    # NORMALISASI PERIODE (KKP)
     # =============================
-    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
-    df["TAHUN"] = df["TANGGAL"].dt.year
-    df["BULAN"] = df["TANGGAL"].dt.month
+    if "PERIODE" not in df.columns:
+        raise ValueError("Kolom PERIODE tidak ditemukan pada data KKP")
+
+    df["PERIODE"] = df["PERIODE"].astype(str)
+
+    df["TAHUN"] = df["PERIODE"].str[:4].astype(int)
+    df["BULAN"] = df["PERIODE"].str[5:7].astype(int)
     df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
 
     if tahun_filter and periode != "Tahunan":
@@ -3213,16 +3217,16 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Nominal", tahun_filte
     # =============================
     # BERSIHKAN NILAI
     # =============================
-    df["NILAI_SPM"] = (
-        df["NILAI_SPM"]
+    df["NILAI TRANSAKSI (NILAI SPM)"] = (
+        df["NILAI TRANSAKSI (NILAI SPM)"]
         .astype(str)
         .str.replace(r"[^\d]", "", regex=True)
         .replace("", "0")
         .astype(float)
     )
 
-    df["LIMIT_KKP"] = (
-        df["LIMIT_KKP"]
+    df["LIMIT KKP"] = (
+        df["LIMIT KKP"]
         .astype(str)
         .str.replace(r"[^\d]", "", regex=True)
         .replace("", "0")
@@ -3230,16 +3234,22 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Nominal", tahun_filte
     )
 
     # =============================
-    # TENTUKAN VALUE
+    # TENTUKAN AGREGASI
     # =============================
     if tipe == "Jumlah Nominal":
-        value_col = "NILAI_SPM"
+        value_col = "NILAI TRANSAKSI (NILAI SPM)"
         agg_func = "sum"
     else:
-        value_col = "NO_SPM"
-        agg_func = "nunique"
+        # Jika ada kolom NO SPM gunakan itu
+        if "NO SPM" in df.columns:
+            value_col = "NO SPM"
+            agg_func = "nunique"
+        else:
+            # fallback kalau tidak ada NO SPM
+            value_col = "NOMOR KARTU"
+            agg_func = "count"
 
-    group_cols = ["Uraian Satker-RINGKAS"]
+    group_cols = ["SATKER"]
 
     if periode == "Bulanan":
         group_cols.append("BULAN")
@@ -3255,32 +3265,25 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Nominal", tahun_filte
     )
 
     pivot = df_grouped.pivot_table(
-        index="Uraian Satker-RINGKAS",
+        index="SATKER",
         columns=group_cols[-1],
         values="Value",
         fill_value=0
-    )
-
-    pivot = pivot.sort_index(axis=1)
+    ).sort_index(axis=1)
 
     # =============================
     # TAMBAH PAGU UNTUK NOMINAL
     # =============================
     if tipe == "Jumlah Nominal":
         pagu_df = (
-            df.groupby("Uraian Satker-RINGKAS")["LIMIT_KKP"]
+            df.groupby("SATKER")["LIMIT KKP"]
             .max()
             .reset_index()
         )
 
         pivot = pivot.reset_index()
-        pivot = pivot.merge(
-            pagu_df,
-            on="Uraian Satker-RINGKAS",
-            how="left"
-        )
-
-        pivot.rename(columns={"LIMIT_KKP": "Pagu"}, inplace=True)
+        pivot = pivot.merge(pagu_df, on="SATKER", how="left")
+        pivot.rename(columns={"LIMIT KKP": "Pagu"}, inplace=True)
 
         cols = list(pivot.columns)
         cols.insert(1, cols.pop(cols.index("Pagu")))
@@ -3291,7 +3294,7 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Nominal", tahun_filte
     # Rename Triwulan
     if periode == "Triwulan":
         pivot.columns = [
-            "TW" + str(c) if isinstance(c, int) else c
+            f"TW{c}" if isinstance(c, int) else c
             for c in pivot.columns
         ]
 
