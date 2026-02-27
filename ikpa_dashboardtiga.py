@@ -3119,18 +3119,25 @@ def generate_digipay_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
 
     return pivot
 
-#Agregasi Pertahun
+
 def generate_digipay_yearly_from_session(df, tipe="trx"):
     df = df.copy()
 
     # ==============================
-    # NORMALISASI TANGGAL
+    # 1️⃣ NORMALISASI TANGGAL
     # ==============================
     df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
+    df = df[df["TANGGAL"].notna()]
     df["Tahun"] = df["TANGGAL"].dt.year
 
     # ==============================
-    # BERSIHKAN NOMINAL
+    # 2️⃣ BERSIHKAN SATKER
+    # ==============================
+    df["SATKER"] = df["SATKER"].astype(str).str.strip()
+    df = df[df["SATKER"] != ""]
+
+    # ==============================
+    # 3️⃣ BERSIHKAN NOMINAL
     # ==============================
     df["NOMINVOICE"] = (
         df["NOMINVOICE"]
@@ -3141,7 +3148,7 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
     )
 
     # ==============================
-    # AGREGASI
+    # 4️⃣ AGREGASI PER TAHUN
     # ==============================
     if tipe == "trx":
         agg_df = (
@@ -3158,11 +3165,22 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
         )
         value_col = "Nilai_Transaksi"
 
-    pivot = agg_df.pivot(
-        index="SATKER",
-        columns="Tahun",
-        values=value_col
-    ).fillna(0)
+    # ==============================
+    # 5️⃣ PIVOT PERBANDINGAN TAHUN
+    # ==============================
+    pivot = (
+        agg_df
+        .pivot_table(
+            index="SATKER",
+            columns="Tahun",
+            values=value_col,
+            fill_value=0
+        )
+        .sort_index(axis=1)
+    )
+
+    # Supaya kolom tahun aman di AgGrid
+    pivot.columns = pivot.columns.astype(str)
 
     pivot = pivot.reset_index()
 
