@@ -4729,23 +4729,16 @@ def page_dashboard():
 
             if "digipay_master" not in st.session_state:
                 st.warning("Data Digipay belum tersedia")
+
             else:
-                df_raw = st.session_state.digipay_master.copy()
+                df_master = st.session_state.digipay_master.copy()
 
                 # =============================
                 # NORMALISASI DATA
                 # =============================
-                df_raw["TAHUN"] = pd.to_numeric(df_raw["TAHUN"], errors="coerce")
-                df_raw["BULAN"] = pd.to_numeric(df_raw["BULAN"], errors="coerce")
-                df_raw["NOMINVOICE"] = pd.to_numeric(df_raw["NOMINVOICE"], errors="coerce")
-
-                # =============================
-                # PILIH TAHUN
-                # =============================
-                tahun_list = sorted(df_raw["TAHUN"].dropna().unique())
-                tahun = st.selectbox("Pilih Tahun", tahun_list)
-
-                df_raw = df_raw[df_raw["TAHUN"] == tahun]
+                df_master["TAHUN"] = pd.to_numeric(df_master["TAHUN"], errors="coerce")
+                df_master["BULAN"] = pd.to_numeric(df_master["BULAN"], errors="coerce")
+                df_master["NOMINVOICE"] = pd.to_numeric(df_master["NOMINVOICE"], errors="coerce")
 
                 # =============================
                 # PILIH PERIODE
@@ -4766,6 +4759,16 @@ def page_dashboard():
                 )
 
                 # =============================
+                # PILIH TAHUN (HANYA UNTUK BULANAN & TRIWULAN)
+                # =============================
+                if periode != "Tahunan":
+                    tahun_list = sorted(df_master["TAHUN"].dropna().unique())
+                    tahun = st.selectbox("Pilih Tahun", tahun_list)
+                    df_raw = df_master[df_master["TAHUN"] == tahun].copy()
+                else:
+                    df_raw = df_master.copy()  # 🔥 pakai semua tahun
+
+                # =============================
                 # BULANAN
                 # =============================
                 if periode == "Bulanan":
@@ -4784,14 +4787,14 @@ def page_dashboard():
                             .nunique()
                             .reset_index(name="Jumlah")
                         )
+                        value_col = "Jumlah"
                     else:
                         df_grouped = (
                             df_raw.groupby(["NMSATKER", "BULAN_NAMA"])["NOMINVOICE"]
                             .sum()
                             .reset_index(name="Nilai")
                         )
-
-                    value_col = df_grouped.columns[-1]
+                        value_col = "Nilai"
 
                     df_pivot = df_grouped.pivot(
                         index="NMSATKER",
@@ -4820,14 +4823,14 @@ def page_dashboard():
                             .nunique()
                             .reset_index(name="Jumlah")
                         )
+                        value_col = "Jumlah"
                     else:
                         df_grouped = (
                             df_raw.groupby(["NMSATKER", "TRIWULAN"])["NOMINVOICE"]
                             .sum()
                             .reset_index(name="Nilai")
                         )
-
-                    value_col = df_grouped.columns[-1]
+                        value_col = "Nilai"
 
                     df_pivot = df_grouped.pivot(
                         index="NMSATKER",
@@ -4839,24 +4842,40 @@ def page_dashboard():
                     df_pivot.columns = ["TW1","TW2","TW3","TW4"]
 
                 # =============================
-                # TAHUNAN
+                # TAHUNAN (PERBANDINGAN ANTAR TAHUN)
                 # =============================
                 else:
 
                     if tipe == "Jumlah Transaksi":
                         df_grouped = (
-                            df_raw.groupby(["NMSATKER"])["NOINVOICE"]
+                            df_raw
+                            .groupby(["NMSATKER", "TAHUN"])["NOINVOICE"]
                             .nunique()
                             .reset_index(name="Jumlah")
                         )
+                        value_col = "Jumlah"
+
                     else:
                         df_grouped = (
-                            df_raw.groupby(["NMSATKER"])["NOMINVOICE"]
+                            df_raw
+                            .groupby(["NMSATKER", "TAHUN"])["NOMINVOICE"]
                             .sum()
                             .reset_index(name="Nilai")
                         )
+                        value_col = "Nilai"
 
-                    df_pivot = df_grouped.set_index("NMSATKER")
+                    df_pivot = (
+                        df_grouped
+                        .pivot_table(
+                            index="NMSATKER",
+                            columns="TAHUN",
+                            values=value_col,
+                            fill_value=0
+                        )
+                        .sort_index(axis=1)
+                    )
+
+                    df_pivot.columns = df_pivot.columns.astype(str)
 
                 df_pivot = df_pivot.reset_index()
 
