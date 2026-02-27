@@ -3006,7 +3006,9 @@ def format_ikpa_display(x):
         return x
 
 
+#-----------------------------------
 #Agregasi DIGIPAY  
+#-----------------------------------
 
 #Agregasi Digipay perbulan
 def generate_digipay_monthly_from_session(df, tahun_filter=None, tipe="trx"):
@@ -3122,7 +3124,7 @@ def generate_digipay_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
 
     return pivot
 
-
+#Agregasi digipay pertahun
 def generate_digipay_yearly_from_session(df, tipe="trx"):
     df = df.copy()
 
@@ -3189,6 +3191,113 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
 
     return pivot
 
+
+#-----------------------------------
+#Agregasi KKP
+#-----------------------------------
+def generate_kkp_from_session(df, periode="Bulanan", tipe="Nominal", tahun_filter=None):
+
+    df = df.copy()
+
+    # =============================
+    # NORMALISASI TANGGAL
+    # =============================
+    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
+    df["TAHUN"] = df["TANGGAL"].dt.year
+    df["BULAN"] = df["TANGGAL"].dt.month
+    df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
+
+    if tahun_filter and periode != "Tahunan":
+        df = df[df["TAHUN"] == tahun_filter]
+
+    # =============================
+    # BERSIHKAN NILAI
+    # =============================
+    df["NILAI_SPM"] = (
+        df["NILAI_SPM"]
+        .astype(str)
+        .str.replace(r"[^\d]", "", regex=True)
+        .replace("", "0")
+        .astype(float)
+    )
+
+    df["LIMIT_KKP"] = (
+        df["LIMIT_KKP"]
+        .astype(str)
+        .str.replace(r"[^\d]", "", regex=True)
+        .replace("", "0")
+        .astype(float)
+    )
+
+    # =============================
+    # TENTUKAN VALUE
+    # =============================
+    if tipe == "Jumlah Nominal":
+        value_col = "NILAI_SPM"
+        agg_func = "sum"
+    else:
+        value_col = "NO_SPM"
+        agg_func = "nunique"
+
+    group_cols = ["Uraian Satker-RINGKAS"]
+
+    if periode == "Bulanan":
+        group_cols.append("BULAN")
+    elif periode == "Triwulan":
+        group_cols.append("TRIWULAN")
+    else:
+        group_cols.append("TAHUN")
+
+    df_grouped = (
+        df.groupby(group_cols)
+        .agg(Value=(value_col, agg_func))
+        .reset_index()
+    )
+
+    pivot = df_grouped.pivot_table(
+        index="Uraian Satker-RINGKAS",
+        columns=group_cols[-1],
+        values="Value",
+        fill_value=0
+    )
+
+    pivot = pivot.sort_index(axis=1)
+
+    # =============================
+    # TAMBAH PAGU UNTUK NOMINAL
+    # =============================
+    if tipe == "Jumlah Nominal":
+        pagu_df = (
+            df.groupby("Uraian Satker-RINGKAS")["LIMIT_KKP"]
+            .max()
+            .reset_index()
+        )
+
+        pivot = pivot.reset_index()
+        pivot = pivot.merge(
+            pagu_df,
+            on="Uraian Satker-RINGKAS",
+            how="left"
+        )
+
+        pivot.rename(columns={"LIMIT_KKP": "Pagu"}, inplace=True)
+
+        cols = list(pivot.columns)
+        cols.insert(1, cols.pop(cols.index("Pagu")))
+        pivot = pivot[cols]
+    else:
+        pivot = pivot.reset_index()
+
+    # Rename Triwulan
+    if periode == "Triwulan":
+        pivot.columns = [
+            "TW" + str(c) if isinstance(c, int) else c
+            for c in pivot.columns
+        ]
+
+    pivot.columns = pivot.columns.astype(str)
+
+    return pivot
 
 
 # HALAMAN 1: DASHBOARD UTAMA
@@ -4711,29 +4820,29 @@ def page_dashboard():
                 # ===============================
                 render_table_pin_satker(df_display)
             
-    elif st.session_state.main_menu == "Digitalisasi":
+    elif st.session_state.main_menu == "Digitalisasi":    
+        st.subheader("📋 Tabel Detail Digitalisasi")
 
-        st.markdown("---")
-        st.header("💻 Dashboard Digitalisasi")
-
-        digital_tab = st.radio(
-            "Pilih Bagian Digitalisasi",
-            ["📊 Chart Utama", "📋 Tabel Detail"],
+        # =====================================================
+        # SUB MENU DATA
+        # =====================================================
+        source_detail = st.radio(
+            "",
+            ["💰 Digipay", "💳 KKP", "🏦 CMS"],
             horizontal=True
         )
 
-        if digital_tab == "📊 Chart Utama":
-            st.write("chart CMS, DIGIPAY, KKP, dll")
-            
-            
+        st.divider()
 
-        elif digital_tab == "📋 Tabel Detail":
-            st.markdown("## 📋 Tabel Digipay")
+        # =====================================================
+        # 💰 DIGIPAY
+        # =====================================================
+        if source_detail == "💰 Digipay":
 
             if "digipay_master" not in st.session_state:
                 st.warning("Data Digipay belum tersedia")
-
             else:
+
                 df_master = st.session_state.digipay_master.copy()
 
                 # =============================
@@ -4744,32 +4853,29 @@ def page_dashboard():
                 df_master["NOMINVOICE"] = pd.to_numeric(df_master["NOMINVOICE"], errors="coerce")
 
                 # =============================
-                # PILIH PERIODE
+                # FILTER DALAM 1 BARIS
                 # =============================
-                periode = st.radio(
-                    "Pilih Periode",
-                    ["Bulanan", "Triwulan", "Tahunan"],
-                    horizontal=True
-                )
+                col1, col2, col3 = st.columns(3)
 
-                # =============================
-                # PILIH TIPE NILAI
-                # =============================
-                tipe = st.radio(
-                    "Tampilkan",
-                    ["Jumlah Transaksi", "Nilai Transaksi"],
-                    horizontal=True
-                )
+                with col1:
+                    periode = st.selectbox(
+                        "Periode",
+                        ["Bulanan", "Triwulan", "Tahunan"]
+                    )
 
-                # =============================
-                # PILIH TAHUN (HANYA UNTUK BULANAN & TRIWULAN)
-                # =============================
+                with col2:
+                    tipe = st.selectbox(
+                        "Tipe",
+                        ["Jumlah Transaksi", "Nilai Transaksi"]
+                    )
+
                 if periode != "Tahunan":
-                    tahun_list = sorted(df_master["TAHUN"].dropna().unique())
-                    tahun = st.selectbox("Pilih Tahun", tahun_list)
+                    with col3:
+                        tahun_list = sorted(df_master["TAHUN"].dropna().unique())
+                        tahun = st.selectbox("Tahun", tahun_list)
                     df_raw = df_master[df_master["TAHUN"] == tahun].copy()
                 else:
-                    df_raw = df_master.copy()  # 🔥 pakai semua tahun
+                    df_raw = df_master.copy()
 
                 # =============================
                 # BULANAN
@@ -4777,9 +4883,9 @@ def page_dashboard():
                 if periode == "Bulanan":
 
                     MONTH_MAP = {
-                        1: "JANUARI",2: "FEBRUARI",3: "MARET",4: "APRIL",
-                        5: "MEI",6: "JUNI",7: "JULI",8: "AGUSTUS",
-                        9: "SEPTEMBER",10: "OKTOBER",11: "NOVEMBER",12: "DESEMBER"
+                        1:"JANUARI",2:"FEBRUARI",3:"MARET",4:"APRIL",
+                        5:"MEI",6:"JUNI",7:"JULI",8:"AGUSTUS",
+                        9:"SEPTEMBER",10:"OKTOBER",11:"NOVEMBER",12:"DESEMBER"
                     }
 
                     df_raw["BULAN_NAMA"] = df_raw["BULAN"].map(MONTH_MAP)
@@ -4810,8 +4916,7 @@ def page_dashboard():
                         "JULI","AGUSTUS","SEPTEMBER","OKTOBER","NOVEMBER","DESEMBER"
                     ]
 
-                    kolom_ada = [b for b in urutan_bulan if b in df_pivot.columns]
-                    df_pivot = df_pivot[kolom_ada]
+                    df_pivot = df_pivot[[b for b in urutan_bulan if b in df_pivot.columns]]
 
                 # =============================
                 # TRIWULAN
@@ -4845,23 +4950,20 @@ def page_dashboard():
                     df_pivot.columns = ["TW1","TW2","TW3","TW4"]
 
                 # =============================
-                # TAHUNAN (PERBANDINGAN ANTAR TAHUN)
+                # TAHUNAN
                 # =============================
                 else:
 
                     if tipe == "Jumlah Transaksi":
                         df_grouped = (
-                            df_raw
-                            .groupby(["NMSATKER", "TAHUN"])["NOINVOICE"]
+                            df_raw.groupby(["NMSATKER", "TAHUN"])["NOINVOICE"]
                             .nunique()
                             .reset_index(name="Jumlah")
                         )
                         value_col = "Jumlah"
-
                     else:
                         df_grouped = (
-                            df_raw
-                            .groupby(["NMSATKER", "TAHUN"])["NOMINVOICE"]
+                            df_raw.groupby(["NMSATKER", "TAHUN"])["NOMINVOICE"]
                             .sum()
                             .reset_index(name="Nilai")
                         )
@@ -4881,9 +4983,9 @@ def page_dashboard():
                     df_pivot.columns = df_pivot.columns.astype(str)
 
                 df_pivot = df_pivot.reset_index()
-                
+
                 # =============================
-                # FORMAT ANGKA BIAR RAPI
+                # FORMAT RIBUAN
                 # =============================
                 def format_ribuan(x):
                     try:
@@ -4891,12 +4993,70 @@ def page_dashboard():
                     except:
                         return x
 
-                # semua kolom selain NMSATKER diformat
                 for col in df_pivot.columns:
                     if col != "NMSATKER":
                         df_pivot[col] = df_pivot[col].apply(format_ribuan)
 
                 render_table_pin_satker(df_pivot)
+
+        # =====================================================
+        # 💳 KKP
+        # =====================================================
+        elif source_detail == "💳 KKP":
+            if "kkp_master" not in st.session_state:
+                st.warning("Data KKP belum tersedia")
+            else:
+
+                df_master = st.session_state.kkp_master.copy()
+
+                col1, col2, col3 = st.columns(3)
+
+                with col1:
+                    periode = st.selectbox(
+                        "Periode",
+                        ["Bulanan", "Triwulan", "Tahunan"],
+                        key="kkp_periode"
+                    )
+
+                with col2:
+                    tipe = st.selectbox(
+                        "Tipe",
+                        ["Jumlah Nominal", "Jumlah Transaksi"],
+                        key="kkp_tipe"
+                    )
+
+                if periode != "Tahunan":
+                    with col3:
+                        tahun_list = sorted(df_master["TAHUN"].dropna().unique())
+                        tahun = st.selectbox("Tahun", tahun_list, key="kkp_tahun")
+                else:
+                    tahun = None
+
+                df_pivot = generate_kkp_from_session(
+                    df_master,
+                    periode=periode,
+                    tipe=tipe,
+                    tahun_filter=tahun
+                )
+
+                def format_ribuan(x):
+                    try:
+                        return "{:,.0f}".format(float(x)).replace(",", ".")
+                    except:
+                        return x
+
+                for col in df_pivot.columns:
+                    if col not in ["Uraian Satker-RINGKAS"]:
+                        df_pivot[col] = df_pivot[col].apply(format_ribuan)
+
+                render_table_pin_satker(df_pivot)
+                
+
+        # =====================================================
+        # 🏦 CMS
+        # =====================================================
+        else:
+            st.info("Blok CMS akan ditambahkan nanti.")
         
         
 
