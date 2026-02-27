@@ -2268,10 +2268,13 @@ def process_excel_file_kkp(uploaded_file):
     uploaded_file.seek(0)
 
     # ==========================
-    # 1️⃣ DETEKSI HEADER OTOMATIS
+    # 1️⃣ BACA TANPA HEADER
     # ==========================
     df_raw = pd.read_excel(uploaded_file, header=None, dtype=str)
 
+    # ==========================
+    # 2️⃣ DETEKSI HEADER OTOMATIS
+    # ==========================
     header_row = None
     for i in range(min(10, len(df_raw))):
         row_text = " ".join(df_raw.iloc[i].astype(str)).upper()
@@ -2283,13 +2286,15 @@ def process_excel_file_kkp(uploaded_file):
         return pd.DataFrame()
 
     # ==========================
-    # 2️⃣ BACA ULANG DENGAN HEADER YANG BENAR
+    # 3️⃣ SET HEADER MANUAL
     # ==========================
-    uploaded_file.seek(0)
-    df = pd.read_excel(uploaded_file, header=header_row, dtype=str)
+    df = df_raw.iloc[header_row + 1:].copy()
+    df.columns = df_raw.iloc[header_row]
+
+    df = df.reset_index(drop=True)
 
     # ==========================
-    # 3️⃣ NORMALISASI HEADER
+    # 4️⃣ NORMALISASI HEADER
     # ==========================
     df.columns = (
         df.columns.astype(str)
@@ -2300,30 +2305,27 @@ def process_excel_file_kkp(uploaded_file):
     )
 
     # ==========================
-    # 4️⃣ EKSTRAK KODE BA & SATKER
+    # 5️⃣ EKSTRAK KODE BA
     # ==========================
-    if "BA/KL" in df.columns:
-        df["Kode BA"] = (
-            df["BA/KL"]
-            .astype(str)
-            .str.extract(r"(\d{3})")[0]
-            .fillna("")
-        )
-    else:
+    if "BA/KL" not in df.columns or "SATKER" not in df.columns:
         return pd.DataFrame()
 
-    if "SATKER" in df.columns:
-        df["Kode Satker"] = (
-            df["SATKER"]
-            .astype(str)
-            .str.extract(r"(\d{6})")[0]
-            .fillna("")
-        )
-    else:
-        return pd.DataFrame()
+    df["Kode BA"] = (
+        df["BA/KL"]
+        .astype(str)
+        .str.extract(r"(\d{3})")[0]
+        .fillna("")
+    )
+
+    df["Kode Satker"] = (
+        df["SATKER"]
+        .astype(str)
+        .str.extract(r"(\d{6})")[0]
+        .fillna("")
+    )
 
     # ==========================
-    # 5️⃣ NOMOR KARTU (ANTI SCIENTIFIC)
+    # 6️⃣ NOMOR KARTU (ANTI SCIENTIFIC)
     # ==========================
     if "NOMOR KARTU" in df.columns:
         df["Nomor Kartu"] = (
@@ -2335,9 +2337,10 @@ def process_excel_file_kkp(uploaded_file):
         df["Nomor Kartu"] = ""
 
     # ==========================
-    # 6️⃣ BERSIHKAN BARIS KOSONG
+    # 7️⃣ BUANG BARIS INVALID
     # ==========================
     df = df[df["Kode Satker"] != ""]
+    df = df[df["NO"].notna()]   # 🔥 pastikan No=1 tidak hilang
 
     if df.empty:
         return pd.DataFrame()
