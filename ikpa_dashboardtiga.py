@@ -4878,6 +4878,20 @@ def page_dashboard():
                     df_pivot.columns = df_pivot.columns.astype(str)
 
                 df_pivot = df_pivot.reset_index()
+                
+                # =============================
+                # FORMAT ANGKA BIAR RAPI
+                # =============================
+                def format_ribuan(x):
+                    try:
+                        return "{:,.0f}".format(float(x)).replace(",", ".")
+                    except:
+                        return x
+
+                # semua kolom selain NMSATKER diformat
+                for col in df_pivot.columns:
+                    if col != "NMSATKER":
+                        df_pivot[col] = df_pivot[col].apply(format_ribuan)
 
                 render_table_pin_satker(df_pivot)
         
