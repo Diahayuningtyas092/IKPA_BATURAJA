@@ -5008,6 +5008,16 @@ def page_dashboard():
             else:
 
                 df_master = st.session_state.kkp_master.copy()
+                # =============================
+                # NORMALISASI PERIODE KKP
+                # =============================
+                if "PERIODE" in df_master.columns:
+                    df_master["PERIODE"] = df_master["PERIODE"].astype(str)
+                    df_master["TAHUN"] = df_master["PERIODE"].str[:4].astype(int)
+                    df_master["BULAN"] = df_master["PERIODE"].str[5:7].astype(int)
+                else:
+                    st.error("Kolom PERIODE tidak ditemukan pada data KKP")
+                    st.stop()
 
                 col1, col2, col3 = st.columns(3)
 
