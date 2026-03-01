@@ -5172,40 +5172,60 @@ def page_dashboard():
         # =====================================================
         # 🏦 CMS
         # =====================================================
-        elif source_detail == "📋 Tabel CMS":
-    
+        elif source_detail == "📋 Tabel CMS":  
             if "cms_master" not in st.session_state:
                 st.warning("Data CMS belum tersedia")
+                st.stop()
+
+            df_master = st.session_state.cms_master.copy()
+
+            st.write("Kolom CMS:", df_master.columns)
+
+            if "TANGGAL" not in df_master.columns:
+                st.error("Kolom TANGGAL tidak ditemukan di data CMS")
+                st.stop()
+
+            df_master["TANGGAL"] = pd.to_datetime(df_master["TANGGAL"], errors="coerce")
+
+            periode = st.radio(
+                "Pilih Periode",
+                ["Bulanan", "Triwulan", "Tahunan"],
+                horizontal=True,
+                key="cms_periode"
+            )
+
+            tipe = st.radio(
+                "Tampilkan",
+                ["Proporsi Transaksi", "Proporsi Nominal"],
+                horizontal=True,
+                key="cms_tipe"
+            )
+
+            if periode != "Tahunan":
+
+                tahun_list = sorted(
+                    df_master["TANGGAL"].dt.year.dropna().unique()
+                )
+
+                if not tahun_list:
+                    st.warning("Data tahun tidak ditemukan")
+                    st.stop()
+
+                tahun = st.selectbox("Pilih Tahun", tahun_list, key="cms_tahun")
+
             else:
-                df_master = st.session_state.cms_master.copy()
+                tahun = None
 
-                periode = st.radio(
-                    "Pilih Periode",
-                    ["Bulanan", "Triwulan", "Tahunan"],
-                    horizontal=True,
-                    key="cms_periode"
-                )
+            df_pivot = generate_cms_from_session(
+                df_master,
+                periode=periode,
+                tipe=tipe,
+                tahun_filter=tahun
+            )
 
-                tipe = st.radio(
-                    "Tampilkan",
-                    ["Proporsi Transaksi", "Proporsi Nominal"],
-                    horizontal=True,
-                    key="cms_tipe"
-                )
-
-                if periode != "Tahunan":
-                    tahun_list = sorted(df_master["TANGGAL"].dt.year.dropna().unique())
-                    tahun = st.selectbox("Pilih Tahun", tahun_list, key="cms_tahun")
-                else:
-                    tahun = None
-
-                df_pivot = generate_cms_from_session(
-                    df_master,
-                    periode=periode,
-                    tipe=tipe,
-                    tahun_filter=tahun
-                )
-
+            if df_pivot.empty:
+                st.warning("Data kosong setelah diproses")
+            else:
                 render_table_pin_satker(df_pivot)
         
         
