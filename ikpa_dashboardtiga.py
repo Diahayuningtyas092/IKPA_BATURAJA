@@ -3303,9 +3303,36 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
     return pivot
 
 # Proporsi CMS
+import numpy as np
+import pandas as pd
+
 def generate_cms_from_session(df, periode="Triwulan", tipe="Proporsi Transaksi", tahun_filter=None):
 
     df = df.copy()
+
+    # =============================
+    # PASTIKAN NUMERIC
+    # =============================
+    numeric_cols = [
+        "JUMLAH TRANSAKSI CMS",
+        "JUMLAH TRANSAKSI KARTU DEBIT",
+        "JUMLAH TRANSAKSI TELLER",
+        "NILAI TRANSAKSI CMS",
+        "NILAI TRANSAKSI KARTU DEBIT",
+        "NILAI TRANSAKSI TELLER",
+    ]
+
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = (
+                df[col]
+                .astype(str)
+                .str.replace(".", "", regex=False)
+                .str.replace(",", "", regex=False)
+                .str.replace(r"[^\d]", "", regex=True)
+                .replace("", "0")
+            )
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
     # =============================
     # FILTER TAHUN
@@ -3314,7 +3341,7 @@ def generate_cms_from_session(df, periode="Triwulan", tipe="Proporsi Transaksi",
         df = df[df["TAHUN"] == tahun_filter]
 
     # =============================
-    # HITUNG TOTAL
+    # HITUNG PROPORSI
     # =============================
     if tipe == "Proporsi Transaksi":
 
@@ -3345,7 +3372,7 @@ def generate_cms_from_session(df, periode="Triwulan", tipe="Proporsi Transaksi",
         )
 
     # =============================
-    # PIVOT BERDASARKAN PERIODE
+    # PIVOT
     # =============================
     if periode == "Triwulan":
 
@@ -3358,7 +3385,11 @@ def generate_cms_from_session(df, periode="Triwulan", tipe="Proporsi Transaksi",
 
     else:  # Tahunan
 
-        pivot = df.groupby("NAMA SATKER")["PROPORSI"].mean().reset_index()
+        pivot = (
+            df.groupby("NAMA SATKER")["PROPORSI"]
+            .mean()
+            .reset_index()
+        )
         return pivot
 
     pivot.columns = pivot.columns.astype(str)
