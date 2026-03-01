@@ -5142,6 +5142,8 @@ def page_dashboard():
             else:
 
                 df_master = st.session_state.cms_master.copy()
+                
+                st.write("Kolom CMS:", df_master.columns)
 
                 # =============================
                 # NORMALISASI TANGGAL
