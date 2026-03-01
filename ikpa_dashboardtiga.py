@@ -3303,6 +3303,110 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
     return pivot
 
 
+def generate_cms_from_session(df, periode="Bulanan", tipe="Proporsi Transaksi", tahun_filter=None):
+    
+    df = df.copy()
+
+    # =============================
+    # NORMALISASI TANGGAL
+    # =============================
+    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
+    df = df[df["TANGGAL"].notna()]
+
+    df["TAHUN"] = df["TANGGAL"].dt.year
+    df["BULAN"] = df["TANGGAL"].dt.month
+    df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
+
+    if tahun_filter and periode != "Tahunan":
+        df = df[df["TAHUN"] == tahun_filter]
+
+    # =============================
+    # IDENTIFIKASI CMS vs NON CMS
+    # =============================
+    # Sesuaikan dengan kolom asli kamu
+    # Misal kolomnya: "JENIS_TRANSAKSI"
+    # Isi: "CMS" atau "NON CMS"
+
+    df["IS_CMS"] = df["JENIS_TRANSAKSI"].str.upper().eq("CMS")
+
+    # =============================
+    # NORMALISASI NOMINAL
+    # =============================
+    df["NOMINAL"] = (
+        df["NOMINAL"]
+        .astype(str)
+        .str.replace(r"[^\d]", "", regex=True)
+        .replace("", "0")
+        .astype(float)
+    )
+
+    # =============================
+    # TENTUKAN KOLOM GROUPING
+    # =============================
+    group_cols = ["SATKER"]
+
+    if periode == "Bulanan":
+        group_cols.append("BULAN")
+    elif periode == "Triwulan":
+        group_cols.append("TRIWULAN")
+    else:
+        group_cols.append("TAHUN")
+
+    # =============================
+    # AGREGASI CMS & NON CMS
+    # =============================
+    if tipe == "Proporsi Transaksi":
+
+        agg = df.groupby(group_cols).agg(
+            CMS=("IS_CMS", "sum"),
+            TOTAL=("IS_CMS", "count")
+        ).reset_index()
+
+    else:
+
+        agg = df.groupby(group_cols).apply(
+            lambda x: pd.Series({
+                "CMS": x.loc[x["IS_CMS"], "NOMINAL"].sum(),
+                "TOTAL": x["NOMINAL"].sum()
+            })
+        ).reset_index()
+
+    # =============================
+    # HITUNG PROPORSI
+    # =============================
+    agg["PROPORSI"] = np.where(
+        agg["TOTAL"] == 0,
+        0,
+        (agg["CMS"] / agg["TOTAL"]) * 100
+    )
+
+    # =============================
+    # PIVOT
+    # =============================
+    pivot = agg.pivot_table(
+        index="SATKER",
+        columns=group_cols[-1],
+        values="PROPORSI",
+        fill_value=0
+    ).sort_index(axis=1)
+
+    # Rename Triwulan
+    if periode == "Triwulan":
+        pivot.columns = [f"TW{c}" for c in pivot.columns]
+
+    pivot.columns = pivot.columns.astype(str)
+    pivot = pivot.reset_index()
+
+    # =============================
+    # FORMAT %
+    # =============================
+    for col in pivot.columns:
+        if col != "SATKER":
+            pivot[col] = pivot[col].round(2)
+
+    return pivot
+
+
 # HALAMAN 1: DASHBOARD UTAMA
 def page_dashboard():
     
@@ -5068,8 +5172,41 @@ def page_dashboard():
         # =====================================================
         # 🏦 CMS
         # =====================================================
-        else:
-            st.info("Blok CMS akan ditambahkan nanti.")
+        elif source_detail == "📋 Tabel CMS":
+    
+            if "cms_master" not in st.session_state:
+                st.warning("Data CMS belum tersedia")
+            else:
+                df_master = st.session_state.cms_master.copy()
+
+                periode = st.radio(
+                    "Pilih Periode",
+                    ["Bulanan", "Triwulan", "Tahunan"],
+                    horizontal=True,
+                    key="cms_periode"
+                )
+
+                tipe = st.radio(
+                    "Tampilkan",
+                    ["Proporsi Transaksi", "Proporsi Nominal"],
+                    horizontal=True,
+                    key="cms_tipe"
+                )
+
+                if periode != "Tahunan":
+                    tahun_list = sorted(df_master["TANGGAL"].dt.year.dropna().unique())
+                    tahun = st.selectbox("Pilih Tahun", tahun_list, key="cms_tahun")
+                else:
+                    tahun = None
+
+                df_pivot = generate_cms_from_session(
+                    df_master,
+                    periode=periode,
+                    tipe=tipe,
+                    tahun_filter=tahun
+                )
+
+                render_table_pin_satker(df_pivot)
         
         
 
