@@ -3387,14 +3387,14 @@ def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
         pivot_trx = df.pivot_table(
             index=index_cols,
             columns="TRIWULAN",
-            values="PROP_TRX",
+            values="PROPORSI_TRANSAKSI",
             fill_value=0
         )
 
         pivot_nom = df.pivot_table(
             index=index_cols,
             columns="TRIWULAN",
-            values="PROP_NOM",
+            values="PROPORSI_NOMINAL",
             fill_value=0
         )
 
