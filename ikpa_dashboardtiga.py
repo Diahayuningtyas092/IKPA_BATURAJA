@@ -3369,34 +3369,36 @@ def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
     # =============================
     # PIVOT
     # =============================
-    index_cols = ["KODE SATKER", "NAMA SATKER"]
+    index_cols = [
+            "KODE SATKER",
+            "NAMA SATKER",
+            "NOMOR REKENING VA",
+            "NAMA REKENING VA"
+        ]
 
     if periode == "Triwulan":
 
+        # =============================
+        # PIVOT
+        # =============================
         pivot_trx = df.pivot_table(
             index=index_cols,
             columns="TRIWULAN",
-            values="PROPORSI_TRANSAKSI",
+            values="PROP_TRX",
             fill_value=0
         )
 
         pivot_nom = df.pivot_table(
             index=index_cols,
             columns="TRIWULAN",
-            values="PROPORSI_NOMINAL",
+            values="PROP_NOM",
             fill_value=0
         )
 
-        # Rename kolom supaya beda
-        pivot_trx.columns = [
-            f"{col}_TRX(%)" for col in pivot_trx.columns
-        ]
+        pivot_trx.columns = [f"{c}_TRX(%)" for c in pivot_trx.columns]
+        pivot_nom.columns = [f"{c}_NOM(%)" for c in pivot_nom.columns]
 
-        pivot_nom.columns = [
-            f"{col}_NOM(%)" for col in pivot_nom.columns
-        ]
-
-        pivot = pd.concat([pivot_trx, pivot_nom], axis=1)
+        pivot = pd.concat([pivot_trx, pivot_nom], axis=1).reset_index()
 
     else:  # Tahunan
 
