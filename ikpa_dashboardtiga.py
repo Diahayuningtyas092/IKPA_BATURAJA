@@ -3306,7 +3306,10 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
 def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
 
     df = df.copy()
-
+    
+    # DEBUG CEK NAMA KOLOM
+    st.write("Kolom CMS:", df.columns.tolist())
+    
     # =============================
     # FORCE NUMERIC
     # =============================
