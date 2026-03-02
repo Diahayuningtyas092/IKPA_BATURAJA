@@ -3321,6 +3321,8 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
 
     pivot.columns = pivot.columns.astype(str)
 
+    st.write("Total satker setelah pivot:", pivot.shape[0])
+    
     return pivot
 
 
