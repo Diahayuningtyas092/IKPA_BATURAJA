@@ -3359,6 +3359,13 @@ def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
         (df["NILAI TRANSAKSI CMS"] / total_nominal) * 100
     )
 
+    # DEBUG JUMLAH DATA
+    st.write("Baris mentah:", len(df))
+    st.write(
+        "Satker unik:",
+        df[["KODE SATKER","NAMA SATKER"]].drop_duplicates().shape[0]
+    )
+    
     # =============================
     # PIVOT
     # =============================
@@ -5184,13 +5191,6 @@ def page_dashboard():
                         "Periode",
                         ["Triwulan", "Tahunan"],
                         key="cms_periode"
-                    )
-
-                with col2:
-                    tipe = st.selectbox(
-                        "Tipe",
-                        ["Proporsi Transaksi", "Proporsi Nominal"],
-                        key="cms_tipe"
                     )
 
                 tahun_list = sorted(df_master["TAHUN"].dropna().unique())
