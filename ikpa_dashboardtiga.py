@@ -5207,13 +5207,15 @@ def page_dashboard():
                     tahun_filter=tahun
                 )
 
-                # Format %
+                # =============================
+                # FORMAT PERSEN 
                 # =============================
                 for col in df_pivot.columns:
-                    if col not in ["KODE SATKER", "NAMA SATKER"]:
+                    if pd.api.types.is_numeric_dtype(df_pivot[col]):
                         df_pivot[col] = df_pivot[col].round(2)
                         df_pivot[col] = df_pivot[col].astype(str) + " %"
-
+                                
+                                
                 render_table_pin_satker(df_pivot)
         
         
