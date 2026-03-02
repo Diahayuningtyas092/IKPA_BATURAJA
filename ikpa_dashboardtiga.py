@@ -5203,9 +5203,11 @@ def page_dashboard():
                 )
 
                 # Format %
+                # =============================
                 for col in df_pivot.columns:
-                    if col != "NAMA SATKER":
+                    if col not in ["KODE SATKER", "NAMA SATKER"]:
                         df_pivot[col] = df_pivot[col].round(2)
+                        df_pivot[col] = df_pivot[col].astype(str) + " %"
 
                 render_table_pin_satker(df_pivot)
         
