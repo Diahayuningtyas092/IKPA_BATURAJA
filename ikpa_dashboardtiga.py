@@ -3192,36 +3192,23 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
     return pivot
 
 
-#-----------------------------------
-#Agregasi KKP
-#-----------------------------------
+# AGREGASI KKP
+# ===================
 def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahun_filter=None):
     
     df = df.copy()
 
-    # =============================
-    # VALIDASI PERIODE
-    # =============================
     if "PERIODE" not in df.columns:
         raise ValueError("Kolom PERIODE tidak ditemukan pada data KKP")
 
+    # =============================
+    # PARSING PERIODE
+    # =============================
     df["PERIODE"] = df["PERIODE"].astype(str)
-
     df["TAHUN"] = df["PERIODE"].str[:4].astype(int)
     df["BULAN"] = df["PERIODE"].str[5:7].astype(int)
     df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
 
-    # =============================
-    # NORMALISASI KODE SATKER
-    # =============================
-    if "Kode Satker" in df.columns:
-        df["Kode Satker"] = df["Kode Satker"].astype(str).str.zfill(6)
-    else:
-        raise ValueError("Kolom 'Kode Satker' tidak ditemukan")
-
-    # =============================
-    # FILTER TAHUN
-    # =============================
     if tahun_filter and periode != "Tahunan":
         df = df[df["TAHUN"] == tahun_filter]
 
@@ -3245,23 +3232,9 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
     )
 
     # =============================
-    # TENTUKAN AGREGASI
+    # GROUPING
     # =============================
-    if tipe == "Jumlah Nominal":
-        value_col = "NILAI TRANSAKSI (NILAI SPM)"
-        agg_func = "sum"
-    else:
-        if "NO SPM" in df.columns:
-            value_col = "NO SPM"
-            agg_func = "nunique"
-        else:
-            value_col = "NOMOR KARTU"
-            agg_func = "count"
-
-    # =============================
-    # GROUPING (PAKAI KODE + NAMA)
-    # =============================
-    group_cols = ["Kode Satker", "SATKER"]
+    group_cols = ["SATKER"]
 
     if periode == "Bulanan":
         group_cols.append("BULAN")
@@ -3272,46 +3245,35 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
 
     df_grouped = (
         df.groupby(group_cols)
-        .agg(Value=(value_col, agg_func))
+        .agg(
+            TOTAL_NOMINAL=("NILAI TRANSAKSI (NILAI SPM)", "sum")
+        )
         .reset_index()
     )
 
-    # =============================
-    # PIVOT
-    # =============================
     pivot = df_grouped.pivot_table(
-        index=["Kode Satker", "SATKER"],
+        index="SATKER",
         columns=group_cols[-1],
-        values="Value",
+        values="TOTAL_NOMINAL",
         fill_value=0
     ).sort_index(axis=1)
 
     pivot = pivot.reset_index()
 
     # =============================
-    # TAMBAH PAGU (JIKA NOMINAL)
+    # TAMBAH PAGU
     # =============================
-    if tipe == "Jumlah Nominal":
-        pagu_df = (
-            df.groupby(["Kode Satker", "SATKER"])["LIMIT KKP"]
-            .max()
-            .reset_index()
-        )
+    pagu_df = (
+        df.groupby("SATKER")["LIMIT KKP"]
+        .max()
+        .reset_index()
+    )
 
-        pivot = pivot.merge(
-            pagu_df,
-            on=["Kode Satker", "SATKER"],
-            how="left"
-        )
-
-        pivot.rename(columns={"LIMIT KKP": "Pagu"}, inplace=True)
-
-        cols = list(pivot.columns)
-        cols.insert(2, cols.pop(cols.index("Pagu")))
-        pivot = pivot[cols]
+    pivot = pivot.merge(pagu_df, on="SATKER", how="left")
+    pivot.rename(columns={"LIMIT KKP": "Pagu"}, inplace=True)
 
     # =============================
-    # RENAME TRI WULAN
+    # RENAME TRIWULAN
     # =============================
     if periode == "Triwulan":
         pivot.columns = [
@@ -3319,33 +3281,33 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
             for c in pivot.columns
         ]
 
-    pivot.columns = pivot.columns.astype(str)
-
-    st.write("Total satker setelah pivot:", pivot.shape[0])
-    
     # =============================
-    # UBAH ANGKA BULAN → NAMA BULAN
+    # HITUNG PERSENTASE REALISASI
     # =============================
-    if periode == "Bulanan":
+    periode_cols = [
+        col for col in pivot.columns
+        if col not in ["SATKER", "Pagu"]
+    ]
 
-        bulan_map = {
-            1: "Jan", 2: "Feb", 3: "Mar",
-            4: "Apr", 5: "Mei", 6: "Jun",
-            7: "Jul", 8: "Agu", 9: "Sep",
-            10: "Okt", 11: "Nov", 12: "Des"
-        }
+    for col in periode_cols:
+        pivot[f"{col} (%)"] = np.where(
+            pivot["Pagu"] == 0,
+            0,
+            (pivot[col] / pivot["Pagu"]) * 100
+        )
 
-        new_cols = []
-        for col in pivot.columns:
-            try:
-                col_int = int(col)
-                new_cols.append(bulan_map.get(col_int, col))
-            except:
-                new_cols.append(col)
+    # =============================
+    # URUTKAN KOLOM (Nominal lalu %)
+    # =============================
+    ordered_cols = ["SATKER", "Pagu"]
+    for col in periode_cols:
+        ordered_cols.append(col)
+        ordered_cols.append(f"{col} (%)")
 
-        pivot.columns = new_cols
-    
+    pivot = pivot[ordered_cols]
+
     return pivot
+
 
 
 # Proporsi CMS
