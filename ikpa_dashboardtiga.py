@@ -3417,7 +3417,6 @@ def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
     ]
 
     if periode == "Triwulan":
-
         pivot_trx = df.pivot_table(
             index=index_cols,
             columns="TRIWULAN",
@@ -3432,12 +3431,19 @@ def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
             fill_value=0
         )
 
-        pivot_trx.columns = [f"{c}_TRX(%)" for c in pivot_trx.columns]
-        pivot_nom.columns = [f"{c}_NOM(%)" for c in pivot_nom.columns]
+        pivot_trx.columns = [
+            f"TW{c} - PROPORSI TRANSAKSI (%)"
+            for c in pivot_trx.columns
+        ]
+
+        pivot_nom.columns = [
+            f"TW{c} - PROPORSI NOMINAL (%)"
+            for c in pivot_nom.columns
+        ]
 
         pivot = pd.concat([pivot_trx, pivot_nom], axis=1).reset_index()
 
-    else:  # Tahunan
+    else:
 
         pivot = (
             df.groupby(index_cols)
@@ -3447,6 +3453,11 @@ def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
             )
             .reset_index()
         )
+
+        pivot = pivot.rename(columns={
+            "PROPORSI_TRANSAKSI": "PROPORSI TRANSAKSI (%)",
+            "PROPORSI_NOMINAL": "PROPORSI NOMINAL (%)"
+        })
 
     # =============================
     # HAPUS KOLOM VA DARI TAMPILAN
