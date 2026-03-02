@@ -3200,7 +3200,7 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
     df = df.copy()
 
     # =============================
-    # NORMALISASI PERIODE (KKP)
+    # VALIDASI PERIODE
     # =============================
     if "PERIODE" not in df.columns:
         raise ValueError("Kolom PERIODE tidak ditemukan pada data KKP")
@@ -3211,6 +3211,17 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
     df["BULAN"] = df["PERIODE"].str[5:7].astype(int)
     df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
 
+    # =============================
+    # NORMALISASI KODE SATKER
+    # =============================
+    if "Kode Satker" in df.columns:
+        df["Kode Satker"] = df["Kode Satker"].astype(str).str.zfill(6)
+    else:
+        raise ValueError("Kolom 'Kode Satker' tidak ditemukan")
+
+    # =============================
+    # FILTER TAHUN
+    # =============================
     if tahun_filter and periode != "Tahunan":
         df = df[df["TAHUN"] == tahun_filter]
 
@@ -3240,16 +3251,17 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
         value_col = "NILAI TRANSAKSI (NILAI SPM)"
         agg_func = "sum"
     else:
-        # Jika ada kolom NO SPM gunakan itu
         if "NO SPM" in df.columns:
             value_col = "NO SPM"
             agg_func = "nunique"
         else:
-            # fallback kalau tidak ada NO SPM
             value_col = "NOMOR KARTU"
             agg_func = "count"
 
-    group_cols = ["SATKER"]
+    # =============================
+    # GROUPING (PAKAI KODE + NAMA)
+    # =============================
+    group_cols = ["Kode Satker", "SATKER"]
 
     if periode == "Bulanan":
         group_cols.append("BULAN")
@@ -3264,34 +3276,43 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
         .reset_index()
     )
 
+    # =============================
+    # PIVOT
+    # =============================
     pivot = df_grouped.pivot_table(
-        index="SATKER",
+        index=["Kode Satker", "SATKER"],
         columns=group_cols[-1],
         values="Value",
         fill_value=0
     ).sort_index(axis=1)
 
+    pivot = pivot.reset_index()
+
     # =============================
-    # TAMBAH PAGU UNTUK NOMINAL
+    # TAMBAH PAGU (JIKA NOMINAL)
     # =============================
     if tipe == "Jumlah Nominal":
         pagu_df = (
-            df.groupby("SATKER")["LIMIT KKP"]
+            df.groupby(["Kode Satker", "SATKER"])["LIMIT KKP"]
             .max()
             .reset_index()
         )
 
-        pivot = pivot.reset_index()
-        pivot = pivot.merge(pagu_df, on="SATKER", how="left")
+        pivot = pivot.merge(
+            pagu_df,
+            on=["Kode Satker", "SATKER"],
+            how="left"
+        )
+
         pivot.rename(columns={"LIMIT KKP": "Pagu"}, inplace=True)
 
         cols = list(pivot.columns)
-        cols.insert(1, cols.pop(cols.index("Pagu")))
+        cols.insert(2, cols.pop(cols.index("Pagu")))
         pivot = pivot[cols]
-    else:
-        pivot = pivot.reset_index()
 
-    # Rename Triwulan
+    # =============================
+    # RENAME TRI WULAN
+    # =============================
     if periode == "Triwulan":
         pivot.columns = [
             f"TW{c}" if isinstance(c, int) else c
@@ -3302,13 +3323,11 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
 
     return pivot
 
+
 # Proporsi CMS
 def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
 
     df = df.copy()
-    
-    # DEBUG CEK NAMA KOLOM
-    st.write("Kolom CMS:", df.columns.tolist())
     
     # =============================
     # FORCE NUMERIC
@@ -3362,12 +3381,6 @@ def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
         (df["NILAI TRANSAKSI CMS"] / total_nominal) * 100
     )
 
-    # DEBUG JUMLAH DATA
-    st.write("Baris mentah:", len(df))
-    st.write(
-        "Satker unik:",
-        df[["KODE SATKER","NAMA SATKER"]].drop_duplicates().shape[0]
-    )
     
     # =============================
     # PIVOT
