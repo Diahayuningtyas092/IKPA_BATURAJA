@@ -3303,8 +3303,8 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
     return pivot
 
 # Proporsi CMS
-def generate_cms_from_session(df, periode="Triwulan", tipe="Proporsi Transaksi", tahun_filter=None):
-    
+def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
+
     df = df.copy()
 
     # =============================
@@ -3330,50 +3330,76 @@ def generate_cms_from_session(df, periode="Triwulan", tipe="Proporsi Transaksi",
         df = df[df["TAHUN"] == tahun_filter]
 
     # =============================
-    # HITUNG PROPORSI TANPA KOLOM TOTAL
+    # HITUNG PROPORSI TRANSAKSI
     # =============================
-    if tipe == "Proporsi Transaksi":
+    total_trx = (
+        df["JUMLAH TRANSAKSI CMS"]
+        + df["JUMLAH TRANSAKSI KARTU DEBIT"]
+        + df["JUMLAH TRANSAKSI TELLER"]
+    )
 
-        cms = df["JUMLAH TRANSAKSI CMS"]
-        debit = df["JUMLAH TRANSAKSI KARTU DEBIT"]
-        teller = df["JUMLAH TRANSAKSI TELLER"]
+    df["PROPORSI_TRANSAKSI"] = np.where(
+        total_trx == 0,
+        0,
+        (df["JUMLAH TRANSAKSI CMS"] / total_trx) * 100
+    )
 
-        total = cms + debit + teller
+    # =============================
+    # HITUNG PROPORSI NOMINAL
+    # =============================
+    total_nominal = (
+        df["NILAI TRANSAKSI CMS"]
+        + df["NILAI TRANSAKSI KARTU DEBIT"]
+        + df["NILAI TRANSAKSI TELLER"]
+    )
 
-        df["PROPORSI"] = np.where(total == 0, 0, (cms / total) * 100)
-
-    else:
-
-        cms = df["NILAI TRANSAKSI CMS"]
-        debit = df["NILAI TRANSAKSI KARTU DEBIT"]
-        teller = df["NILAI TRANSAKSI TELLER"]
-
-        total = cms + debit + teller
-
-        df["PROPORSI"] = np.where(total == 0, 0, (cms / total) * 100)
+    df["PROPORSI_NOMINAL"] = np.where(
+        total_nominal == 0,
+        0,
+        (df["NILAI TRANSAKSI CMS"] / total_nominal) * 100
+    )
 
     # =============================
     # PIVOT
     # =============================
+    index_cols = ["KODE SATKER", "NAMA SATKER"]
+
     if periode == "Triwulan":
 
-        pivot = df.pivot_table(
-            index="NAMA SATKER",
+        pivot_trx = df.pivot_table(
+            index=index_cols,
             columns="TRIWULAN",
-            values="PROPORSI",
+            values="PROPORSI_TRANSAKSI",
             fill_value=0
         )
 
-    else:
-
-        pivot = (
-            df.groupby("NAMA SATKER")["PROPORSI"]
-            .mean()
-            .reset_index()
+        pivot_nom = df.pivot_table(
+            index=index_cols,
+            columns="TRIWULAN",
+            values="PROPORSI_NOMINAL",
+            fill_value=0
         )
-        return pivot
 
-    pivot.columns = pivot.columns.astype(str)
+        # Rename kolom supaya beda
+        pivot_trx.columns = [
+            f"{col}_TRX(%)" for col in pivot_trx.columns
+        ]
+
+        pivot_nom.columns = [
+            f"{col}_NOM(%)" for col in pivot_nom.columns
+        ]
+
+        pivot = pd.concat([pivot_trx, pivot_nom], axis=1)
+
+    else:  # Tahunan
+
+        grouped = df.groupby(index_cols).agg(
+            PROPORSI_TRANSAKSI=("PROPORSI_TRANSAKSI", "mean"),
+            PROPORSI_NOMINAL=("PROPORSI_NOMINAL", "mean")
+        )
+
+        pivot = grouped
+
     pivot = pivot.reset_index()
 
     return pivot
