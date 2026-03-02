@@ -3432,12 +3432,12 @@ def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
         )
 
         pivot_trx.columns = [
-            f"TW{c} - PROPORSI TRANSAKSI (%)"
+            f"{c} - PROPORSI TRANSAKSI (%)"
             for c in pivot_trx.columns
         ]
 
         pivot_nom.columns = [
-            f"TW{c} - PROPORSI NOMINAL (%)"
+            f"{c} - PROPORSI NOMINAL (%)"
             for c in pivot_nom.columns
         ]
 
