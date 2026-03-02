@@ -3373,17 +3373,14 @@ def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
     # PIVOT
     # =============================
     index_cols = [
-            "KODE SATKER",
-            "NAMA SATKER",
-            "NOMOR REKENING VA",
-            "NAMA REKENING VA"
-        ]
+        "KODE SATKER",
+        "NAMA SATKER",
+        "NOMOR REKENING VA",
+        "NAMA REKENING VA"
+    ]
 
     if periode == "Triwulan":
 
-        # =============================
-        # PIVOT
-        # =============================
         pivot_trx = df.pivot_table(
             index=index_cols,
             columns="TRIWULAN",
@@ -3405,14 +3402,21 @@ def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
 
     else:  # Tahunan
 
-        grouped = df.groupby(index_cols).agg(
-            PROPORSI_TRANSAKSI=("PROPORSI_TRANSAKSI", "mean"),
-            PROPORSI_NOMINAL=("PROPORSI_NOMINAL", "mean")
+        pivot = (
+            df.groupby(index_cols)
+            .agg(
+                PROPORSI_TRANSAKSI=("PROPORSI_TRANSAKSI", "mean"),
+                PROPORSI_NOMINAL=("PROPORSI_NOMINAL", "mean")
+            )
+            .reset_index()
         )
 
-        pivot = grouped
-
-    pivot = pivot.reset_index()
+    # =============================
+    # HAPUS KOLOM VA DARI TAMPILAN
+    # =============================
+    pivot = pivot.drop(
+        columns=["NOMOR REKENING VA", "NAMA REKENING VA"]
+    )
 
     return pivot
 
