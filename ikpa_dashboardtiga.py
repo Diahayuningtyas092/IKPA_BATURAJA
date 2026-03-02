@@ -5199,7 +5199,6 @@ def page_dashboard():
                 df_pivot = generate_cms_from_session(
                     df_master,
                     periode=periode,
-                    tipe=tipe,
                     tahun_filter=tahun
                 )
 
