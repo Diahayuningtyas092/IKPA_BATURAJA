@@ -3304,13 +3304,13 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
 
 # Proporsi CMS
 def generate_cms_from_session(df, periode="Triwulan", tipe="Proporsi Transaksi", tahun_filter=None):
-
+    
     df = df.copy()
 
     # =============================
-    # PAKSA NUMERIC DENGAN CARA KERAS
+    # FORCE NUMERIC
     # =============================
-    cols_to_numeric = [
+    cols = [
         "JUMLAH TRANSAKSI CMS",
         "JUMLAH TRANSAKSI KARTU DEBIT",
         "JUMLAH TRANSAKSI TELLER",
@@ -3319,15 +3319,9 @@ def generate_cms_from_session(df, periode="Triwulan", tipe="Proporsi Transaksi",
         "NILAI TRANSAKSI TELLER",
     ]
 
-    for col in cols_to_numeric:
+    for col in cols:
         if col in df.columns:
-            df[col] = (
-                df[col]
-                .astype(str)
-                .str.replace(r"[^\d]", "", regex=True)
-            )
-            df[col] = pd.to_numeric(df[col], errors="coerce")
-            df[col] = df[col].fillna(0)
+            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
     # =============================
     # FILTER TAHUN
@@ -3336,35 +3330,27 @@ def generate_cms_from_session(df, periode="Triwulan", tipe="Proporsi Transaksi",
         df = df[df["TAHUN"] == tahun_filter]
 
     # =============================
-    # HITUNG TOTAL & PROPORSI
+    # HITUNG PROPORSI TANPA KOLOM TOTAL
     # =============================
     if tipe == "Proporsi Transaksi":
 
-        cms = df["JUMLAH TRANSAKSI CMS"].astype(float)
-        debit = df["JUMLAH TRANSAKSI KARTU DEBIT"].astype(float)
-        teller = df["JUMLAH TRANSAKSI TELLER"].astype(float)
+        cms = df["JUMLAH TRANSAKSI CMS"]
+        debit = df["JUMLAH TRANSAKSI KARTU DEBIT"]
+        teller = df["JUMLAH TRANSAKSI TELLER"]
 
         total = cms + debit + teller
 
-        df["PROPORSI"] = np.where(
-            total == 0,
-            0,
-            (cms / total) * 100
-        )
+        df["PROPORSI"] = np.where(total == 0, 0, (cms / total) * 100)
 
     else:
 
-        cms = df["NILAI TRANSAKSI CMS"].astype(float)
-        debit = df["NILAI TRANSAKSI KARTU DEBIT"].astype(float)
-        teller = df["NILAI TRANSAKSI TELLER"].astype(float)
+        cms = df["NILAI TRANSAKSI CMS"]
+        debit = df["NILAI TRANSAKSI KARTU DEBIT"]
+        teller = df["NILAI TRANSAKSI TELLER"]
 
         total = cms + debit + teller
 
-        df["PROPORSI"] = np.where(
-            total == 0,
-            0,
-            (cms / total) * 100
-        )
+        df["PROPORSI"] = np.where(total == 0, 0, (cms / total) * 100)
 
     # =============================
     # PIVOT
@@ -3378,7 +3364,7 @@ def generate_cms_from_session(df, periode="Triwulan", tipe="Proporsi Transaksi",
             fill_value=0
         )
 
-    else:  # Tahunan
+    else:
 
         pivot = (
             df.groupby("NAMA SATKER")["PROPORSI"]
