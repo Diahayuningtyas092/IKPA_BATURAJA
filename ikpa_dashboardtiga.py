@@ -29,7 +29,7 @@ def render_table_pin_satker(df):
     df = df.loc[:, ~df.columns.duplicated()].copy()
     df.insert(0, "__rowNum__", range(1, len(df) + 1))
 
-    def calc_grid_height(df, row_height=45, header_height=40, max_height=900):
+    def calc_grid_height(df, row_height=45, header_height=40, max_height=600):
         return min(header_height + len(df) * row_height, max_height)
 
     gb = GridOptionsBuilder.from_dataframe(df)
@@ -3322,6 +3322,28 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahu
     pivot.columns = pivot.columns.astype(str)
 
     st.write("Total satker setelah pivot:", pivot.shape[0])
+    
+    # =============================
+    # UBAH ANGKA BULAN → NAMA BULAN
+    # =============================
+    if periode == "Bulanan":
+
+        bulan_map = {
+            1: "Jan", 2: "Feb", 3: "Mar",
+            4: "Apr", 5: "Mei", 6: "Jun",
+            7: "Jul", 8: "Agu", 9: "Sep",
+            10: "Okt", 11: "Nov", 12: "Des"
+        }
+
+        new_cols = []
+        for col in pivot.columns:
+            try:
+                col_int = int(col)
+                new_cols.append(bulan_map.get(col_int, col))
+            except:
+                new_cols.append(col)
+
+        pivot.columns = new_cols
     
     return pivot
 
