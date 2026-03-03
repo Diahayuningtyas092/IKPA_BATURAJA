@@ -4968,6 +4968,9 @@ def page_dashboard():
         # =====================================================
         # 💰 DIGIPAY
         # =====================================================
+        # =====================================================
+        # 💰 DIGIPAY
+        # =====================================================
         if source_detail == "💰 Digipay":
 
             if "digipay_master" not in st.session_state:
@@ -4977,25 +4980,53 @@ def page_dashboard():
                 df_master = st.session_state.digipay_master.copy()
 
                 # =====================================
-                # MERGE REFERENSI SATKER RINGKAS
+                # 1️⃣ DETEKSI KOLOM KODE SATKER OTOMATIS
+                # =====================================
+                possible_kode_cols = [
+                    "KODE_SATKER",
+                    "KODE SATKER",
+                    "Kode Satker",
+                    "KDSATKER"
+                ]
+
+                kode_col = None
+                for col in possible_kode_cols:
+                    if col in df_master.columns:
+                        kode_col = col
+                        break
+
+                if kode_col is None:
+                    raise ValueError("Kolom kode satker tidak ditemukan di Digipay")
+
+                df_master["Kode Satker"] = (
+                    df_master[kode_col]
+                    .astype(str)
+                    .str.extract(r"(\d{6})")[0]
+                )
+
+                # =====================================
+                # 2️⃣ MERGE REFERENSI NAMA RINGKAS
                 # =====================================
                 ref = st.session_state.reference_df.copy()
-
                 ref["Kode Satker"] = ref["Kode Satker"].astype(str).str.strip()
-                df_master["KODE_SATKER"] = df_master["KODE_SATKER"].astype(str).str.strip()
 
                 df_master = df_master.merge(
                     ref[["Kode Satker", "Uraian Satker-SINGKAT"]],
-                    left_on="KODE_SATKER",
-                    right_on="Kode Satker",
+                    on="Kode Satker",
                     how="left"
                 )
 
-                df_master["Nama Satker"] = df_master["Uraian Satker-SINGKAT"].fillna(df_master["NMSATKER"])
+                if "NMSATKER" in df_master.columns:
+                    df_master["Nama Satker"] = (
+                        df_master["Uraian Satker-SINGKAT"]
+                        .fillna(df_master["NMSATKER"])
+                    )
+                else:
+                    df_master["Nama Satker"] = df_master["Uraian Satker-SINGKAT"]
 
-                # =============================
-                # NORMALISASI DATA
-                # =============================
+                # =====================================
+                # 3️⃣ NORMALISASI DATA
+                # =====================================
                 df_master["TAHUN"] = pd.to_numeric(df_master["TAHUN"], errors="coerce")
                 df_master["BULAN"] = pd.to_numeric(df_master["BULAN"], errors="coerce")
                 df_master["NOMINVOICE"] = pd.to_numeric(df_master["NOMINVOICE"], errors="coerce")
@@ -5016,9 +5047,9 @@ def page_dashboard():
                 else:
                     df_raw = df_master.copy()
 
-                # =============================
-                # BULANAN
-                # =============================
+                # =====================================
+                # 4️⃣ BULANAN
+                # =====================================
                 if periode == "Bulanan":
 
                     MONTH_MAP = {
@@ -5031,74 +5062,76 @@ def page_dashboard():
 
                     if tipe == "Jumlah Transaksi":
                         df_grouped = (
-                            df_raw.groupby(["Nama Satker", "BULAN_NAMA"])["NOINVOICE"]
+                            df_raw.groupby(["Kode Satker", "Nama Satker", "BULAN_NAMA"])["NOINVOICE"]
                             .nunique()
                             .reset_index(name="Jumlah")
                         )
                         value_col = "Jumlah"
                     else:
                         df_grouped = (
-                            df_raw.groupby(["Nama Satker", "BULAN_NAMA"])["NOMINVOICE"]
+                            df_raw.groupby(["Kode Satker", "Nama Satker", "BULAN_NAMA"])["NOMINVOICE"]
                             .sum()
                             .reset_index(name="Nilai")
                         )
                         value_col = "Nilai"
 
-                    df_pivot = df_grouped.pivot(
-                        index="Nama Satker",
+                    df_pivot = df_grouped.pivot_table(
+                        index=["Kode Satker", "Nama Satker"],
                         columns="BULAN_NAMA",
-                        values=value_col
-                    ).fillna(0)
+                        values=value_col,
+                        fill_value=0
+                    )
 
                     urutan_bulan = ["JAN","FEB","MAR","APR","MEI","JUN","JUL","AGU","SEP","OKT","NOV","DES"]
                     df_pivot = df_pivot.reindex(columns=urutan_bulan, fill_value=0)
 
-                # =============================
-                # TRIWULAN
-                # =============================
+                # =====================================
+                # 5️⃣ TRIWULAN
+                # =====================================
                 elif periode == "Triwulan":
 
                     df_raw["TRIWULAN"] = ((df_raw["BULAN"] - 1) // 3) + 1
 
                     if tipe == "Jumlah Transaksi":
                         df_grouped = (
-                            df_raw.groupby(["Nama Satker", "TRIWULAN"])["NOINVOICE"]
+                            df_raw.groupby(["Kode Satker", "Nama Satker", "TRIWULAN"])["NOINVOICE"]
                             .nunique()
                             .reset_index(name="Jumlah")
                         )
                         value_col = "Jumlah"
                     else:
                         df_grouped = (
-                            df_raw.groupby(["Nama Satker", "TRIWULAN"])["NOMINVOICE"]
+                            df_raw.groupby(["Kode Satker", "Nama Satker", "TRIWULAN"])["NOMINVOICE"]
                             .sum()
                             .reset_index(name="Nilai")
                         )
                         value_col = "Nilai"
 
-                    df_pivot = df_grouped.pivot(
-                        index="Nama Satker",
+                    df_pivot = df_grouped.pivot_table(
+                        index=["Kode Satker", "Nama Satker"],
                         columns="TRIWULAN",
-                        values=value_col
-                    ).fillna(0)
+                        values=value_col,
+                        fill_value=0
+                    )
 
                     df_pivot = df_pivot.reindex(columns=[1,2,3,4], fill_value=0)
                     df_pivot.columns = ["TW1","TW2","TW3","TW4"]
 
-                # =============================
-                # TAHUNAN
-                # =============================
+                # =====================================
+                # 6️⃣ TAHUNAN
+                # =====================================
                 else:
 
                     if tipe == "Jumlah Transaksi":
                         df_grouped = (
-                            df_raw.groupby(["Nama Satker", "TAHUN"])["NOINVOICE"]
+                            df_raw.groupby(["Kode Satker", "Nama Satker", "TAHUN"])["NOINVOICE"]
                             .nunique()
                             .reset_index(name="Jumlah")
                         )
                         value_col = "Jumlah"
                     else:
                         df_grouped = (
-                            df_raw.groupby(["Nama Satker", "TAHUN"])["NOMINVOICE"]
+                            df_raw.groupby(["Kode Satker", "Nama Satker", "TAHUN"])["NOMINVOICE"]
                             .sum()
                             .reset_index(name="Nilai")
                         )
@@ -5107,7 +5140,7 @@ def page_dashboard():
                     df_pivot = (
                         df_grouped
                         .pivot_table(
-                            index="Nama Satker",
+                            index=["Kode Satker", "Nama Satker"],
                             columns="TAHUN",
                             values=value_col,
                             fill_value=0
@@ -5119,9 +5152,9 @@ def page_dashboard():
 
                 df_pivot = df_pivot.reset_index()
 
-                # =============================
-                # FORMAT RIBUAN
-                # =============================
+                # =====================================
+                # 7️⃣ FORMAT RIBUAN
+                # =====================================
                 def format_ribuan(x):
                     try:
                         return "{:,.0f}".format(float(x)).replace(",", ".")
@@ -5129,11 +5162,11 @@ def page_dashboard():
                         return x
 
                 for col in df_pivot.columns:
-                    if col != "Nama Satker":
+                    if col not in ["Kode Satker", "Nama Satker"]:
                         df_pivot[col] = df_pivot[col].apply(format_ribuan)
 
                 render_table_pin_satker(df_pivot)
-        
+                
 
         # =====================================================
         # 💳 KKP
