@@ -5045,7 +5045,7 @@ def page_dashboard():
                         value_col = "Nilai"
 
                     df_pivot = df_grouped.pivot(
-                        index="Nama Satker",
+                        index="NMSATKER",
                         columns="BULAN_NAMA",
                         values=value_col
                     ).fillna(0)
@@ -5080,7 +5080,7 @@ def page_dashboard():
                         value_col = "Nilai"
 
                     df_pivot = df_grouped.pivot(
-                        index="Nama Satker",
+                        index="NMSATKER",
                         columns="TRIWULAN",
                         values=value_col
                     ).fillna(0)
@@ -5111,7 +5111,7 @@ def page_dashboard():
                     df_pivot = (
                         df_grouped
                         .pivot_table(
-                            index="Nama Satker",
+                            index="NMSATKER",
                             columns="TAHUN",
                             values=value_col,
                             fill_value=0
@@ -5133,7 +5133,7 @@ def page_dashboard():
                         return x
 
                 for col in df_pivot.columns:
-                    if col != "Nama Satker":
+                    if col != "NMSATKER":
                         df_pivot[col] = df_pivot[col].apply(format_ribuan)
 
                 render_table_pin_satker(df_pivot)
