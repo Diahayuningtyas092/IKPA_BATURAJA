@@ -3010,6 +3010,60 @@ def format_ikpa_display(x):
 #Agregasi DIGIPAY  
 #-----------------------------------
 
+def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None):
+    
+    df = df.copy()
+
+    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
+    df["Tahun"] = df["TANGGAL"].dt.year
+    df["Bulan"] = df["TANGGAL"].dt.month
+    df["Triwulan"] = ((df["Bulan"] - 1) // 3) + 1
+
+    df["NOMINVOICE"] = (
+        df["NOMINVOICE"]
+        .astype(str)
+        .str.replace(r"[^\d]", "", regex=True)
+        .replace("", "0")
+        .astype(float)
+    )
+
+    if tahun_filter and periode != "Tahunan":
+        df = df[df["Tahun"] == tahun_filter]
+
+    # =============================
+    # AGREGASI
+    # =============================
+    if tipe == "trx":
+        value_col = "NOINVOICE"
+        agg_func = "nunique"
+    else:
+        value_col = "NOMINVOICE"
+        agg_func = "sum"
+
+    if periode == "Bulanan":
+        grouped = (
+            df.groupby("Bulan")
+            .agg(Value=(value_col, agg_func))
+            .sort_index()
+        )
+    elif periode == "Triwulan":
+        grouped = (
+            df.groupby("Triwulan")
+            .agg(Value=(value_col, agg_func))
+            .sort_index()
+        )
+    else:
+        grouped = (
+            df.groupby("Tahun")
+            .agg(Value=(value_col, agg_func))
+            .sort_index()
+        )
+
+    # 🔥 KUMULATIF
+    grouped["Kumulatif"] = grouped["Value"].cumsum()
+
+    return grouped.reset_index()
+
 #Agregasi Digipay perbulan
 def generate_digipay_monthly_from_session(df, tahun_filter=None, tipe="trx"):
     df = df.copy()
@@ -3194,6 +3248,55 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
 
 # AGREGASI KKP
 # ===================
+def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
+    
+    df = df.copy()
+
+    df["PERIODE"] = df["PERIODE"].astype(str)
+    df["TAHUN"] = df["PERIODE"].str[:4].astype(int)
+    df["BULAN"] = df["PERIODE"].str[5:7].astype(int)
+    df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
+
+    df["NILAI TRANSAKSI (NILAI SPM)"] = (
+        df["NILAI TRANSAKSI (NILAI SPM)"]
+        .astype(str)
+        .str.replace(r"[^\d]", "", regex=True)
+        .replace("", "0")
+        .astype(float)
+    )
+
+    if tahun_filter and periode != "Tahunan":
+        df = df[df["TAHUN"] == tahun_filter]
+
+    # =============================
+    # AGREGASI TOTAL
+    # =============================
+    if periode == "Bulanan":
+        grouped = (
+            df.groupby("BULAN")["NILAI TRANSAKSI (NILAI SPM)"]
+            .sum()
+            .sort_index()
+        )
+    elif periode == "Triwulan":
+        grouped = (
+            df.groupby("TRIWULAN")["NILAI TRANSAKSI (NILAI SPM)"]
+            .sum()
+            .sort_index()
+        )
+    else:
+        grouped = (
+            df.groupby("TAHUN")["NILAI TRANSAKSI (NILAI SPM)"]
+            .sum()
+            .sort_index()
+        )
+
+    grouped = grouped.to_frame("Value")
+
+    # 🔥 KUMULATIF
+    grouped["Kumulatif"] = grouped["Value"].cumsum()
+
+    return grouped.reset_index()
+
 def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahun_filter=None):
     
     df = df.copy()
@@ -4969,6 +5072,23 @@ def page_dashboard():
 
             st.subheader("📊 Dashboard Utama")
             st.info("Isi dashboard chart di sini")
+        
+            chart_data = generate_digipay_chart(
+                df_master,
+                periode=periode,
+                tipe="trx",
+                tahun_filter=tahun if periode != "Tahunan" else None
+            )
+
+            st.line_chart(chart_data.set_index(chart_data.columns[0])["Kumulatif"])
+            
+            chart_data = generate_kkp_chart(
+                df_master,
+                periode=periode,
+                tahun_filter=tahun if periode != "Tahunan" else None
+            )
+
+            st.line_chart(chart_data.set_index(chart_data.columns[0])["Kumulatif"])
 
         # =====================================================
         # TABEL DETAIL
