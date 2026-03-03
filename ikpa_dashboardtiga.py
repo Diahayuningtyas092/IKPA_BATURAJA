@@ -3014,10 +3014,11 @@ def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None)
     
     df = df.copy()
 
-    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
-    df["Tahun"] = df["TANGGAL"].dt.year
-    df["Bulan"] = df["TANGGAL"].dt.month
-    df["Triwulan"] = ((df["Bulan"] - 1) // 3) + 1
+    # =============================
+    # PASTIKAN NUMERIC
+    # =============================
+    df["TAHUN"] = pd.to_numeric(df["TAHUN"], errors="coerce")
+    df["BULAN"] = pd.to_numeric(df["BULAN"], errors="coerce")
 
     df["NOMINVOICE"] = (
         df["NOMINVOICE"]
@@ -3027,11 +3028,13 @@ def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None)
         .astype(float)
     )
 
+    df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
+
     if tahun_filter and periode != "Tahunan":
-        df = df[df["Tahun"] == tahun_filter]
+        df = df[df["TAHUN"] == tahun_filter]
 
     # =============================
-    # AGREGASI
+    # TENTUKAN AGREGASI
     # =============================
     if tipe == "trx":
         value_col = "NOINVOICE"
@@ -3042,27 +3045,32 @@ def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None)
 
     if periode == "Bulanan":
         grouped = (
-            df.groupby("Bulan")
-            .agg(Value=(value_col, agg_func))
-            .sort_index()
-        )
-    elif periode == "Triwulan":
-        grouped = (
-            df.groupby("Triwulan")
-            .agg(Value=(value_col, agg_func))
-            .sort_index()
-        )
-    else:
-        grouped = (
-            df.groupby("Tahun")
+            df.groupby("BULAN")
             .agg(Value=(value_col, agg_func))
             .sort_index()
         )
 
-    # 🔥 KUMULATIF
+    elif periode == "Triwulan":
+        grouped = (
+            df.groupby("TRIWULAN")
+            .agg(Value=(value_col, agg_func))
+            .sort_index()
+        )
+
+    else:  # Tahunan
+        grouped = (
+            df.groupby("TAHUN")
+            .agg(Value=(value_col, agg_func))
+            .sort_index()
+        )
+
+    # =============================
+    # KUMULATIF
+    # =============================
     grouped["Kumulatif"] = grouped["Value"].cumsum()
 
     return grouped.reset_index()
+
 
 #Agregasi Digipay perbulan
 def generate_digipay_monthly_from_session(df, tahun_filter=None, tipe="trx"):
