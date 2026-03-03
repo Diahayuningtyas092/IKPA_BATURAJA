@@ -4975,6 +4975,14 @@ def page_dashboard():
             else:
 
                 df_master = st.session_state.digipay_master.copy()
+                
+                # =====================================
+                # GUNAKAN NAMA RINGKAS
+                # =====================================
+                if "Uraian Satker-RINGKAS" in df_master.columns:
+                    df_master["Nama Satker"] = df_master["Uraian Satker-RINGKAS"]
+                else:
+                    df_master["Nama Satker"] = df_master["NMSATKER"]
 
                 # =============================
                 # NORMALISASI DATA
@@ -5023,28 +5031,28 @@ def page_dashboard():
 
                     if tipe == "Jumlah Transaksi":
                         df_grouped = (
-                            df_raw.groupby(["NMSATKER", "BULAN_NAMA"])["NOINVOICE"]
+                            df_raw.groupby(["Nama Satker", "BULAN_NAMA"])["NOINVOICE"]
                             .nunique()
                             .reset_index(name="Jumlah")
                         )
                         value_col = "Jumlah"
                     else:
                         df_grouped = (
-                            df_raw.groupby(["NMSATKER", "BULAN_NAMA"])["NOMINVOICE"]
+                            df_raw.groupby(["Nama Satker", "BULAN_NAMA"])["NOMINVOICE"]
                             .sum()
                             .reset_index(name="Nilai")
                         )
                         value_col = "Nilai"
 
                     df_pivot = df_grouped.pivot(
-                        index="NMSATKER",
+                        index="Nama Satker",
                         columns="BULAN_NAMA",
                         values=value_col
                     ).fillna(0)
 
                     urutan_bulan = [
-                        "JANUARI","FEBRUARI","MARET","APRIL","MEI","JUNI",
-                        "JULI","AGUSTUS","SEPTEMBER","OKTOBER","NOVEMBER","DESEMBER"
+                        "JAN","FEB","MAR","APR","MEI","JUN",
+                        "JUL","AGU","SEP","OKT","NOV","DES"
                     ]
 
                     df_pivot = df_pivot[[b for b in urutan_bulan if b in df_pivot.columns]]
@@ -5058,21 +5066,21 @@ def page_dashboard():
 
                     if tipe == "Jumlah Transaksi":
                         df_grouped = (
-                            df_raw.groupby(["NMSATKER", "TRIWULAN"])["NOINVOICE"]
+                            df_raw.groupby(["Nama Satker", "TRIWULAN"])["NOINVOICE"]
                             .nunique()
                             .reset_index(name="Jumlah")
                         )
                         value_col = "Jumlah"
                     else:
                         df_grouped = (
-                            df_raw.groupby(["NMSATKER", "TRIWULAN"])["NOMINVOICE"]
+                            df_raw.groupby(["Nama Satker", "TRIWULAN"])["NOMINVOICE"]
                             .sum()
                             .reset_index(name="Nilai")
                         )
                         value_col = "Nilai"
 
                     df_pivot = df_grouped.pivot(
-                        index="NMSATKER",
+                        index="Nama Satker",
                         columns="TRIWULAN",
                         values=value_col
                     ).fillna(0)
@@ -5087,14 +5095,14 @@ def page_dashboard():
 
                     if tipe == "Jumlah Transaksi":
                         df_grouped = (
-                            df_raw.groupby(["NMSATKER", "TAHUN"])["NOINVOICE"]
+                            df_raw.groupby(["Nama Satker", "TAHUN"])["NOINVOICE"]
                             .nunique()
                             .reset_index(name="Jumlah")
                         )
                         value_col = "Jumlah"
                     else:
                         df_grouped = (
-                            df_raw.groupby(["NMSATKER", "TAHUN"])["NOMINVOICE"]
+                            df_raw.groupby(["Nama Satker", "TAHUN"])["NOMINVOICE"]
                             .sum()
                             .reset_index(name="Nilai")
                         )
@@ -5103,7 +5111,7 @@ def page_dashboard():
                     df_pivot = (
                         df_grouped
                         .pivot_table(
-                            index="NMSATKER",
+                            index="Nama Satker",
                             columns="TAHUN",
                             values=value_col,
                             fill_value=0
@@ -5125,7 +5133,7 @@ def page_dashboard():
                         return x
 
                 for col in df_pivot.columns:
-                    if col != "NMSATKER":
+                    if col != "Nama Satker":
                         df_pivot[col] = df_pivot[col].apply(format_ribuan)
 
                 render_table_pin_satker(df_pivot)
