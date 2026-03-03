@@ -4977,12 +4977,21 @@ def page_dashboard():
                 df_master = st.session_state.digipay_master.copy()
 
                 # =====================================
-                # GUNAKAN NAMA RINGKAS
+                # MERGE REFERENSI SATKER RINGKAS
                 # =====================================
-                if "Uraian Satker-RINGKAS" in df_master.columns:
-                    df_master["Nama Satker"] = df_master["Uraian Satker-RINGKAS"]
-                else:
-                    df_master["Nama Satker"] = df_master["NMSATKER"]
+                ref = st.session_state.reference_df.copy()
+
+                ref["Kode Satker"] = ref["Kode Satker"].astype(str).str.strip()
+                df_master["KODE_SATKER"] = df_master["KODE_SATKER"].astype(str).str.strip()
+
+                df_master = df_master.merge(
+                    ref[["Kode Satker", "Uraian Satker-SINGKAT"]],
+                    left_on="KODE_SATKER",
+                    right_on="Kode Satker",
+                    how="left"
+                )
+
+                df_master["Nama Satker"] = df_master["Uraian Satker-SINGKAT"].fillna(df_master["NMSATKER"])
 
                 # =============================
                 # NORMALISASI DATA
