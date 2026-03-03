@@ -4952,37 +4952,38 @@ def page_dashboard():
                 render_table_pin_satker(df_display)
             
     elif st.session_state.main_menu == "Digitalisasi":
-    
         st.markdown("## 📊 Digitalisasi")
 
-        # =====================================================
-        # MENU UTAMA DIGITALISASI (MODERN STYLE)
-        # =====================================================
         menu_digital = st.segmented_control(
             label="",
             options=["📈 Dashboard Utama", "📋 Tabel Detail"],
             default="📈 Dashboard Utama"
         )
 
-        st.divider()    
-        
-    # =====================================================
-    # 📋 TABEL DETAIL
-    # =====================================================
-    elif menu_digital == "📋 Tabel Detail":
-
-        st.subheader("📋 Tabel Detail Digitalisasi")
-
-        # =====================================================
-        # SUB MENU (RADIO BUTTON HORIZONTAL)
-        # =====================================================
-        source_detail = st.radio(
-            "",
-            ["💰 Digipay", "💳 KKP", "🏦 CMS"],
-            horizontal=True
-        )
-
         st.divider()
+
+        # =====================================================
+        # DASHBOARD UTAMA
+        # =====================================================
+        if menu_digital == "📈 Dashboard Utama":
+
+            st.subheader("📊 Dashboard Utama")
+            st.info("Isi dashboard chart di sini")
+
+        # =====================================================
+        # TABEL DETAIL
+        # =====================================================
+        elif menu_digital == "📋 Tabel Detail":
+
+            st.subheader("📋 Tabel Detail Digitalisasi")
+
+            source_detail = st.radio(
+                "",
+                ["💰 Digipay", "💳 KKP", "🏦 CMS"],
+                horizontal=True
+            )
+
+            st.divider()
 
         # =====================================================
         # DIGIPAY
