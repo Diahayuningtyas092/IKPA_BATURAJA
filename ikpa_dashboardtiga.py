@@ -4975,7 +4975,7 @@ def page_dashboard():
             else:
 
                 df_master = st.session_state.digipay_master.copy()
-                
+
                 # =====================================
                 # GUNAKAN NAMA RINGKAS
                 # =====================================
@@ -4991,22 +4991,13 @@ def page_dashboard():
                 df_master["BULAN"] = pd.to_numeric(df_master["BULAN"], errors="coerce")
                 df_master["NOMINVOICE"] = pd.to_numeric(df_master["NOMINVOICE"], errors="coerce")
 
-                # =============================
-                # FILTER DALAM 1 BARIS
-                # =============================
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
-                    periode = st.selectbox(
-                        "Periode",
-                        ["Bulanan", "Triwulan", "Tahunan"]
-                    )
+                    periode = st.selectbox("Periode", ["Bulanan", "Triwulan", "Tahunan"])
 
                 with col2:
-                    tipe = st.selectbox(
-                        "Tipe",
-                        ["Jumlah Transaksi", "Nilai Transaksi"]
-                    )
+                    tipe = st.selectbox("Tipe", ["Jumlah Transaksi", "Nilai Transaksi"])
 
                 if periode != "Tahunan":
                     with col3:
@@ -5022,9 +5013,9 @@ def page_dashboard():
                 if periode == "Bulanan":
 
                     MONTH_MAP = {
-                        1:"JANUARI",2:"FEBRUARI",3:"MARET",4:"APRIL",
-                        5:"MEI",6:"JUNI",7:"JULI",8:"AGUSTUS",
-                        9:"SEPTEMBER",10:"OKTOBER",11:"NOVEMBER",12:"DESEMBER"
+                        1:"JAN",2:"FEB",3:"MAR",4:"APR",
+                        5:"MEI",6:"JUN",7:"JUL",8:"AGU",
+                        9:"SEP",10:"OKT",11:"NOV",12:"DES"
                     }
 
                     df_raw["BULAN_NAMA"] = df_raw["BULAN"].map(MONTH_MAP)
@@ -5045,17 +5036,13 @@ def page_dashboard():
                         value_col = "Nilai"
 
                     df_pivot = df_grouped.pivot(
-                        index="NMSATKER",
+                        index="Nama Satker",
                         columns="BULAN_NAMA",
                         values=value_col
                     ).fillna(0)
 
-                    urutan_bulan = [
-                        "JAN","FEB","MAR","APR","MEI","JUN",
-                        "JUL","AGU","SEP","OKT","NOV","DES"
-                    ]
-
-                    df_pivot = df_pivot[[b for b in urutan_bulan if b in df_pivot.columns]]
+                    urutan_bulan = ["JAN","FEB","MAR","APR","MEI","JUN","JUL","AGU","SEP","OKT","NOV","DES"]
+                    df_pivot = df_pivot.reindex(columns=urutan_bulan, fill_value=0)
 
                 # =============================
                 # TRIWULAN
@@ -5080,7 +5067,7 @@ def page_dashboard():
                         value_col = "Nilai"
 
                     df_pivot = df_grouped.pivot(
-                        index="NMSATKER",
+                        index="Nama Satker",
                         columns="TRIWULAN",
                         values=value_col
                     ).fillna(0)
@@ -5111,7 +5098,7 @@ def page_dashboard():
                     df_pivot = (
                         df_grouped
                         .pivot_table(
-                            index="NMSATKER",
+                            index="Nama Satker",
                             columns="TAHUN",
                             values=value_col,
                             fill_value=0
@@ -5133,10 +5120,11 @@ def page_dashboard():
                         return x
 
                 for col in df_pivot.columns:
-                    if col != "NMSATKER":
+                    if col != "Nama Satker":
                         df_pivot[col] = df_pivot[col].apply(format_ribuan)
 
                 render_table_pin_satker(df_pivot)
+        
 
         # =====================================================
         # 💳 KKP
