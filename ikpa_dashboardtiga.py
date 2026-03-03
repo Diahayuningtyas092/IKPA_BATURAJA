@@ -5074,12 +5074,49 @@ def page_dashboard():
         st.divider()
 
         # =====================================================
-        # DASHBOARD UTAMA
+        # CHART UTAMA
         # =====================================================
         if menu_digital == "📈 Chart Utama":
 
-            st.subheader("📊 Chart Utama")
-            st.info("Isi dashboard chart di sini")
+            st.subheader("📊 Dashboard Digitalisasi")
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                periode_chart = st.selectbox(
+                    "Periode",
+                    ["Bulanan", "Triwulan", "Tahunan"],
+                    key="chart_periode"
+                )
+
+            with col2:
+                tipe_chart = st.selectbox(
+                    "Tipe Digipay",
+                    ["Jumlah Transaksi", "Nilai Transaksi"],
+                    key="chart_tipe"
+                )
+
+            if periode_chart != "Tahunan":
+                with col3:
+                    if "digipay_master" in st.session_state:
+                        tahun_list = sorted(
+                            st.session_state.digipay_master["TAHUN"]
+                            .dropna()
+                            .unique()
+                        )
+                        tahun_chart = st.selectbox(
+                            "Tahun",
+                            tahun_list,
+                            key="chart_tahun"
+                        )
+                    else:
+                        tahun_chart = None
+            else:
+                tahun_chart = None
+
+            st.divider()
+
+            import plotly.express as px
 
             # =========================================
             # DIGIPAY CHART
@@ -5088,17 +5125,35 @@ def page_dashboard():
 
                 df_digipay = st.session_state.digipay_master.copy()
 
+                tipe_val = "trx" if tipe_chart == "Jumlah Transaksi" else "nominal"
+
                 chart_dig = generate_digipay_chart(
                     df_digipay,
-                    periode="Bulanan",
-                    tipe="trx",
-                    tahun_filter=None
+                    periode=periode_chart,
+                    tipe=tipe_val,
+                    tahun_filter=tahun_chart
                 )
 
-                st.markdown("### 💰 Digipay")
-                st.line_chart(
-                    chart_dig.set_index(chart_dig.columns[0])["Kumulatif"]
+                st.markdown("### 💰 Digipay (Kumulatif)")
+
+                fig1 = px.bar(
+                    chart_dig,
+                    x=chart_dig.columns[0],
+                    y="Kumulatif",
+                    text="Kumulatif",
+                    color_discrete_sequence=["#1f77b4"]
                 )
+
+                fig1.update_traces(textposition="outside")
+
+                fig1.update_layout(
+                    height=450,
+                    xaxis_title="Periode",
+                    yaxis_title="Total Kumulatif",
+                    showlegend=False
+                )
+
+                st.plotly_chart(fig1, use_container_width=True)
 
             else:
                 st.warning("Data Digipay belum tersedia")
@@ -5114,14 +5169,30 @@ def page_dashboard():
 
                 chart_kkp = generate_kkp_chart(
                     df_kkp,
-                    periode="Bulanan",
-                    tahun_filter=None
+                    periode=periode_chart,
+                    tahun_filter=tahun_chart
                 )
 
-                st.markdown("### 💳 KKP")
-                st.line_chart(
-                    chart_kkp.set_index(chart_kkp.columns[0])["Kumulatif"]
+                st.markdown("### 💳 KKP (Kumulatif Nominal)")
+
+                fig2 = px.bar(
+                    chart_kkp,
+                    x=chart_kkp.columns[0],
+                    y="Kumulatif",
+                    text="Kumulatif",
+                    color_discrete_sequence=["#ff7f0e"]
                 )
+
+                fig2.update_traces(textposition="outside")
+
+                fig2.update_layout(
+                    height=450,
+                    xaxis_title="Periode",
+                    yaxis_title="Total Kumulatif",
+                    showlegend=False
+                )
+
+                st.plotly_chart(fig2, use_container_width=True)
 
             else:
                 st.warning("Data KKP belum tersedia")
@@ -5142,309 +5213,309 @@ def page_dashboard():
 
             st.divider()
 
-        # =====================================================
-        # DIGIPAY
-        # =====================================================
+            # =====================================================
+            # DIGIPAY
+            # =====================================================
 
-        if source_detail == "💰 Digipay":
+            if source_detail == "💰 Digipay":
 
-            if "digipay_master" not in st.session_state:
-                st.warning("Data Digipay belum tersedia")
-            else:
-
-                df_master = st.session_state.digipay_master.copy()
-
-                # =====================================
-                # 1️⃣ DETEKSI KOLOM KODE SATKER OTOMATIS
-                # =====================================
-                possible_kode_cols = [
-                    "KODE_SATKER",
-                    "KODE SATKER",
-                    "Kode Satker",
-                    "KDSATKER"
-                ]
-
-                kode_col = None
-                for col in possible_kode_cols:
-                    if col in df_master.columns:
-                        kode_col = col
-                        break
-
-                if kode_col is None:
-                    raise ValueError("Kolom kode satker tidak ditemukan di Digipay")
-
-                df_master["Kode Satker"] = (
-                    df_master[kode_col]
-                    .astype(str)
-                    .str.extract(r"(\d{6})")[0]
-                )
-
-                # =====================================
-                # 2️⃣ MERGE REFERENSI NAMA RINGKAS
-                # =====================================
-                ref = st.session_state.reference_df.copy()
-                ref["Kode Satker"] = ref["Kode Satker"].astype(str).str.strip()
-
-                df_master = df_master.merge(
-                    ref[["Kode Satker", "Uraian Satker-SINGKAT"]],
-                    on="Kode Satker",
-                    how="left"
-                )
-
-                if "NMSATKER" in df_master.columns:
-                    df_master["Nama Satker"] = (
-                        df_master["Uraian Satker-SINGKAT"]
-                        .fillna(df_master["NMSATKER"])
-                    )
-                else:
-                    df_master["Nama Satker"] = df_master["Uraian Satker-SINGKAT"]
-
-                # =====================================
-                # 3️⃣ NORMALISASI DATA
-                # =====================================
-                df_master["TAHUN"] = pd.to_numeric(df_master["TAHUN"], errors="coerce")
-                df_master["BULAN"] = pd.to_numeric(df_master["BULAN"], errors="coerce")
-                df_master["NOMINVOICE"] = pd.to_numeric(df_master["NOMINVOICE"], errors="coerce")
-
-                col1, col2, col3 = st.columns(3)
-
-                with col1:
-                    periode = st.selectbox("Periode", ["Bulanan", "Triwulan", "Tahunan"])
-
-                with col2:
-                    tipe = st.selectbox("Tipe", ["Jumlah Transaksi", "Nilai Transaksi"])
-
-                if periode != "Tahunan":
-                    with col3:
-                        tahun_list = sorted(df_master["TAHUN"].dropna().unique())
-                        tahun = st.selectbox("Tahun", tahun_list)
-                    df_raw = df_master[df_master["TAHUN"] == tahun].copy()
-                else:
-                    df_raw = df_master.copy()
-
-                # =====================================
-                # 4️⃣ BULANAN
-                # =====================================
-                if periode == "Bulanan":
-
-                    MONTH_MAP = {
-                        1:"JAN",2:"FEB",3:"MAR",4:"APR",
-                        5:"MEI",6:"JUN",7:"JUL",8:"AGU",
-                        9:"SEP",10:"OKT",11:"NOV",12:"DES"
-                    }
-
-                    df_raw["BULAN_NAMA"] = df_raw["BULAN"].map(MONTH_MAP)
-
-                    if tipe == "Jumlah Transaksi":
-                        df_grouped = (
-                            df_raw.groupby(["Kode Satker", "Nama Satker", "BULAN_NAMA"])["NOINVOICE"]
-                            .nunique()
-                            .reset_index(name="Jumlah")
-                        )
-                        value_col = "Jumlah"
-                    else:
-                        df_grouped = (
-                            df_raw.groupby(["Kode Satker", "Nama Satker", "BULAN_NAMA"])["NOMINVOICE"]
-                            .sum()
-                            .reset_index(name="Nilai")
-                        )
-                        value_col = "Nilai"
-
-                    df_pivot = df_grouped.pivot_table(
-                        index=["Kode Satker", "Nama Satker"],
-                        columns="BULAN_NAMA",
-                        values=value_col,
-                        fill_value=0
-                    )
-
-                    urutan_bulan = ["JAN","FEB","MAR","APR","MEI","JUN","JUL","AGU","SEP","OKT","NOV","DES"]
-                    df_pivot = df_pivot.reindex(columns=urutan_bulan, fill_value=0)
-
-                # =====================================
-                # 5️⃣ TRIWULAN
-                # =====================================
-                elif periode == "Triwulan":
-
-                    df_raw["TRIWULAN"] = ((df_raw["BULAN"] - 1) // 3) + 1
-
-                    if tipe == "Jumlah Transaksi":
-                        df_grouped = (
-                            df_raw.groupby(["Kode Satker", "Nama Satker", "TRIWULAN"])["NOINVOICE"]
-                            .nunique()
-                            .reset_index(name="Jumlah")
-                        )
-                        value_col = "Jumlah"
-                    else:
-                        df_grouped = (
-                            df_raw.groupby(["Kode Satker", "Nama Satker", "TRIWULAN"])["NOMINVOICE"]
-                            .sum()
-                            .reset_index(name="Nilai")
-                        )
-                        value_col = "Nilai"
-
-                    df_pivot = df_grouped.pivot_table(
-                        index=["Kode Satker", "Nama Satker"],
-                        columns="TRIWULAN",
-                        values=value_col,
-                        fill_value=0
-                    )
-
-                    df_pivot = df_pivot.reindex(columns=[1,2,3,4], fill_value=0)
-                    df_pivot.columns = ["TW1","TW2","TW3","TW4"]
-
-                # =====================================
-                # 6️⃣ TAHUNAN
-                # =====================================
+                if "digipay_master" not in st.session_state:
+                    st.warning("Data Digipay belum tersedia")
                 else:
 
-                    if tipe == "Jumlah Transaksi":
-                        df_grouped = (
-                            df_raw.groupby(["Kode Satker", "Nama Satker", "TAHUN"])["NOINVOICE"]
-                            .nunique()
-                            .reset_index(name="Jumlah")
-                        )
-                        value_col = "Jumlah"
-                    else:
-                        df_grouped = (
-                            df_raw.groupby(["Kode Satker", "Nama Satker", "TAHUN"])["NOMINVOICE"]
-                            .sum()
-                            .reset_index(name="Nilai")
-                        )
-                        value_col = "Nilai"
+                    df_master = st.session_state.digipay_master.copy()
 
-                    df_pivot = (
-                        df_grouped
-                        .pivot_table(
+                    # =====================================
+                    # 1️⃣ DETEKSI KOLOM KODE SATKER OTOMATIS
+                    # =====================================
+                    possible_kode_cols = [
+                        "KODE_SATKER",
+                        "KODE SATKER",
+                        "Kode Satker",
+                        "KDSATKER"
+                    ]
+
+                    kode_col = None
+                    for col in possible_kode_cols:
+                        if col in df_master.columns:
+                            kode_col = col
+                            break
+
+                    if kode_col is None:
+                        raise ValueError("Kolom kode satker tidak ditemukan di Digipay")
+
+                    df_master["Kode Satker"] = (
+                        df_master[kode_col]
+                        .astype(str)
+                        .str.extract(r"(\d{6})")[0]
+                    )
+
+                    # =====================================
+                    # 2️⃣ MERGE REFERENSI NAMA RINGKAS
+                    # =====================================
+                    ref = st.session_state.reference_df.copy()
+                    ref["Kode Satker"] = ref["Kode Satker"].astype(str).str.strip()
+
+                    df_master = df_master.merge(
+                        ref[["Kode Satker", "Uraian Satker-SINGKAT"]],
+                        on="Kode Satker",
+                        how="left"
+                    )
+
+                    if "NMSATKER" in df_master.columns:
+                        df_master["Nama Satker"] = (
+                            df_master["Uraian Satker-SINGKAT"]
+                            .fillna(df_master["NMSATKER"])
+                        )
+                    else:
+                        df_master["Nama Satker"] = df_master["Uraian Satker-SINGKAT"]
+
+                    # =====================================
+                    # 3️⃣ NORMALISASI DATA
+                    # =====================================
+                    df_master["TAHUN"] = pd.to_numeric(df_master["TAHUN"], errors="coerce")
+                    df_master["BULAN"] = pd.to_numeric(df_master["BULAN"], errors="coerce")
+                    df_master["NOMINVOICE"] = pd.to_numeric(df_master["NOMINVOICE"], errors="coerce")
+
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        periode = st.selectbox("Periode", ["Bulanan", "Triwulan", "Tahunan"])
+
+                    with col2:
+                        tipe = st.selectbox("Tipe", ["Jumlah Transaksi", "Nilai Transaksi"])
+
+                    if periode != "Tahunan":
+                        with col3:
+                            tahun_list = sorted(df_master["TAHUN"].dropna().unique())
+                            tahun = st.selectbox("Tahun", tahun_list)
+                        df_raw = df_master[df_master["TAHUN"] == tahun].copy()
+                    else:
+                        df_raw = df_master.copy()
+
+                    # =====================================
+                    # 4️⃣ BULANAN
+                    # =====================================
+                    if periode == "Bulanan":
+
+                        MONTH_MAP = {
+                            1:"JAN",2:"FEB",3:"MAR",4:"APR",
+                            5:"MEI",6:"JUN",7:"JUL",8:"AGU",
+                            9:"SEP",10:"OKT",11:"NOV",12:"DES"
+                        }
+
+                        df_raw["BULAN_NAMA"] = df_raw["BULAN"].map(MONTH_MAP)
+
+                        if tipe == "Jumlah Transaksi":
+                            df_grouped = (
+                                df_raw.groupby(["Kode Satker", "Nama Satker", "BULAN_NAMA"])["NOINVOICE"]
+                                .nunique()
+                                .reset_index(name="Jumlah")
+                            )
+                            value_col = "Jumlah"
+                        else:
+                            df_grouped = (
+                                df_raw.groupby(["Kode Satker", "Nama Satker", "BULAN_NAMA"])["NOMINVOICE"]
+                                .sum()
+                                .reset_index(name="Nilai")
+                            )
+                            value_col = "Nilai"
+
+                        df_pivot = df_grouped.pivot_table(
                             index=["Kode Satker", "Nama Satker"],
-                            columns="TAHUN",
+                            columns="BULAN_NAMA",
                             values=value_col,
                             fill_value=0
                         )
-                        .sort_index(axis=1)
-                    )
 
-                    df_pivot.columns = df_pivot.columns.astype(str)
+                        urutan_bulan = ["JAN","FEB","MAR","APR","MEI","JUN","JUL","AGU","SEP","OKT","NOV","DES"]
+                        df_pivot = df_pivot.reindex(columns=urutan_bulan, fill_value=0)
 
-                df_pivot = df_pivot.reset_index()
+                    # =====================================
+                    # 5️⃣ TRIWULAN
+                    # =====================================
+                    elif periode == "Triwulan":
 
-                # =====================================
-                # 7️⃣ FORMAT RIBUAN
-                # =====================================
-                def format_ribuan(x):
-                    try:
-                        return "{:,.0f}".format(float(x)).replace(",", ".")
-                    except:
-                        return x
+                        df_raw["TRIWULAN"] = ((df_raw["BULAN"] - 1) // 3) + 1
 
-                for col in df_pivot.columns:
-                    if col not in ["Kode Satker", "Nama Satker"]:
-                        df_pivot[col] = df_pivot[col].apply(format_ribuan)
+                        if tipe == "Jumlah Transaksi":
+                            df_grouped = (
+                                df_raw.groupby(["Kode Satker", "Nama Satker", "TRIWULAN"])["NOINVOICE"]
+                                .nunique()
+                                .reset_index(name="Jumlah")
+                            )
+                            value_col = "Jumlah"
+                        else:
+                            df_grouped = (
+                                df_raw.groupby(["Kode Satker", "Nama Satker", "TRIWULAN"])["NOMINVOICE"]
+                                .sum()
+                                .reset_index(name="Nilai")
+                            )
+                            value_col = "Nilai"
 
-                render_table_pin_satker(df_pivot)
-                
+                        df_pivot = df_grouped.pivot_table(
+                            index=["Kode Satker", "Nama Satker"],
+                            columns="TRIWULAN",
+                            values=value_col,
+                            fill_value=0
+                        )
 
-        # =====================================================
-        # 💳 KKP
-        # =====================================================
-        elif source_detail == "💳 KKP":
-            if "kkp_master" not in st.session_state:
-                st.warning("Data KKP belum tersedia")
-            else:
+                        df_pivot = df_pivot.reindex(columns=[1,2,3,4], fill_value=0)
+                        df_pivot.columns = ["TW1","TW2","TW3","TW4"]
 
-                df_master = st.session_state.kkp_master.copy()
-                # =============================
-                # NORMALISASI PERIODE KKP
-                # =============================
-                if "PERIODE" in df_master.columns:
-                    df_master["PERIODE"] = df_master["PERIODE"].astype(str)
-                    df_master["TAHUN"] = df_master["PERIODE"].str[:4].astype(int)
-                    df_master["BULAN"] = df_master["PERIODE"].str[5:7].astype(int)
+                    # =====================================
+                    # 6️⃣ TAHUNAN
+                    # =====================================
+                    else:
+
+                        if tipe == "Jumlah Transaksi":
+                            df_grouped = (
+                                df_raw.groupby(["Kode Satker", "Nama Satker", "TAHUN"])["NOINVOICE"]
+                                .nunique()
+                                .reset_index(name="Jumlah")
+                            )
+                            value_col = "Jumlah"
+                        else:
+                            df_grouped = (
+                                df_raw.groupby(["Kode Satker", "Nama Satker", "TAHUN"])["NOMINVOICE"]
+                                .sum()
+                                .reset_index(name="Nilai")
+                            )
+                            value_col = "Nilai"
+
+                        df_pivot = (
+                            df_grouped
+                            .pivot_table(
+                                index=["Kode Satker", "Nama Satker"],
+                                columns="TAHUN",
+                                values=value_col,
+                                fill_value=0
+                            )
+                            .sort_index(axis=1)
+                        )
+
+                        df_pivot.columns = df_pivot.columns.astype(str)
+
+                    df_pivot = df_pivot.reset_index()
+
+                    # =====================================
+                    # 7️⃣ FORMAT RIBUAN
+                    # =====================================
+                    def format_ribuan(x):
+                        try:
+                            return "{:,.0f}".format(float(x)).replace(",", ".")
+                        except:
+                            return x
+
+                    for col in df_pivot.columns:
+                        if col not in ["Kode Satker", "Nama Satker"]:
+                            df_pivot[col] = df_pivot[col].apply(format_ribuan)
+
+                    render_table_pin_satker(df_pivot)
+                    
+
+            # =====================================================
+            # 💳 KKP
+            # =====================================================
+            elif source_detail == "💳 KKP":
+                if "kkp_master" not in st.session_state:
+                    st.warning("Data KKP belum tersedia")
                 else:
-                    st.error("Kolom PERIODE tidak ditemukan pada data KKP")
-                    st.stop()
 
-                col1, col2, col3 = st.columns(3)
+                    df_master = st.session_state.kkp_master.copy()
+                    # =============================
+                    # NORMALISASI PERIODE KKP
+                    # =============================
+                    if "PERIODE" in df_master.columns:
+                        df_master["PERIODE"] = df_master["PERIODE"].astype(str)
+                        df_master["TAHUN"] = df_master["PERIODE"].str[:4].astype(int)
+                        df_master["BULAN"] = df_master["PERIODE"].str[5:7].astype(int)
+                    else:
+                        st.error("Kolom PERIODE tidak ditemukan pada data KKP")
+                        st.stop()
 
-                with col1:
-                    periode = st.selectbox(
-                        "Periode",
-                        ["Bulanan", "Triwulan", "Tahunan"],
-                        key="kkp_periode"
+                    col1, col2, col3 = st.columns(3)
+
+                    with col1:
+                        periode = st.selectbox(
+                            "Periode",
+                            ["Bulanan", "Triwulan", "Tahunan"],
+                            key="kkp_periode"
+                        )
+
+                    with col2:
+                        tipe = st.selectbox(
+                            "Tipe",
+                            ["Jumlah Nominal", "Jumlah Transaksi"],
+                            key="kkp_tipe"
+                        )
+
+                    if periode != "Tahunan":
+                        with col3:
+                            tahun_list = sorted(df_master["TAHUN"].dropna().unique())
+                            tahun = st.selectbox("Tahun", tahun_list, key="kkp_tahun")
+                    else:
+                        tahun = None
+
+                    df_pivot = generate_kkp_from_session(
+                        df_master,
+                        periode=periode,
+                        tipe=tipe,
+                        tahun_filter=tahun
                     )
 
-                with col2:
-                    tipe = st.selectbox(
-                        "Tipe",
-                        ["Jumlah Nominal", "Jumlah Transaksi"],
-                        key="kkp_tipe"
-                    )
+                    def format_ribuan(x):
+                        try:
+                            return "{:,.0f}".format(float(x)).replace(",", ".")
+                        except:
+                            return x
 
-                if periode != "Tahunan":
-                    with col3:
-                        tahun_list = sorted(df_master["TAHUN"].dropna().unique())
-                        tahun = st.selectbox("Tahun", tahun_list, key="kkp_tahun")
+                    for col in df_pivot.columns:
+                        if col not in ["Uraian Satker-RINGKAS"]:
+                            df_pivot[col] = df_pivot[col].apply(format_ribuan)
+
+                    render_table_pin_satker(df_pivot)
+                    
+
+            # =====================================================
+            # 🏦 CMS
+            # =====================================================
+            elif source_detail == "🏦 CMS":  
+                if "cms_master" not in st.session_state:
+                    st.warning("Data CMS belum tersedia")
                 else:
-                    tahun = None
 
-                df_pivot = generate_kkp_from_session(
-                    df_master,
-                    periode=periode,
-                    tipe=tipe,
-                    tahun_filter=tahun
-                )
+                    df_master = st.session_state.cms_master.copy()
 
-                def format_ribuan(x):
-                    try:
-                        return "{:,.0f}".format(float(x)).replace(",", ".")
-                    except:
-                        return x
+                    col1, col2 = st.columns(2)
 
-                for col in df_pivot.columns:
-                    if col not in ["Uraian Satker-RINGKAS"]:
-                        df_pivot[col] = df_pivot[col].apply(format_ribuan)
+                    with col1:
+                        periode = st.selectbox(
+                            "Periode",
+                            ["Triwulan", "Tahunan"],
+                            key="cms_periode"
+                        )
 
-                render_table_pin_satker(df_pivot)
-                
+                    tahun_list = sorted(df_master["TAHUN"].dropna().unique())
+                    tahun = st.selectbox("Tahun", tahun_list, key="cms_tahun")
 
-        # =====================================================
-        # 🏦 CMS
-        # =====================================================
-        elif source_detail == "🏦 CMS":  
-            if "cms_master" not in st.session_state:
-                st.warning("Data CMS belum tersedia")
-            else:
-
-                df_master = st.session_state.cms_master.copy()
-
-                col1, col2 = st.columns(2)
-
-                with col1:
-                    periode = st.selectbox(
-                        "Periode",
-                        ["Triwulan", "Tahunan"],
-                        key="cms_periode"
+                    df_pivot = generate_cms_from_session(
+                        df_master,
+                        periode=periode,
+                        tahun_filter=tahun
                     )
 
-                tahun_list = sorted(df_master["TAHUN"].dropna().unique())
-                tahun = st.selectbox("Tahun", tahun_list, key="cms_tahun")
-
-                df_pivot = generate_cms_from_session(
-                    df_master,
-                    periode=periode,
-                    tahun_filter=tahun
-                )
-
-                # =============================
-                # FORMAT PERSEN 
-                # =============================
-                for col in df_pivot.columns:
-                    if pd.api.types.is_numeric_dtype(df_pivot[col]):
-                        df_pivot[col] = df_pivot[col].round(2)
-                        df_pivot[col] = df_pivot[col].astype(str) + " %"
-                                
-                                
-                render_table_pin_satker(df_pivot)
-        
+                    # =============================
+                    # FORMAT PERSEN 
+                    # =============================
+                    for col in df_pivot.columns:
+                        if pd.api.types.is_numeric_dtype(df_pivot[col]):
+                            df_pivot[col] = df_pivot[col].round(2)
+                            df_pivot[col] = df_pivot[col].astype(str) + " %"
+                                    
+                                    
+                    render_table_pin_satker(df_pivot)
+            
         
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
