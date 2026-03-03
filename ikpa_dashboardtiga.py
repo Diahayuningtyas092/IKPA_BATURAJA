@@ -5059,8 +5059,8 @@ def page_dashboard():
 
         menu_digital = st.segmented_control(
             label="",
-            options=["📈 Dashboard Utama", "📋 Tabel Detail"],
-            default="📈 Dashboard Utama"
+            options=["📈 Chart Utama", "📋 Tabel Detail"],
+            default="📈 Chart Utama"
         )
 
         st.divider()
@@ -5068,27 +5068,56 @@ def page_dashboard():
         # =====================================================
         # DASHBOARD UTAMA
         # =====================================================
-        if menu_digital == "📈 Dashboard Utama":
+        if menu_digital == "📈 Chart Utama":
 
-            st.subheader("📊 Dashboard Utama")
+            st.subheader("📊 Chart Utama")
             st.info("Isi dashboard chart di sini")
-        
-            chart_data = generate_digipay_chart(
-                df_master,
-                periode=periode,
-                tipe="trx",
-                tahun_filter=tahun if periode != "Tahunan" else None
-            )
 
-            st.line_chart(chart_data.set_index(chart_data.columns[0])["Kumulatif"])
-            
-            chart_data = generate_kkp_chart(
-                df_master,
-                periode=periode,
-                tahun_filter=tahun if periode != "Tahunan" else None
-            )
+            # =========================================
+            # DIGIPAY CHART
+            # =========================================
+            if "digipay_master" in st.session_state:
 
-            st.line_chart(chart_data.set_index(chart_data.columns[0])["Kumulatif"])
+                df_digipay = st.session_state.digipay_master.copy()
+
+                chart_dig = generate_digipay_chart(
+                    df_digipay,
+                    periode="Bulanan",
+                    tipe="trx",
+                    tahun_filter=None
+                )
+
+                st.markdown("### 💰 Digipay")
+                st.line_chart(
+                    chart_dig.set_index(chart_dig.columns[0])["Kumulatif"]
+                )
+
+            else:
+                st.warning("Data Digipay belum tersedia")
+
+            st.divider()
+
+            # =========================================
+            # KKP CHART
+            # =========================================
+            if "kkp_master" in st.session_state:
+
+                df_kkp = st.session_state.kkp_master.copy()
+
+                chart_kkp = generate_kkp_chart(
+                    df_kkp,
+                    periode="Bulanan",
+                    tahun_filter=None
+                )
+
+                st.markdown("### 💳 KKP")
+                st.line_chart(
+                    chart_kkp.set_index(chart_kkp.columns[0])["Kumulatif"]
+                )
+
+            else:
+                st.warning("Data KKP belum tersedia")
+                
 
         # =====================================================
         # TABEL DETAIL
