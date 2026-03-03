@@ -4966,10 +4966,15 @@ def page_dashboard():
 
         st.divider()    
         
-        st.subheader("📋 Tabel Detail")
+    # =====================================================
+    # 📋 TABEL DETAIL
+    # =====================================================
+    elif menu_digital == "📋 Tabel Detail":
+
+        st.subheader("📋 Tabel Detail Digitalisasi")
 
         # =====================================================
-        # SUB MENU DATA
+        # SUB MENU (RADIO BUTTON HORIZONTAL)
         # =====================================================
         source_detail = st.radio(
             "",
