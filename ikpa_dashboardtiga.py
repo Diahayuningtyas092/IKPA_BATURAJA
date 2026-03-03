@@ -4951,8 +4951,22 @@ def page_dashboard():
                 # ===============================
                 render_table_pin_satker(df_display)
             
-    elif st.session_state.main_menu == "Digitalisasi":    
-        st.subheader("📋 Tabel Detail Digitalisasi")
+    elif st.session_state.main_menu == "Digitalisasi":
+    
+        st.markdown("## 📊 Digitalisasi")
+
+        # =====================================================
+        # MENU UTAMA DIGITALISASI (MODERN STYLE)
+        # =====================================================
+        menu_digital = st.segmented_control(
+            label="",
+            options=["📈 Dashboard Utama", "📋 Tabel Detail"],
+            default="📈 Dashboard Utama"
+        )
+
+        st.divider()    
+        
+        st.subheader("📋 Tabel Detail")
 
         # =====================================================
         # SUB MENU DATA
@@ -4966,11 +4980,9 @@ def page_dashboard():
         st.divider()
 
         # =====================================================
-        # 💰 DIGIPAY
+        # DIGIPAY
         # =====================================================
-        # =====================================================
-        # 💰 DIGIPAY
-        # =====================================================
+
         if source_detail == "💰 Digipay":
 
             if "digipay_master" not in st.session_state:
