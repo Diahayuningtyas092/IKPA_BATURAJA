@@ -714,6 +714,9 @@ if "ikpa_dipa_merged" not in st.session_state:
     
 if "data_storage_kkp" not in st.session_state:
     st.session_state.data_storage_kkp = {}
+    
+if "data_storage_digipay" not in st.session_state:
+    st.session_state.data_storage_digipay = {}
 
 # Log aktivitas
 if "activity_log" not in st.session_state:
