@@ -5194,7 +5194,7 @@ def page_dashboard():
                 grouped = grouped.sort_index().reset_index(name="Value")
                 grouped["Kumulatif"] = grouped["Value"].cumsum()
 
-                st.markdown("### 💰 Digipay (Kumulatif)")
+                st.markdown("### 💰 Digipay")
 
                 fig1 = px.bar(
                     grouped,
@@ -5264,7 +5264,7 @@ def page_dashboard():
 
                 grouped_kkp["Kumulatif"] = grouped_kkp["Value"].cumsum()
 
-                st.markdown("### 💳 KKP (Kumulatif Nominal)")
+                st.markdown("### 💳 KKP")
 
                 fig2 = px.bar(
                     grouped_kkp,
@@ -5358,9 +5358,35 @@ def page_dashboard():
                     # =====================================
                     # 3️⃣ NORMALISASI DATA
                     # =====================================
-                    df_master["TAHUN"] = pd.to_numeric(df_master["TAHUN"], errors="coerce")
-                    df_master["BULAN"] = pd.to_numeric(df_master["BULAN"], errors="coerce")
-                    df_master["NOMINVOICE"] = pd.to_numeric(df_master["NOMINVOICE"], errors="coerce")
+                    # Jika ada kolom TANGGAL → buat TAHUN & BULAN dari situ
+                    if "TANGGAL" in df_master.columns:
+                        df_master["TANGGAL"] = pd.to_datetime(df_master["TANGGAL"], errors="coerce")
+                        df_master["TAHUN"] = df_master["TANGGAL"].dt.year
+                        df_master["BULAN"] = df_master["TANGGAL"].dt.month
+
+                    # Jika memang sudah ada TAHUN & BULAN
+                    else:
+                        if "TAHUN" in df_master.columns:
+                            df_master["TAHUN"] = pd.to_numeric(df_master["TAHUN"], errors="coerce")
+                        else:
+                            st.error("Kolom TAHUN tidak ditemukan di Digipay")
+                            st.stop()
+
+                        if "BULAN" in df_master.columns:
+                            df_master["BULAN"] = pd.to_numeric(df_master["BULAN"], errors="coerce")
+                        else:
+                            st.error("Kolom BULAN tidak ditemukan di Digipay")
+                            st.stop()
+
+                    # Bersihkan nominal
+                    if "NOMINVOICE" in df_master.columns:
+                        df_master["NOMINVOICE"] = (
+                            df_master["NOMINVOICE"]
+                            .astype(str)
+                            .str.replace(r"[^\d]", "", regex=True)
+                            .replace("", "0")
+                            .astype(float)
+                        )
 
                     col1, col2, col3 = st.columns(3)
 
