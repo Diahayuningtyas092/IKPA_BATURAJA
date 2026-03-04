@@ -5401,9 +5401,16 @@ def page_dashboard():
                 if periode != "Tahunan":
                     with col3:
                         tahun_list = sorted(df_master["TAHUN"].dropna().unique())
+                        if len(tahun_list) == 0:
+                            st.warning("Data Digipay belum siap")
+                            st.stop()
+
                         tahun = st.selectbox("Tahun", tahun_list)
 
                     df_raw = df_master[df_master["TAHUN"] == tahun].copy()
+                    if df_raw.empty:
+                        st.info("Tidak ada data Digipay untuk tahun ini")
+                        st.stop()
 
                 else:
                     df_raw = df_master.copy()
