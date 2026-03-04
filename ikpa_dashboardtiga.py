@@ -3013,7 +3013,7 @@ def format_ikpa_display(x):
 #Agregasi DIGIPAY  
 #-----------------------------------
 
-def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None):
+def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None, bulan_filter=None):
     
     df = df.copy()
 
@@ -3033,8 +3033,17 @@ def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None)
 
     df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
 
+    # =============================
+    # FILTER TAHUN
+    # =============================
     if tahun_filter and periode != "Tahunan":
         df = df[df["TAHUN"] == tahun_filter]
+
+    # =============================
+    # FILTER SAMPAI BULAN DIPILIH
+    # =============================
+    if bulan_filter and periode == "Bulanan":
+        df = df[df["BULAN"] <= bulan_filter]
 
     # =============================
     # TENTUKAN AGREGASI
@@ -3046,6 +3055,9 @@ def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None)
         value_col = "NOMINVOICE"
         agg_func = "sum"
 
+    # =============================
+    # GROUPING
+    # =============================
     if periode == "Bulanan":
         grouped = (
             df.groupby("BULAN")
