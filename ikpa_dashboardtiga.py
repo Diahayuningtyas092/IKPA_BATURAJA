@@ -5255,10 +5255,13 @@ def page_dashboard():
 
                 df_kkp = st.session_state.kkp_master.copy()
 
+                # ================= NORMALISASI DATA =================
                 df_kkp["PERIODE"] = df_kkp["PERIODE"].astype(str)
-                df_kkp["TAHUN"] = df_kkp["PERIODE"].str[:4].astype(int)
-                df_kkp["BULAN"] = df_kkp["PERIODE"].str[5:7].astype(int)
-                df_kkp["TRIWULAN"] = ((df_kkp["BULAN"] - 1)//3) + 1
+
+                df_kkp["TAHUN"] = pd.to_numeric(df_kkp["PERIODE"].str[:4], errors="coerce")
+                df_kkp["BULAN"] = pd.to_numeric(df_kkp["PERIODE"].str[5:7], errors="coerce")
+
+                df_kkp["TRIWULAN"] = ((df_kkp["BULAN"] - 1) // 3) + 1
 
                 df_kkp["NILAI TRANSAKSI (NILAI SPM)"] = (
                     df_kkp["NILAI TRANSAKSI (NILAI SPM)"]
@@ -5268,35 +5271,66 @@ def page_dashboard():
                     .astype(float)
                 )
 
+                tahun_chart = int(tahun_chart)
+
+
+                # ================= FILTER DATA =================
+
                 if periode_chart == "Bulanan":
+
                     df_kkp = df_kkp[
                         (df_kkp["TAHUN"] == tahun_chart) &
                         (df_kkp["BULAN"] <= bulan_selected)
                     ]
+
                     group_col = "BULAN"
 
+
                 elif periode_chart == "Triwulan":
+
                     tw_number = int(triwulan_selected.replace("TW",""))
+
                     df_kkp = df_kkp[
                         (df_kkp["TAHUN"] == tahun_chart) &
                         (df_kkp["TRIWULAN"] <= tw_number)
                     ]
+
                     group_col = "TRIWULAN"
 
+
                 else:
+
                     df_kkp = df_kkp[
                         df_kkp["TAHUN"] <= tahun_chart
                     ]
+
                     group_col = "TAHUN"
 
+
+                # ================= CEK DATA =================
+
+                if df_kkp.empty:
+                    st.warning("Tidak ada data KKP untuk periode ini")
+                    st.stop()
+
+
+                # ================= AGREGASI =================
+
                 grouped_kkp = (
-                    df_kkp.groupby(group_col)["NILAI TRANSAKSI (NILAI SPM)"]
+                    df_kkp
+                    .groupby(group_col)["NILAI TRANSAKSI (NILAI SPM)"]
                     .sum()
-                    .sort_index()
                     .reset_index(name="Value")
+                    .sort_values(group_col)
                 )
 
+
+                # ================= KUMULATIF =================
+
                 grouped_kkp["Kumulatif"] = grouped_kkp["Value"].cumsum()
+
+
+                # ================= CHART =================
 
                 st.markdown("### 💳 KKP")
 
@@ -5309,7 +5343,12 @@ def page_dashboard():
                 )
 
                 fig2.update_traces(textposition="outside")
-                fig2.update_layout(height=450)
+
+                fig2.update_layout(
+                    height=450,
+                    yaxis_title="Total Nilai",
+                    xaxis_title=group_col
+                )
 
                 st.plotly_chart(fig2, use_container_width=True)
 
