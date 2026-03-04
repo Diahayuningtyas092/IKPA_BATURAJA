@@ -5617,42 +5617,51 @@ def page_dashboard():
             # =====================================================
             # 🏦 CMS
             # =====================================================
-            elif source_detail == "🏦 CMS":  
+            elif source_detail == "🏦 CMS":
+
                 if "cms_master" not in st.session_state:
                     st.warning("Data CMS belum tersedia")
-                else:
+                    st.stop()
 
-                    df_master = st.session_state.cms_master.copy()
+                df_master = st.session_state.cms_master.copy()
 
-                    col1, col2 = st.columns(2)
+                col1, col2 = st.columns(2)
 
-                    with col1:
-                        periode = st.selectbox(
-                            "Periode",
-                            ["Triwulan", "Tahunan"],
-                            key="cms_periode"
-                        )
-
-                    tahun_list = sorted(df_master["TAHUN"].dropna().unique())
-                    tahun = st.selectbox("Tahun", tahun_list, key="cms_tahun")
-
-                    df_pivot = generate_cms_from_session(
-                        df_master,
-                        periode=periode,
-                        tahun_filter=tahun
+                with col1:
+                    periode = st.selectbox(
+                        "Periode",
+                        ["Triwulan", "Tahunan"],
+                        key="cms_periode"
                     )
 
-                    # =============================
-                    # FORMAT PERSEN 
-                    # =============================
-                    for col in df_pivot.columns:
-                        if pd.api.types.is_numeric_dtype(df_pivot[col]):
-                            df_pivot[col] = df_pivot[col].round(2)
-                            df_pivot[col] = df_pivot[col].astype(str) + " %"
-                                    
-                                    
-                    render_table_pin_satker(df_pivot)
-            
+                tahun_list = sorted(df_master["TAHUN"].dropna().unique())
+
+                with col2:
+                    tahun = st.selectbox("Tahun", tahun_list, key="cms_tahun")
+
+                df_pivot = generate_cms_from_session(
+                    df_master,
+                    periode=periode,
+                    tahun_filter=tahun
+                )
+
+                # =============================
+                # CEK DATA
+                # =============================
+                if df_pivot is None or df_pivot.empty:
+                    st.warning("Data CMS tidak tersedia untuk periode yang dipilih")
+                    st.stop()
+
+                # =============================
+                # FORMAT PERSEN
+                # =============================
+                for col in df_pivot.columns:
+                    if pd.api.types.is_numeric_dtype(df_pivot[col]):
+                        df_pivot[col] = df_pivot[col].round(2)
+                        df_pivot[col] = df_pivot[col].astype(str) + " %"
+
+                render_table_pin_satker(df_pivot)
+                        
         
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
