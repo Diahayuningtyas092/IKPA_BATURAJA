@@ -5080,10 +5080,6 @@ def page_dashboard():
 
             st.subheader("📊 Dashboard Digitalisasi")
 
-            import plotly.express as px
-            import pandas as pd
-            import numpy as np
-
             col1, col2, col3 = st.columns(3)
 
             with col1:
