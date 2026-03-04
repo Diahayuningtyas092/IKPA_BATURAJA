@@ -3013,7 +3013,7 @@ def format_ikpa_display(x):
 #Agregasi DIGIPAY  
 #-----------------------------------
 
-def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None, bulan_filter=None):
+def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None):
     
     df = df.copy()
 
@@ -3023,13 +3023,7 @@ def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None,
     df["TAHUN"] = pd.to_numeric(df["TAHUN"], errors="coerce")
     df["BULAN"] = pd.to_numeric(df["BULAN"], errors="coerce")
 
-    df["NOMINVOICE"] = (
-        df["NOMINVOICE"]
-        .astype(str)
-        .str.replace(r"[^\d]", "", regex=True)
-        .replace("", "0")
-        .astype(float)
-    )
+    df["NOMINVOICE"] = pd.to_numeric(df["NOMINVOICE"], errors="coerce").fillna(0)
 
     df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
 
@@ -3037,45 +3031,25 @@ def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None,
     # FILTER TAHUN
     # =============================
     if tahun_filter and periode != "Tahunan":
-        df = df[df["TAHUN"] == tahun_filter]
+        df = df[df["TAHUN"] == int(tahun_filter)]
+
+    if df.empty:
+        return pd.DataFrame()
 
     # =============================
-    # FILTER SAMPAI BULAN DIPILIH
-    # =============================
-    if bulan_filter and periode == "Bulanan":
-        df = df[df["BULAN"] <= bulan_filter]
-
-    # =============================
-    # TENTUKAN AGREGASI
+    # AGREGASI
     # =============================
     if tipe == "trx":
-        value_col = "NOINVOICE"
-        agg_func = "nunique"
-    else:
-        value_col = "NOMINVOICE"
-        agg_func = "sum"
-
-    # =============================
-    # GROUPING
-    # =============================
-    if periode == "Bulanan":
         grouped = (
             df.groupby("BULAN")
-            .agg(Value=(value_col, agg_func))
+            .agg(Value=("NOINVOICE", "nunique"))
             .sort_index()
         )
 
-    elif periode == "Triwulan":
+    else:
         grouped = (
-            df.groupby("TRIWULAN")
-            .agg(Value=(value_col, agg_func))
-            .sort_index()
-        )
-
-    else:  # Tahunan
-        grouped = (
-            df.groupby("TAHUN")
-            .agg(Value=(value_col, agg_func))
+            df.groupby("BULAN")
+            .agg(Value=("NOMINVOICE", "sum"))
             .sort_index()
         )
 
