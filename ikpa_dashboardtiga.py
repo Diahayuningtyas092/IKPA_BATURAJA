@@ -5065,6 +5065,7 @@ def page_dashboard():
         # =====================================================
         # CHART UTAMA
         # =====================================================
+
         if menu_digital == "📈 Chart Utama":
 
             st.subheader("📊 Dashboard Digitalisasi")
@@ -5089,6 +5090,9 @@ def page_dashboard():
 
             if "digipay_master" in st.session_state:
                 df_master = st.session_state.digipay_master.copy()
+
+                df_master["TAHUN"] = pd.to_numeric(df_master["TAHUN"], errors="coerce")
+
                 tahun_list = sorted(df_master["TAHUN"].dropna().unique())
             else:
                 tahun_list = []
@@ -5109,7 +5113,7 @@ def page_dashboard():
                     bulan_nama = st.selectbox("Pilih Bulan", list(bulan_map.keys()))
                     bulan_selected = bulan_map[bulan_nama]
 
-                tahun_chart = st.selectbox("Tahun", tahun_list)
+                tahun_chart = int(st.selectbox("Tahun", tahun_list))
 
             elif periode_chart == "Triwulan":
 
@@ -5119,10 +5123,10 @@ def page_dashboard():
                         ["TW1", "TW2", "TW3", "TW4"]
                     )
 
-                tahun_chart = st.selectbox("Tahun", tahun_list)
+                tahun_chart = int(st.selectbox("Tahun", tahun_list))
 
             else:  # Tahunan
-                tahun_chart = st.selectbox("Pilih Tahun", tahun_list)
+                tahun_chart = int(st.selectbox("Pilih Tahun", tahun_list))
 
             st.divider()
 
@@ -5133,6 +5137,7 @@ def page_dashboard():
 
                 df_digipay = st.session_state.digipay_master.copy()
 
+                # ================= NORMALISASI DATA =================
                 df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
                 df_digipay["BULAN"] = pd.to_numeric(df_digipay["BULAN"], errors="coerce")
 
@@ -5144,40 +5149,78 @@ def page_dashboard():
                     .astype(float)
                 )
 
-                df_digipay["TRIWULAN"] = ((df_digipay["BULAN"] - 1)//3) + 1
+                df_digipay["TRIWULAN"] = ((df_digipay["BULAN"] - 1) // 3) + 1
+
 
                 # ================= FILTER DATA =================
 
                 if periode_chart == "Bulanan":
+
                     df_digipay = df_digipay[
                         (df_digipay["TAHUN"] == tahun_chart) &
                         (df_digipay["BULAN"] <= bulan_selected)
                     ]
+
                     group_col = "BULAN"
 
+
                 elif periode_chart == "Triwulan":
-                    tw_number = int(triwulan_selected.replace("TW",""))
+
+                    tw_number = int(triwulan_selected.replace("TW", ""))
+
                     df_digipay = df_digipay[
                         (df_digipay["TAHUN"] == tahun_chart) &
                         (df_digipay["TRIWULAN"] <= tw_number)
                     ]
+
                     group_col = "TRIWULAN"
 
+
                 else:
+
                     df_digipay = df_digipay[
                         df_digipay["TAHUN"] <= tahun_chart
                     ]
+
                     group_col = "TAHUN"
+
+
+                # ================= CEK DATA =================
+
+                if df_digipay.empty:
+                    st.warning("Tidak ada data Digipay untuk periode ini")
+                    st.stop()
+
 
                 # ================= AGREGASI =================
 
                 if tipe_chart == "Jumlah Transaksi":
-                    grouped = df_digipay.groupby(group_col)["NOINVOICE"].nunique()
-                else:
-                    grouped = df_digipay.groupby(group_col)["NOMINVOICE"].sum()
 
-                grouped = grouped.sort_index().reset_index(name="Value")
+                    grouped = (
+                        df_digipay
+                        .groupby(group_col)["NOINVOICE"]
+                        .nunique()
+                        .reset_index(name="Value")
+                    )
+
+                else:
+
+                    grouped = (
+                        df_digipay
+                        .groupby(group_col)["NOMINVOICE"]
+                        .sum()
+                        .reset_index(name="Value")
+                    )
+
+
+                # ================= URUTKAN + KUMULATIF =================
+
+                grouped = grouped.sort_values(group_col).reset_index(drop=True)
+
                 grouped["Kumulatif"] = grouped["Value"].cumsum()
+
+
+                # ================= CHART =================
 
                 st.markdown("### 💰 Digipay")
 
@@ -5190,7 +5233,12 @@ def page_dashboard():
                 )
 
                 fig1.update_traces(textposition="outside")
-                fig1.update_layout(height=450)
+
+                fig1.update_layout(
+                    height=450,
+                    yaxis_title="Total",
+                    xaxis_title=group_col
+                )
 
                 st.plotly_chart(fig1, use_container_width=True)
 
@@ -5198,6 +5246,7 @@ def page_dashboard():
                 st.warning("Data Digipay belum tersedia")
 
             st.divider()
+
 
             # =====================================================
             # KKP CHART
