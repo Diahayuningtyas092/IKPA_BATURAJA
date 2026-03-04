@@ -5301,12 +5301,11 @@ def page_dashboard():
             # =====================================================
             # DIGIPAY
             # =====================================================
-
             if source_detail == "💰 Digipay":
-
+                
                 if "digipay_master" not in st.session_state:
                     st.warning("Data Digipay belum tersedia")
-                else:
+                    st.stop() 
 
                     df_master = st.session_state.digipay_master.copy()
 
