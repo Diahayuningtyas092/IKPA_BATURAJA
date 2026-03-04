@@ -5639,11 +5639,18 @@ def page_dashboard():
                 with col2:
                     tahun = st.selectbox("Tahun", tahun_list, key="cms_tahun")
 
-                df_pivot = generate_cms_from_session(
-                    df_master,
-                    periode=periode,
-                    tahun_filter=tahun
-                )
+                # 🔴 INISIALISASI (PENTING)
+                df_pivot = pd.DataFrame()
+
+                try:
+                    df_pivot = generate_cms_from_session(
+                        df_master,
+                        periode=periode,
+                        tahun_filter=tahun
+                    )
+                except Exception as e:
+                    st.error(f"Gagal memproses CMS: {e}")
+                    st.stop()
 
                 # =============================
                 # CEK DATA
@@ -5661,7 +5668,7 @@ def page_dashboard():
                         df_pivot[col] = df_pivot[col].astype(str) + " %"
 
                 render_table_pin_satker(df_pivot)
-                        
+                                    
         
 
 # HALAMAN 2: DASHBOARD INTERNAL KPPN (Protected)    
