@@ -5256,12 +5256,10 @@ def page_dashboard():
                 df_kkp = st.session_state.kkp_master.copy()
 
                 # ================= NORMALISASI DATA =================
-                df_kkp["PERIODE"] = df_kkp["PERIODE"].astype(str)
-
-                df_kkp["TAHUN"] = pd.to_numeric(df_kkp["PERIODE"].str[:4], errors="coerce")
-                df_kkp["BULAN"] = pd.to_numeric(df_kkp["PERIODE"].str[5:7], errors="coerce")
-
-                df_kkp["TRIWULAN"] = ((df_kkp["BULAN"] - 1) // 3) + 1
+                df_kkp["PERIODE"] = pd.to_datetime(df_kkp["PERIODE"], errors="coerce")
+                df_kkp["TAHUN"] = df_kkp["PERIODE"].dt.year
+                df_kkp["BULAN"] = df_kkp["PERIODE"].dt.month
+                df_kkp["TRIWULAN"] = df_kkp["PERIODE"].dt.quarter
 
                 df_kkp["NILAI TRANSAKSI (NILAI SPM)"] = (
                     df_kkp["NILAI TRANSAKSI (NILAI SPM)"]
