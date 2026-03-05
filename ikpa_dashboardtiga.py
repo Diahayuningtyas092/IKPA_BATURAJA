@@ -3015,16 +3015,15 @@ def format_ikpa_display(x):
 
 def clean_nominal(series):
     """
-    Membersihkan angka format Indonesia:
-    6.250.000,00 -> 6250000
+    Membersihkan angka format Indonesia dengan aman
     """
-    return (
-        series.astype(str)
-        .str.replace(".", "", regex=False)
-        .str.replace(",", ".", regex=False)
-        .replace("", "0")
-        .astype(float)
-    )
+
+    s = series.astype(str)
+
+    s = s.str.replace(".", "", regex=False)
+    s = s.str.replace(",", ".", regex=False)
+
+    return pd.to_numeric(s, errors="coerce").fillna(0)
 
 
 def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None):
@@ -4907,13 +4906,14 @@ def page_dashboard():
                 color="Jenis",
                 title="Digitalisasi Pembayaran (Akumulatif)"
             )
-
-            fig.update_traces(textposition="outside")
+            
+            fig.update_traces(
+                texttemplate='%{text:,.0f}',
+                textposition="outside"
+            )
 
             fig.update_layout(
-                height=450,
-                yaxis_title="Total",
-                xaxis_title=""
+                yaxis_tickformat=","
             )
 
             st.plotly_chart(fig,use_container_width=True)
