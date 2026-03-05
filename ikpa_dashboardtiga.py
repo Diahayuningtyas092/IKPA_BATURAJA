@@ -4788,6 +4788,30 @@ def page_dashboard():
 
             df_digipay = st.session_state.digipay_master.copy()
             df_kkp = st.session_state.kkp_master.copy()
+            
+            # ===============================
+            # MERGE NAMA SATKER RINGKAS
+            # ===============================
+            ref = st.session_state.reference_df.copy()
+
+            df_digipay["KDSATKER"] = df_digipay["KDSATKER"].astype(str).str.zfill(6)
+            df_kkp["Kode Satker"] = df_kkp["Kode Satker"].astype(str).str.zfill(6)
+
+            df_digipay = df_digipay.merge(
+                ref[["Kode Satker","Uraian Satker-SINGKAT"]],
+                left_on="KDSATKER",
+                right_on="Kode Satker",
+                how="left"
+            )
+
+            df_kkp = df_kkp.merge(
+                ref[["Kode Satker","Uraian Satker-SINGKAT"]],
+                on="Kode Satker",
+                how="left"
+            )
+            
+            df_digipay["SATKER"] = df_digipay["Uraian Satker-SINGKAT"].fillna(df_digipay["NMSATKER"])
+            df_kkp["SATKER"] = df_kkp["Uraian Satker-SINGKAT"].fillna(df_kkp["SATKER"])
 
             # ===============================
             # NORMALISASI DIGIPAY
