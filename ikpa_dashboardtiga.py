@@ -5065,6 +5065,20 @@ def page_dashboard():
         # =====================================================
         # CHART UTAMA
         # =====================================================
+        # ===============================
+        # AMBIL DATA DIGIPAY
+        # ===============================
+        if "digipay_master" not in st.session_state:
+            st.warning("Data Digipay belum tersedia")
+            return
+
+        df_digipay = st.session_state.digipay_master.copy()
+
+        df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
+
+        tahun_list = sorted(df_digipay["TAHUN"].dropna().unique())
+        
+        # ============================================================
         if menu_digital == "📈 Chart Utama":
             st.markdown("## 📈 Chart Utama")
 
