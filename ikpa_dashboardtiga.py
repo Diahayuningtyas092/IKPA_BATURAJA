@@ -4778,11 +4778,6 @@ def page_dashboard():
         # =====================================================
         # CHART UTAMA
         # =====================================================
-        # ===============================
-        # AMBIL DATA DIGIPAY
-        # ===============================
-        # ============================================================
-        # ============================================================
         if menu_digital == "📈 Chart Utama":
 
             st.markdown("## 📊 Chart Utama")
@@ -4803,13 +4798,11 @@ def page_dashboard():
             df_digipay["TRIWULAN"] = ((df_digipay["BULAN"] - 1) // 3) + 1
 
             # SATKER RINGKAS
-            df_digipay["SATKER"] = (
-                df_digipay["NMSATKER"]
-                .str.replace("KANTOR", "", regex=False)
-                .str.replace("KEMENTERIAN", "KEM", regex=False)
-                .str.replace("REPUBLIK INDONESIA", "", regex=False)
-                .str.strip()
-            )
+            # SATKER RINGKAS
+            if "Uraian Satker-RINGKAS" in df_digipay.columns:
+                df_digipay["SATKER"] = df_digipay["Uraian Satker-RINGKAS"]
+            else:
+                df_digipay["SATKER"] = df_digipay["NMSATKER"]
 
             # BERSIHKAN NOMINAL
             df_digipay["NOMINVOICE"] = (
@@ -4984,7 +4977,17 @@ def page_dashboard():
                 df_kkp = df_kkp[
                     df_kkp["TAHUN"] <= tahun_chart
                 ]
+                
 
+            # SATKER RINGKAS KKP
+            if "Uraian Satker-RINGKAS" in df_kkp.columns:
+                df_kkp["SATKER"] = df_kkp["Uraian Satker-RINGKAS"]
+            elif "NMSATKER" in df_kkp.columns:
+                df_kkp["SATKER"] = df_kkp["NMSATKER"]
+            elif "NAMA SATKER" in df_kkp.columns:
+                df_kkp["SATKER"] = df_kkp["NAMA SATKER"]
+                        
+                        
             # ===============================
             # KKP PER SATKER
             # ===============================
