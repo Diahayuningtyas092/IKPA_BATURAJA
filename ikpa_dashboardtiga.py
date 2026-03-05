@@ -4970,15 +4970,6 @@ def page_dashboard():
             else:
                 kkp_total = df_kkp["NILAI TRANSAKSI (NILAI SPM)"].sum()
             
-            # ===============================
-            # DEBUG DATA
-            # ===============================
-            st.write("Jumlah Digipay setelah filter:", len(df_digipay))
-            st.write("Jumlah KKP setelah filter:", len(df_kkp))
-
-            if df_digipay.empty and df_kkp.empty:
-                st.warning("Tidak ada data pada periode yang dipilih")
-                st.stop()
 
             # ===============================
             # DATA CHART
