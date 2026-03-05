@@ -4793,9 +4793,9 @@ def page_dashboard():
         
         # ============================================================
         if menu_digital == "📈 Chart Utama":
-            st.markdown("## 📈 Chart Utama")
+            st.markdown("## 📊 Chart Utama")
 
-            col1,col2,col3,col4 = st.columns(4)
+            col1,col2,col3 = st.columns(3)
 
             with col1:
                 periode_chart = st.selectbox(
@@ -4809,30 +4809,32 @@ def page_dashboard():
                     sorted(df_digipay["TAHUN"].dropna().unique())
                 )
 
-            with col3:
-                bulan_selected = st.selectbox(
-                    "Bulan",
-                    list(range(1,13)),
-                    format_func=lambda x: calendar.month_name[x]
-                )
+            bulan_selected = None
+            triwulan_selected = None
 
-            with col4:
-                triwulan_selected = st.selectbox(
-                    "Triwulan",
-                    ["TW1","TW2","TW3","TW4"]
-                )
+            if periode_chart == "Bulanan":
 
-            tipe_chart = st.radio(
-                "Tipe",
-                ["Jumlah Transaksi","Jumlah Nominal"],
-                horizontal=True
-            )
+                with col3:
+                    bulan_selected = st.selectbox(
+                        "Bulan",
+                        list(range(1,13)),
+                        format_func=lambda x: calendar.month_name[x]
+                    )
+
+            elif periode_chart == "Triwulan":
+
+                with col3:
+                    triwulan_selected = st.selectbox(
+                        "Triwulan",
+                        ["TW1","TW2","TW3","TW4"]
+                    )
 
             df_digipay = st.session_state.digipay_master.copy()
 
             df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
             df_digipay["BULAN"] = pd.to_numeric(df_digipay["BULAN"], errors="coerce")
-            df_digipay["TRIWULAN"] = ((df_digipay["BULAN"] - 1) // 3) + 1
+
+            df_digipay["TRIWULAN"] = ((df_digipay["BULAN"]-1)//3)+1
 
             if periode_chart == "Bulanan":
 
@@ -4857,8 +4859,11 @@ def page_dashboard():
                 ]
 
             if tipe_chart == "Jumlah Transaksi":
+
                 digipay_total = df_digipay["NOINVOICE"].nunique()
+
             else:
+
                 digipay_total = df_digipay["NOMINVOICE"].sum()
 
             df_kkp = st.session_state.kkp_master.copy()
@@ -4906,17 +4911,20 @@ def page_dashboard():
                 color="Jenis",
                 title="Digitalisasi Pembayaran (Akumulatif)"
             )
-            
+
             fig.update_traces(
                 texttemplate='%{text:,.0f}',
                 textposition="outside"
             )
 
             fig.update_layout(
-                yaxis_tickformat=","
+                yaxis_tickformat=",",
+                height=450
             )
 
             st.plotly_chart(fig,use_container_width=True)
+
+
 
         # =====================================================
         # TABEL DETAIL
