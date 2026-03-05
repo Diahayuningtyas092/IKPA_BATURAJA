@@ -4782,6 +4782,7 @@ def page_dashboard():
         # AMBIL DATA DIGIPAY
         # ===============================
         # ============================================================
+        # ============================================================
         if menu_digital == "📈 Chart Utama":
 
             st.markdown("## 📊 Chart Utama")
@@ -4801,11 +4802,13 @@ def page_dashboard():
 
             df_digipay["TRIWULAN"] = ((df_digipay["BULAN"] - 1) // 3) + 1
 
-            # BUAT NAMA SATKER
+            # SATKER RINGKAS
             df_digipay["SATKER"] = (
-                df_digipay["KDSATKER"].astype(str)
-                + " - " +
                 df_digipay["NMSATKER"]
+                .str.replace("KANTOR", "", regex=False)
+                .str.replace("KEMENTERIAN", "KEM", regex=False)
+                .str.replace("REPUBLIK INDONESIA", "", regex=False)
+                .str.strip()
             )
 
             # BERSIHKAN NOMINAL
@@ -4921,16 +4924,19 @@ def page_dashboard():
 
             fig_digipay = px.bar(
                 digipay_chart,
-                x="SATKER",
-                y="Value",
+                x="Value",
+                y="SATKER",
+                orientation="h",
                 text="Value",
                 title=f"Digipay per Satker - {tipe_chart}"
             )
 
             fig_digipay.update_layout(
-                xaxis_tickangle=-45,
-                height=500
+                height=600,
+                yaxis={'categoryorder':'total ascending'}
             )
+
+            fig_digipay.update_traces(textposition="outside")
 
             st.plotly_chart(fig_digipay, use_container_width=True)
 
@@ -4943,7 +4949,6 @@ def page_dashboard():
             df_kkp["BULAN"] = df_kkp["PERIODE"].dt.month
             df_kkp["TRIWULAN"] = df_kkp["PERIODE"].dt.quarter
 
-            # BERSIHKAN NOMINAL
             df_kkp["NILAI TRANSAKSI (NILAI SPM)"] = (
                 df_kkp["NILAI TRANSAKSI (NILAI SPM)"]
                 .astype(str)
@@ -5005,17 +5010,19 @@ def page_dashboard():
 
             fig_kkp = px.bar(
                 kkp_chart,
-                x="SATKER",
-                y="Value",
+                x="Value",
+                y="SATKER",
+                orientation="h",
                 text="Value",
-                title=f"KKP per Satker - {tipe_chart}",
-                color="Value"
+                title=f"KKP per Satker - {tipe_chart}"
             )
 
             fig_kkp.update_layout(
-                xaxis_tickangle=-45,
-                height=500
+                height=600,
+                yaxis={'categoryorder':'total ascending'}
             )
+
+            fig_kkp.update_traces(textposition="outside")
 
             st.plotly_chart(fig_kkp, use_container_width=True)
             
