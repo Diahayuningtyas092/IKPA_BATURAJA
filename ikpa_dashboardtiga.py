@@ -4815,10 +4815,17 @@ def page_dashboard():
             if periode_chart == "Bulanan":
 
                 with col3:
+
+                    bulan_map = {
+                        1:"Januari",2:"Februari",3:"Maret",4:"April",
+                        5:"Mei",6:"Juni",7:"Juli",8:"Agustus",
+                        9:"September",10:"Oktober",11:"November",12:"Desember"
+                    }
+
                     bulan_selected = st.selectbox(
                         "Bulan",
-                        list(range(1,13)),
-                        format_func=lambda x: calendar.month_name[x]
+                        list(bulan_map.keys()),
+                        format_func=lambda x: bulan_map[x]
                     )
 
             elif periode_chart == "Triwulan":
