@@ -4793,6 +4793,7 @@ def page_dashboard():
         
         # ============================================================
         if menu_digital == "📈 Chart Utama":
+    
             st.markdown("## 📊 Chart Utama")
 
             if "digipay_master" not in st.session_state or "kkp_master" not in st.session_state:
@@ -4800,6 +4801,28 @@ def page_dashboard():
                 st.stop()
 
             df_digipay = st.session_state.digipay_master.copy()
+
+            # ===============================
+            # NORMALISASI DATA DIGIPAY
+            # ===============================
+            df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
+            df_digipay["BULAN"] = pd.to_numeric(df_digipay["BULAN"], errors="coerce")
+
+            df_digipay["TRIWULAN"] = ((df_digipay["BULAN"]-1)//3)+1
+
+            # ===============================
+            # BERSIHKAN NOMINAL DIGIPAY
+            # ===============================
+            df_digipay["NOMINVOICE"] = (
+                df_digipay["NOMINVOICE"]
+                .astype(str)
+                .str.replace(r"[^\d]", "", regex=True)
+            )
+
+            df_digipay["NOMINVOICE"] = pd.to_numeric(
+                df_digipay["NOMINVOICE"],
+                errors="coerce"
+            ).fillna(0)
 
             # ===============================
             # FILTER UI
@@ -4813,9 +4836,11 @@ def page_dashboard():
                 )
 
             with col2:
-                tahun_chart = st.selectbox(
-                    "Tahun",
-                    sorted(df_digipay["TAHUN"].dropna().unique())
+                tahun_chart = int(
+                    st.selectbox(
+                        "Tahun",
+                        sorted(df_digipay["TAHUN"].dropna().astype(int).unique())
+                    )
                 )
 
             bulan_selected = None
@@ -4845,7 +4870,7 @@ def page_dashboard():
                     )
 
             # ===============================
-            # PILIH TIPE
+            # TIPE DATA
             # ===============================
             tipe_chart = st.radio(
                 "Tipe",
@@ -4854,13 +4879,8 @@ def page_dashboard():
             )
 
             # ===============================
-            # DIGIPAY
+            # FILTER DIGIPAY
             # ===============================
-            df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
-            df_digipay["BULAN"] = pd.to_numeric(df_digipay["BULAN"], errors="coerce")
-
-            df_digipay["TRIWULAN"] = ((df_digipay["BULAN"]-1)//3)+1
-
             if periode_chart == "Bulanan":
 
                 df_digipay = df_digipay[
@@ -4883,6 +4903,9 @@ def page_dashboard():
                     df_digipay["TAHUN"] <= tahun_chart
                 ]
 
+            # ===============================
+            # HITUNG DIGIPAY
+            # ===============================
             if tipe_chart == "Jumlah Transaksi":
 
                 digipay_total = df_digipay["NOINVOICE"].nunique()
@@ -4902,6 +4925,23 @@ def page_dashboard():
             df_kkp["BULAN"] = df_kkp["PERIODE"].dt.month
             df_kkp["TRIWULAN"] = df_kkp["PERIODE"].dt.quarter
 
+            # ===============================
+            # BERSIHKAN NOMINAL KKP
+            # ===============================
+            df_kkp["NILAI TRANSAKSI (NILAI SPM)"] = (
+                df_kkp["NILAI TRANSAKSI (NILAI SPM)"]
+                .astype(str)
+                .str.replace(r"[^\d]", "", regex=True)
+            )
+
+            df_kkp["NILAI TRANSAKSI (NILAI SPM)"] = pd.to_numeric(
+                df_kkp["NILAI TRANSAKSI (NILAI SPM)"],
+                errors="coerce"
+            ).fillna(0)
+
+            # ===============================
+            # FILTER KKP
+            # ===============================
             if periode_chart == "Bulanan":
 
                 df_kkp = df_kkp[
@@ -4925,6 +4965,16 @@ def page_dashboard():
                 ]
 
             kkp_total = df_kkp["NILAI TRANSAKSI (NILAI SPM)"].sum()
+            
+            # ===============================
+            # DEBUG DATA
+            # ===============================
+            st.write("Jumlah Digipay setelah filter:", len(df_digipay))
+            st.write("Jumlah KKP setelah filter:", len(df_kkp))
+
+            if df_digipay.empty and df_kkp.empty:
+                st.warning("Tidak ada data pada periode yang dipilih")
+                st.stop()
 
             # ===============================
             # DATA CHART
