@@ -3009,90 +3009,91 @@ def format_ikpa_display(x):
         return x
 
 
-#-----------------------------------
-#Agregasi DIGIPAY  
-#-----------------------------------
+# -----------------------------------
+# AGREGASI DIGIPAY
+# -----------------------------------
+
+def clean_nominal(series):
+    """
+    Membersihkan angka format Indonesia:
+    6.250.000,00 -> 6250000
+    """
+    return (
+        series.astype(str)
+        .str.replace(".", "", regex=False)
+        .str.replace(",", ".", regex=False)
+        .replace("", "0")
+        .astype(float)
+    )
+
 
 def generate_digipay_chart(df, periode="Bulanan", tipe="trx", tahun_filter=None):
-    
+
     df = df.copy()
 
-    # =============================
-    # PASTIKAN NUMERIC
-    # =============================
     df["TAHUN"] = pd.to_numeric(df["TAHUN"], errors="coerce")
     df["BULAN"] = pd.to_numeric(df["BULAN"], errors="coerce")
 
-    df["NOMINVOICE"] = pd.to_numeric(df["NOMINVOICE"], errors="coerce").fillna(0)
-
     df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
 
-    # =============================
-    # FILTER TAHUN
-    # =============================
-    if tahun_filter and periode != "Tahunan":
+    df["NOMINVOICE"] = clean_nominal(df["NOMINVOICE"])
+
+    if tahun_filter is not None:
         df = df[df["TAHUN"] == int(tahun_filter)]
 
     if df.empty:
         return pd.DataFrame()
 
-    # =============================
-    # AGREGASI
-    # =============================
-    if tipe == "trx":
-        grouped = (
-            df.groupby("BULAN")
-            .agg(Value=("NOINVOICE", "nunique"))
-            .sort_index()
-        )
-
+    if periode == "Bulanan":
+        group_col = "BULAN"
+    elif periode == "Triwulan":
+        group_col = "TRIWULAN"
     else:
-        grouped = (
-            df.groupby("BULAN")
-            .agg(Value=("NOMINVOICE", "sum"))
-            .sort_index()
-        )
+        group_col = "TAHUN"
 
-    # =============================
-    # KUMULATIF
-    # =============================
+    if tipe == "trx":
+        grouped = df.groupby(group_col)["NOINVOICE"].nunique()
+    else:
+        grouped = df.groupby(group_col)["NOMINVOICE"].sum()
+
+    grouped = grouped.sort_index().to_frame("Value")
+
     grouped["Kumulatif"] = grouped["Value"].cumsum()
 
     return grouped.reset_index()
 
-
-#Agregasi Digipay perbulan
 def generate_digipay_monthly_from_session(df, tahun_filter=None, tipe="trx"):
+
     df = df.copy()
 
     df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
+
     df["Tahun"] = df["TANGGAL"].dt.year
     df["Bulan"] = df["TANGGAL"].dt.month
 
-    df["NOMINVOICE"] = (
-        df["NOMINVOICE"]
-        .astype(str)
-        .str.replace(r"[^\d]", "", regex=True)
-        .replace("", "0")
-        .astype(float)
-    )
+    df["NOMINVOICE"] = clean_nominal(df["NOMINVOICE"])
 
-    if tahun_filter:
+    if tahun_filter is not None:
         df = df[df["Tahun"] == tahun_filter]
 
     if tipe == "trx":
+
         agg_df = (
-            df.groupby(["SATKER", "Bulan"])
-            .agg(Jumlah_Transaksi=("NOINVOICE", "nunique"))
+            df.groupby(["SATKER","Bulan"])
+            .agg(Jumlah_Transaksi=("NOINVOICE","nunique"))
             .reset_index()
         )
+
         value_col = "Jumlah_Transaksi"
+
     else:
+
         agg_df = (
-            df.groupby(["SATKER", "Bulan"])
-            .agg(Nilai_Transaksi=("NOMINVOICE", "sum"))
+            df.groupby(["SATKER","Bulan"])
+            .agg(Nilai_Transaksi=("NOMINVOICE","sum"))
             .reset_index()
         )
+
         value_col = "Nilai_Transaksi"
 
     pivot = agg_df.pivot(
@@ -3101,7 +3102,7 @@ def generate_digipay_monthly_from_session(df, tahun_filter=None, tipe="trx"):
         values=value_col
     ).fillna(0)
 
-    pivot = pivot.reindex(columns=range(1, 13), fill_value=0)
+    pivot = pivot.reindex(columns=range(1,13), fill_value=0)
 
     bulan_map = {
         1:"JAN",2:"FEB",3:"MAR",4:"APR",
@@ -3111,54 +3112,42 @@ def generate_digipay_monthly_from_session(df, tahun_filter=None, tipe="trx"):
 
     pivot.columns = [bulan_map[i] for i in pivot.columns]
 
-    pivot = pivot.reset_index()
+    return pivot.reset_index()
 
-    return pivot
-
-# Agregasi Digipay Pertriwulan
 def generate_digipay_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
+
     df = df.copy()
 
-    # ==============================
-    # NORMALISASI TANGGAL
-    # ==============================
     df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
+
     df["Tahun"] = df["TANGGAL"].dt.year
     df["Bulan"] = df["TANGGAL"].dt.month
 
-    # Buat kolom Triwulan
     df["Triwulan"] = ((df["Bulan"] - 1) // 3) + 1
 
-    # ==============================
-    # BERSIHKAN NOMINAL
-    # ==============================
-    df["NOMINVOICE"] = (
-        df["NOMINVOICE"]
-        .astype(str)
-        .str.replace(r"[^\d]", "", regex=True)
-        .replace("", "0")
-        .astype(float)
-    )
+    df["NOMINVOICE"] = clean_nominal(df["NOMINVOICE"])
 
-    if tahun_filter:
+    if tahun_filter is not None:
         df = df[df["Tahun"] == tahun_filter]
 
-    # ==============================
-    # AGREGASI
-    # ==============================
     if tipe == "trx":
+
         agg_df = (
-            df.groupby(["SATKER", "Triwulan"])
-            .agg(Jumlah_Transaksi=("NOINVOICE", "nunique"))
+            df.groupby(["SATKER","Triwulan"])
+            .agg(Jumlah_Transaksi=("NOINVOICE","nunique"))
             .reset_index()
         )
+
         value_col = "Jumlah_Transaksi"
+
     else:
+
         agg_df = (
-            df.groupby(["SATKER", "Triwulan"])
-            .agg(Nilai_Transaksi=("NOMINVOICE", "sum"))
+            df.groupby(["SATKER","Triwulan"])
+            .agg(Nilai_Transaksi=("NOMINVOICE","sum"))
             .reset_index()
         )
+
         value_col = "Nilai_Transaksi"
 
     pivot = agg_df.pivot(
@@ -3169,61 +3158,40 @@ def generate_digipay_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
 
     pivot = pivot.reindex(columns=[1,2,3,4], fill_value=0)
 
-    pivot.columns = ["TW1", "TW2", "TW3", "TW4"]
+    pivot.columns = ["TW1","TW2","TW3","TW4"]
 
-    pivot = pivot.reset_index()
+    return pivot.reset_index()
 
-    return pivot
-
-#Agregasi digipay pertahun
 def generate_digipay_yearly_from_session(df, tipe="trx"):
+
     df = df.copy()
 
-    # ==============================
-    # 1️⃣ NORMALISASI TANGGAL
-    # ==============================
     df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
-    df = df[df["TANGGAL"].notna()]
+
     df["Tahun"] = df["TANGGAL"].dt.year
 
-    # ==============================
-    # 2️⃣ BERSIHKAN SATKER
-    # ==============================
-    df["SATKER"] = df["SATKER"].astype(str).str.strip()
-    df = df[df["SATKER"] != ""]
+    df["NOMINVOICE"] = clean_nominal(df["NOMINVOICE"])
 
-    # ==============================
-    # 3️⃣ BERSIHKAN NOMINAL
-    # ==============================
-    df["NOMINVOICE"] = (
-        df["NOMINVOICE"]
-        .astype(str)
-        .str.replace(r"[^\d]", "", regex=True)
-        .replace("", "0")
-        .astype(float)
-    )
-
-    # ==============================
-    # 4️⃣ AGREGASI PER TAHUN
-    # ==============================
     if tipe == "trx":
+
         agg_df = (
-            df.groupby(["SATKER", "Tahun"])
-            .agg(Jumlah_Transaksi=("NOINVOICE", "nunique"))
+            df.groupby(["SATKER","Tahun"])
+            .agg(Jumlah_Transaksi=("NOINVOICE","nunique"))
             .reset_index()
         )
+
         value_col = "Jumlah_Transaksi"
+
     else:
+
         agg_df = (
-            df.groupby(["SATKER", "Tahun"])
-            .agg(Nilai_Transaksi=("NOMINVOICE", "sum"))
+            df.groupby(["SATKER","Tahun"])
+            .agg(Nilai_Transaksi=("NOMINVOICE","sum"))
             .reset_index()
         )
+
         value_col = "Nilai_Transaksi"
 
-    # ==============================
-    # 5️⃣ PIVOT PERBANDINGAN TAHUN
-    # ==============================
     pivot = (
         agg_df
         .pivot_table(
@@ -3235,300 +3203,46 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
         .sort_index(axis=1)
     )
 
-    # Supaya kolom tahun aman di AgGrid
     pivot.columns = pivot.columns.astype(str)
 
-    pivot = pivot.reset_index()
+    return pivot.reset_index()
 
-    return pivot
-
-
+# -----------------------------------
 # AGREGASI KKP
-# ===================
+# -----------------------------------
+
 def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
-    
+
     df = df.copy()
 
-    df["PERIODE"] = df["PERIODE"].astype(str)
-    df["TAHUN"] = df["PERIODE"].str[:4].astype(int)
-    df["BULAN"] = df["PERIODE"].str[5:7].astype(int)
-    df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
+    df["PERIODE"] = pd.to_datetime(df["PERIODE"], errors="coerce")
 
-    df["NILAI TRANSAKSI (NILAI SPM)"] = (
+    df["TAHUN"] = df["PERIODE"].dt.year
+    df["BULAN"] = df["PERIODE"].dt.month
+    df["TRIWULAN"] = df["PERIODE"].dt.quarter
+
+    df["NILAI TRANSAKSI (NILAI SPM)"] = clean_nominal(
         df["NILAI TRANSAKSI (NILAI SPM)"]
-        .astype(str)
-        .str.replace(r"[^\d]", "", regex=True)
-        .replace("", "0")
-        .astype(float)
     )
 
-    if tahun_filter and periode != "Tahunan":
+    if tahun_filter is not None:
         df = df[df["TAHUN"] == tahun_filter]
 
-    # =============================
-    # AGREGASI TOTAL
-    # =============================
     if periode == "Bulanan":
-        grouped = (
-            df.groupby("BULAN")["NILAI TRANSAKSI (NILAI SPM)"]
-            .sum()
-            .sort_index()
-        )
+        grouped = df.groupby("BULAN")["NILAI TRANSAKSI (NILAI SPM)"].sum()
+
     elif periode == "Triwulan":
-        grouped = (
-            df.groupby("TRIWULAN")["NILAI TRANSAKSI (NILAI SPM)"]
-            .sum()
-            .sort_index()
-        )
+        grouped = df.groupby("TRIWULAN")["NILAI TRANSAKSI (NILAI SPM)"].sum()
+
     else:
-        grouped = (
-            df.groupby("TAHUN")["NILAI TRANSAKSI (NILAI SPM)"]
-            .sum()
-            .sort_index()
-        )
+        grouped = df.groupby("TAHUN")["NILAI TRANSAKSI (NILAI SPM)"].sum()
 
-    grouped = grouped.to_frame("Value")
+    grouped = grouped.sort_index().to_frame("Value")
 
-    # 🔥 KUMULATIF
     grouped["Kumulatif"] = grouped["Value"].cumsum()
 
     return grouped.reset_index()
 
-def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Nominal", tahun_filter=None):
-    
-    df = df.copy()
-
-    if "PERIODE" not in df.columns:
-        raise ValueError("Kolom PERIODE tidak ditemukan pada data KKP")
-
-    # =============================
-    # PARSING PERIODE
-    # =============================
-    df["PERIODE"] = df["PERIODE"].astype(str)
-    df["TAHUN"] = df["PERIODE"].str[:4].astype(int)
-    df["BULAN"] = df["PERIODE"].str[5:7].astype(int)
-    df["TRIWULAN"] = ((df["BULAN"] - 1) // 3) + 1
-
-    if tahun_filter and periode != "Tahunan":
-        df = df[df["TAHUN"] == tahun_filter]
-
-    # =============================
-    # BERSIHKAN NILAI
-    # =============================
-    df["NILAI TRANSAKSI (NILAI SPM)"] = (
-        df["NILAI TRANSAKSI (NILAI SPM)"]
-        .astype(str)
-        .str.replace(r"[^\d]", "", regex=True)
-        .replace("", "0")
-        .astype(float)
-    )
-
-    df["LIMIT KKP"] = (
-        df["LIMIT KKP"]
-        .astype(str)
-        .str.replace(r"[^\d]", "", regex=True)
-        .replace("", "0")
-        .astype(float)
-    )
-
-    # =============================
-    # GROUPING
-    # =============================
-    group_cols = ["SATKER"]
-
-    if periode == "Bulanan":
-        group_cols.append("BULAN")
-    elif periode == "Triwulan":
-        group_cols.append("TRIWULAN")
-    else:
-        group_cols.append("TAHUN")
-
-    df_grouped = (
-        df.groupby(group_cols)
-        .agg(
-            TOTAL_NOMINAL=("NILAI TRANSAKSI (NILAI SPM)", "sum")
-        )
-        .reset_index()
-    )
-
-    pivot = df_grouped.pivot_table(
-        index="SATKER",
-        columns=group_cols[-1],
-        values="TOTAL_NOMINAL",
-        fill_value=0
-    ).sort_index(axis=1)
-
-    pivot = pivot.reset_index()
-
-    # =============================
-    # TAMBAH PAGU
-    # =============================
-    pagu_df = (
-        df.groupby("SATKER")["LIMIT KKP"]
-        .max()
-        .reset_index()
-    )
-
-    pivot = pivot.merge(pagu_df, on="SATKER", how="left")
-    pivot.rename(columns={"LIMIT KKP": "Pagu"}, inplace=True)
-
-    # =============================
-    # RENAME TRIWULAN
-    # =============================
-    if periode == "Triwulan":
-        pivot.columns = [
-            f"TW{c}" if isinstance(c, int) else c
-            for c in pivot.columns
-        ]
-
-    # =============================
-    # HITUNG PERSENTASE REALISASI
-    # =============================
-    periode_cols = [
-        col for col in pivot.columns
-        if col not in ["SATKER", "Pagu"]
-    ]
-
-    for col in periode_cols:
-        pivot[f"{col} (%)"] = np.where(
-            pivot["Pagu"] == 0,
-            0,
-            (pivot[col] / pivot["Pagu"]) * 100
-        )
-
-    # =============================
-    # URUTKAN KOLOM (Nominal lalu %)
-    # =============================
-    ordered_cols = ["SATKER", "Pagu"]
-    for col in periode_cols:
-        ordered_cols.append(col)
-        ordered_cols.append(f"{col} (%)")
-
-    pivot = pivot[ordered_cols]
-
-    return pivot
-
-
-
-# Proporsi CMS
-def generate_cms_from_session(df, periode="Triwulan", tahun_filter=None):
-
-    df = df.copy()
-    
-    # =============================
-    # FORCE NUMERIC
-    # =============================
-    cols = [
-        "JUMLAH TRANSAKSI CMS",
-        "JUMLAH TRANSAKSI KARTU DEBIT",
-        "JUMLAH TRANSAKSI TELLER",
-        "NILAI TRANSAKSI CMS",
-        "NILAI TRANSAKSI KARTU DEBIT",
-        "NILAI TRANSAKSI TELLER",
-    ]
-
-    for col in cols:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
-
-    # =============================
-    # FILTER TAHUN
-    # =============================
-    if tahun_filter is not None:
-        df = df[df["TAHUN"] == tahun_filter]
-
-    # =============================
-    # HITUNG PROPORSI TRANSAKSI
-    # =============================
-    total_trx = (
-        df["JUMLAH TRANSAKSI CMS"]
-        + df["JUMLAH TRANSAKSI KARTU DEBIT"]
-        + df["JUMLAH TRANSAKSI TELLER"]
-    )
-
-    df["PROPORSI_TRANSAKSI"] = np.where(
-        total_trx == 0,
-        0,
-        (df["JUMLAH TRANSAKSI CMS"] / total_trx) * 100
-    )
-
-    # =============================
-    # HITUNG PROPORSI NOMINAL
-    # =============================
-    total_nominal = (
-        df["NILAI TRANSAKSI CMS"]
-        + df["NILAI TRANSAKSI KARTU DEBIT"]
-        + df["NILAI TRANSAKSI TELLER"]
-    )
-
-    df["PROPORSI_NOMINAL"] = np.where(
-        total_nominal == 0,
-        0,
-        (df["NILAI TRANSAKSI CMS"] / total_nominal) * 100
-    )
-
-    
-    # =============================
-    # PIVOT
-    # =============================
-    index_cols = [
-        "KODE SATKER",
-        "NAMA SATKER",
-        "NOMOR REKENING VA",
-        "NAMA REKENING VA"
-    ]
-
-    if periode == "Triwulan":
-        pivot_trx = df.pivot_table(
-            index=index_cols,
-            columns="TRIWULAN",
-            values="PROPORSI_TRANSAKSI",
-            fill_value=0
-        )
-
-        pivot_nom = df.pivot_table(
-            index=index_cols,
-            columns="TRIWULAN",
-            values="PROPORSI_NOMINAL",
-            fill_value=0
-        )
-
-        pivot_trx.columns = [
-            f"{c} - PROPORSI TRANSAKSI (%)"
-            for c in pivot_trx.columns
-        ]
-
-        pivot_nom.columns = [
-            f"{c} - PROPORSI NOMINAL (%)"
-            for c in pivot_nom.columns
-        ]
-
-        pivot = pd.concat([pivot_trx, pivot_nom], axis=1).reset_index()
-
-    else:
-
-        pivot = (
-            df.groupby(index_cols)
-            .agg(
-                PROPORSI_TRANSAKSI=("PROPORSI_TRANSAKSI", "mean"),
-                PROPORSI_NOMINAL=("PROPORSI_NOMINAL", "mean")
-            )
-            .reset_index()
-        )
-
-        pivot = pivot.rename(columns={
-            "PROPORSI_TRANSAKSI": "PROPORSI TRANSAKSI (%)",
-            "PROPORSI_NOMINAL": "PROPORSI NOMINAL (%)"
-        })
-
-    # =============================
-    # HAPUS KOLOM VA DARI TAMPILAN
-    # =============================
-    pivot = pivot.drop(
-        columns=["NOMOR REKENING VA", "NAMA REKENING VA"]
-    )
-
-    return pivot
 
 
 # HALAMAN 1: DASHBOARD UTAMA
