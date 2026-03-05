@@ -4801,6 +4801,13 @@ def page_dashboard():
                 st.stop()
 
             df_digipay = st.session_state.digipay_master.copy()
+            
+            df_digipay = st.session_state.digipay_master.copy()
+            df_kkp = st.session_state.kkp_master.copy()
+
+            # DEBUG NAMA KOLOM
+            st.write("Kolom Digipay:", df_digipay.columns)
+            st.write("Kolom KKP:", df_kkp.columns)
 
             # ===============================
             # NORMALISASI DATA DIGIPAY
