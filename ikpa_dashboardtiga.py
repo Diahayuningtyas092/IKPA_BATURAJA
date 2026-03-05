@@ -4964,7 +4964,11 @@ def page_dashboard():
                     df_kkp["TAHUN"] <= tahun_chart
                 ]
 
-            kkp_total = df_kkp["NILAI TRANSAKSI (NILAI SPM)"].sum()
+            if tipe_chart == "Jumlah Transaksi":
+                kkp_total = df_kkp.shape[0]
+
+            else:
+                kkp_total = df_kkp["NILAI TRANSAKSI (NILAI SPM)"].sum()
             
             # ===============================
             # DEBUG DATA
