@@ -4781,19 +4781,9 @@ def page_dashboard():
         # ===============================
         # AMBIL DATA DIGIPAY
         # ===============================
-        if "digipay_master" not in st.session_state:
-            st.warning("Data Digipay belum tersedia")
-            return
-
-        df_digipay = st.session_state.digipay_master.copy()
-
-        df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
-
-        tahun_list = sorted(df_digipay["TAHUN"].dropna().unique())
-        
         # ============================================================
         if menu_digital == "📈 Chart Utama":
-    
+
             st.markdown("## 📊 Chart Utama")
 
             if "digipay_master" not in st.session_state or "kkp_master" not in st.session_state:
@@ -4801,25 +4791,24 @@ def page_dashboard():
                 st.stop()
 
             df_digipay = st.session_state.digipay_master.copy()
-            
-            df_digipay = st.session_state.digipay_master.copy()
             df_kkp = st.session_state.kkp_master.copy()
 
-            # DEBUG NAMA KOLOM
-            st.write("Kolom Digipay:", df_digipay.columns)
-            st.write("Kolom KKP:", df_kkp.columns)
-
             # ===============================
-            # NORMALISASI DATA DIGIPAY
+            # NORMALISASI DIGIPAY
             # ===============================
             df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
             df_digipay["BULAN"] = pd.to_numeric(df_digipay["BULAN"], errors="coerce")
 
-            df_digipay["TRIWULAN"] = ((df_digipay["BULAN"]-1)//3)+1
+            df_digipay["TRIWULAN"] = ((df_digipay["BULAN"] - 1) // 3) + 1
 
-            # ===============================
-            # BERSIHKAN NOMINAL DIGIPAY
-            # ===============================
+            # BUAT NAMA SATKER
+            df_digipay["SATKER"] = (
+                df_digipay["KDSATKER"].astype(str)
+                + " - " +
+                df_digipay["NMSATKER"]
+            )
+
+            # BERSIHKAN NOMINAL
             df_digipay["NOMINVOICE"] = (
                 df_digipay["NOMINVOICE"]
                 .astype(str)
@@ -4827,19 +4816,18 @@ def page_dashboard():
             )
 
             df_digipay["NOMINVOICE"] = pd.to_numeric(
-                df_digipay["NOMINVOICE"],
-                errors="coerce"
+                df_digipay["NOMINVOICE"], errors="coerce"
             ).fillna(0)
 
             # ===============================
             # FILTER UI
             # ===============================
-            col1,col2,col3 = st.columns(3)
+            col1, col2, col3 = st.columns(3)
 
             with col1:
                 periode_chart = st.selectbox(
                     "Periode",
-                    ["Bulanan","Triwulan","Tahunan"]
+                    ["Bulanan", "Triwulan", "Tahunan"]
                 )
 
             with col2:
@@ -4854,13 +4842,12 @@ def page_dashboard():
             triwulan_selected = None
 
             bulan_map = {
-                1:"Januari",2:"Februari",3:"Maret",4:"April",
-                5:"Mei",6:"Juni",7:"Juli",8:"Agustus",
-                9:"September",10:"Oktober",11:"November",12:"Desember"
+                1: "Januari", 2: "Februari", 3: "Maret", 4: "April",
+                5: "Mei", 6: "Juni", 7: "Juli", 8: "Agustus",
+                9: "September", 10: "Oktober", 11: "November", 12: "Desember"
             }
 
             if periode_chart == "Bulanan":
-
                 with col3:
                     bulan_selected = st.selectbox(
                         "Bulan",
@@ -4869,11 +4856,10 @@ def page_dashboard():
                     )
 
             elif periode_chart == "Triwulan":
-
                 with col3:
                     triwulan_selected = st.selectbox(
                         "Triwulan",
-                        ["TW1","TW2","TW3","TW4"]
+                        ["TW1", "TW2", "TW3", "TW4"]
                     )
 
             # ===============================
@@ -4881,7 +4867,7 @@ def page_dashboard():
             # ===============================
             tipe_chart = st.radio(
                 "Tipe",
-                ["Jumlah Transaksi","Jumlah Nominal"],
+                ["Jumlah Transaksi", "Jumlah Nominal"],
                 horizontal=True
             )
 
@@ -4897,7 +4883,7 @@ def page_dashboard():
 
             elif periode_chart == "Triwulan":
 
-                tw = int(triwulan_selected.replace("TW",""))
+                tw = int(triwulan_selected.replace("TW", ""))
 
                 df_digipay = df_digipay[
                     (df_digipay["TAHUN"] == tahun_chart) &
@@ -4911,9 +4897,6 @@ def page_dashboard():
                 ]
 
             # ===============================
-            # HITUNG DIGIPAY
-            # ===============================
-            # ===============================
             # DIGIPAY PER SATKER
             # ===============================
             if tipe_chart == "Jumlah Transaksi":
@@ -4921,7 +4904,7 @@ def page_dashboard():
                 digipay_chart = (
                     df_digipay
                     .groupby("SATKER")
-                    .agg(Value=("NOINVOICE","nunique"))
+                    .agg(Value=("NOINVOICE", "nunique"))
                     .reset_index()
                 )
 
@@ -4930,7 +4913,7 @@ def page_dashboard():
                 digipay_chart = (
                     df_digipay
                     .groupby("SATKER")
-                    .agg(Value=("NOMINVOICE","sum"))
+                    .agg(Value=("NOMINVOICE", "sum"))
                     .reset_index()
                 )
 
@@ -4951,21 +4934,16 @@ def page_dashboard():
 
             st.plotly_chart(fig_digipay, use_container_width=True)
 
-
             # ===============================
-            # KKP
+            # NORMALISASI KKP
             # ===============================
-            df_kkp = st.session_state.kkp_master.copy()
-
             df_kkp["PERIODE"] = pd.to_datetime(df_kkp["PERIODE"], errors="coerce")
 
             df_kkp["TAHUN"] = df_kkp["PERIODE"].dt.year
             df_kkp["BULAN"] = df_kkp["PERIODE"].dt.month
             df_kkp["TRIWULAN"] = df_kkp["PERIODE"].dt.quarter
 
-            # ===============================
-            # BERSIHKAN NOMINAL KKP
-            # ===============================
+            # BERSIHKAN NOMINAL
             df_kkp["NILAI TRANSAKSI (NILAI SPM)"] = (
                 df_kkp["NILAI TRANSAKSI (NILAI SPM)"]
                 .astype(str)
@@ -4989,7 +4967,7 @@ def page_dashboard():
 
             elif periode_chart == "Triwulan":
 
-                tw = int(triwulan_selected.replace("TW",""))
+                tw = int(triwulan_selected.replace("TW", ""))
 
                 df_kkp = df_kkp[
                     (df_kkp["TAHUN"] == tahun_chart) &
@@ -5019,7 +4997,7 @@ def page_dashboard():
                 kkp_chart = (
                     df_kkp
                     .groupby("SATKER")
-                    .agg(Value=("NILAI TRANSAKSI (NILAI SPM)","sum"))
+                    .agg(Value=("NILAI TRANSAKSI (NILAI SPM)", "sum"))
                     .reset_index()
                 )
 
