@@ -4795,6 +4795,15 @@ def page_dashboard():
         if menu_digital == "📈 Chart Utama":
             st.markdown("## 📊 Chart Utama")
 
+            if "digipay_master" not in st.session_state or "kkp_master" not in st.session_state:
+                st.warning("Data Digipay atau KKP belum tersedia")
+                st.stop()
+
+            df_digipay = st.session_state.digipay_master.copy()
+
+            # ===============================
+            # FILTER UI
+            # ===============================
             col1,col2,col3 = st.columns(3)
 
             with col1:
@@ -4812,16 +4821,15 @@ def page_dashboard():
             bulan_selected = None
             triwulan_selected = None
 
+            bulan_map = {
+                1:"Januari",2:"Februari",3:"Maret",4:"April",
+                5:"Mei",6:"Juni",7:"Juli",8:"Agustus",
+                9:"September",10:"Oktober",11:"November",12:"Desember"
+            }
+
             if periode_chart == "Bulanan":
 
                 with col3:
-
-                    bulan_map = {
-                        1:"Januari",2:"Februari",3:"Maret",4:"April",
-                        5:"Mei",6:"Juni",7:"Juli",8:"Agustus",
-                        9:"September",10:"Oktober",11:"November",12:"Desember"
-                    }
-
                     bulan_selected = st.selectbox(
                         "Bulan",
                         list(bulan_map.keys()),
@@ -4836,8 +4844,18 @@ def page_dashboard():
                         ["TW1","TW2","TW3","TW4"]
                     )
 
-            df_digipay = st.session_state.digipay_master.copy()
+            # ===============================
+            # PILIH TIPE
+            # ===============================
+            tipe_chart = st.radio(
+                "Tipe",
+                ["Jumlah Transaksi","Jumlah Nominal"],
+                horizontal=True
+            )
 
+            # ===============================
+            # DIGIPAY
+            # ===============================
             df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
             df_digipay["BULAN"] = pd.to_numeric(df_digipay["BULAN"], errors="coerce")
 
@@ -4873,6 +4891,9 @@ def page_dashboard():
 
                 digipay_total = df_digipay["NOMINVOICE"].sum()
 
+            # ===============================
+            # KKP
+            # ===============================
             df_kkp = st.session_state.kkp_master.copy()
 
             df_kkp["PERIODE"] = pd.to_datetime(df_kkp["PERIODE"], errors="coerce")
@@ -4905,11 +4926,17 @@ def page_dashboard():
 
             kkp_total = df_kkp["NILAI TRANSAKSI (NILAI SPM)"].sum()
 
+            # ===============================
+            # DATA CHART
+            # ===============================
             chart_df = pd.DataFrame({
                 "Jenis":["Digipay","KKP"],
                 "Nilai":[digipay_total,kkp_total]
             })
 
+            # ===============================
+            # CHART
+            # ===============================
             fig = px.bar(
                 chart_df,
                 x="Jenis",
