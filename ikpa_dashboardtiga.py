@@ -4788,28 +4788,40 @@ def page_dashboard():
 
             df_digipay = st.session_state.digipay_master.copy()
             df_kkp = st.session_state.kkp_master.copy()
-            
+
             # ===============================
             # MERGE NAMA SATKER RINGKAS
             # ===============================
             ref = st.session_state.reference_df.copy()
 
-            df_digipay["KDSATKER"] = df_digipay["KDSATKER"].astype(str).str.zfill(6)
-            df_kkp["Kode Satker"] = df_kkp["Kode Satker"].astype(str).str.zfill(6)
+            df_digipay["KDSATKER"] = (
+                df_digipay["KDSATKER"]
+                .astype(str)
+                .str.extract(r'(\d+)')[0]
+                .str.zfill(6)
+            )
+
+            df_kkp["Kode Satker"] = (
+                df_kkp["Kode Satker"]
+                .astype(str)
+                .str.extract(r'(\d+)')[0]
+                .str.zfill(6)
+            )
 
             df_digipay = df_digipay.merge(
-                ref[["Kode Satker","Uraian Satker-SINGKAT"]],
+                ref[["Kode Satker", "Uraian Satker-SINGKAT"]],
                 left_on="KDSATKER",
                 right_on="Kode Satker",
                 how="left"
             )
 
             df_kkp = df_kkp.merge(
-                ref[["Kode Satker","Uraian Satker-SINGKAT"]],
+                ref[["Kode Satker", "Uraian Satker-SINGKAT"]],
                 on="Kode Satker",
                 how="left"
             )
-            
+
+            # Gunakan nama satker ringkas
             df_digipay["SATKER"] = df_digipay["Uraian Satker-SINGKAT"].fillna(df_digipay["NMSATKER"])
             df_kkp["SATKER"] = df_kkp["Uraian Satker-SINGKAT"].fillna(df_kkp["SATKER"])
 
@@ -4818,17 +4830,9 @@ def page_dashboard():
             # ===============================
             df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
             df_digipay["BULAN"] = pd.to_numeric(df_digipay["BULAN"], errors="coerce")
-
             df_digipay["TRIWULAN"] = ((df_digipay["BULAN"] - 1) // 3) + 1
 
-            # SATKER RINGKAS
-            # SATKER RINGKAS
-            if "Uraian Satker-RINGKAS" in df_digipay.columns:
-                df_digipay["SATKER"] = df_digipay["Uraian Satker-RINGKAS"]
-            else:
-                df_digipay["SATKER"] = df_digipay["NMSATKER"]
-
-            # BERSIHKAN NOMINAL
+            # Bersihkan nominal
             df_digipay["NOMINVOICE"] = (
                 df_digipay["NOMINVOICE"]
                 .astype(str)
@@ -4953,105 +4957,12 @@ def page_dashboard():
                 yaxis={'categoryorder':'total ascending'}
             )
 
-            fig_digipay.update_traces(textposition="outside")
+            fig_digipay.update_traces(
+                textposition="outside",
+                width=0.45
+            )
 
             st.plotly_chart(fig_digipay, use_container_width=True)
-
-            # ===============================
-            # NORMALISASI KKP
-            # ===============================
-            df_kkp["PERIODE"] = pd.to_datetime(df_kkp["PERIODE"], errors="coerce")
-
-            df_kkp["TAHUN"] = df_kkp["PERIODE"].dt.year
-            df_kkp["BULAN"] = df_kkp["PERIODE"].dt.month
-            df_kkp["TRIWULAN"] = df_kkp["PERIODE"].dt.quarter
-
-            df_kkp["NILAI TRANSAKSI (NILAI SPM)"] = (
-                df_kkp["NILAI TRANSAKSI (NILAI SPM)"]
-                .astype(str)
-                .str.replace(r"[^\d]", "", regex=True)
-            )
-
-            df_kkp["NILAI TRANSAKSI (NILAI SPM)"] = pd.to_numeric(
-                df_kkp["NILAI TRANSAKSI (NILAI SPM)"],
-                errors="coerce"
-            ).fillna(0)
-
-            # ===============================
-            # FILTER KKP
-            # ===============================
-            if periode_chart == "Bulanan":
-
-                df_kkp = df_kkp[
-                    (df_kkp["TAHUN"] == tahun_chart) &
-                    (df_kkp["BULAN"] <= bulan_selected)
-                ]
-
-            elif periode_chart == "Triwulan":
-
-                tw = int(triwulan_selected.replace("TW", ""))
-
-                df_kkp = df_kkp[
-                    (df_kkp["TAHUN"] == tahun_chart) &
-                    (df_kkp["TRIWULAN"] <= tw)
-                ]
-
-            else:
-
-                df_kkp = df_kkp[
-                    df_kkp["TAHUN"] <= tahun_chart
-                ]
-                
-
-            # SATKER RINGKAS KKP
-            if "Uraian Satker-RINGKAS" in df_kkp.columns:
-                df_kkp["SATKER"] = df_kkp["Uraian Satker-RINGKAS"]
-            elif "NMSATKER" in df_kkp.columns:
-                df_kkp["SATKER"] = df_kkp["NMSATKER"]
-            elif "NAMA SATKER" in df_kkp.columns:
-                df_kkp["SATKER"] = df_kkp["NAMA SATKER"]
-                        
-                        
-            # ===============================
-            # KKP PER SATKER
-            # ===============================
-            if tipe_chart == "Jumlah Transaksi":
-
-                kkp_chart = (
-                    df_kkp
-                    .groupby("SATKER")
-                    .size()
-                    .reset_index(name="Value")
-                )
-
-            else:
-
-                kkp_chart = (
-                    df_kkp
-                    .groupby("SATKER")
-                    .agg(Value=("NILAI TRANSAKSI (NILAI SPM)", "sum"))
-                    .reset_index()
-                )
-
-            kkp_chart = kkp_chart.sort_values("Value", ascending=False).head(20)
-
-            fig_kkp = px.bar(
-                kkp_chart,
-                x="Value",
-                y="SATKER",
-                orientation="h",
-                text="Value",
-                title=f"KKP per Satker - {tipe_chart}"
-            )
-
-            fig_kkp.update_layout(
-                height=600,
-                yaxis={'categoryorder':'total ascending'}
-            )
-
-            fig_kkp.update_traces(textposition="outside")
-
-            st.plotly_chart(fig_kkp, use_container_width=True)
             
 
 
