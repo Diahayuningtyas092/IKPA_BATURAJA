@@ -5065,294 +5065,130 @@ def page_dashboard():
         # =====================================================
         # CHART UTAMA
         # =====================================================
-
         if menu_digital == "📈 Chart Utama":
+            st.markdown("## 📈 Chart Utama")
 
-            st.subheader("📊 Dashboard Digitalisasi")
-
-            col1, col2, col3 = st.columns(3)
+            col1,col2,col3,col4 = st.columns(4)
 
             with col1:
                 periode_chart = st.selectbox(
                     "Periode",
-                    ["Bulanan", "Triwulan", "Tahunan"]
+                    ["Bulanan","Triwulan","Tahunan"]
                 )
 
             with col2:
-                tipe_chart = st.selectbox(
-                    "Tipe Digipay",
-                    ["Jumlah Transaksi", "Nilai Transaksi"]
+                tahun_chart = st.selectbox(
+                    "Tahun",
+                    sorted(df_digipay["TAHUN"].dropna().unique())
                 )
 
-            # =====================================================
-            # FILTER DINAMIS
-            # =====================================================
+            with col3:
+                bulan_selected = st.selectbox(
+                    "Bulan",
+                    list(range(1,13)),
+                    format_func=lambda x: calendar.month_name[x]
+                )
 
-            if "digipay_master" in st.session_state:
-                df_master = st.session_state.digipay_master.copy()
+            with col4:
+                triwulan_selected = st.selectbox(
+                    "Triwulan",
+                    ["TW1","TW2","TW3","TW4"]
+                )
 
-                df_master["TAHUN"] = pd.to_numeric(df_master["TAHUN"], errors="coerce")
+            tipe_chart = st.radio(
+                "Tipe",
+                ["Jumlah Transaksi","Jumlah Nominal"],
+                horizontal=True
+            )
 
-                tahun_list = sorted(df_master["TAHUN"].dropna().unique())
-            else:
-                tahun_list = []
+            df_digipay = st.session_state.digipay_master.copy()
 
-            bulan_selected = None
-            triwulan_selected = None
-            tahun_chart = None
+            df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
+            df_digipay["BULAN"] = pd.to_numeric(df_digipay["BULAN"], errors="coerce")
+            df_digipay["TRIWULAN"] = ((df_digipay["BULAN"] - 1) // 3) + 1
 
             if periode_chart == "Bulanan":
 
-                bulan_map = {
-                    "Januari":1,"Februari":2,"Maret":3,"April":4,
-                    "Mei":5,"Juni":6,"Juli":7,"Agustus":8,
-                    "September":9,"Oktober":10,"November":11,"Desember":12
-                }
-
-                with col3:
-                    bulan_nama = st.selectbox("Pilih Bulan", list(bulan_map.keys()))
-                    bulan_selected = bulan_map[bulan_nama]
-
-                tahun_chart = int(st.selectbox("Tahun", tahun_list))
+                df_digipay = df_digipay[
+                    (df_digipay["TAHUN"] == tahun_chart) &
+                    (df_digipay["BULAN"] <= bulan_selected)
+                ]
 
             elif periode_chart == "Triwulan":
 
-                with col3:
-                    triwulan_selected = st.selectbox(
-                        "Pilih Triwulan",
-                        ["TW1", "TW2", "TW3", "TW4"]
-                    )
+                tw = int(triwulan_selected.replace("TW",""))
 
-                tahun_chart = int(st.selectbox("Tahun", tahun_list))
-
-            else:  # Tahunan
-                tahun_chart = int(st.selectbox("Pilih Tahun", tahun_list))
-
-            st.divider()
-
-            # =====================================================
-            # DIGIPAY CHART
-            # =====================================================
-            if "digipay_master" in st.session_state:
-
-                df_digipay = st.session_state.digipay_master.copy()
-
-                # ================= NORMALISASI DATA =================
-                df_digipay["TAHUN"] = pd.to_numeric(df_digipay["TAHUN"], errors="coerce")
-                df_digipay["BULAN"] = pd.to_numeric(df_digipay["BULAN"], errors="coerce")
-
-                df_digipay["NOMINVOICE"] = (
-                    df_digipay["NOMINVOICE"]
-                    .astype(str)
-                    .str.replace(r"[^\d]", "", regex=True)
-                    .replace("", "0")
-                    .astype(float)
-                )
-
-                df_digipay["TRIWULAN"] = ((df_digipay["BULAN"] - 1) // 3) + 1
-
-
-                # ================= FILTER DATA =================
-
-                if periode_chart == "Bulanan":
-
-                    df_digipay = df_digipay[
-                        (df_digipay["TAHUN"] == tahun_chart) &
-                        (df_digipay["BULAN"] <= bulan_selected)
-                    ]
-
-                    group_col = "BULAN"
-
-
-                elif periode_chart == "Triwulan":
-
-                    tw_number = int(triwulan_selected.replace("TW", ""))
-
-                    df_digipay = df_digipay[
-                        (df_digipay["TAHUN"] == tahun_chart) &
-                        (df_digipay["TRIWULAN"] <= tw_number)
-                    ]
-
-                    group_col = "TRIWULAN"
-
-
-                else:
-
-                    df_digipay = df_digipay[
-                        df_digipay["TAHUN"] <= tahun_chart
-                    ]
-
-                    group_col = "TAHUN"
-
-
-                # ================= CEK DATA =================
-
-                if df_digipay.empty:
-                    st.warning("Tidak ada data Digipay untuk periode ini")
-                    st.stop()
-
-
-                # ================= AGREGASI =================
-
-                if tipe_chart == "Jumlah Transaksi":
-
-                    grouped = (
-                        df_digipay
-                        .groupby(group_col)["NOINVOICE"]
-                        .nunique()
-                        .reset_index(name="Value")
-                    )
-
-                else:
-
-                    grouped = (
-                        df_digipay
-                        .groupby(group_col)["NOMINVOICE"]
-                        .sum()
-                        .reset_index(name="Value")
-                    )
-
-
-                # ================= URUTKAN + KUMULATIF =================
-
-                grouped = grouped.sort_values(group_col).reset_index(drop=True)
-
-                grouped["Kumulatif"] = grouped["Value"].cumsum()
-
-
-                # ================= CHART =================
-
-                st.markdown("### 💰 Digipay")
-
-                fig1 = px.bar(
-                    grouped,
-                    x=group_col,
-                    y="Kumulatif",
-                    text="Kumulatif",
-                    color_discrete_sequence=["#1f77b4"]
-                )
-
-                fig1.update_traces(textposition="outside")
-
-                fig1.update_layout(
-                    height=450,
-                    yaxis_title="Total",
-                    xaxis_title=group_col
-                )
-
-                st.plotly_chart(fig1, use_container_width=True)
+                df_digipay = df_digipay[
+                    (df_digipay["TAHUN"] == tahun_chart) &
+                    (df_digipay["TRIWULAN"] <= tw)
+                ]
 
             else:
-                st.warning("Data Digipay belum tersedia")
 
-            st.divider()
+                df_digipay = df_digipay[
+                    df_digipay["TAHUN"] <= tahun_chart
+                ]
 
+            if tipe_chart == "Jumlah Transaksi":
+                digipay_total = df_digipay["NOINVOICE"].nunique()
+            else:
+                digipay_total = df_digipay["NOMINVOICE"].sum()
 
-            # =====================================================
-            # KKP CHART
-            # =====================================================
-            if "kkp_master" in st.session_state:
+            df_kkp = st.session_state.kkp_master.copy()
 
-                df_kkp = st.session_state.kkp_master.copy()
+            df_kkp["PERIODE"] = pd.to_datetime(df_kkp["PERIODE"], errors="coerce")
 
-                # ================= NORMALISASI DATA =================
-                df_kkp["PERIODE"] = pd.to_datetime(df_kkp["PERIODE"], errors="coerce")
-                df_kkp["TAHUN"] = df_kkp["PERIODE"].dt.year
-                df_kkp["BULAN"] = df_kkp["PERIODE"].dt.month
-                df_kkp["TRIWULAN"] = df_kkp["PERIODE"].dt.quarter
+            df_kkp["TAHUN"] = df_kkp["PERIODE"].dt.year
+            df_kkp["BULAN"] = df_kkp["PERIODE"].dt.month
+            df_kkp["TRIWULAN"] = df_kkp["PERIODE"].dt.quarter
 
-                df_kkp["NILAI TRANSAKSI (NILAI SPM)"] = (
-                    df_kkp["NILAI TRANSAKSI (NILAI SPM)"]
-                    .astype(str)
-                    .str.replace(r"[^\d]", "", regex=True)
-                    .replace("", "0")
-                    .astype(float)
-                )
+            if periode_chart == "Bulanan":
 
-                tahun_chart = int(tahun_chart)
+                df_kkp = df_kkp[
+                    (df_kkp["TAHUN"] == tahun_chart) &
+                    (df_kkp["BULAN"] <= bulan_selected)
+                ]
 
+            elif periode_chart == "Triwulan":
 
-                # ================= FILTER DATA =================
+                tw = int(triwulan_selected.replace("TW",""))
 
-                if periode_chart == "Bulanan":
-
-                    df_kkp = df_kkp[
-                        (df_kkp["TAHUN"] == tahun_chart) &
-                        (df_kkp["BULAN"] <= bulan_selected)
-                    ]
-
-                    group_col = "BULAN"
-
-
-                elif periode_chart == "Triwulan":
-
-                    tw_number = int(triwulan_selected.replace("TW",""))
-
-                    df_kkp = df_kkp[
-                        (df_kkp["TAHUN"] == tahun_chart) &
-                        (df_kkp["TRIWULAN"] <= tw_number)
-                    ]
-
-                    group_col = "TRIWULAN"
-
-
-                else:
-
-                    df_kkp = df_kkp[
-                        df_kkp["TAHUN"] <= tahun_chart
-                    ]
-
-                    group_col = "TAHUN"
-
-
-                # ================= CEK DATA =================
-
-                if df_kkp.empty:
-                    st.warning("Tidak ada data KKP untuk periode ini")
-                    st.stop()
-
-
-                # ================= AGREGASI =================
-
-                grouped_kkp = (
-                    df_kkp
-                    .groupby(group_col)["NILAI TRANSAKSI (NILAI SPM)"]
-                    .sum()
-                    .reset_index(name="Value")
-                    .sort_values(group_col)
-                )
-
-
-                # ================= KUMULATIF =================
-
-                grouped_kkp["Kumulatif"] = grouped_kkp["Value"].cumsum()
-
-
-                # ================= CHART =================
-
-                st.markdown("### 💳 KKP")
-
-                fig2 = px.bar(
-                    grouped_kkp,
-                    x=group_col,
-                    y="Kumulatif",
-                    text="Kumulatif",
-                    color_discrete_sequence=["#ff7f0e"]
-                )
-
-                fig2.update_traces(textposition="outside")
-
-                fig2.update_layout(
-                    height=450,
-                    yaxis_title="Total Nilai",
-                    xaxis_title=group_col
-                )
-
-                st.plotly_chart(fig2, use_container_width=True)
+                df_kkp = df_kkp[
+                    (df_kkp["TAHUN"] == tahun_chart) &
+                    (df_kkp["TRIWULAN"] <= tw)
+                ]
 
             else:
-                st.warning("Data KKP belum tersedia")
-                
+
+                df_kkp = df_kkp[
+                    df_kkp["TAHUN"] <= tahun_chart
+                ]
+
+            kkp_total = df_kkp["NILAI TRANSAKSI (NILAI SPM)"].sum()
+
+            chart_df = pd.DataFrame({
+                "Jenis":["Digipay","KKP"],
+                "Nilai":[digipay_total,kkp_total]
+            })
+
+            fig = px.bar(
+                chart_df,
+                x="Jenis",
+                y="Nilai",
+                text="Nilai",
+                color="Jenis",
+                title="Digitalisasi Pembayaran (Akumulatif)"
+            )
+
+            fig.update_traces(textposition="outside")
+
+            fig.update_layout(
+                height=450,
+                yaxis_title="Total",
+                xaxis_title=""
+            )
+
+            st.plotly_chart(fig,use_container_width=True)
 
         # =====================================================
         # TABEL DETAIL
