@@ -4906,13 +4906,44 @@ def page_dashboard():
             # ===============================
             # HITUNG DIGIPAY
             # ===============================
+            # ===============================
+            # DIGIPAY PER SATKER
+            # ===============================
             if tipe_chart == "Jumlah Transaksi":
 
-                digipay_total = df_digipay["NOINVOICE"].nunique()
+                digipay_chart = (
+                    df_digipay
+                    .groupby("SATKER")
+                    .agg(Value=("NOINVOICE","nunique"))
+                    .reset_index()
+                )
 
             else:
 
-                digipay_total = df_digipay["NOMINVOICE"].sum()
+                digipay_chart = (
+                    df_digipay
+                    .groupby("SATKER")
+                    .agg(Value=("NOMINVOICE","sum"))
+                    .reset_index()
+                )
+
+            digipay_chart = digipay_chart.sort_values("Value", ascending=False).head(20)
+
+            fig_digipay = px.bar(
+                digipay_chart,
+                x="SATKER",
+                y="Value",
+                text="Value",
+                title=f"Digipay per Satker - {tipe_chart}"
+            )
+
+            fig_digipay.update_layout(
+                xaxis_tickangle=-45,
+                height=500
+            )
+
+            st.plotly_chart(fig_digipay, use_container_width=True)
+
 
             # ===============================
             # KKP
@@ -4964,45 +4995,45 @@ def page_dashboard():
                     df_kkp["TAHUN"] <= tahun_chart
                 ]
 
+            # ===============================
+            # KKP PER SATKER
+            # ===============================
             if tipe_chart == "Jumlah Transaksi":
-                kkp_total = df_kkp.shape[0]
+
+                kkp_chart = (
+                    df_kkp
+                    .groupby("SATKER")
+                    .size()
+                    .reset_index(name="Value")
+                )
 
             else:
-                kkp_total = df_kkp["NILAI TRANSAKSI (NILAI SPM)"].sum()
+
+                kkp_chart = (
+                    df_kkp
+                    .groupby("SATKER")
+                    .agg(Value=("NILAI TRANSAKSI (NILAI SPM)","sum"))
+                    .reset_index()
+                )
+
+            kkp_chart = kkp_chart.sort_values("Value", ascending=False).head(20)
+
+            fig_kkp = px.bar(
+                kkp_chart,
+                x="SATKER",
+                y="Value",
+                text="Value",
+                title=f"KKP per Satker - {tipe_chart}",
+                color="Value"
+            )
+
+            fig_kkp.update_layout(
+                xaxis_tickangle=-45,
+                height=500
+            )
+
+            st.plotly_chart(fig_kkp, use_container_width=True)
             
-
-            # ===============================
-            # DATA CHART
-            # ===============================
-            chart_df = pd.DataFrame({
-                "Jenis":["Digipay","KKP"],
-                "Nilai":[digipay_total,kkp_total]
-            })
-
-            # ===============================
-            # CHART
-            # ===============================
-            fig = px.bar(
-                chart_df,
-                x="Jenis",
-                y="Nilai",
-                text="Nilai",
-                color="Jenis",
-                title="Digitalisasi Pembayaran (Akumulatif)"
-            )
-
-            fig.update_traces(
-                texttemplate='%{text:,.0f}',
-                textposition="outside"
-            )
-
-            fig.update_layout(
-                yaxis_tickformat=",",
-                height=450
-            )
-
-            st.plotly_chart(fig,use_container_width=True)
-
 
 
         # =====================================================
