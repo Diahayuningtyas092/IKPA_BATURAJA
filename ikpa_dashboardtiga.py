@@ -3328,14 +3328,11 @@ def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
     result = df_group[
         [
             "KODE SATKER",
-            "NAMA SATKER",
+            "NAMA_SATKER",
             "Proporsi Transaksi CMS",
             "Proporsi Nominal CMS",
         ]
     ]
-    df_group = df_group.rename(columns={
-        "NAMA_SATKER": "NAMA SATKER"
-    })
 
     return result.fillna(0)
 
