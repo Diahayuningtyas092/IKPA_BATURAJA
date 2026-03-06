@@ -5065,6 +5065,30 @@ def page_dashboard():
             # CMS CHART
             # =====================================================
             df_cms = st.session_state.cms_master.copy()
+            
+            # ===============================
+            # MERGE NAMA SATKER RINGKAS
+            # ===============================
+            ref = st.session_state.reference_df.copy()
+
+            df_cms["Kode Satker"] = (
+                df_cms["Kode Satker"]
+                .astype(str)
+                .str.extract(r'(\d+)')[0]
+                .str.zfill(6)
+            )
+
+            df_cms = df_cms.merge(
+                ref[["Kode Satker","Uraian Satker-SINGKAT"]],
+                on="Kode Satker",
+                how="left"
+            )
+
+            # gunakan nama satker ringkas
+            df_cms["SATKER"] = df_cms["Uraian Satker-SINGKAT"]
+
+            # fallback jika tidak ada mapping
+            df_cms["SATKER"] = df_cms["SATKER"].fillna(df_cms["Nama Satker"])
 
             # buat kolom SATKER yang konsisten
             if "SATKER" not in df_cms.columns:
