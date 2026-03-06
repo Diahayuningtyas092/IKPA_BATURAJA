@@ -5067,12 +5067,34 @@ def page_dashboard():
             df_cms = st.session_state.cms_master.copy()
             
             # ===============================
+            # DETEKSI KOLOM SATKER CMS
+            # ===============================
+
+            if "Kode Satker" in df_cms.columns:
+                satker_code_col = "Kode Satker"
+            elif "KODE SATKER" in df_cms.columns:
+                satker_code_col = "KODE SATKER"
+            else:
+                st.error("Kolom kode satker CMS tidak ditemukan")
+                st.stop()
+
+            if "Nama Satker" in df_cms.columns:
+                satker_name_col = "Nama Satker"
+            elif "NAMA SATKER" in df_cms.columns:
+                satker_name_col = "NAMA SATKER"
+            else:
+                st.error("Kolom nama satker CMS tidak ditemukan")
+                st.stop()
+
+
+            # ===============================
             # MERGE NAMA SATKER RINGKAS
             # ===============================
+
             ref = st.session_state.reference_df.copy()
 
-            df_cms["Kode Satker"] = (
-                df_cms["Kode Satker"]
+            df_cms[satker_code_col] = (
+                df_cms[satker_code_col]
                 .astype(str)
                 .str.extract(r'(\d+)')[0]
                 .str.zfill(6)
@@ -5080,15 +5102,12 @@ def page_dashboard():
 
             df_cms = df_cms.merge(
                 ref[["Kode Satker","Uraian Satker-SINGKAT"]],
-                on="Kode Satker",
+                left_on=satker_code_col,
+                right_on="Kode Satker",
                 how="left"
             )
 
-            # gunakan nama satker ringkas
-            df_cms["SATKER"] = df_cms["Uraian Satker-SINGKAT"]
-
-            # fallback jika tidak ada mapping
-            df_cms["SATKER"] = df_cms["SATKER"].fillna(df_cms["Nama Satker"])
+            df_cms["SATKER"] = df_cms["Uraian Satker-SINGKAT"].fillna(df_cms[satker_name_col])
 
             # buat kolom SATKER yang konsisten
             if "SATKER" not in df_cms.columns:
