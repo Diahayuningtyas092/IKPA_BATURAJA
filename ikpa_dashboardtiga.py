@@ -3209,9 +3209,6 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
 # -----------------------------------
 # AGREGASI KKP
 # -----------------------------------
-# -----------------------------------
-# AGREGASI KKP
-# -----------------------------------
 def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
 
     df = df.copy()
@@ -3252,10 +3249,8 @@ def generate_kkp_monthly_from_session(df, tahun_filter=None, tipe="trx"):
     
     df = df.copy()
 
-    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
-
-    df["Tahun"] = df["TANGGAL"].dt.year
-    df["Bulan"] = df["TANGGAL"].dt.month
+    df["Tahun"] = df["TAHUN"]
+    df["Bulan"] = df["BULAN"]
 
     if tahun_filter is not None:
         df = df[df["Tahun"] == tahun_filter]
@@ -3318,10 +3313,8 @@ def generate_kkp_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
 
     df = df.copy()
 
-    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
-
-    df["Tahun"] = df["TANGGAL"].dt.year
-    df["Bulan"] = df["TANGGAL"].dt.month
+    df["Tahun"] = df["TAHUN"]
+    df["Bulan"] = df["BULAN"]
 
     df["Triwulan"] = ((df["Bulan"] - 1) // 3) + 1
 
@@ -3380,9 +3373,7 @@ def generate_kkp_yearly_from_session(df, tipe="trx"):
 
     df = df.copy()
 
-    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
-
-    df["Tahun"] = df["TANGGAL"].dt.year
+    df["Tahun"] = df["TAHUN"]
 
     satker_map = (
         df[["KODE SATKER","NAMA SATKER"]]
