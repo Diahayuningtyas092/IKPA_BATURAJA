@@ -5736,18 +5736,24 @@ def page_dashboard():
             # 💳 KKP
             # =====================================================
             elif source_detail == "💳 KKP":
+
                 if "kkp_master" not in st.session_state:
                     st.warning("Data KKP belum tersedia")
+
                 else:
 
                     df_master = st.session_state.kkp_master.copy()
+
                     # =============================
-                    # NORMALISASI PERIODE KKP
+                    # NORMALISASI PERIODE
                     # =============================
                     if "PERIODE" in df_master.columns:
+
                         df_master["PERIODE"] = df_master["PERIODE"].astype(str)
+
                         df_master["TAHUN"] = df_master["PERIODE"].str[:4].astype(int)
                         df_master["BULAN"] = df_master["PERIODE"].str[5:7].astype(int)
+
                     else:
                         st.error("Kolom PERIODE tidak ditemukan pada data KKP")
                         st.stop()
@@ -5769,9 +5775,16 @@ def page_dashboard():
                         )
 
                     if periode != "Tahunan":
+
                         with col3:
                             tahun_list = sorted(df_master["TAHUN"].dropna().unique())
-                            tahun = st.selectbox("Tahun", tahun_list, key="kkp_tahun")
+
+                            tahun = st.selectbox(
+                                "Tahun",
+                                tahun_list,
+                                key="kkp_tahun"
+                            )
+
                     else:
                         tahun = None
 
@@ -5782,18 +5795,24 @@ def page_dashboard():
                         tahun_filter=tahun
                     )
 
+                    # =============================
+                    # FORMAT RIBUAN
+                    # =============================
                     def format_ribuan(x):
+
                         try:
                             return "{:,.0f}".format(float(x)).replace(",", ".")
+
                         except:
                             return x
 
                     for col in df_pivot.columns:
-                        if col not in ["Uraian Satker-RINGKAS"]:
+
+                        if col not in ["SATKER","Uraian Satker-RINGKAS"]:
                             df_pivot[col] = df_pivot[col].apply(format_ribuan)
 
                     render_table_pin_satker(df_pivot)
-                    
+                                
 
             # =====================================================
             # 🏦 CMS
