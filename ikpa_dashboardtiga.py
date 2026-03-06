@@ -3244,69 +3244,73 @@ def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
 
 
 # PROPORSI CMS
-def generate_cms_from_session(df_master, periode="Bulanan", tahun_filter=None):
+def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
     
     df = df_master.copy()
 
     # =============================
     # FILTER TAHUN
     # =============================
-    if tahun_filter is not None and "TAHUN" in df.columns:
+    if tahun_filter is not None:
         df = df[df["TAHUN"] == tahun_filter]
 
     # =============================
-    # DETEKSI KOLOM SATKER
+    # AGREGASI SATKER
     # =============================
-    satker_col = None
-    for c in [
-        "SATKER",
-        "Satker",
-        "Nama Satker",
-        "Uraian Satker",
-        "Uraian Satker-RINGKAS",
-        "Kode Satker"
-    ]:
-        if c in df.columns:
-            satker_col = c
-            break
-
-    if satker_col is None:
-        raise ValueError("Kolom Satker tidak ditemukan pada data CMS")
-
-    df = df.rename(columns={satker_col: "SATKER"})
-
-    # =============================
-    # AGREGASI
-    # =============================
-    cms_satker = (
-        df.groupby("SATKER")
+    df_group = (
+        df.groupby(["KODE SATKER", "NAMA SATKER"])
         .agg(
-            CMS_TRX=("JUMLAH TRANSAKSI CMS","sum"),
-            DEBIT_TRX=("JUMLAH TRANSAKSI KARTU DEBIT","sum"),
-            TELLER_TRX=("JUMLAH TRANSAKSI TELLER","sum"),
-            CMS_NOM=("NILAI TRANSAKSI CMS","sum"),
-            DEBIT_NOM=("NILAI TRANSAKSI KARTU DEBIT","sum"),
-            TELLER_NOM=("NILAI TRANSAKSI TELLER","sum"),
+            CMS_TRX=("JUMLAH TRANSAKSI CMS", "sum"),
+            CMS_NOM=("NILAI TRANSAKSI CMS", "sum"),
+
+            DEBIT_TRX=("JUMLAH TRANSAKSI KARTU DEBIT", "sum"),
+            DEBIT_NOM=("NILAI TRANSAKSI KARTU DEBIT", "sum"),
+
+            TELLER_TRX=("JUMLAH TRANSAKSI TELLER", "sum"),
+            TELLER_NOM=("NILAI TRANSAKSI TELLER", "sum"),
         )
         .reset_index()
     )
 
-    cms_satker["TOTAL_TRX"] = (
-        cms_satker["CMS_TRX"]
-        + cms_satker["DEBIT_TRX"]
-        + cms_satker["TELLER_TRX"]
+    # =============================
+    # TOTAL TRANSAKSI
+    # =============================
+    df_group["TOTAL_TRX"] = (
+        df_group["CMS_TRX"]
+        + df_group["DEBIT_TRX"]
+        + df_group["TELLER_TRX"]
     )
 
-    cms_satker["TOTAL_NOM"] = (
-        cms_satker["CMS_NOM"]
-        + cms_satker["DEBIT_NOM"]
-        + cms_satker["TELLER_NOM"]
+    df_group["TOTAL_NOM"] = (
+        df_group["CMS_NOM"]
+        + df_group["DEBIT_NOM"]
+        + df_group["TELLER_NOM"]
     )
 
-    cms_satker["PROPORSI_TRX"] = (cms_satker["CMS_TRX"] / cms_satker["TOTAL_TRX"]) * 100
-    cms_satker["PROPORSI_NOM"] = (cms_satker["CMS_NOM"] / cms_satker["TOTAL_NOM"]) * 100
+    # =============================
+    # PROPORSI CMS
+    # =============================
+    df_group["Proporsi Transaksi CMS"] = (
+        df_group["CMS_TRX"] / df_group["TOTAL_TRX"] * 100
+    )
 
-    return cms_satker.fillna(0)
+    df_group["Proporsi Nominal CMS"] = (
+        df_group["CMS_NOM"] / df_group["TOTAL_NOM"] * 100
+    )
+
+    # =============================
+    # OUTPUT FINAL
+    # =============================
+    result = df_group[
+        [
+            "KODE SATKER",
+            "NAMA SATKER",
+            "Proporsi Transaksi CMS",
+            "Proporsi Nominal CMS",
+        ]
+    ]
+
+    return result.fillna(0)
 
 
 # HALAMAN 1: DASHBOARD UTAMA
@@ -5622,7 +5626,7 @@ def page_dashboard():
             # 🏦 CMS
             # =====================================================
             elif source_detail == "🏦 CMS":
-
+    
                 if "cms_master" not in st.session_state:
                     st.warning("Data CMS belum tersedia")
                     st.stop()
@@ -5664,17 +5668,16 @@ def page_dashboard():
                     st.stop()
 
                 # =============================
-                # FORMAT ANGKA
+                # FORMAT PERSEN
                 # =============================
-                percent_cols = ["PROPORSI_TRX", "PROPORSI_NOM"]
+                percent_cols = [
+                    "Proporsi Transaksi CMS",
+                    "Proporsi Nominal CMS"
+                ]
 
-                for col in df_pivot.columns:
-
-                    if col in percent_cols:
+                for col in percent_cols:
+                    if col in df_pivot.columns:
                         df_pivot[col] = df_pivot[col].round(2).astype(str) + " %"
-
-                    elif pd.api.types.is_numeric_dtype(df_pivot[col]):
-                        df_pivot[col] = df_pivot[col].round(2)
 
                 render_table_pin_satker(df_pivot)
                                     
