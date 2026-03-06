@@ -5061,7 +5061,117 @@ def page_dashboard():
 
             st.plotly_chart(fig_kkp, use_container_width=True)
             
+            # =====================================================
+            # CMS CHART
+            # =====================================================
+            df_cms = st.session_state.cms_master.copy()
 
+            # ===============================
+            # NORMALISASI NUMERIC
+            # ===============================
+            cols = [
+                "JUMLAH TRANSAKSI CMS",
+                "JUMLAH TRANSAKSI KARTU DEBIT",
+                "JUMLAH TRANSAKSI TELLER",
+                "NILAI TRANSAKSI CMS",
+                "NILAI TRANSAKSI KARTU DEBIT",
+                "NILAI TRANSAKSI TELLER",
+            ]
+
+            for c in cols:
+                df_cms[c] = pd.to_numeric(df_cms[c], errors="coerce").fillna(0)
+
+            # ===============================
+            # GABUNG PER SATKER
+            # ===============================
+            cms_satker = (
+                df_cms
+                .groupby("SATKER")
+                .agg(
+                    CMS_TRX=("JUMLAH TRANSAKSI CMS","sum"),
+                    DEBIT_TRX=("JUMLAH TRANSAKSI KARTU DEBIT","sum"),
+                    TELLER_TRX=("JUMLAH TRANSAKSI TELLER","sum"),
+
+                    CMS_NOM=("NILAI TRANSAKSI CMS","sum"),
+                    DEBIT_NOM=("NILAI TRANSAKSI KARTU DEBIT","sum"),
+                    TELLER_NOM=("NILAI TRANSAKSI TELLER","sum"),
+                )
+                .reset_index()
+            )
+
+            # ===============================
+            # TOTAL
+            # ===============================
+            cms_satker["TOTAL_TRX"] = (
+                cms_satker["CMS_TRX"]
+                + cms_satker["DEBIT_TRX"]
+                + cms_satker["TELLER_TRX"]
+            )
+
+            cms_satker["TOTAL_NOM"] = (
+                cms_satker["CMS_NOM"]
+                + cms_satker["DEBIT_NOM"]
+                + cms_satker["TELLER_NOM"]
+            )
+
+            # ===============================
+            # PROPORSI
+            # ===============================
+            cms_satker["PROPORSI_TRX"] = (
+                cms_satker["CMS_TRX"] / cms_satker["TOTAL_TRX"]
+            )
+
+            cms_satker["PROPORSI_NOM"] = (
+                cms_satker["CMS_NOM"] / cms_satker["TOTAL_NOM"]
+            )
+
+            cms_satker = cms_satker.fillna(0)
+
+            # ===============================
+            # PILIH TIPE
+            # ===============================
+            if tipe_chart == "Jumlah Transaksi":
+
+                cms_chart = cms_satker[["SATKER","PROPORSI_TRX"]].copy()
+                cms_chart.rename(columns={"PROPORSI_TRX":"Value"}, inplace=True)
+
+                title_chart = "10 Satker dengan Proporsi Transaksi CMS Tertinggi"
+
+            else:
+
+                cms_chart = cms_satker[["SATKER","PROPORSI_NOM"]].copy()
+                cms_chart.rename(columns={"PROPORSI_NOM":"Value"}, inplace=True)
+
+                title_chart = "10 Satker dengan Proporsi Nominal CMS Tertinggi"
+
+            # ===============================
+            # TOP 10
+            # ===============================
+            cms_chart = cms_chart.sort_values("Value", ascending=False).head(10)
+
+            # ===============================
+            # CHART
+            # ===============================
+            fig_cms = px.bar(
+                cms_chart,
+                x="Value",
+                y="SATKER",
+                orientation="h",
+                text="Value",
+                title=title_chart
+            )
+
+            fig_cms.update_layout(
+                height=600,
+                yaxis={'categoryorder':'total ascending'}
+            )
+
+            fig_cms.update_traces(
+                texttemplate="%{text:.1%}",
+                textposition="outside",
+            )
+
+            st.plotly_chart(fig_cms, use_container_width=True)
 
         # =====================================================
         # TABEL DETAIL
