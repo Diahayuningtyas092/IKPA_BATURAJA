@@ -5641,9 +5641,12 @@ def page_dashboard():
                 tahun_list = sorted(df_master["TAHUN"].dropna().unique())
 
                 with col2:
-                    tahun = st.selectbox("Tahun", tahun_list, key="cms_tahun")
+                    tahun = st.selectbox(
+                        "Tahun",
+                        tahun_list,
+                        key="cms_tahun"
+                    )
 
-                # 🔴 INISIALISASI (PENTING)
                 df_pivot = pd.DataFrame()
 
                 try:
@@ -5656,20 +5659,22 @@ def page_dashboard():
                     st.error(f"Gagal memproses CMS: {e}")
                     st.stop()
 
-                # =============================
-                # CEK DATA
-                # =============================
                 if df_pivot is None or df_pivot.empty:
                     st.warning("Data CMS tidak tersedia untuk periode yang dipilih")
                     st.stop()
 
                 # =============================
-                # FORMAT PERSEN
+                # FORMAT ANGKA
                 # =============================
+                percent_cols = ["PROPORSI_TRX", "PROPORSI_NOM"]
+
                 for col in df_pivot.columns:
-                    if pd.api.types.is_numeric_dtype(df_pivot[col]):
+
+                    if col in percent_cols:
+                        df_pivot[col] = df_pivot[col].round(2).astype(str) + " %"
+
+                    elif pd.api.types.is_numeric_dtype(df_pivot[col]):
                         df_pivot[col] = df_pivot[col].round(2)
-                        df_pivot[col] = df_pivot[col].astype(str) + " %"
 
                 render_table_pin_satker(df_pivot)
                                     
