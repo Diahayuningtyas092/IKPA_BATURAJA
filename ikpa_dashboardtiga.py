@@ -3209,7 +3209,6 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
 # -----------------------------------
 # AGREGASI KKP
 # -----------------------------------
-
 def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
 
     df = df.copy()
@@ -3242,8 +3241,150 @@ def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
 
     return grouped.reset_index()
 
+# AGREGASI KKP BULANAN, TRIWULAN, TAHUNAN
+def generate_kkp_monthly_from_session(df, tahun_filter=None, tipe="trx"):
+    
+    df = df.copy()
 
+    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
+
+    df["Tahun"] = df["TANGGAL"].dt.year
+    df["Bulan"] = df["TANGGAL"].dt.month
+
+    if tahun_filter is not None:
+        df = df[df["Tahun"] == tahun_filter]
+
+    if tipe == "trx":
+
+        agg_df = (
+            df.groupby(["KODE SATKER","Bulan"])
+            .agg(Jumlah_Transaksi=("JUMLAH TRANSAKSI KKP","sum"))
+            .reset_index()
+        )
+
+        value_col = "Jumlah_Transaksi"
+
+    else:
+
+        agg_df = (
+            df.groupby(["KODE SATKER","Bulan"])
+            .agg(Nilai_Transaksi=("NILAI TRANSAKSI KKP","sum"))
+            .reset_index()
+        )
+
+        value_col = "Nilai_Transaksi"
+
+    pivot = agg_df.pivot(
+        index="KODE SATKER",
+        columns="Bulan",
+        values=value_col
+    ).fillna(0)
+
+    pivot = pivot.reindex(columns=range(1,13), fill_value=0)
+
+    bulan_map = {
+        1:"JAN",2:"FEB",3:"MAR",4:"APR",
+        5:"MEI",6:"JUN",7:"JUL",8:"AGU",
+        9:"SEP",10:"OKT",11:"NOV",12:"DES"
+    }
+
+    pivot.columns = [bulan_map[i] for i in pivot.columns]
+
+    return pivot.reset_index()
+
+def generate_kkp_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
+
+    df = df.copy()
+
+    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
+
+    df["Tahun"] = df["TANGGAL"].dt.year
+    df["Bulan"] = df["TANGGAL"].dt.month
+
+    df["Triwulan"] = ((df["Bulan"] - 1) // 3) + 1
+
+    if tahun_filter is not None:
+        df = df[df["Tahun"] == tahun_filter]
+
+    if tipe == "trx":
+
+        agg_df = (
+            df.groupby(["KODE SATKER","Triwulan"])
+            .agg(Jumlah_Transaksi=("JUMLAH TRANSAKSI KKP","sum"))
+            .reset_index()
+        )
+
+        value_col = "Jumlah_Transaksi"
+
+    else:
+
+        agg_df = (
+            df.groupby(["KODE SATKER","Triwulan"])
+            .agg(Nilai_Transaksi=("NILAI TRANSAKSI KKP","sum"))
+            .reset_index()
+        )
+
+        value_col = "Nilai_Transaksi"
+
+    pivot = agg_df.pivot(
+        index="KODE SATKER",
+        columns="Triwulan",
+        values=value_col
+    ).fillna(0)
+
+    pivot = pivot.reindex(columns=[1,2,3,4], fill_value=0)
+
+    pivot.columns = ["TW1","TW2","TW3","TW4"]
+
+    return pivot.reset_index()
+
+def generate_kkp_yearly_from_session(df, tipe="trx"):
+
+    df = df.copy()
+
+    df["TANGGAL"] = pd.to_datetime(df["TANGGAL"], errors="coerce")
+
+    df["Tahun"] = df["TANGGAL"].dt.year
+
+    if tipe == "trx":
+
+        agg_df = (
+            df.groupby(["KODE SATKER","Tahun"])
+            .agg(Jumlah_Transaksi=("JUMLAH TRANSAKSI KKP","sum"))
+            .reset_index()
+        )
+
+        value_col = "Jumlah_Transaksi"
+
+    else:
+
+        agg_df = (
+            df.groupby(["KODE SATKER","Tahun"])
+            .agg(Nilai_Transaksi=("NILAI TRANSAKSI KKP","sum"))
+            .reset_index()
+        )
+
+        value_col = "Nilai_Transaksi"
+
+    pivot = (
+        agg_df
+        .pivot_table(
+            index="KODE SATKER",
+            columns="Tahun",
+            values=value_col,
+            fill_value=0
+        )
+        .sort_index(axis=1)
+    )
+
+    pivot.columns = pivot.columns.astype(str)
+
+    return pivot.reset_index()
+
+
+# =========================================================================
 # PROPORSI CMS
+# =========================================================================
 def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
     
     df = df_master.copy()
