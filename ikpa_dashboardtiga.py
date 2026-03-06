@@ -3281,7 +3281,7 @@ def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
     # AGREGASI SATKER
     # =============================
     df_group = (
-        df.groupby(["KODE SATKER", "NAMA SATKER"])
+        df.groupby(["KODE SATKER"])
         .agg(
             CMS_TRX=("JUMLAH TRANSAKSI CMS", "sum"),
             CMS_NOM=("NILAI TRANSAKSI CMS", "sum"),
