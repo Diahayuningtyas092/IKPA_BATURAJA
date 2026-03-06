@@ -4941,7 +4941,7 @@ def page_dashboard():
                     .reset_index()
                 )
 
-            digipay_chart = digipay_chart.sort_values("Value", ascending=False).head(20)
+            digipay_chart = digipay_chart.sort_values("Value", ascending=False).head(10)
 
             fig_digipay = px.bar(
                 digipay_chart,
@@ -4949,7 +4949,7 @@ def page_dashboard():
                 y="SATKER",
                 orientation="h",
                 text="Value",
-                title=f"Digipay per Satker - {tipe_chart}"
+                title=f"10 Satker dengan {tipe_chart} Terbanyak (Digipay)"
             )
 
             fig_digipay.update_layout(
@@ -4961,6 +4961,7 @@ def page_dashboard():
                 textposition="outside",
                 width=0.45
             )
+            fig_digipay.update_layout(yaxis_title=None, xaxis_title=None)
 
             st.plotly_chart(fig_digipay, use_container_width=True)
 
@@ -5040,7 +5041,7 @@ def page_dashboard():
                     .reset_index()
                 )
 
-            kkp_chart = kkp_chart.sort_values("Value", ascending=False).head(20)
+            kkp_chart = kkp_chart.sort_values("Value", ascending=False).head(10)
 
             fig_kkp = px.bar(
                 kkp_chart,
@@ -5048,7 +5049,7 @@ def page_dashboard():
                 y="SATKER",
                 orientation="h",
                 text="Value",
-                title=f"KKP per Satker - {tipe_chart}"
+                title=f"10 Satker dengan {tipe_chart} Terbanyak (KKP)"
             )
 
             fig_kkp.update_layout(
@@ -5057,6 +5058,7 @@ def page_dashboard():
             )
 
             fig_kkp.update_traces(textposition="outside")
+            fig_kkp.update_layout(yaxis_title=None, xaxis_title=None)
 
             st.plotly_chart(fig_kkp, use_container_width=True)
             
