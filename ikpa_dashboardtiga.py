@@ -3277,12 +3277,15 @@ def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
 
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
 
+
     # =============================
-    # AGREGASI SATKER
+    # AGREGASI BERDASARKAN KODE SATKER
     # =============================
     df_group = (
-        df.groupby(["KODE SATKER"])
+        df.groupby("KODE SATKER")
         .agg(
+            NAMA_SATKER=("NAMA SATKER", "first"),
+
             CMS_TRX=("JUMLAH TRANSAKSI CMS", "sum"),
             CMS_NOM=("NILAI TRANSAKSI CMS", "sum"),
 
@@ -3295,6 +3298,11 @@ def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
         .reset_index()
     )
 
+    df_group = df_group.rename(columns={
+        "NAMA_SATKER": "NAMA SATKER"
+    })
+    
+    
     # =============================
     # TOTAL
     # =============================
@@ -3328,7 +3336,7 @@ def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
     result = df_group[
         [
             "KODE SATKER",
-            "NAMA_SATKER",
+            "NAMA SATKER",
             "Proporsi Transaksi CMS",
             "Proporsi Nominal CMS",
         ]
