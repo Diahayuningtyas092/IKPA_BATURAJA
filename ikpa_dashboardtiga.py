@@ -5213,7 +5213,8 @@ def page_dashboard():
 
             fig_cms.update_layout(
                 height=600,
-                yaxis={'categoryorder':'total ascending'}
+                yaxis={'categoryorder':'total ascending'},
+                xaxis=dict(range=[0,100])
             )
 
             fig_cms.update_traces(
