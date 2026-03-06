@@ -5169,11 +5169,11 @@ def page_dashboard():
             # ===============================
             cms_satker["PROPORSI_TRX"] = (
                 cms_satker["CMS_TRX"] / cms_satker["TOTAL_TRX"]
-            )
+            ) * 100
 
             cms_satker["PROPORSI_NOM"] = (
                 cms_satker["CMS_NOM"] / cms_satker["TOTAL_NOM"]
-            )
+            ) * 100
 
             cms_satker = cms_satker.fillna(0)
 
@@ -5218,7 +5218,7 @@ def page_dashboard():
             )
 
             fig_cms.update_traces(
-                texttemplate="%{text:.1%}",
+                texttemplate="%{text:.1f}%",
                 textposition="outside",
             )
 
