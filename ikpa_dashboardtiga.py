@@ -3255,6 +3255,29 @@ def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
         df = df[df["TAHUN"] == tahun_filter]
 
     # =============================
+    # NORMALISASI NUMERIK
+    # =============================
+    numeric_cols = [
+        "JUMLAH TRANSAKSI CMS",
+        "NILAI TRANSAKSI CMS",
+        "JUMLAH TRANSAKSI KARTU DEBIT",
+        "NILAI TRANSAKSI KARTU DEBIT",
+        "JUMLAH TRANSAKSI TELLER",
+        "NILAI TRANSAKSI TELLER",
+    ]
+
+    for col in numeric_cols:
+
+        df[col] = (
+            df[col]
+            .astype(str)
+            .str.replace(".", "", regex=False)
+            .str.replace(",", ".", regex=False)
+        )
+
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+
+    # =============================
     # AGREGASI SATKER
     # =============================
     df_group = (
@@ -3273,7 +3296,7 @@ def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
     )
 
     # =============================
-    # TOTAL TRANSAKSI
+    # TOTAL
     # =============================
     df_group["TOTAL_TRX"] = (
         df_group["CMS_TRX"]
@@ -3299,7 +3322,7 @@ def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
     )
 
     # =============================
-    # OUTPUT FINAL
+    # OUTPUT
     # =============================
     result = df_group[
         [
