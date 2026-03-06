@@ -3243,6 +3243,81 @@ def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
     return grouped.reset_index()
 
 
+# PROPORSI CMS
+def generate_cms_from_session(df_master, periode="Bulanan", tahun_filter=None):
+    
+    df = df_master.copy()
+
+    # =============================
+    # FILTER TAHUN
+    # =============================
+    if tahun_filter is not None and "TAHUN" in df.columns:
+        df = df[df["TAHUN"] == tahun_filter]
+
+    # =============================
+    # CEK KOLOM WAJIB
+    # =============================
+    required_cols = [
+        "SATKER",
+        "JUMLAH TRANSAKSI CMS",
+        "JUMLAH TRANSAKSI KARTU DEBIT",
+        "JUMLAH TRANSAKSI TELLER",
+        "NILAI TRANSAKSI CMS",
+        "NILAI TRANSAKSI KARTU DEBIT",
+        "NILAI TRANSAKSI TELLER"
+    ]
+
+    for col in required_cols:
+        if col not in df.columns:
+            raise ValueError(f"Kolom '{col}' tidak ditemukan pada data CMS")
+
+    # =============================
+    # AGREGASI SATKER
+    # =============================
+    cms_satker = (
+        df.groupby("SATKER")
+        .agg(
+            CMS_TRX=("JUMLAH TRANSAKSI CMS","sum"),
+            DEBIT_TRX=("JUMLAH TRANSAKSI KARTU DEBIT","sum"),
+            TELLER_TRX=("JUMLAH TRANSAKSI TELLER","sum"),
+
+            CMS_NOM=("NILAI TRANSAKSI CMS","sum"),
+            DEBIT_NOM=("NILAI TRANSAKSI KARTU DEBIT","sum"),
+            TELLER_NOM=("NILAI TRANSAKSI TELLER","sum"),
+        )
+        .reset_index()
+    )
+
+    # =============================
+    # TOTAL
+    # =============================
+    cms_satker["TOTAL_TRX"] = (
+        cms_satker["CMS_TRX"]
+        + cms_satker["DEBIT_TRX"]
+        + cms_satker["TELLER_TRX"]
+    )
+
+    cms_satker["TOTAL_NOM"] = (
+        cms_satker["CMS_NOM"]
+        + cms_satker["DEBIT_NOM"]
+        + cms_satker["TELLER_NOM"]
+    )
+
+    # =============================
+    # PROPORSI
+    # =============================
+    cms_satker["PROPORSI_TRX"] = (
+        cms_satker["CMS_TRX"] / cms_satker["TOTAL_TRX"]
+    ) * 100
+
+    cms_satker["PROPORSI_NOM"] = (
+        cms_satker["CMS_NOM"] / cms_satker["TOTAL_NOM"]
+    ) * 100
+
+    cms_satker = cms_satker.fillna(0)
+
+    return cms_satker
+
 
 # HALAMAN 1: DASHBOARD UTAMA
 def page_dashboard():
