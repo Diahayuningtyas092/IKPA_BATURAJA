@@ -3255,24 +3255,28 @@ def generate_cms_from_session(df_master, periode="Bulanan", tahun_filter=None):
         df = df[df["TAHUN"] == tahun_filter]
 
     # =============================
-    # CEK KOLOM WAJIB
+    # DETEKSI KOLOM SATKER
     # =============================
-    required_cols = [
+    satker_col = None
+    for c in [
         "SATKER",
-        "JUMLAH TRANSAKSI CMS",
-        "JUMLAH TRANSAKSI KARTU DEBIT",
-        "JUMLAH TRANSAKSI TELLER",
-        "NILAI TRANSAKSI CMS",
-        "NILAI TRANSAKSI KARTU DEBIT",
-        "NILAI TRANSAKSI TELLER"
-    ]
+        "Satker",
+        "Nama Satker",
+        "Uraian Satker",
+        "Uraian Satker-RINGKAS",
+        "Kode Satker"
+    ]:
+        if c in df.columns:
+            satker_col = c
+            break
 
-    for col in required_cols:
-        if col not in df.columns:
-            raise ValueError(f"Kolom '{col}' tidak ditemukan pada data CMS")
+    if satker_col is None:
+        raise ValueError("Kolom Satker tidak ditemukan pada data CMS")
+
+    df = df.rename(columns={satker_col: "SATKER"})
 
     # =============================
-    # AGREGASI SATKER
+    # AGREGASI
     # =============================
     cms_satker = (
         df.groupby("SATKER")
@@ -3280,7 +3284,6 @@ def generate_cms_from_session(df_master, periode="Bulanan", tahun_filter=None):
             CMS_TRX=("JUMLAH TRANSAKSI CMS","sum"),
             DEBIT_TRX=("JUMLAH TRANSAKSI KARTU DEBIT","sum"),
             TELLER_TRX=("JUMLAH TRANSAKSI TELLER","sum"),
-
             CMS_NOM=("NILAI TRANSAKSI CMS","sum"),
             DEBIT_NOM=("NILAI TRANSAKSI KARTU DEBIT","sum"),
             TELLER_NOM=("NILAI TRANSAKSI TELLER","sum"),
@@ -3288,9 +3291,6 @@ def generate_cms_from_session(df_master, periode="Bulanan", tahun_filter=None):
         .reset_index()
     )
 
-    # =============================
-    # TOTAL
-    # =============================
     cms_satker["TOTAL_TRX"] = (
         cms_satker["CMS_TRX"]
         + cms_satker["DEBIT_TRX"]
@@ -3303,20 +3303,10 @@ def generate_cms_from_session(df_master, periode="Bulanan", tahun_filter=None):
         + cms_satker["TELLER_NOM"]
     )
 
-    # =============================
-    # PROPORSI
-    # =============================
-    cms_satker["PROPORSI_TRX"] = (
-        cms_satker["CMS_TRX"] / cms_satker["TOTAL_TRX"]
-    ) * 100
+    cms_satker["PROPORSI_TRX"] = (cms_satker["CMS_TRX"] / cms_satker["TOTAL_TRX"]) * 100
+    cms_satker["PROPORSI_NOM"] = (cms_satker["CMS_NOM"] / cms_satker["TOTAL_NOM"]) * 100
 
-    cms_satker["PROPORSI_NOM"] = (
-        cms_satker["CMS_NOM"] / cms_satker["TOTAL_NOM"]
-    ) * 100
-
-    cms_satker = cms_satker.fillna(0)
-
-    return cms_satker
+    return cms_satker.fillna(0)
 
 
 # HALAMAN 1: DASHBOARD UTAMA
