@@ -5066,6 +5066,13 @@ def page_dashboard():
             # =====================================================
             df_cms = st.session_state.cms_master.copy()
 
+            # buat kolom SATKER yang konsisten
+            if "SATKER" not in df_cms.columns:
+                if "NAMA SATKER" in df_cms.columns:
+                    df_cms["SATKER"] = df_cms["NAMA SATKER"]
+                elif "Nama Satker" in df_cms.columns:
+                    df_cms["SATKER"] = df_cms["Nama Satker"]
+
             # ===============================
             # NORMALISASI NUMERIC
             # ===============================
