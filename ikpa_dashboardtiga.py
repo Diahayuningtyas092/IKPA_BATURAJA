@@ -3254,6 +3254,13 @@ def generate_kkp_monthly_from_session(df, tahun_filter=None, tipe="trx"):
     if tahun_filter is not None:
         df = df[df["Tahun"] == tahun_filter]
 
+    # 🔹 mapping nama satker
+    satker_map = (
+        df[["KODE SATKER","NAMA SATKER"]]
+        .drop_duplicates()
+        .set_index("KODE SATKER")["NAMA SATKER"]
+    )
+
     if tipe == "trx":
 
         agg_df = (
@@ -3290,7 +3297,14 @@ def generate_kkp_monthly_from_session(df, tahun_filter=None, tipe="trx"):
 
     pivot.columns = [bulan_map[i] for i in pivot.columns]
 
-    return pivot.reset_index()
+    pivot = pivot.reset_index()
+
+    # 🔹 tambahkan nama satker
+    pivot["NAMA SATKER"] = pivot["KODE SATKER"].map(satker_map)
+
+    cols = ["KODE SATKER","NAMA SATKER"] + [c for c in pivot.columns if c not in ["KODE SATKER","NAMA SATKER"]]
+
+    return pivot[cols]
 
 def generate_kkp_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
 
@@ -3335,8 +3349,15 @@ def generate_kkp_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
     pivot = pivot.reindex(columns=[1,2,3,4], fill_value=0)
 
     pivot.columns = ["TW1","TW2","TW3","TW4"]
+    
+    pivot = pivot.reset_index()
 
-    return pivot.reset_index()
+    pivot["NAMA SATKER"] = pivot["KODE SATKER"].map(satker_map)
+
+    cols = ["KODE SATKER","NAMA SATKER"] + [c for c in pivot.columns if c not in ["KODE SATKER","NAMA SATKER"]]
+
+    return pivot[cols]
+
 
 def generate_kkp_yearly_from_session(df, tipe="trx"):
 
@@ -3379,7 +3400,13 @@ def generate_kkp_yearly_from_session(df, tipe="trx"):
 
     pivot.columns = pivot.columns.astype(str)
 
-    return pivot.reset_index()
+    pivot = pivot.reset_index()
+
+    pivot["NAMA SATKER"] = pivot["KODE SATKER"].map(satker_map)
+
+    cols = ["KODE SATKER","NAMA SATKER"] + [c for c in pivot.columns if c not in ["KODE SATKER","NAMA SATKER"]]
+
+    return pivot[cols]
 
 
 # =========================================================================
