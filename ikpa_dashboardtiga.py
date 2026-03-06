@@ -3320,6 +3320,10 @@ def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
     df_group["Proporsi Nominal CMS"] = (
         df_group["CMS_NOM"] / df_group["TOTAL_NOM"] * 100
     )
+    
+    df_group = df_group.rename(columns={
+        "NAMA_SATKER": "NAMA SATKER"
+    })
 
     # =============================
     # OUTPUT
@@ -3332,6 +3336,7 @@ def generate_cms_from_session(df_master, periode="Tahunan", tahun_filter=None):
             "Proporsi Nominal CMS",
         ]
     ]
+    
 
     return result.fillna(0)
 
