@@ -4959,7 +4959,6 @@ def page_dashboard():
 
             fig_digipay.update_traces(
                 textposition="outside",
-                width=0.45
             )
             fig_digipay.update_layout(yaxis_title=None, xaxis_title=None)
 
