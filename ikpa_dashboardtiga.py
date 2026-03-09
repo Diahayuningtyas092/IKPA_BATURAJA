@@ -5585,6 +5585,9 @@ def page_dashboard():
             # TOP 10
             # ===============================
             cms_chart = cms_chart.sort_values("Value", ascending=False).head(10)
+
+            # bulatkan angka ke 2 desimal
+            cms_chart["Value"] = cms_chart["Value"].round(2)
             
 
             # ===============================
@@ -5620,7 +5623,7 @@ def page_dashboard():
             )
 
             fig_cms.update_traces(
-                texttemplate="%{text}",
+                texttemplate="%{text}%",
                 textposition="outside",
                 cliponaxis=False,
                 hovertemplate="<b>%{y}</b><br>Proporsi: %{x:.2f}%<extra></extra>"
