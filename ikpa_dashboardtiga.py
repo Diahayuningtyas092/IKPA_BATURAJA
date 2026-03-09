@@ -5095,6 +5095,12 @@ def page_dashboard():
             df_kkp = st.session_state.kkp_master.copy()
             
             # ===============================
+            # FORMAT ANGKA INDONESIA
+            # ===============================
+            def format_rupiah(x):
+                return f"{int(x):,}".replace(",", ".")
+            
+            # ===============================
             # NORMALISASI KODE SATKER KKP
             # ===============================
             df_kkp["Kode Satker"] = (
@@ -5296,6 +5302,8 @@ def page_dashboard():
                 )
 
             digipay_chart = digipay_chart.sort_values("Value", ascending=False).head(10)
+            
+            digipay_chart["LABEL"] = digipay_chart["Value"].apply(format_rupiah)
 
             # tambah rank untuk gradasi
             digipay_chart = digipay_chart.reset_index(drop=True)
@@ -5306,7 +5314,7 @@ def page_dashboard():
                 x="Value",
                 y="SATKER_LABEL",
                 orientation="h",
-                text="Value",
+                text="LABEL",
                 color="Rank",
                 color_continuous_scale=["#08306B","#6BAED6"],
                 title=f"10 Satker dengan {tipe_chart} Terbanyak (Digipay)"
