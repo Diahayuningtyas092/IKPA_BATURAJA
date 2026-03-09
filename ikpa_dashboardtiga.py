@@ -5520,6 +5520,10 @@ def page_dashboard():
             )
 
             df_cms["SATKER"] = df_cms["Uraian Satker-SINGKAT"].fillna(df_cms[satker_name_col])
+            # ===============================
+            # LABEL SATKER CMS
+            # ===============================
+            df_cms["SATKER_LABEL"] = df_cms[satker_code_col] + " - " + df_cms["SATKER"]
 
 
             # ===============================
