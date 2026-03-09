@@ -5195,9 +5195,9 @@ def page_dashboard():
                 with col3:
                     bulan_selected = st.selectbox(
                         "Bulan",
-                        list(bulan_map.keys()),
-                        index=bulan_terbaru - 1,
-                        format_func=lambda x: bulan_map[x]
+                        bulan_list,
+                        index=bulan_list.index(bulan_terbaru),
+                        format_func=lambda x: bulan_map.get(x, x)
                     )
 
             # ===============================
@@ -5208,10 +5208,12 @@ def page_dashboard():
                 tw_list = sorted(df_digipay["TRIWULAN"].dropna().astype(int).unique())
                 tw_terbaru = max(tw_list)
 
+                tw_options = ["TW1","TW2","TW3","TW4"]
+
                 with col3:
                     triwulan_selected = st.selectbox(
                         "Triwulan",
-                        ["TW1", "TW2", "TW3", "TW4"],
+                        tw_options,
                         index=tw_terbaru - 1
                     )
 
