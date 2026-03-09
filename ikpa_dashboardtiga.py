@@ -5126,9 +5126,16 @@ def page_dashboard():
                 how="left"
             )
 
+
             # Gunakan nama satker ringkas
             df_digipay["SATKER"] = df_digipay["Uraian Satker-SINGKAT"].fillna(df_digipay["NMSATKER"])
             df_kkp["SATKER"] = df_kkp["Uraian Satker-SINGKAT"].fillna(df_kkp["SATKER"])
+
+            # ===============================
+            # BERSIHKAN NAMA SATKER (HAPUS KODE DI DEPAN)
+            # ===============================
+            df_digipay["SATKER"] = df_digipay["SATKER"].astype(str).str.replace(r'^\d+\s*', '', regex=True)
+            df_kkp["SATKER"] = df_kkp["SATKER"].astype(str).str.replace(r'^\d+\s*', '', regex=True)
 
             # ===============================
             # NORMALISASI DIGIPAY
@@ -5301,6 +5308,7 @@ def page_dashboard():
             fig_digipay.update_layout(yaxis_title=None, xaxis_title=None)
 
             st.plotly_chart(fig_digipay, use_container_width=True)
+            
 
             # ===============================
             # NORMALISASI KKP
