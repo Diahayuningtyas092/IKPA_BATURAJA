@@ -5596,14 +5596,14 @@ def page_dashboard():
             # ===============================
             if tipe_chart == "Jumlah Transaksi":
 
-                cms_chart = cms_satker[["SATKER","PROPORSI_TRX"]].copy()
+                cms_chart = cms_satker[["SATKER_LABEL","PROPORSI_TRX"]].copy()
                 cms_chart.rename(columns={"PROPORSI_TRX":"Value"}, inplace=True)
 
                 title_chart = "10 Satker dengan Proporsi Transaksi CMS Tertinggi"
 
             else:
 
-                cms_chart = cms_satker[["SATKER","PROPORSI_NOM"]].copy()
+                cms_chart = cms_satker[["SATKER_LABEL","PROPORSI_NOM"]].copy()
                 cms_chart.rename(columns={"PROPORSI_NOM":"Value"}, inplace=True)
 
                 title_chart = "10 Satker dengan Proporsi Nominal CMS Tertinggi"
@@ -5616,7 +5616,7 @@ def page_dashboard():
 
             # bulatkan angka ke 2 desimal
             cms_chart["Value"] = cms_chart["Value"].round(2)
-            
+
 
             # ===============================
             # FORMAT LABEL PERSEN
@@ -5624,6 +5624,7 @@ def page_dashboard():
             cms_chart["LABEL"] = cms_chart["Value"].apply(
                 lambda x: "100%" if round(x,2) == 100 else f"{x:.2f}%"
             )
+
 
             # ===============================
             # CHART
@@ -5636,7 +5637,7 @@ def page_dashboard():
                 x="Value",
                 y="SATKER_LABEL",
                 orientation="h",
-                text="Value",
+                text="LABEL",
                 color="Rank",
                 color_continuous_scale=["#3F007D","#BCBDDC"],
                 title=title_chart
@@ -5651,14 +5652,12 @@ def page_dashboard():
             )
 
             fig_cms.update_traces(
-                texttemplate="%{text}%",
                 textposition="outside",
                 cliponaxis=False,
                 hovertemplate="<b>%{y}</b><br>Proporsi: %{x:.2f}%<extra></extra>"
             )
 
             st.plotly_chart(fig_cms, use_container_width=True)
-
 
         # =====================================================
         # TABEL DETAIL
