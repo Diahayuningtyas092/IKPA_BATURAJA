@@ -5372,21 +5372,20 @@ def page_dashboard():
             df_cms = st.session_state.cms_master.copy()
 
             # ===============================
-            # NORMALISASI TRIWULAN
-            # ===============================
-            if "TRIWULAN" in df_cms.columns:
-                df_cms["TRIWULAN"] = (
-                    df_cms["TRIWULAN"]
-                    .astype(str)
-                    .str.replace("TW","", regex=False)
-                    .astype(int)
-                )
-
-            # ===============================
             # NORMALISASI TAHUN
             # ===============================
-            if "TAHUN" not in df_cms.columns:
-                df_cms["TAHUN"] = tahun_chart
+            df_cms["TAHUN"] = pd.to_numeric(df_cms["TAHUN"], errors="coerce")
+
+            # ===============================
+            # NORMALISASI TRIWULAN
+            # ===============================
+            df_cms["TRIWULAN"] = (
+                df_cms["TRIWULAN"]
+                .astype(str)
+                .str.replace("TW","", regex=False)
+            )
+
+            df_cms["TRIWULAN"] = pd.to_numeric(df_cms["TRIWULAN"], errors="coerce")
 
             # ===============================
             # FILTER CMS
