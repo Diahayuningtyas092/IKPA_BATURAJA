@@ -5571,7 +5571,14 @@ def page_dashboard():
             # TOP 10
             # ===============================
             cms_chart = cms_chart.sort_values("Value", ascending=False).head(10)
+            
 
+            # ===============================
+            # FORMAT LABEL PERSEN
+            # ===============================
+            cms_chart["LABEL"] = cms_chart["Value"].apply(
+                lambda x: "100%" if round(x,2) == 100 else f"{x:.2f}%"
+            )
 
             # ===============================
             # CHART
@@ -5581,19 +5588,19 @@ def page_dashboard():
                 x="Value",
                 y="SATKER",
                 orientation="h",
-                text="Value",
+                text="LABEL",
                 title=title_chart
             )
 
             fig_cms.update_layout(
                 height=520,
                 yaxis={'categoryorder':'total ascending'},
-                xaxis=dict(range=[0,105]),   # ruang agar label persen terlihat
+                xaxis=dict(range=[0,105]),
                 margin=dict(r=80)
             )
 
             fig_cms.update_traces(
-                texttemplate="%{text:.2f}%",
+                texttemplate="%{text}",
                 textposition="outside",
                 cliponaxis=False,
                 hovertemplate="<b>%{y}</b><br>Proporsi: %{x:.2f}%<extra></extra>"
