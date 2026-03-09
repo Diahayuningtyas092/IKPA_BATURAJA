@@ -5274,18 +5274,25 @@ def page_dashboard():
 
             digipay_chart = digipay_chart.sort_values("Value", ascending=False).head(10)
 
+            # tambah rank untuk gradasi
+            digipay_chart = digipay_chart.reset_index(drop=True)
+            digipay_chart["Rank"] = digipay_chart.index + 1
+
             fig_digipay = px.bar(
                 digipay_chart,
                 x="Value",
                 y="SATKER",
                 orientation="h",
                 text="Value",
+                color="Rank",
+                color_continuous_scale=["#08306B","#6BAED6"],
                 title=f"10 Satker dengan {tipe_chart} Terbanyak (Digipay)"
             )
 
             fig_digipay.update_layout(
                 height=600,
-                yaxis={'categoryorder':'total ascending'}
+                yaxis={'categoryorder':'total ascending'},
+                coloraxis_showscale=False
             )
 
             fig_digipay.update_traces(
@@ -5373,18 +5380,25 @@ def page_dashboard():
 
             kkp_chart = kkp_chart.sort_values("Value", ascending=False).head(10)
 
+            # tambah rank untuk gradasi
+            kkp_chart = kkp_chart.reset_index(drop=True)
+            kkp_chart["Rank"] = kkp_chart.index + 1
+
             fig_kkp = px.bar(
                 kkp_chart,
                 x="Value",
                 y="SATKER",
                 orientation="h",
                 text="Value",
+                color="Rank",
+                color_continuous_scale=["#00441B","#74C476"],
                 title=f"10 Satker dengan {tipe_chart} Terbanyak (KKP)"
             )
 
             fig_kkp.update_layout(
                 height=600,
-                yaxis={'categoryorder':'total ascending'}
+                yaxis={'categoryorder':'total ascending'},
+                coloraxis_showscale=False
             )
 
             fig_kkp.update_traces(textposition="outside")
@@ -5583,12 +5597,17 @@ def page_dashboard():
             # ===============================
             # CHART
             # ===============================
+            cms_chart = cms_chart.reset_index(drop=True)
+            cms_chart["Rank"] = cms_chart.index + 1
+
             fig_cms = px.bar(
                 cms_chart,
                 x="Value",
                 y="SATKER",
                 orientation="h",
-                text="LABEL",
+                text="Value",
+                color="Rank",
+                color_continuous_scale=["#3F007D","#BCBDDC"],
                 title=title_chart
             )
 
@@ -5596,7 +5615,8 @@ def page_dashboard():
                 height=520,
                 yaxis={'categoryorder':'total ascending'},
                 xaxis=dict(range=[0,105]),
-                margin=dict(r=80)
+                margin=dict(r=80),
+                coloraxis_showscale=False
             )
 
             fig_cms.update_traces(
