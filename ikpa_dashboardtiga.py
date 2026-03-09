@@ -5372,8 +5372,9 @@ def page_dashboard():
             df_cms = st.session_state.cms_master.copy()
             
             # ===============================
-            # NORMALISASI PERIODE CMS
+            # NORMALISASI PERIODE CMS (AMAN)
             # ===============================
+
             if "PERIODE" in df_cms.columns:
 
                 df_cms["PERIODE"] = pd.to_datetime(df_cms["PERIODE"], errors="coerce")
@@ -5382,9 +5383,21 @@ def page_dashboard():
                 df_cms["BULAN"] = df_cms["PERIODE"].dt.month
                 df_cms["TRIWULAN"] = df_cms["PERIODE"].dt.quarter
 
+            else:
+                # fallback jika file CMS sudah punya kolom tahun/bulan
+                if "TAHUN" not in df_cms.columns:
+                    df_cms["TAHUN"] = tahun_chart
+
+                if "BULAN" not in df_cms.columns:
+                    df_cms["BULAN"] = 1
+
+                if "TRIWULAN" not in df_cms.columns:
+                    df_cms["TRIWULAN"] = ((df_cms["BULAN"] - 1) // 3) + 1
+
             # ===============================
-            # FILTER CMS (SAMA DENGAN DIGIPAY & KKP)
+            # FILTER CMS
             # ===============================
+
             if periode_chart == "Bulanan":
 
                 df_cms = df_cms[
@@ -5394,7 +5407,7 @@ def page_dashboard():
 
             elif periode_chart == "Triwulan":
 
-                tw = int(triwulan_selected.replace("TW",""))
+                tw = int(triwulan_selected.replace("TW", ""))
 
                 df_cms = df_cms[
                     (df_cms["TAHUN"] == tahun_chart) &
