@@ -5448,33 +5448,75 @@ def page_dashboard():
                     .reset_index()
                 )
 
-            kkp_chart = kkp_chart.sort_values("Value", ascending=False).head(10)
+            # ===============================
+            # KKP TOP & BOTTOM
+            # ===============================
+            kkp_top = kkp_chart.sort_values("Value", ascending=False).head(10)
+            kkp_bottom = kkp_chart.sort_values("Value", ascending=True).head(10)
 
-            # tambah rank untuk gradasi
-            kkp_chart = kkp_chart.reset_index(drop=True)
-            kkp_chart["Rank"] = kkp_chart.index + 1
+            kkp_top["LABEL"] = kkp_top["Value"].apply(format_rupiah)
+            kkp_bottom["LABEL"] = kkp_bottom["Value"].apply(format_rupiah)
 
-            fig_kkp = px.bar(
-                kkp_chart,
-                x="Value",
-               y="SATKER_LABEL",
-                orientation="h",
-                text="Value",
-                color="Rank",
-                color_continuous_scale=["#00441B","#74C476"],
-                title=f"10 Satker dengan {tipe_chart} Terbanyak (KKP)"
-            )
+            kkp_top = kkp_top.reset_index(drop=True)
+            kkp_top["Rank"] = kkp_top.index + 1
 
-            fig_kkp.update_layout(
-                height=600,
-                yaxis={'categoryorder':'total ascending'},
-                coloraxis_showscale=False
-            )
+            kkp_bottom = kkp_bottom.reset_index(drop=True)
+            kkp_bottom["Rank"] = kkp_bottom.index + 1
 
-            fig_kkp.update_traces(textposition="outside")
-            fig_kkp.update_layout(yaxis_title=None, xaxis_title=None)
+            col_left, col_right = st.columns(2)
 
-            st.plotly_chart(fig_kkp, use_container_width=True)
+            # ===============================
+            # TOP KKP
+            # ===============================
+            with col_left:
+
+                fig_kkp_top = px.bar(
+                    kkp_top,
+                    x="Value",
+                    y="SATKER_LABEL",
+                    orientation="h",
+                    text="LABEL",
+                    color="Rank",
+                    color_continuous_scale=["#00441B","#74C476"],
+                    title=f"10 Satker dengan {tipe_chart} Terbesar (KKP)"
+                )
+
+                fig_kkp_top.update_layout(
+                    height=550,
+                    yaxis={'categoryorder':'total ascending'},
+                    coloraxis_showscale=False
+                )
+
+                fig_kkp_top.update_traces(textposition="outside")
+
+                st.plotly_chart(fig_kkp_top, use_container_width=True)
+
+
+            # ===============================
+            # BOTTOM KKP
+            # ===============================
+            with col_right:
+
+                fig_kkp_bottom = px.bar(
+                    kkp_bottom,
+                    x="Value",
+                    y="SATKER_LABEL",
+                    orientation="h",
+                    text="LABEL",
+                    color="Rank",
+                    color_continuous_scale=["#FEE0D2","#DE2D26"],
+                    title=f"10 Satker dengan {tipe_chart} Terendah (KKP)"
+                )
+
+                fig_kkp_bottom.update_layout(
+                    height=550,
+                    yaxis={'categoryorder':'total ascending'},
+                    coloraxis_showscale=False
+                )
+
+                fig_kkp_bottom.update_traces(textposition="outside")
+
+                st.plotly_chart(fig_kkp_bottom, use_container_width=True)
             
             
             # =====================================================
@@ -5656,13 +5698,9 @@ def page_dashboard():
 
 
             # ===============================
-            # TOP 10
+            # BULATKAN NILAI
             # ===============================
-            cms_chart = cms_chart.sort_values("Value", ascending=False).head(10)
-
-            # bulatkan angka ke 2 desimal
             cms_chart["Value"] = cms_chart["Value"].round(2)
-
 
             # ===============================
             # FORMAT LABEL PERSEN
@@ -5671,39 +5709,84 @@ def page_dashboard():
                 lambda x: "100%" if round(x,2) == 100 else f"{x:.2f}%"
             )
 
+            # ===============================
+            # TOP & BOTTOM CMS
+            # ===============================
+            cms_top = cms_chart.sort_values("Value", ascending=False).head(10)
+            cms_bottom = cms_chart.sort_values("Value", ascending=True).head(10)
+
+            cms_top = cms_top.reset_index(drop=True)
+            cms_top["Rank"] = cms_top.index + 1
+
+            cms_bottom = cms_bottom.reset_index(drop=True)
+            cms_bottom["Rank"] = cms_bottom.index + 1
+
+            col_left, col_right = st.columns(2)
 
             # ===============================
-            # CHART
+            # TOP CMS
             # ===============================
-            cms_chart = cms_chart.reset_index(drop=True)
-            cms_chart["Rank"] = cms_chart.index + 1
+            with col_left:
 
-            fig_cms = px.bar(
-                cms_chart,
-                x="Value",
-                y="SATKER_LABEL",
-                orientation="h",
-                text="LABEL",
-                color="Rank",
-                color_continuous_scale=["#3F007D","#BCBDDC"],
-                title=title_chart
-            )
+                fig_cms_top = px.bar(
+                    cms_top,
+                    x="Value",
+                    y="SATKER_LABEL",
+                    orientation="h",
+                    text="LABEL",
+                    color="Rank",
+                    color_continuous_scale=["#3F007D","#BCBDDC"],
+                    title="10 Satker dengan Proporsi CMS Tertinggi"
+                )
 
-            fig_cms.update_layout(
-                height=520,
-                yaxis={'categoryorder':'total ascending'},
-                xaxis=dict(range=[0,105]),
-                margin=dict(r=80),
-                coloraxis_showscale=False
-            )
+                fig_cms_top.update_layout(
+                    height=520,
+                    yaxis={'categoryorder':'total ascending'},
+                    xaxis=dict(range=[0,105]),
+                    margin=dict(r=80),
+                    coloraxis_showscale=False
+                )
 
-            fig_cms.update_traces(
-                textposition="outside",
-                cliponaxis=False,
-                hovertemplate="<b>%{y}</b><br>Proporsi: %{x:.2f}%<extra></extra>"
-            )
+                fig_cms_top.update_traces(
+                    textposition="outside",
+                    cliponaxis=False,
+                    hovertemplate="<b>%{y}</b><br>Proporsi: %{x:.2f}%<extra></extra>"
+                )
 
-            st.plotly_chart(fig_cms, use_container_width=True)
+                st.plotly_chart(fig_cms_top, use_container_width=True)
+
+
+            # ===============================
+            # BOTTOM CMS
+            # ===============================
+            with col_right:
+
+                fig_cms_bottom = px.bar(
+                    cms_bottom,
+                    x="Value",
+                    y="SATKER_LABEL",
+                    orientation="h",
+                    text="LABEL",
+                    color="Rank",
+                    color_continuous_scale=["#FEE0D2","#DE2D26"],
+                    title="10 Satker dengan Proporsi CMS Terendah"
+                )
+
+                fig_cms_bottom.update_layout(
+                    height=520,
+                    yaxis={'categoryorder':'total ascending'},
+                    xaxis=dict(range=[0,105]),
+                    margin=dict(r=80),
+                    coloraxis_showscale=False
+                )
+
+                fig_cms_bottom.update_traces(
+                    textposition="outside",
+                    cliponaxis=False,
+                    hovertemplate="<b>%{y}</b><br>Proporsi: %{x:.2f}%<extra></extra>"
+                )
+
+                st.plotly_chart(fig_cms_bottom, use_container_width=True)
 
         # =====================================================
         # TABEL DETAIL
