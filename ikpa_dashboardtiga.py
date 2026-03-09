@@ -5392,6 +5392,7 @@ def page_dashboard():
 
             st.plotly_chart(fig_kkp, use_container_width=True)
             
+            
             # =====================================================
             # CMS CHART
             # =====================================================
@@ -5418,7 +5419,6 @@ def page_dashboard():
             # ===============================
             if periode_chart == "Bulanan":
 
-                # konversi bulan -> triwulan
                 tw = (bulan_selected - 1) // 3 + 1
 
                 df_cms = df_cms[
@@ -5586,14 +5586,17 @@ def page_dashboard():
             )
 
             fig_cms.update_layout(
-                height=600,
+                height=520,
                 yaxis={'categoryorder':'total ascending'},
-                xaxis=dict(range=[0,100])
+                xaxis=dict(range=[0,105]),   # ruang agar label persen terlihat
+                margin=dict(r=80)
             )
 
             fig_cms.update_traces(
-                texttemplate="%{text:.1f}%",
+                texttemplate="%{text:.2f}%",
                 textposition="outside",
+                cliponaxis=False,
+                hovertemplate="<b>%{y}</b><br>Proporsi: %{x:.2f}%<extra></extra>"
             )
 
             st.plotly_chart(fig_cms, use_container_width=True)
