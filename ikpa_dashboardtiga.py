@@ -5093,6 +5093,16 @@ def page_dashboard():
 
             df_digipay = st.session_state.digipay_master.copy()
             df_kkp = st.session_state.kkp_master.copy()
+            
+            # ===============================
+            # NORMALISASI KODE SATKER KKP
+            # ===============================
+            df_kkp["Kode Satker"] = (
+                df_kkp["Kode Satker"]
+                .astype(str)
+                .str.extract(r'(\d+)')[0]   # ambil angka saja
+                .str.zfill(6)               # paksa 6 digit
+            )
 
             # ===============================
             # MERGE NAMA SATKER RINGKAS
