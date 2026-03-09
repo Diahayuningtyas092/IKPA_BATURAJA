@@ -5153,18 +5153,26 @@ def page_dashboard():
             # ===============================
             col1, col2, col3 = st.columns(3)
 
+            # ===============================
+            # PERIODE
+            # ===============================
             with col1:
                 periode_chart = st.selectbox(
                     "Periode",
                     ["Bulanan", "Triwulan", "Tahunan"]
                 )
 
+            # ===============================
+            # TAHUN TERBARU
+            # ===============================
+            tahun_list = sorted(df_digipay["TAHUN"].dropna().astype(int).unique())
+            tahun_terbaru = max(tahun_list)
+
             with col2:
-                tahun_chart = int(
-                    st.selectbox(
-                        "Tahun",
-                        sorted(df_digipay["TAHUN"].dropna().astype(int).unique())
-                    )
+                tahun_chart = st.selectbox(
+                    "Tahun",
+                    tahun_list,
+                    index=tahun_list.index(tahun_terbaru)
                 )
 
             bulan_selected = None
@@ -5176,19 +5184,35 @@ def page_dashboard():
                 9: "September", 10: "Oktober", 11: "November", 12: "Desember"
             }
 
+            # ===============================
+            # BULAN TERBARU
+            # ===============================
             if periode_chart == "Bulanan":
+
+                bulan_list = sorted(df_digipay["BULAN"].dropna().astype(int).unique())
+                bulan_terbaru = max(bulan_list)
+
                 with col3:
                     bulan_selected = st.selectbox(
                         "Bulan",
                         list(bulan_map.keys()),
+                        index=bulan_terbaru - 1,
                         format_func=lambda x: bulan_map[x]
                     )
 
+            # ===============================
+            # TRIWULAN TERBARU
+            # ===============================
             elif periode_chart == "Triwulan":
+
+                tw_list = sorted(df_digipay["TRIWULAN"].dropna().astype(int).unique())
+                tw_terbaru = max(tw_list)
+
                 with col3:
                     triwulan_selected = st.selectbox(
                         "Triwulan",
-                        ["TW1", "TW2", "TW3", "TW4"]
+                        ["TW1", "TW2", "TW3", "TW4"],
+                        index=tw_terbaru - 1
                     )
 
             # ===============================
