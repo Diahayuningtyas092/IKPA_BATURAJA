@@ -5146,6 +5146,12 @@ def page_dashboard():
             # ===============================
             df_digipay["SATKER"] = df_digipay["SATKER"].astype(str).str.replace(r'^\d+\s*', '', regex=True)
             df_kkp["SATKER"] = df_kkp["SATKER"].astype(str).str.replace(r'^\d+\s*', '', regex=True)
+            
+            # ===============================
+            # LABEL SATKER UNTUK CHART
+            # ===============================
+            df_digipay["SATKER_LABEL"] = df_digipay["KDSATKER"] + " - " + df_digipay["SATKER"]
+            df_kkp["SATKER_LABEL"] = df_kkp["Kode Satker"] + " - " + df_kkp["SATKER"]
 
             # ===============================
             # NORMALISASI DIGIPAY
@@ -5275,7 +5281,7 @@ def page_dashboard():
 
                 digipay_chart = (
                     df_digipay
-                    .groupby("SATKER")
+                    .groupby("SATKER_LABEL")
                     .agg(Value=("NOINVOICE", "nunique"))
                     .reset_index()
                 )
@@ -5284,7 +5290,7 @@ def page_dashboard():
 
                 digipay_chart = (
                     df_digipay
-                    .groupby("SATKER")
+                    .groupby("SATKER_LABEL")
                     .agg(Value=("NOMINVOICE", "sum"))
                     .reset_index()
                 )
@@ -5298,7 +5304,7 @@ def page_dashboard():
             fig_digipay = px.bar(
                 digipay_chart,
                 x="Value",
-                y="SATKER",
+                y="SATKER_LABEL",
                 orientation="h",
                 text="Value",
                 color="Rank",
@@ -5382,7 +5388,7 @@ def page_dashboard():
 
                 kkp_chart = (
                     df_kkp
-                    .groupby("SATKER")
+                    .groupby("SATKER_LABEL")
                     .size()
                     .reset_index(name="Value")
                 )
@@ -5391,7 +5397,7 @@ def page_dashboard():
 
                 kkp_chart = (
                     df_kkp
-                    .groupby("SATKER")
+                    .groupby("SATKER_LABEL")
                     .agg(Value=("NILAI TRANSAKSI (NILAI SPM)", "sum"))
                     .reset_index()
                 )
@@ -5405,7 +5411,7 @@ def page_dashboard():
             fig_kkp = px.bar(
                 kkp_chart,
                 x="Value",
-                y="SATKER",
+               y="SATKER_LABEL",
                 orientation="h",
                 text="Value",
                 color="Rank",
@@ -5537,7 +5543,7 @@ def page_dashboard():
             # ===============================
             cms_satker = (
                 df_cms
-                .groupby("SATKER")
+                .groupby("SATKER_LABEL")
                 .agg(
                     CMS_TRX=("JUMLAH TRANSAKSI CMS","sum"),
                     DEBIT_TRX=("JUMLAH TRANSAKSI KARTU DEBIT","sum"),
@@ -5624,7 +5630,7 @@ def page_dashboard():
             fig_cms = px.bar(
                 cms_chart,
                 x="Value",
-                y="SATKER",
+                y="SATKER_LABEL",
                 orientation="h",
                 text="Value",
                 color="Rank",
