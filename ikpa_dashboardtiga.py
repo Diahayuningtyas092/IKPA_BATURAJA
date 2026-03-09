@@ -8001,11 +8001,14 @@ def page_admin():
                                 .str.upper()
                             )
 
+                            # ===============================
+                            # NORMALISASI KODE SATKER
+                            # ===============================
                             df["Kode Satker"] = (
-                                df["Kode Satker"]
+                                pd.to_numeric(df["Kode Satker"], errors="coerce")
+                                .fillna(0)
+                                .astype(int)
                                 .astype(str)
-                                .str.replace(".0", "", regex=False)
-                                .str.strip()
                                 .str.zfill(6)
                             )
 
