@@ -3236,7 +3236,6 @@ def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
         grouped = df.groupby("TAHUN")["NILAI TRANSAKSI (NILAI SPM)"].sum()
 
     grouped = grouped.sort_index().to_frame("Value")
-
     grouped["Kumulatif"] = grouped["Value"].cumsum()
 
     return grouped.reset_index()
@@ -3249,23 +3248,25 @@ def generate_kkp_monthly_from_session(df, tahun_filter=None, tipe="trx"):
     
     df = df.copy()
 
-    df["Tahun"] = df["TAHUN"]
-    df["Bulan"] = df["BULAN"]
+    df["PERIODE"] = pd.to_datetime(df["PERIODE"], errors="coerce")
+
+    df["Tahun"] = df["PERIODE"].dt.year
+    df["Bulan"] = df["PERIODE"].dt.month
 
     if tahun_filter is not None:
         df = df[df["Tahun"] == tahun_filter]
 
     satker_map = (
-        df[["KODE SATKER","NAMA SATKER"]]
+        df[["Kode Satker","SATKER"]]
         .drop_duplicates()
-        .set_index("KODE SATKER")["NAMA SATKER"]
+        .set_index("Kode Satker")["SATKER"]
     )
 
     if tipe == "trx":
 
         agg_df = (
-            df.groupby(["KODE SATKER","Bulan"])
-            .agg(Jumlah_Transaksi=("JUMLAH TRANSAKSI KKP","sum"))
+            df.groupby(["Kode Satker","Bulan"])
+            .agg(Jumlah_Transaksi=("TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)","sum"))
             .reset_index()
         )
 
@@ -3274,15 +3275,15 @@ def generate_kkp_monthly_from_session(df, tahun_filter=None, tipe="trx"):
     else:
 
         agg_df = (
-            df.groupby(["KODE SATKER","Bulan"])
-            .agg(Nilai_Transaksi=("NILAI TRANSAKSI KKP","sum"))
+            df.groupby(["Kode Satker","Bulan"])
+            .agg(Nilai_Transaksi=("NILAI TRANSAKSI (NILAI SPM)","sum"))
             .reset_index()
         )
 
         value_col = "Nilai_Transaksi"
 
     pivot = agg_df.pivot(
-        index="KODE SATKER",
+        index="Kode Satker",
         columns="Bulan",
         values=value_col
     ).fillna(0)
@@ -3299,9 +3300,9 @@ def generate_kkp_monthly_from_session(df, tahun_filter=None, tipe="trx"):
 
     pivot = pivot.reset_index()
 
-    pivot["NAMA SATKER"] = pivot["KODE SATKER"].map(satker_map)
+    pivot["SATKER"] = pivot["Kode Satker"].map(satker_map)
 
-    cols = ["KODE SATKER","NAMA SATKER"] + [c for c in pivot.columns if c not in ["KODE SATKER","NAMA SATKER"]]
+    cols = ["Kode Satker","SATKER"] + [c for c in pivot.columns if c not in ["Kode Satker","SATKER"]]
 
     return pivot[cols]
 
@@ -3313,8 +3314,10 @@ def generate_kkp_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
 
     df = df.copy()
 
-    df["Tahun"] = df["TAHUN"]
-    df["Bulan"] = df["BULAN"]
+    df["PERIODE"] = pd.to_datetime(df["PERIODE"], errors="coerce")
+
+    df["Tahun"] = df["PERIODE"].dt.year
+    df["Bulan"] = df["PERIODE"].dt.month
 
     df["Triwulan"] = ((df["Bulan"] - 1) // 3) + 1
 
@@ -3322,16 +3325,16 @@ def generate_kkp_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
         df = df[df["Tahun"] == tahun_filter]
 
     satker_map = (
-        df[["KODE SATKER","NAMA SATKER"]]
+        df[["Kode Satker","SATKER"]]
         .drop_duplicates()
-        .set_index("KODE SATKER")["NAMA SATKER"]
+        .set_index("Kode Satker")["SATKER"]
     )
 
     if tipe == "trx":
 
         agg_df = (
-            df.groupby(["KODE SATKER","Triwulan"])
-            .agg(Jumlah_Transaksi=("JUMLAH TRANSAKSI KKP","sum"))
+            df.groupby(["Kode Satker","Triwulan"])
+            .agg(Jumlah_Transaksi=("TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)","sum"))
             .reset_index()
         )
 
@@ -3340,15 +3343,15 @@ def generate_kkp_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
     else:
 
         agg_df = (
-            df.groupby(["KODE SATKER","Triwulan"])
-            .agg(Nilai_Transaksi=("NILAI TRANSAKSI KKP","sum"))
+            df.groupby(["Kode Satker","Triwulan"])
+            .agg(Nilai_Transaksi=("NILAI TRANSAKSI (NILAI SPM)","sum"))
             .reset_index()
         )
 
         value_col = "Nilai_Transaksi"
 
     pivot = agg_df.pivot(
-        index="KODE SATKER",
+        index="Kode Satker",
         columns="Triwulan",
         values=value_col
     ).fillna(0)
@@ -3359,9 +3362,9 @@ def generate_kkp_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
 
     pivot = pivot.reset_index()
 
-    pivot["NAMA SATKER"] = pivot["KODE SATKER"].map(satker_map)
+    pivot["SATKER"] = pivot["Kode Satker"].map(satker_map)
 
-    cols = ["KODE SATKER","NAMA SATKER"] + [c for c in pivot.columns if c not in ["KODE SATKER","NAMA SATKER"]]
+    cols = ["Kode Satker","SATKER"] + [c for c in pivot.columns if c not in ["Kode Satker","SATKER"]]
 
     return pivot[cols]
 
@@ -3373,19 +3376,21 @@ def generate_kkp_yearly_from_session(df, tipe="trx"):
 
     df = df.copy()
 
-    df["Tahun"] = df["TAHUN"]
+    df["PERIODE"] = pd.to_datetime(df["PERIODE"], errors="coerce")
+
+    df["Tahun"] = df["PERIODE"].dt.year
 
     satker_map = (
-        df[["KODE SATKER","NAMA SATKER"]]
+        df[["Kode Satker","SATKER"]]
         .drop_duplicates()
-        .set_index("KODE SATKER")["NAMA SATKER"]
+        .set_index("Kode Satker")["SATKER"]
     )
 
     if tipe == "trx":
 
         agg_df = (
-            df.groupby(["KODE SATKER","Tahun"])
-            .agg(Jumlah_Transaksi=("JUMLAH TRANSAKSI KKP","sum"))
+            df.groupby(["Kode Satker","Tahun"])
+            .agg(Jumlah_Transaksi=("TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)","sum"))
             .reset_index()
         )
 
@@ -3394,8 +3399,8 @@ def generate_kkp_yearly_from_session(df, tipe="trx"):
     else:
 
         agg_df = (
-            df.groupby(["KODE SATKER","Tahun"])
-            .agg(Nilai_Transaksi=("NILAI TRANSAKSI KKP","sum"))
+            df.groupby(["Kode Satker","Tahun"])
+            .agg(Nilai_Transaksi=("NILAI TRANSAKSI (NILAI SPM)","sum"))
             .reset_index()
         )
 
@@ -3404,7 +3409,7 @@ def generate_kkp_yearly_from_session(df, tipe="trx"):
     pivot = (
         agg_df
         .pivot_table(
-            index="KODE SATKER",
+            index="Kode Satker",
             columns="Tahun",
             values=value_col,
             fill_value=0
@@ -3416,14 +3421,15 @@ def generate_kkp_yearly_from_session(df, tipe="trx"):
 
     pivot = pivot.reset_index()
 
-    pivot["NAMA SATKER"] = pivot["KODE SATKER"].map(satker_map)
+    pivot["SATKER"] = pivot["Kode Satker"].map(satker_map)
 
-    cols = ["KODE SATKER","NAMA SATKER"] + [c for c in pivot.columns if c not in ["KODE SATKER","NAMA SATKER"]]
+    cols = ["Kode Satker","SATKER"] + [c for c in pivot.columns if c not in ["Kode Satker","SATKER"]]
 
     return pivot[cols]
 
+
 # -----------------------------------
-# WRAPPER KKP (pilih bulanan/triwulan/tahunan)
+# WRAPPER KKP
 # -----------------------------------
 def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Transaksi", tahun_filter=None):
 
@@ -5365,6 +5371,42 @@ def page_dashboard():
             # =====================================================
             df_cms = st.session_state.cms_master.copy()
             
+            # ===============================
+            # NORMALISASI PERIODE CMS
+            # ===============================
+            if "PERIODE" in df_cms.columns:
+
+                df_cms["PERIODE"] = pd.to_datetime(df_cms["PERIODE"], errors="coerce")
+
+                df_cms["TAHUN"] = df_cms["PERIODE"].dt.year
+                df_cms["BULAN"] = df_cms["PERIODE"].dt.month
+                df_cms["TRIWULAN"] = df_cms["PERIODE"].dt.quarter
+
+            # ===============================
+            # FILTER CMS (SAMA DENGAN DIGIPAY & KKP)
+            # ===============================
+            if periode_chart == "Bulanan":
+
+                df_cms = df_cms[
+                    (df_cms["TAHUN"] == tahun_chart) &
+                    (df_cms["BULAN"] <= bulan_selected)
+                ]
+
+            elif periode_chart == "Triwulan":
+
+                tw = int(triwulan_selected.replace("TW",""))
+
+                df_cms = df_cms[
+                    (df_cms["TAHUN"] == tahun_chart) &
+                    (df_cms["TRIWULAN"] <= tw)
+                ]
+
+            else:
+
+                df_cms = df_cms[
+                    df_cms["TAHUN"] <= tahun_chart
+                ]
+                        
             # ===============================
             # DETEKSI KOLOM SATKER CMS
             # ===============================
