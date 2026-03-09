@@ -5370,44 +5370,40 @@ def page_dashboard():
             # CMS CHART
             # =====================================================
             df_cms = st.session_state.cms_master.copy()
-            
+
             # ===============================
-            # NORMALISASI PERIODE CMS (AMAN)
+            # NORMALISASI TRIWULAN
             # ===============================
+            if "TRIWULAN" in df_cms.columns:
+                df_cms["TRIWULAN"] = (
+                    df_cms["TRIWULAN"]
+                    .astype(str)
+                    .str.replace("TW","", regex=False)
+                    .astype(int)
+                )
 
-            if "PERIODE" in df_cms.columns:
-
-                df_cms["PERIODE"] = pd.to_datetime(df_cms["PERIODE"], errors="coerce")
-
-                df_cms["TAHUN"] = df_cms["PERIODE"].dt.year
-                df_cms["BULAN"] = df_cms["PERIODE"].dt.month
-                df_cms["TRIWULAN"] = df_cms["PERIODE"].dt.quarter
-
-            else:
-                # fallback jika file CMS sudah punya kolom tahun/bulan
-                if "TAHUN" not in df_cms.columns:
-                    df_cms["TAHUN"] = tahun_chart
-
-                if "BULAN" not in df_cms.columns:
-                    df_cms["BULAN"] = 1
-
-                if "TRIWULAN" not in df_cms.columns:
-                    df_cms["TRIWULAN"] = ((df_cms["BULAN"] - 1) // 3) + 1
+            # ===============================
+            # NORMALISASI TAHUN
+            # ===============================
+            if "TAHUN" not in df_cms.columns:
+                df_cms["TAHUN"] = tahun_chart
 
             # ===============================
             # FILTER CMS
             # ===============================
-
             if periode_chart == "Bulanan":
+
+                # konversi bulan -> triwulan
+                tw = (bulan_selected - 1) // 3 + 1
 
                 df_cms = df_cms[
                     (df_cms["TAHUN"] == tahun_chart) &
-                    (df_cms["BULAN"] <= bulan_selected)
+                    (df_cms["TRIWULAN"] <= tw)
                 ]
 
             elif periode_chart == "Triwulan":
 
-                tw = int(triwulan_selected.replace("TW", ""))
+                tw = int(triwulan_selected.replace("TW",""))
 
                 df_cms = df_cms[
                     (df_cms["TAHUN"] == tahun_chart) &
@@ -5419,11 +5415,11 @@ def page_dashboard():
                 df_cms = df_cms[
                     df_cms["TAHUN"] <= tahun_chart
                 ]
-                        
-            # ===============================
-            # DETEKSI KOLOM SATKER CMS
-            # ===============================
 
+
+            # ===============================
+            # DETEKSI KOLOM SATKER
+            # ===============================
             if "Kode Satker" in df_cms.columns:
                 satker_code_col = "Kode Satker"
             elif "KODE SATKER" in df_cms.columns:
@@ -5442,9 +5438,8 @@ def page_dashboard():
 
 
             # ===============================
-            # MERGE NAMA SATKER RINGKAS
+            # MERGE SATKER RINGKAS
             # ===============================
-
             ref = st.session_state.reference_df.copy()
 
             df_cms[satker_code_col] = (
@@ -5463,12 +5458,6 @@ def page_dashboard():
 
             df_cms["SATKER"] = df_cms["Uraian Satker-SINGKAT"].fillna(df_cms[satker_name_col])
 
-            # buat kolom SATKER yang konsisten
-            if "SATKER" not in df_cms.columns:
-                if "NAMA SATKER" in df_cms.columns:
-                    df_cms["SATKER"] = df_cms["NAMA SATKER"]
-                elif "Nama Satker" in df_cms.columns:
-                    df_cms["SATKER"] = df_cms["Nama Satker"]
 
             # ===============================
             # NORMALISASI NUMERIC
@@ -5485,8 +5474,9 @@ def page_dashboard():
             for c in cols:
                 df_cms[c] = pd.to_numeric(df_cms[c], errors="coerce").fillna(0)
 
+
             # ===============================
-            # GABUNG PER SATKER
+            # AGREGASI SATKER
             # ===============================
             cms_satker = (
                 df_cms
@@ -5503,6 +5493,7 @@ def page_dashboard():
                 .reset_index()
             )
 
+
             # ===============================
             # TOTAL
             # ===============================
@@ -5518,6 +5509,7 @@ def page_dashboard():
                 + cms_satker["TELLER_NOM"]
             )
 
+
             # ===============================
             # PROPORSI
             # ===============================
@@ -5531,8 +5523,9 @@ def page_dashboard():
 
             cms_satker = cms_satker.fillna(0)
 
+
             # ===============================
-            # PILIH TIPE
+            # TIPE CHART
             # ===============================
             if tipe_chart == "Jumlah Transaksi":
 
@@ -5548,10 +5541,12 @@ def page_dashboard():
 
                 title_chart = "10 Satker dengan Proporsi Nominal CMS Tertinggi"
 
+
             # ===============================
             # TOP 10
             # ===============================
             cms_chart = cms_chart.sort_values("Value", ascending=False).head(10)
+
 
             # ===============================
             # CHART
@@ -5577,6 +5572,7 @@ def page_dashboard():
             )
 
             st.plotly_chart(fig_cms, use_container_width=True)
+
 
         # =====================================================
         # TABEL DETAIL
