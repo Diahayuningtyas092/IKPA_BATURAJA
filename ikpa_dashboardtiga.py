@@ -5301,37 +5301,75 @@ def page_dashboard():
                     .reset_index()
                 )
 
-            digipay_chart = digipay_chart.sort_values("Value", ascending=False).head(10)
-            
-            digipay_chart["LABEL"] = digipay_chart["Value"].apply(format_rupiah)
+            # ===============================
+            # TOP & BOTTOM DIGIPAY
+            # ===============================
+            digipay_top = digipay_chart.sort_values("Value", ascending=False).head(10)
+            digipay_bottom = digipay_chart.sort_values("Value", ascending=True).head(10)
 
-            # tambah rank untuk gradasi
-            digipay_chart = digipay_chart.reset_index(drop=True)
-            digipay_chart["Rank"] = digipay_chart.index + 1
+            digipay_top["LABEL"] = digipay_top["Value"].apply(format_rupiah)
+            digipay_bottom["LABEL"] = digipay_bottom["Value"].apply(format_rupiah)
 
-            fig_digipay = px.bar(
-                digipay_chart,
-                x="Value",
-                y="SATKER_LABEL",
-                orientation="h",
-                text="LABEL",
-                color="Rank",
-                color_continuous_scale=["#08306B","#6BAED6"],
-                title=f"10 Satker dengan {tipe_chart} Terbanyak (Digipay)"
-            )
+            digipay_top = digipay_top.reset_index(drop=True)
+            digipay_top["Rank"] = digipay_top.index + 1
 
-            fig_digipay.update_layout(
-                height=600,
-                yaxis={'categoryorder':'total ascending'},
-                coloraxis_showscale=False
-            )
+            digipay_bottom = digipay_bottom.reset_index(drop=True)
+            digipay_bottom["Rank"] = digipay_bottom.index + 1
 
-            fig_digipay.update_traces(
-                textposition="outside",
-            )
-            fig_digipay.update_layout(yaxis_title=None, xaxis_title=None)
+            col_left, col_right = st.columns(2)
 
-            st.plotly_chart(fig_digipay, use_container_width=True)
+            # ===============================
+            # TOP DIGIPAY
+            # ===============================
+            with col_left:
+
+                fig_digipay_top = px.bar(
+                    digipay_top,
+                    x="Value",
+                    y="SATKER_LABEL",
+                    orientation="h",
+                    text="LABEL",
+                    color="Rank",
+                    color_continuous_scale=["#08306B","#6BAED6"],
+                    title=f"10 Satker dengan {tipe_chart} Terbesar (Digipay)"
+                )
+
+                fig_digipay_top.update_layout(
+                    height=550,
+                    yaxis={'categoryorder':'total ascending'},
+                    coloraxis_showscale=False
+                )
+
+                fig_digipay_top.update_traces(textposition="outside")
+
+                st.plotly_chart(fig_digipay_top, use_container_width=True)
+
+
+            # ===============================
+            # BOTTOM DIGIPAY
+            # ===============================
+            with col_right:
+
+                fig_digipay_bottom = px.bar(
+                    digipay_bottom,
+                    x="Value",
+                    y="SATKER_LABEL",
+                    orientation="h",
+                    text="LABEL",
+                    color="Rank",
+                    color_continuous_scale=["#FEE0D2","#DE2D26"],
+                    title=f"10 Satker dengan {tipe_chart} Terendah (Digipay)"
+                )
+
+                fig_digipay_bottom.update_layout(
+                    height=550,
+                    yaxis={'categoryorder':'total ascending'},
+                    coloraxis_showscale=False
+                )
+
+                fig_digipay_bottom.update_traces(textposition="outside")
+
+                st.plotly_chart(fig_digipay_bottom, use_container_width=True)
             
 
             # ===============================
@@ -5670,7 +5708,7 @@ def page_dashboard():
         # =====================================================
         # TABEL DETAIL
         # =====================================================
-        elif menu_digital == "📋 Tabel Detail":
+        elif menu_digital == "📋 Tabel Detail": 
 
             st.subheader("📋 Tabel Detail Digitalisasi")
 
