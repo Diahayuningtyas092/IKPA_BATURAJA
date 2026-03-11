@@ -5545,23 +5545,43 @@ def page_dashboard():
             # ===============================
             if "Uraian Satker-RINGKAS" in df_kkp.columns:
 
-                df_kkp["SATKER_LABEL"] = df_kkp["Uraian Satker-RINGKAS"]
+                df_kkp["SATKER_LABEL"] = (
+                    df_kkp["Kode Satker"].astype(str)
+                    + " "
+                    + df_kkp["Uraian Satker-RINGKAS"].astype(str)
+                )
 
             else:
 
-                # fallback jika tidak ada
+                # fallback jika kolom ringkas tidak ada
                 if "SATKER" in df_kkp.columns:
-                    df_kkp["SATKER_LABEL"] = df_kkp["SATKER"]
+
+                    df_kkp["SATKER_LABEL"] = (
+                        df_kkp["Kode Satker"].astype(str)
+                        + " "
+                        + df_kkp["SATKER"].astype(str)
+                    )
 
                 elif "NMSATKER" in df_kkp.columns:
-                    df_kkp["SATKER_LABEL"] = df_kkp["NMSATKER"]
+
+                    df_kkp["SATKER_LABEL"] = (
+                        df_kkp["Kode Satker"].astype(str)
+                        + " "
+                        + df_kkp["NMSATKER"].astype(str)
+                    )
 
                 elif "NAMA SATKER" in df_kkp.columns:
-                    df_kkp["SATKER_LABEL"] = df_kkp["NAMA SATKER"]
+
+                    df_kkp["SATKER_LABEL"] = (
+                        df_kkp["Kode Satker"].astype(str)
+                        + " "
+                        + df_kkp["NAMA SATKER"].astype(str)
+                    )
 
                 else:
-                    df_kkp["SATKER_LABEL"] = df_kkp["Kode Satker"]
 
+                    df_kkp["SATKER_LABEL"] = df_kkp["Kode Satker"].astype(str)
+                    
 
             # ===============================
             # PAGU PER SATKER
