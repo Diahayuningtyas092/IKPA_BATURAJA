@@ -5250,8 +5250,8 @@ def page_dashboard():
             # ===============================
             # LABEL SATKER UNTUK CHART
             # ===============================
-            df_digipay["SATKER_LABEL"] = df_digipay["KDSATKER"] + " - " + df_digipay["SATKER"]
-            df_kkp["SATKER_LABEL"] = df_kkp["Kode Satker"] + " - " + df_kkp["SATKER"]
+            df_digipay["SATKER"] = df_digipay["KDSATKER"] + " - " + df_digipay["SATKER"]
+            df_kkp["SATKER"] = df_kkp["Kode Satker"] + " - " + df_kkp["SATKER"]
 
             # ===============================
             # NORMALISASI DIGIPAY
@@ -5381,7 +5381,7 @@ def page_dashboard():
 
                 digipay_chart = (
                     df_digipay
-                    .groupby("SATKER_LABEL")
+                    .groupby("SATKER")
                     .agg(Value=("NOINVOICE", "nunique"))
                     .reset_index()
                 )
@@ -5390,7 +5390,7 @@ def page_dashboard():
 
                 digipay_chart = (
                     df_digipay
-                    .groupby("SATKER_LABEL")
+                    .groupby("SATKER")
                     .agg(Value=("NOMINVOICE", "sum"))
                     .reset_index()
                 )
@@ -5420,7 +5420,7 @@ def page_dashboard():
                 fig_digipay_top = px.bar(
                     digipay_top,
                     x="Value",
-                    y="SATKER_LABEL",
+                    y="SATKER",
                     orientation="h",
                     text="LABEL",
                     color="Rank",
@@ -5447,7 +5447,7 @@ def page_dashboard():
                 fig_digipay_bottom = px.bar(
                     digipay_bottom,
                     x="Value",
-                    y="SATKER_LABEL",
+                    y="SATKER",
                     orientation="h",
                     text="LABEL",
                     color="Rank",
@@ -5579,7 +5579,7 @@ def page_dashboard():
             df_kkp["SATKER"] = df_kkp["SATKER"].fillna("SATKER TIDAK DIKETAHUI")
 
             # label untuk chart
-            df_kkp["SATKER_LABEL"] = (
+            df_kkp["SATKER"] = (
                 df_kkp["Kode Satker"].astype(str)
                 + " "
                 + df_kkp["SATKER"].astype(str)
@@ -5591,7 +5591,7 @@ def page_dashboard():
             # ===============================
             pagu_satker = (
                 df_kkp
-                .groupby("SATKER_LABEL")["LIMIT KKP"]
+                .groupby("SATKER")["LIMIT KKP"]
                 .sum()
                 .reset_index(name="PAGU")
             )
@@ -5604,7 +5604,7 @@ def page_dashboard():
 
                 kkp_chart = (
                     df_kkp
-                    .groupby("SATKER_LABEL")
+                    .groupby("SATKER")
                     .size()
                     .reset_index(name="Value")
                 )
@@ -5613,14 +5613,14 @@ def page_dashboard():
 
                 nominal_satker = (
                     df_kkp
-                    .groupby("SATKER_LABEL")
+                    .groupby("SATKER")
                     .agg(NOMINAL=("NILAI TRANSAKSI (NILAI SPM)", "sum"))
                     .reset_index()
                 )
 
                 kkp_chart = nominal_satker.merge(
                     pagu_satker,
-                    on="SATKER_LABEL",
+                    on="SATKER",
                     how="left"
                 )
 
@@ -5695,7 +5695,7 @@ def page_dashboard():
                 fig_kkp_top = px.bar(
                     kkp_top,
                     x="Value",
-                    y="SATKER_LABEL",
+                    y="SATKER",
                     orientation="h",
                     text="LABEL",
                     color="Rank",
@@ -5722,7 +5722,7 @@ def page_dashboard():
                 fig_kkp_bottom = px.bar(
                     kkp_bottom,
                     x="Value",
-                    y="SATKER_LABEL",
+                    y="SATKER",
                     orientation="h",
                     text="LABEL",
                     color="Rank",
@@ -5834,7 +5834,7 @@ def page_dashboard():
             # ===============================
             # LABEL SATKER CMS
             # ===============================
-            df_cms["SATKER_LABEL"] = df_cms[satker_code_col] + " - " + df_cms["SATKER"]
+            df_cms["SATKER"] = df_cms[satker_code_col] + " - " + df_cms["SATKER"]
 
 
             # ===============================
@@ -5858,7 +5858,7 @@ def page_dashboard():
             # ===============================
             cms_satker = (
                 df_cms
-                .groupby("SATKER_LABEL")
+                .groupby("SATKER")
                 .agg(
                     CMS_TRX=("JUMLAH TRANSAKSI CMS","sum"),
                     DEBIT_TRX=("JUMLAH TRANSAKSI KARTU DEBIT","sum"),
@@ -5907,14 +5907,14 @@ def page_dashboard():
             # ===============================
             if tipe_chart == "Jumlah Transaksi":
 
-                cms_chart = cms_satker[["SATKER_LABEL","PROPORSI_TRX"]].copy()
+                cms_chart = cms_satker[["SATKER","PROPORSI_TRX"]].copy()
                 cms_chart.rename(columns={"PROPORSI_TRX":"Value"}, inplace=True)
 
                 title_chart = "10 Satker dengan Proporsi Transaksi CMS Tertinggi"
 
             else:
 
-                cms_chart = cms_satker[["SATKER_LABEL","PROPORSI_NOM"]].copy()
+                cms_chart = cms_satker[["SATKER","PROPORSI_NOM"]].copy()
                 cms_chart.rename(columns={"PROPORSI_NOM":"Value"}, inplace=True)
 
                 title_chart = "10 Satker dengan Proporsi Nominal CMS Tertinggi"
@@ -5954,7 +5954,7 @@ def page_dashboard():
                 fig_cms_top = px.bar(
                     cms_top,
                     x="Value",
-                    y="SATKER_LABEL",
+                    y="SATKER",
                     orientation="h",
                     text="LABEL",
                     color="Rank",
@@ -5987,7 +5987,7 @@ def page_dashboard():
                 fig_cms_bottom = px.bar(
                     cms_bottom,
                     x="Value",
-                    y="SATKER_LABEL",
+                    y="SATKER",
                     orientation="h",
                     text="LABEL",
                     color="Rank",
