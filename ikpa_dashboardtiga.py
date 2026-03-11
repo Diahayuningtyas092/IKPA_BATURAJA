@@ -5421,9 +5421,17 @@ def page_dashboard():
 
                 st.plotly_chart(fig_digipay_bottom, use_container_width=True)
             
+            # ===============================
+            # CHART KKP
+            # ===============================
 
             # ===============================
-            # NORMALISASI KKP
+            # AMBIL DATA DARI SESSION
+            # ===============================
+            df_kkp = st.session_state.kkp_master.copy()
+
+            # ===============================
+            # NORMALISASI PERIODE
             # ===============================
             df_kkp["PERIODE"] = pd.to_datetime(df_kkp["PERIODE"], errors="coerce")
 
@@ -5431,6 +5439,10 @@ def page_dashboard():
             df_kkp["BULAN"] = df_kkp["PERIODE"].dt.month
             df_kkp["TRIWULAN"] = df_kkp["PERIODE"].dt.quarter
 
+
+            # ===============================
+            # NORMALISASI NOMINAL
+            # ===============================
             df_kkp["NILAI TRANSAKSI (NILAI SPM)"] = (
                 df_kkp["NILAI TRANSAKSI (NILAI SPM)"]
                 .astype(str)
@@ -5442,6 +5454,10 @@ def page_dashboard():
                 errors="coerce"
             ).fillna(0)
 
+
+            # ===============================
+            # NORMALISASI LIMIT KKP
+            # ===============================
             df_kkp["LIMIT KKP"] = (
                 df_kkp["LIMIT KKP"]
                 .astype(str)
@@ -5455,7 +5471,7 @@ def page_dashboard():
 
 
             # ===============================
-            # FILTER KKP
+            # FILTER PERIODE (KUMULATIF)
             # ===============================
             if periode_chart == "Bulanan":
 
@@ -5481,7 +5497,7 @@ def page_dashboard():
 
 
             # ===============================
-            # SATKER RINGKAS
+            # SATKER LABEL
             # ===============================
             if "Uraian Satker-RINGKAS" in df_kkp.columns:
                 df_kkp["SATKER_LABEL"] = df_kkp["Uraian Satker-RINGKAS"]
@@ -5492,7 +5508,7 @@ def page_dashboard():
 
 
             # ===============================
-            # PAGU SATKER
+            # PAGU PER SATKER
             # ===============================
             pagu_satker = (
                 df_kkp
@@ -5542,12 +5558,21 @@ def page_dashboard():
             # ===============================
             kkp_top = kkp_chart.sort_values("Value", ascending=False).head(10)
 
-            kkp_bottom = (
-                kkp_chart
-                .query("PAGU > 0")
-                .sort_values("Value", ascending=True)
-                .head(10)
-            )
+            if tipe_chart == "Jumlah Transaksi":
+
+                kkp_bottom = (
+                    kkp_chart
+                    .sort_values("Value", ascending=True)
+                    .head(10)
+                )
+
+            else:
+
+                kkp_bottom = (
+                    kkp_chart[kkp_chart["PAGU"] > 0]
+                    .sort_values("Value", ascending=True)
+                    .head(10)
+                )
 
 
             # ===============================
@@ -5558,10 +5583,16 @@ def page_dashboard():
                 kkp_top["LABEL"] = kkp_top["Value"].astype(int)
                 kkp_bottom["LABEL"] = kkp_bottom["Value"].astype(int)
 
+                title_top = "10 Satker dengan Jumlah Transaksi KKP Terbesar"
+                title_bottom = "10 Satker dengan Jumlah Transaksi KKP Terendah"
+
             else:
 
                 kkp_top["LABEL"] = kkp_top["Value"].apply(lambda x: f"{x:.2f}%")
                 kkp_bottom["LABEL"] = kkp_bottom["Value"].apply(lambda x: f"{x:.2f}%")
+
+                title_top = "10 Satker dengan % Realisasi KKP Tertinggi"
+                title_bottom = "10 Satker dengan % Realisasi KKP Terendah"
 
 
             kkp_top = kkp_top.reset_index(drop=True)
@@ -5571,11 +5602,14 @@ def page_dashboard():
             kkp_bottom["Rank"] = kkp_bottom.index + 1
 
 
+            # ===============================
+            # CHART
+            # ===============================
             col_left, col_right = st.columns(2)
 
 
             # ===============================
-            # TOP KKP
+            # TOP CHART
             # ===============================
             with col_left:
 
@@ -5587,7 +5621,7 @@ def page_dashboard():
                     text="LABEL",
                     color="Rank",
                     color_continuous_scale=["#00441B","#74C476"],
-                    title="10 Satker dengan % Realisasi KKP Tertinggi"
+                    title=title_top
                 )
 
                 fig_kkp_top.update_layout(
@@ -5602,7 +5636,7 @@ def page_dashboard():
 
 
             # ===============================
-            # BOTTOM KKP
+            # BOTTOM CHART
             # ===============================
             with col_right:
 
@@ -5614,7 +5648,7 @@ def page_dashboard():
                     text="LABEL",
                     color="Rank",
                     color_continuous_scale=["#FEE0D2","#DE2D26"],
-                    title="10 Satker dengan % Realisasi KKP Terendah"
+                    title=title_bottom
                 )
 
                 fig_kkp_bottom.update_layout(
@@ -5626,6 +5660,8 @@ def page_dashboard():
                 fig_kkp_bottom.update_traces(textposition="outside")
 
                 st.plotly_chart(fig_kkp_bottom, use_container_width=True)
+
+           
             
             # =====================================================
             # CMS CHART
