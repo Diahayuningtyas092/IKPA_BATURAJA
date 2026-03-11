@@ -6425,10 +6425,13 @@ def page_dashboard():
                         elif col not in ["SATKER","Uraian Satker-RINGKAS","Kode Satker"]:
                             df_pivot[col] = df_pivot[col].apply(format_ribuan)
 
-                    df_display = df_pivot.copy()
-
-                    if "SATKER" in df_display.columns:
-                        df_display["SATKER"] = df_display["SATKER"].astype(str).str.replace(r"^\d{6}\s*", "", regex=True)
+                    # =============================
+                    # HILANGKAN KODE SATKER DI DEPAN NAMA
+                    # =============================
+                    if "SATKER" in df_pivot.columns:
+                        df_pivot["SATKER"] = df_pivot["SATKER"].astype(str).apply(
+                            lambda x: re.sub(r"^\d{6}\s*", "", x)
+                        )
                     
                     render_table_pin_satker(df_pivot)
                                 
