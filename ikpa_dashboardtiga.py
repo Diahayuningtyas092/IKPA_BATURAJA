@@ -3444,6 +3444,56 @@ def generate_kkp_from_session(df, periode="Bulanan", tipe="Jumlah Transaksi", ta
     else:
         return generate_kkp_yearly_from_session(df, tipe_val)
     
+    
+# Persentase Realisasi KKP
+def add_kkp_percentage_columns(df_pivot, df_master):
+    
+    df = df_master.copy()
+
+    df["PERIODE"] = pd.to_datetime(df["PERIODE"], errors="coerce")
+
+    df["LIMIT KKP"] = clean_nominal(df["LIMIT KKP"])
+
+    # ======================
+    # LIMIT PER SATKER
+    # ======================
+    limit_map = (
+        df.groupby("Kode Satker")["LIMIT KKP"]
+        .max()
+        .to_dict()
+    )
+
+    df_pivot = df_pivot.copy()
+
+    value_cols = [
+        c for c in df_pivot.columns
+        if c not in ["Kode Satker","SATKER"]
+    ]
+
+    df_pivot[value_cols] = df_pivot[value_cols].astype(float)
+
+    # ======================
+    # KUMULATIF PER BULAN
+    # ======================
+    kumulatif = df_pivot[value_cols].cumsum(axis=1)
+
+    limit_series = df_pivot["Kode Satker"].map(limit_map)
+
+    # ======================
+    # TAMBAH KOLOM %
+    # ======================
+    for col in value_cols:
+
+        persen = (kumulatif[col] / limit_series) * 100
+
+        df_pivot.insert(
+            df_pivot.columns.get_loc(col) + 1,
+            f"{col} % Realisasi KKP",
+            persen.round(2)
+        )
+
+    return df_pivot
+    
 
 # =========================================================================
 # PROPORSI CMS
@@ -6117,6 +6167,8 @@ def page_dashboard():
                         tahun_filter=tahun
                     )
 
+                    df_pivot = add_kkp_percentage_columns(df_pivot, df_master)
+
                     # =============================
                     # FORMAT RIBUAN
                     # =============================
@@ -6128,10 +6180,15 @@ def page_dashboard():
                         except:
                             return x
 
+
                     for col in df_pivot.columns:
 
-                        if col not in ["SATKER","Uraian Satker-RINGKAS"]:
+                        if "% Realisasi KKP" in col:
+                            df_pivot[col] = df_pivot[col].apply(lambda x: f"{float(x):.2f}%")
+
+                        elif col not in ["SATKER","Uraian Satker-RINGKAS","Kode Satker"]:
                             df_pivot[col] = df_pivot[col].apply(format_ribuan)
+
 
                     render_table_pin_satker(df_pivot)
                                 
