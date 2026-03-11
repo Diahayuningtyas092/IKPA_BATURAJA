@@ -20,6 +20,17 @@ import time
 from st_aggrid import GridUpdateMode
 
 
+st.markdown("""
+<style>
+.stApp {
+    background-image: url("https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/kppn_backgound.png");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+</style>
+""", unsafe_allow_html=True)
+
 def render_table_pin_satker(df):
     df = df.copy()
 
@@ -1147,6 +1158,7 @@ st.set_page_config(
     layout="wide"
 )
 
+
 st.write("GitHub token loaded:", bool(st.secrets.get("GITHUB_TOKEN")))
 
 def extract_kode_from_satker_field(s, width=6):
@@ -1187,7 +1199,7 @@ def register_ikpa_satker(df_final, month, year, source="Manual"):
     df["Period_Sort"] = f"{int(year):04d}-{MONTH_ORDER.get(month, 0):02d}"
 
     # ===============================
-    # 🔑 PERBAIKAN RANKING (DENSE)
+    # PERBAIKAN RANKING (DENSE)
     # ===============================
     nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
 
