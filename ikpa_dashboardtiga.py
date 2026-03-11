@@ -3476,6 +3476,9 @@ def add_kkp_percentage_columns(df_pivot, df_master):
     df["PERIODE"] = pd.to_datetime(df["PERIODE"], errors="coerce")
     df["LIMIT KKP"] = clean_nominal(df["LIMIT KKP"])
 
+    df["Kode Satker"] = df["Kode Satker"].astype(str).str.zfill(6)
+    df_pivot["Kode Satker"] = df_pivot["Kode Satker"].astype(str).str.zfill(6)
+
     limit_map = (
         df.groupby("Kode Satker")["LIMIT KKP"]
         .sum()
@@ -3491,13 +3494,12 @@ def add_kkp_percentage_columns(df_pivot, df_master):
 
     df_pivot[value_cols] = df_pivot[value_cols].astype(float)
 
-    kumulatif = df_pivot[value_cols].cumsum(axis=1)
-
     limit_series = df_pivot["Kode Satker"].map(limit_map)
 
     for col in value_cols:
 
-        persen = (kumulatif[col] / limit_series) * 100
+        persen = (df_pivot[col] / limit_series.replace(0, pd.NA)) * 100
+        persen = persen.fillna(0)
 
         df_pivot.insert(
             df_pivot.columns.get_loc(col) + 1,
