@@ -3241,6 +3241,29 @@ def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
     return grouped.reset_index()
 
 
+def add_kkp_pagu_column(df_pivot, df_master):
+    
+    df = df_master.copy()
+
+    df["Kode Satker"] = df["Kode Satker"].astype(str).str.zfill(6)
+    df_pivot["Kode Satker"] = df_pivot["Kode Satker"].astype(str).str.zfill(6)
+
+    df["LIMIT KKP"] = clean_nominal(df["LIMIT KKP"])
+
+    pagu_map = (
+        df.groupby("Kode Satker")["LIMIT KKP"]
+        .sum()
+        .to_dict()
+    )
+
+    df_pivot["PAGU KKP"] = df_pivot["Kode Satker"].map(pagu_map).fillna(0)
+
+    cols = df_pivot.columns.tolist()
+    cols.remove("PAGU KKP")
+    cols.insert(2, "PAGU KKP")
+
+    return df_pivot[cols]
+
 # -----------------------------------
 # KKP BULANAN
 # -----------------------------------
@@ -3263,10 +3286,10 @@ def generate_kkp_monthly_from_session(df, tahun_filter=None, tipe="trx"):
     )
 
     if tipe == "trx":
-
+    
         agg_df = (
             df.groupby(["Kode Satker","Bulan"])
-            .agg(Jumlah_Transaksi=("TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)","sum"))
+            .agg(Jumlah_Transaksi=("NOMOR KARTU","count"))
             .reset_index()
         )
 
@@ -3331,10 +3354,10 @@ def generate_kkp_quarterly_from_session(df, tahun_filter=None, tipe="trx"):
     )
 
     if tipe == "trx":
-
+    
         agg_df = (
             df.groupby(["Kode Satker","Triwulan"])
-            .agg(Jumlah_Transaksi=("TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)","sum"))
+            .agg(Jumlah_Transaksi=("NOMOR KARTU","count"))
             .reset_index()
         )
 
@@ -3387,10 +3410,10 @@ def generate_kkp_yearly_from_session(df, tipe="trx"):
     )
 
     if tipe == "trx":
-
+    
         agg_df = (
             df.groupby(["Kode Satker","Tahun"])
-            .agg(Jumlah_Transaksi=("TOTAL TRANSAKSI (NILAI TAGIHAN TERKAIT APBN)","sum"))
+            .agg(Jumlah_Transaksi=("NOMOR KARTU","count"))
             .reset_index()
         )
 
@@ -3451,15 +3474,11 @@ def add_kkp_percentage_columns(df_pivot, df_master):
     df = df_master.copy()
 
     df["PERIODE"] = pd.to_datetime(df["PERIODE"], errors="coerce")
-
     df["LIMIT KKP"] = clean_nominal(df["LIMIT KKP"])
 
-    # ======================
-    # LIMIT PER SATKER
-    # ======================
     limit_map = (
         df.groupby("Kode Satker")["LIMIT KKP"]
-        .max()
+        .sum()
         .to_dict()
     )
 
@@ -3467,22 +3486,15 @@ def add_kkp_percentage_columns(df_pivot, df_master):
 
     value_cols = [
         c for c in df_pivot.columns
-        if c not in ["Kode Satker","SATKER"]
-        and "% Realisasi" not in c
+        if c not in ["Kode Satker","SATKER","PAGU KKP"]
     ]
 
     df_pivot[value_cols] = df_pivot[value_cols].astype(float)
 
-    # ======================
-    # KUMULATIF PER BULAN
-    # ======================
     kumulatif = df_pivot[value_cols].cumsum(axis=1)
 
     limit_series = df_pivot["Kode Satker"].map(limit_map)
 
-    # ======================
-    # TAMBAH KOLOM %
-    # ======================
     for col in value_cols:
 
         persen = (kumulatif[col] / limit_series) * 100
@@ -6169,7 +6181,13 @@ def page_dashboard():
                         tahun_filter=tahun
                     )
 
-                    # hanya nominal yang dihitung %
+                    # normalisasi kode satker
+                    df_pivot["Kode Satker"] = df_pivot["Kode Satker"].astype(str).str.zfill(6)
+
+                    # tambah pagu
+                    df_pivot = add_kkp_pagu_column(df_pivot, df_master)
+
+                    # persen hanya untuk nominal
                     if tipe == "Jumlah Nominal":
                         df_pivot = add_kkp_percentage_columns(df_pivot, df_master)
 
@@ -6186,7 +6204,7 @@ def page_dashboard():
 
 
                     for col in df_pivot.columns:
-
+    
                         if "% Realisasi KKP" in col:
                             df_pivot[col] = df_pivot[col].apply(lambda x: f"{float(x):.2f}%")
 
