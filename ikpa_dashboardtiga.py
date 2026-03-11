@@ -3209,6 +3209,50 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
 # -----------------------------------
 # AGREGASI KKP
 # -----------------------------------
+def add_kkp_pagu_column(df_pivot, df_master):
+    
+    df_master = df_master.copy()
+
+    # normalisasi kode satker
+    df_master["Kode Satker"] = df_master["Kode Satker"].astype(str).str.zfill(6)
+    df_pivot["Kode Satker"] = df_pivot["Kode Satker"].astype(str).str.zfill(6)
+
+    # normalisasi limit
+    df_master["LIMIT KKP"] = (
+        df_master["LIMIT KKP"]
+        .astype(str)
+        .str.replace(r"[^\d]", "", regex=True)
+    )
+
+    df_master["LIMIT KKP"] = pd.to_numeric(
+        df_master["LIMIT KKP"],
+        errors="coerce"
+    ).fillna(0)
+
+    # pagu per satker
+    pagu_map = (
+        df_master
+        .groupby("Kode Satker")["LIMIT KKP"]
+        .sum()
+        .to_dict()
+    )
+
+    # mapping pagu
+    df_pivot["PAGU KKP"] = df_pivot["Kode Satker"].map(pagu_map).fillna(0)
+
+    # posisi kolom setelah SATKER
+    cols = df_pivot.columns.tolist()
+
+    if "PAGU KKP" in cols:
+        cols.remove("PAGU KKP")
+
+    insert_pos = 2 if "SATKER" in cols else 1
+    cols.insert(insert_pos, "PAGU KKP")
+
+    df_pivot = df_pivot[cols]
+
+    return df_pivot
+
 def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
     
     df = df.copy()
