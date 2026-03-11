@@ -37,24 +37,24 @@ def render_table_pin_satker(df):
     # =====================================================
     # RATA KANAN HANYA UNTUK KOLOM ANGKA
     # =====================================================
-    import pandas as pd
-
+    # =====================================================
+    # RATA KANAN UNTUK SEMUA KOLOM ANGKA
+    # =====================================================
     exclude_cols = [
         "__rowNum__",
         "Kode Satker",
-        "SATKER",
         "Uraian Satker-RINGKAS",
+        "SATKER",
         "Nama Satker"
     ]
 
-    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
-
-    for col in numeric_cols:
+    for col in df.columns:
         if col not in exclude_cols:
             gb.configure_column(
                 col,
                 cellStyle={"textAlign": "right"}
             )
+    
 
     # kolom persen biasanya string
     for col in df.columns:
