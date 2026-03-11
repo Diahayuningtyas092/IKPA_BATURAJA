@@ -3468,6 +3468,7 @@ def add_kkp_percentage_columns(df_pivot, df_master):
     value_cols = [
         c for c in df_pivot.columns
         if c not in ["Kode Satker","SATKER"]
+        and "% Realisasi" not in c
     ]
 
     df_pivot[value_cols] = df_pivot[value_cols].astype(float)
@@ -6160,6 +6161,7 @@ def page_dashboard():
                     else:
                         tahun = None
 
+                        
                     df_pivot = generate_kkp_from_session(
                         df_master,
                         periode=periode,
@@ -6167,7 +6169,7 @@ def page_dashboard():
                         tahun_filter=tahun
                     )
 
-                    # % Realisasi hanya untuk nominal
+                    # hanya nominal yang dihitung %
                     if tipe == "Jumlah Nominal":
                         df_pivot = add_kkp_percentage_columns(df_pivot, df_master)
 
