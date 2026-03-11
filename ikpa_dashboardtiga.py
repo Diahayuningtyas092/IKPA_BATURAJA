@@ -6432,6 +6432,14 @@ def page_dashboard():
                     st.stop()
 
                 df_master = st.session_state.cms_master.copy()
+                # =============================
+                # NORMALISASI PERIODE CMS
+                # =============================
+                df_master["PERIODE"] = pd.to_datetime(df_master["PERIODE"], errors="coerce")
+
+                df_master["TAHUN"] = df_master["PERIODE"].dt.year
+                df_master["BULAN"] = df_master["PERIODE"].dt.month
+                df_master["TRIWULAN"] = df_master["PERIODE"].dt.quarter
 
                 col1, col2, col3 = st.columns(3)
 
