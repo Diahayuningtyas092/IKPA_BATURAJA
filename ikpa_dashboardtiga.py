@@ -510,8 +510,25 @@ def render_table_pin_satker(df):
         resizable=True,
         sortable=True,
         filter=True,
-        minWidth=80
+        minWidth=80,
+        cellStyle={"textAlign": "right"}   
     )
+    
+    # ===============================
+    # KOLOM TEKS RATA KIRI
+    # ===============================
+    text_columns = [
+        "Kode Satker",
+        "Uraian Satker-RINGKAS",
+        "SATKER"
+    ]
+
+    for col in text_columns:
+        if col in df.columns:
+            gb.configure_column(
+                col,
+                cellStyle={"textAlign": "left"}
+            )
 
     if "Uraian Satker-RINGKAS" in df.columns:
         gb.configure_column(
