@@ -6425,7 +6425,11 @@ def page_dashboard():
                         elif col not in ["SATKER","Uraian Satker-RINGKAS","Kode Satker"]:
                             df_pivot[col] = df_pivot[col].apply(format_ribuan)
 
+                    df_display = df_pivot.copy()
 
+                    if "SATKER" in df_display.columns:
+                        df_display["SATKER"] = df_display["SATKER"].astype(str).str.replace(r"^\d{6}\s*", "", regex=True)
+                    
                     render_table_pin_satker(df_pivot)
                                 
 
