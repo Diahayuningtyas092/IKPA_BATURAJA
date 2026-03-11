@@ -35,34 +35,37 @@ def render_table_pin_satker(df):
     gb = GridOptionsBuilder.from_dataframe(df)
     
     # =====================================================
-    # RATA KANAN HANYA UNTUK KOLOM ANGKA
+    # RATA KANAN HANYA KOLOM ANGKA
     # =====================================================
-    # =====================================================
-    # RATA KANAN UNTUK SEMUA KOLOM ANGKA
-    # =====================================================
+    import pandas as pd
+
     exclude_cols = [
         "__rowNum__",
         "Kode Satker",
-        "Uraian Satker-RINGKAS",
+        "KODE SATKER",
         "SATKER",
-        "Nama Satker"
+        "Nama Satker",
+        "NAMA SATKER",
+        "Uraian Satker-RINGKAS"
     ]
 
-    for col in df.columns:
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+
+    for col in numeric_cols:
         if col not in exclude_cols:
             gb.configure_column(
                 col,
                 cellStyle={"textAlign": "right"}
             )
-    
 
-    # kolom persen biasanya string
+    # paksa kolom persen kanan
     for col in df.columns:
-        if "%" in str(col) and col not in exclude_cols:
+        if "%" in str(col):
             gb.configure_column(
                 col,
                 cellStyle={"textAlign": "right"}
             )
+        
     
     # =====================================================
     # SEMBUNYIKAN KOLOM INTERNAL (JIKA ADA)
