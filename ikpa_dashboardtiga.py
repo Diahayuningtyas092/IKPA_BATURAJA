@@ -5547,21 +5547,20 @@ def page_dashboard():
 
                 df_kkp["SATKER_LABEL"] = df_kkp["Uraian Satker-RINGKAS"]
 
-            elif "NMSATKER" in df_kkp.columns:
-
-                df_kkp["SATKER_LABEL"] = df_kkp["NMSATKER"]
-
-            elif "NAMA SATKER" in df_kkp.columns:
-
-                df_kkp["SATKER_LABEL"] = df_kkp["NAMA SATKER"]
-
-            elif "SATKER" in df_kkp.columns:
-
-                df_kkp["SATKER_LABEL"] = df_kkp["SATKER"]
-
             else:
 
-                df_kkp["SATKER_LABEL"] = "SATKER TIDAK DIKETAHUI"
+                # fallback jika tidak ada
+                if "SATKER" in df_kkp.columns:
+                    df_kkp["SATKER_LABEL"] = df_kkp["SATKER"]
+
+                elif "NMSATKER" in df_kkp.columns:
+                    df_kkp["SATKER_LABEL"] = df_kkp["NMSATKER"]
+
+                elif "NAMA SATKER" in df_kkp.columns:
+                    df_kkp["SATKER_LABEL"] = df_kkp["NAMA SATKER"]
+
+                else:
+                    df_kkp["SATKER_LABEL"] = df_kkp["Kode Satker"]
 
 
             # ===============================
