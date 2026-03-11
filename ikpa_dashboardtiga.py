@@ -3210,7 +3210,7 @@ def generate_digipay_yearly_from_session(df, tipe="trx"):
 # AGREGASI KKP
 # -----------------------------------
 def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
-
+    
     df = df.copy()
 
     df["PERIODE"] = pd.to_datetime(df["PERIODE"], errors="coerce")
@@ -3223,46 +3223,31 @@ def generate_kkp_chart(df, periode="Bulanan", tahun_filter=None):
         df["NILAI TRANSAKSI (NILAI SPM)"]
     )
 
+    df["LIMIT KKP"] = clean_nominal(df["LIMIT KKP"])
+
     if tahun_filter is not None:
         df = df[df["TAHUN"] == tahun_filter]
 
-    if periode == "Bulanan":
-        grouped = df.groupby("BULAN")["NILAI TRANSAKSI (NILAI SPM)"].sum()
-
-    elif periode == "Triwulan":
-        grouped = df.groupby("TRIWULAN")["NILAI TRANSAKSI (NILAI SPM)"].sum()
-
-    else:
-        grouped = df.groupby("TAHUN")["NILAI TRANSAKSI (NILAI SPM)"].sum()
-
-    grouped = grouped.sort_index().to_frame("Value")
-    grouped["Kumulatif"] = grouped["Value"].cumsum()
-
-    return grouped.reset_index()
-
-
-def add_kkp_pagu_column(df_pivot, df_master):
-    
-    df = df_master.copy()
-
-    df["Kode Satker"] = df["Kode Satker"].astype(str).str.zfill(6)
-    df_pivot["Kode Satker"] = df_pivot["Kode Satker"].astype(str).str.zfill(6)
-
-    df["LIMIT KKP"] = clean_nominal(df["LIMIT KKP"])
-
-    pagu_map = (
-        df.groupby("Kode Satker")["LIMIT KKP"]
-        .sum()
-        .to_dict()
+    grouped = (
+        df.groupby(["TAHUN","BULAN"])
+        .agg(
+            NOMINAL=("NILAI TRANSAKSI (NILAI SPM)","sum"),
+            PAGU=("LIMIT KKP","sum")
+        )
+        .reset_index()
     )
 
-    df_pivot["PAGU KKP"] = df_pivot["Kode Satker"].map(pagu_map).fillna(0)
+    grouped["Kumulatif Nominal"] = grouped["NOMINAL"].cumsum()
 
-    cols = df_pivot.columns.tolist()
-    cols.remove("PAGU KKP")
-    cols.insert(2, "PAGU KKP")
+    grouped["% Realisasi"] = (
+        grouped["Kumulatif Nominal"] /
+        grouped["PAGU"].replace(0, pd.NA)
+    ) * 100
 
-    return df_pivot[cols]
+    grouped["% Realisasi"] = grouped["% Realisasi"].fillna(0)
+
+    return grouped
+
 
 # -----------------------------------
 # KKP BULANAN
@@ -5457,6 +5442,18 @@ def page_dashboard():
                 errors="coerce"
             ).fillna(0)
 
+            df_kkp["LIMIT KKP"] = (
+                df_kkp["LIMIT KKP"]
+                .astype(str)
+                .str.replace(r"[^\d]", "", regex=True)
+            )
+
+            df_kkp["LIMIT KKP"] = pd.to_numeric(
+                df_kkp["LIMIT KKP"],
+                errors="coerce"
+            ).fillna(0)
+
+
             # ===============================
             # FILTER KKP
             # ===============================
@@ -5481,17 +5478,30 @@ def page_dashboard():
                 df_kkp = df_kkp[
                     df_kkp["TAHUN"] <= tahun_chart
                 ]
-                
 
-            # SATKER RINGKAS KKP
+
+            # ===============================
+            # SATKER RINGKAS
+            # ===============================
             if "Uraian Satker-RINGKAS" in df_kkp.columns:
-                df_kkp["SATKER"] = df_kkp["Uraian Satker-RINGKAS"]
+                df_kkp["SATKER_LABEL"] = df_kkp["Uraian Satker-RINGKAS"]
             elif "NMSATKER" in df_kkp.columns:
-                df_kkp["SATKER"] = df_kkp["NMSATKER"]
+                df_kkp["SATKER_LABEL"] = df_kkp["NMSATKER"]
             elif "NAMA SATKER" in df_kkp.columns:
-                df_kkp["SATKER"] = df_kkp["NAMA SATKER"]
-                        
-                        
+                df_kkp["SATKER_LABEL"] = df_kkp["NAMA SATKER"]
+
+
+            # ===============================
+            # PAGU SATKER
+            # ===============================
+            pagu_satker = (
+                df_kkp
+                .groupby("SATKER_LABEL")["LIMIT KKP"]
+                .sum()
+                .reset_index(name="PAGU")
+            )
+
+
             # ===============================
             # KKP PER SATKER
             # ===============================
@@ -5506,21 +5516,53 @@ def page_dashboard():
 
             else:
 
-                kkp_chart = (
+                nominal_satker = (
                     df_kkp
                     .groupby("SATKER_LABEL")
-                    .agg(Value=("NILAI TRANSAKSI (NILAI SPM)", "sum"))
+                    .agg(NOMINAL=("NILAI TRANSAKSI (NILAI SPM)", "sum"))
                     .reset_index()
                 )
 
+                kkp_chart = nominal_satker.merge(
+                    pagu_satker,
+                    on="SATKER_LABEL",
+                    how="left"
+                )
+
+                kkp_chart["Value"] = (
+                    kkp_chart["NOMINAL"] /
+                    kkp_chart["PAGU"].replace(0, pd.NA)
+                ) * 100
+
+                kkp_chart["Value"] = kkp_chart["Value"].fillna(0)
+
+
             # ===============================
-            # KKP TOP & BOTTOM
+            # TOP & BOTTOM
             # ===============================
             kkp_top = kkp_chart.sort_values("Value", ascending=False).head(10)
-            kkp_bottom = kkp_chart.sort_values("Value", ascending=True).head(10)
 
-            kkp_top["LABEL"] = kkp_top["Value"].apply(format_rupiah)
-            kkp_bottom["LABEL"] = kkp_bottom["Value"].apply(format_rupiah)
+            kkp_bottom = (
+                kkp_chart
+                .query("PAGU > 0")
+                .sort_values("Value", ascending=True)
+                .head(10)
+            )
+
+
+            # ===============================
+            # LABEL
+            # ===============================
+            if tipe_chart == "Jumlah Transaksi":
+
+                kkp_top["LABEL"] = kkp_top["Value"].astype(int)
+                kkp_bottom["LABEL"] = kkp_bottom["Value"].astype(int)
+
+            else:
+
+                kkp_top["LABEL"] = kkp_top["Value"].apply(lambda x: f"{x:.2f}%")
+                kkp_bottom["LABEL"] = kkp_bottom["Value"].apply(lambda x: f"{x:.2f}%")
+
 
             kkp_top = kkp_top.reset_index(drop=True)
             kkp_top["Rank"] = kkp_top.index + 1
@@ -5528,7 +5570,9 @@ def page_dashboard():
             kkp_bottom = kkp_bottom.reset_index(drop=True)
             kkp_bottom["Rank"] = kkp_bottom.index + 1
 
+
             col_left, col_right = st.columns(2)
+
 
             # ===============================
             # TOP KKP
@@ -5543,7 +5587,7 @@ def page_dashboard():
                     text="LABEL",
                     color="Rank",
                     color_continuous_scale=["#00441B","#74C476"],
-                    title=f"10 Satker dengan {tipe_chart} Terbesar (KKP)"
+                    title="10 Satker dengan % Realisasi KKP Tertinggi"
                 )
 
                 fig_kkp_top.update_layout(
@@ -5570,7 +5614,7 @@ def page_dashboard():
                     text="LABEL",
                     color="Rank",
                     color_continuous_scale=["#FEE0D2","#DE2D26"],
-                    title=f"10 Satker dengan {tipe_chart} Terendah (KKP)"
+                    title="10 Satker dengan % Realisasi KKP Terendah"
                 )
 
                 fig_kkp_bottom.update_layout(
@@ -5582,7 +5626,6 @@ def page_dashboard():
                 fig_kkp_bottom.update_traces(textposition="outside")
 
                 st.plotly_chart(fig_kkp_bottom, use_container_width=True)
-            
             
             # =====================================================
             # CMS CHART
