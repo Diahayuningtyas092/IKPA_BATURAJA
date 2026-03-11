@@ -6176,9 +6176,14 @@ def page_dashboard():
                         if periode != "Tahunan":
 
                             tahun_list = sorted(df_master["TAHUN"].dropna().unique())
+                            latest_year = max(tahun_list) if len(tahun_list) else None
 
                             with col3:
-                                tahun = st.selectbox("Tahun", tahun_list if len(tahun_list) else [None])
+                                tahun = st.selectbox(
+                                    "Tahun",
+                                    tahun_list if len(tahun_list) else [None],
+                                    index=tahun_list.index(latest_year) if latest_year in tahun_list else 0
+                                )
 
                             if tahun is not None:
                                 df_raw = df_master[df_master["TAHUN"] == tahun].copy()
@@ -6370,10 +6375,12 @@ def page_dashboard():
 
                         with col3:
                             tahun_list = sorted(df_master["TAHUN"].dropna().unique())
+                            latest_year = max(tahun_list)
 
                             tahun = st.selectbox(
                                 "Tahun",
                                 tahun_list,
+                                index=tahun_list.index(latest_year),
                                 key="kkp_tahun"
                             )
 
@@ -6432,6 +6439,23 @@ def page_dashboard():
                     st.stop()
 
                 df_master = st.session_state.cms_master.copy()
+                
+                # =============================
+                # DETEKSI PERIODE TERBARU CMS
+                # =============================
+                tw_order = {"TW1":1,"TW2":2,"TW3":3,"TW4":4}
+
+                df_tmp = df_master.copy()
+                df_tmp["TW_ORDER"] = df_tmp["TRIWULAN"].map(tw_order)
+
+                latest_row = (
+                    df_tmp
+                    .sort_values(["TAHUN","TW_ORDER"], ascending=[False,False])
+                    .iloc[0]
+                )
+
+                latest_year = latest_row["TAHUN"]
+                latest_tw = latest_row["TRIWULAN"]
 
                 col1, col2, col3 = st.columns(3)
 
@@ -6448,6 +6472,7 @@ def page_dashboard():
                     tahun = st.selectbox(
                         "Tahun",
                         tahun_list,
+                        index=tahun_list.index(latest_year),
                         key="cms_tahun"
                     )
 
@@ -6455,9 +6480,11 @@ def page_dashboard():
 
                 if periode == "Triwulan":
                     with col3:
+                        tw_list = ["TW1","TW2","TW3","TW4"]
                         triwulan_selected = st.selectbox(
                             "Triwulan",
-                            ["TW1", "TW2", "TW3", "TW4"],
+                            tw_list,
+                            index=tw_list.index(latest_tw),
                             key="cms_triwulan"
                         )
 
