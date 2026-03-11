@@ -6167,7 +6167,9 @@ def page_dashboard():
                         tahun_filter=tahun
                     )
 
-                    df_pivot = add_kkp_percentage_columns(df_pivot, df_master)
+                    # % Realisasi hanya untuk nominal
+                    if tipe == "Jumlah Nominal":
+                        df_pivot = add_kkp_percentage_columns(df_pivot, df_master)
 
                     # =============================
                     # FORMAT RIBUAN
