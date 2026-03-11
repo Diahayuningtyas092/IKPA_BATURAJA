@@ -5541,46 +5541,49 @@ def page_dashboard():
 
 
             # ===============================
-            # SATKER LABEL
+            # MERGE NAMA SATKER RINGKAS (KKP)
             # ===============================
-            if "Uraian Satker-RINGKAS" in df_kkp.columns:
 
-                df_kkp["SATKER_LABEL"] = (
-                    df_kkp["Kode Satker"].astype(str)
-                    + " "
-                    + df_kkp["Uraian Satker-RINGKAS"].astype(str)
-                )
+            ref = st.session_state.reference_df.copy()
 
-            else:
+            # normalisasi kode satker KKP
+            df_kkp["Kode Satker"] = (
+                df_kkp["Kode Satker"]
+                .astype(str)
+                .str.extract(r'(\d+)')[0]
+                .str.zfill(6)
+            )
 
-                # fallback jika kolom ringkas tidak ada
-                if "SATKER" in df_kkp.columns:
+            # normalisasi kode satker reference
+            ref["Kode Satker"] = (
+                ref["Kode Satker"]
+                .astype(str)
+                .str.extract(r'(\d+)')[0]
+                .str.zfill(6)
+            )
 
-                    df_kkp["SATKER_LABEL"] = (
-                        df_kkp["Kode Satker"].astype(str)
-                        + " "
-                        + df_kkp["SATKER"].astype(str)
-                    )
+            # merge nama satker ringkas
+            df_kkp = df_kkp.merge(
+                ref[["Kode Satker", "Uraian Satker-SINGKAT"]],
+                on="Kode Satker",
+                how="left"
+            )
 
-                elif "NMSATKER" in df_kkp.columns:
+            # gunakan nama satker ringkas
+            df_kkp["SATKER"] = (
+                df_kkp["Uraian Satker-SINGKAT"]
+                .fillna(df_kkp["SATKER"])
+            )
 
-                    df_kkp["SATKER_LABEL"] = (
-                        df_kkp["Kode Satker"].astype(str)
-                        + " "
-                        + df_kkp["NMSATKER"].astype(str)
-                    )
+            # pastikan tidak ada null
+            df_kkp["SATKER"] = df_kkp["SATKER"].fillna("SATKER TIDAK DIKETAHUI")
 
-                elif "NAMA SATKER" in df_kkp.columns:
-
-                    df_kkp["SATKER_LABEL"] = (
-                        df_kkp["Kode Satker"].astype(str)
-                        + " "
-                        + df_kkp["NAMA SATKER"].astype(str)
-                    )
-
-                else:
-
-                    df_kkp["SATKER_LABEL"] = df_kkp["Kode Satker"].astype(str)
+            # label untuk chart
+            df_kkp["SATKER_LABEL"] = (
+                df_kkp["Kode Satker"].astype(str)
+                + " "
+                + df_kkp["SATKER"].astype(str)
+            )
                     
 
             # ===============================
