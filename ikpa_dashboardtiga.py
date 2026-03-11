@@ -35,11 +35,10 @@ def render_table_pin_satker(df):
     gb = GridOptionsBuilder.from_dataframe(df)
     
     # =====================================================
-    # ALIGNMENT KOLOM
+    # ALIGNMENT OTOMATIS
     # =====================================================
-
-    # kolom yang harus tetap kiri
-    text_cols = [
+    exclude_cols = [
+        "__rowNum__",
         "Kode Satker",
         "KODE SATKER",
         "SATKER",
@@ -48,23 +47,26 @@ def render_table_pin_satker(df):
         "Uraian Satker-RINGKAS"
     ]
 
-    # rata kanan untuk kolom angka
-    import pandas as pd
-    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
-
-    for col in numeric_cols:
-        gb.configure_column(col, cellStyle={"textAlign": "right"})
-
-    # paksa kolom persen rata kanan
     for col in df.columns:
-        if "%" in str(col):
-            gb.configure_column(col, cellStyle={"textAlign": "right"})
 
-    # paksa kolom teks tetap kiri
-    for col in text_cols:
-        if col in df.columns:
+        if col in exclude_cols:
             gb.configure_column(col, cellStyle={"textAlign": "left"})
-       
+            continue
+
+        # ambil sample data
+        sample = df[col].astype(str).dropna()
+
+        if len(sample) == 0:
+            continue
+
+        # cek apakah mayoritas angka / persen
+        ratio_numeric = sample.str.contains(r"\d").mean()
+
+        if ratio_numeric > 0.7:
+            gb.configure_column(
+                col,
+                cellStyle={"textAlign": "right"}
+            )
     
     # =====================================================
     # SEMBUNYIKAN KOLOM INTERNAL (JIKA ADA)
@@ -594,9 +596,6 @@ def render_table_pin_satker(df):
 
     # ===============================
     # GRID + EXPORT
-    # ===============================
-    # ===============================
-    # GRID + EXPORT (FIX ERROR)
     # ===============================
 
     # ===== GRID DULU =====
