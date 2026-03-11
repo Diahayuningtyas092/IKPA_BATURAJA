@@ -5500,11 +5500,24 @@ def page_dashboard():
             # SATKER LABEL
             # ===============================
             if "Uraian Satker-RINGKAS" in df_kkp.columns:
+
                 df_kkp["SATKER_LABEL"] = df_kkp["Uraian Satker-RINGKAS"]
+
             elif "NMSATKER" in df_kkp.columns:
+
                 df_kkp["SATKER_LABEL"] = df_kkp["NMSATKER"]
+
             elif "NAMA SATKER" in df_kkp.columns:
+
                 df_kkp["SATKER_LABEL"] = df_kkp["NAMA SATKER"]
+
+            elif "SATKER" in df_kkp.columns:
+
+                df_kkp["SATKER_LABEL"] = df_kkp["SATKER"]
+
+            else:
+
+                df_kkp["SATKER_LABEL"] = "SATKER TIDAK DIKETAHUI"
 
 
             # ===============================
