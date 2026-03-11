@@ -35,6 +35,36 @@ def render_table_pin_satker(df):
     gb = GridOptionsBuilder.from_dataframe(df)
     
     # =====================================================
+    # RATA KANAN HANYA UNTUK KOLOM ANGKA
+    # =====================================================
+    import pandas as pd
+
+    exclude_cols = [
+        "__rowNum__",
+        "Kode Satker",
+        "SATKER",
+        "Uraian Satker-RINGKAS",
+        "Nama Satker"
+    ]
+
+    numeric_cols = df.select_dtypes(include=["number"]).columns.tolist()
+
+    for col in numeric_cols:
+        if col not in exclude_cols:
+            gb.configure_column(
+                col,
+                cellStyle={"textAlign": "right"}
+            )
+
+    # kolom persen biasanya string
+    for col in df.columns:
+        if "%" in str(col) and col not in exclude_cols:
+            gb.configure_column(
+                col,
+                cellStyle={"textAlign": "right"}
+            )
+    
+    # =====================================================
     # SEMBUNYIKAN KOLOM INTERNAL (JIKA ADA)
     # =====================================================
     if "Nilai Total" in df.columns:
@@ -510,8 +540,7 @@ def render_table_pin_satker(df):
         resizable=True,
         sortable=True,
         filter=True,
-        minWidth=80,
-        cellStyle={"textAlign": "right"}   
+        minWidth=80, 
     )
     
     # ===============================
