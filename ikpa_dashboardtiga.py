@@ -6426,14 +6426,14 @@ def page_dashboard():
             # 🏦 CMS
             # =====================================================
             elif source_detail == "🏦 CMS":
-    
+
                 if "cms_master" not in st.session_state:
                     st.warning("Data CMS belum tersedia")
                     st.stop()
 
                 df_master = st.session_state.cms_master.copy()
 
-                col1, col2 = st.columns(2)
+                col1, col2, col3 = st.columns(3)
 
                 with col1:
                     periode = st.selectbox(
@@ -6450,6 +6450,40 @@ def page_dashboard():
                         tahun_list,
                         key="cms_tahun"
                     )
+
+                # =============================
+                # SELECT TRIWULAN
+                # =============================
+                triwulan_selected = None
+
+                if periode == "Triwulan":
+                    with col3:
+                        triwulan_selected = st.selectbox(
+                            "Triwulan",
+                            ["TW1", "TW2", "TW3", "TW4"],
+                            key="cms_triwulan"
+                        )
+
+                # =============================
+                # FILTER TAHUN
+                # =============================
+                df_master = df_master[df_master["TAHUN"] == tahun]
+
+                # =============================
+                # FILTER TRIWULAN (KUMULATIF)
+                # =============================
+                if triwulan_selected:
+
+                    tw_map = {
+                        "TW1": 3,
+                        "TW2": 6,
+                        "TW3": 9,
+                        "TW4": 12
+                    }
+
+                    max_bulan = tw_map[triwulan_selected]
+
+                    df_master = df_master[df_master["BULAN"] <= max_bulan]
 
                 df_pivot = pd.DataFrame()
 
