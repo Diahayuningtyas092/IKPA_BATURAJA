@@ -6432,30 +6432,6 @@ def page_dashboard():
                     st.stop()
 
                 df_master = st.session_state.cms_master.copy()
-                
-                # =============================
-                # DETEKSI KOLOM TANGGAL CMS
-                # =============================
-                date_col = None
-
-                for col in ["PERIODE", "TANGGAL", "TGL", "DATE"]:
-                    if col in df_master.columns:
-                        date_col = col
-                        break
-
-                if date_col is None:
-                    st.error("Kolom tanggal tidak ditemukan pada data CMS")
-                    st.stop()
-
-                # =============================
-                # NORMALISASI TANGGAL
-                # =============================
-                df_master[date_col] = pd.to_datetime(df_master[date_col], errors="coerce")
-
-                df_master["TAHUN"] = df_master[date_col].dt.year
-                df_master["BULAN"] = df_master[date_col].dt.month
-                df_master["TRIWULAN"] = df_master[date_col].dt.quarter
-
 
                 col1, col2, col3 = st.columns(3)
 
@@ -6475,9 +6451,6 @@ def page_dashboard():
                         key="cms_tahun"
                     )
 
-                # =============================
-                # SELECT TRIWULAN
-                # =============================
                 triwulan_selected = None
 
                 if periode == "Triwulan":
@@ -6494,20 +6467,10 @@ def page_dashboard():
                 df_master = df_master[df_master["TAHUN"] == tahun]
 
                 # =============================
-                # FILTER TRIWULAN (KUMULATIF)
+                # FILTER TRIWULAN
                 # =============================
                 if triwulan_selected:
-
-                    tw_map = {
-                        "TW1": 3,
-                        "TW2": 6,
-                        "TW3": 9,
-                        "TW4": 12
-                    }
-
-                    max_bulan = tw_map[triwulan_selected]
-
-                    df_master = df_master[df_master["BULAN"] <= max_bulan]
+                    df_master = df_master[df_master["TRIWULAN"] == triwulan_selected]
 
                 df_pivot = pd.DataFrame()
 
