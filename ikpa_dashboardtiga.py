@@ -1224,22 +1224,24 @@ st.markdown("""
 .menu-card{
     background:white;
     border-radius:20px;
-    padding:35px;
-    text-align:center;
+    padding:35px 30px;
 
     box-shadow:0 10px 30px rgba(0,0,0,0.08);
     border:1px solid rgba(0,0,0,0.05);
+
+    text-align:center;
+    transition:all 0.25s ease;
+}
+
+.menu-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 20px 40px rgba(0,0,0,0.15);
 }
 
 .menu-icon{
-    width:60px;
-    height:60px;
-    margin:0 auto 15px auto;
-}
-
-.menu-icon svg{
-    width:60px;
-    height:60px;
+    width:48px;
+    height:48px;
+    margin:0 auto 12px auto;
 }
 
 .menu-title{
@@ -3909,37 +3911,15 @@ def page_dashboard():
 
     col1, col2 = st.columns(2)
 
-    # =========================
-    # IKPA
-    # =========================
     with col1:
+
         st.markdown("""
         <div class="menu-card">
-
-        <div class="menu-icon">
-
-        <svg xmlns="https://w1.pngwing.com/pngs/470/982/png-transparent-marketing-chart-symbol-sales-user-text-line-logo.png"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#2563eb"
-        stroke-width="2">
-
-        <path d="M3 3v18h18"/>
-        <path d="M7 15v4"/>
-        <path d="M11 11v8"/>
-        <path d="M15 7v12"/>
-        <path d="M19 13v6"/>
-
-        </svg>
-
-        </div>
-
-        <div class="menu-title">IKPA</div>
-
-        <div class="menu-desc">
-        Indikator Kinerja Pelaksanaan Anggaran
-        </div>
-
+            <div class="menu-icon">📊</div>
+            <div class="menu-title">IKPA</div>
+            <div class="menu-desc">
+            Indikator Kinerja Pelaksanaan Anggaran
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -3948,36 +3928,20 @@ def page_dashboard():
 
 
     with col2:
+
         st.markdown("""
         <div class="menu-card">
-
-        <div class="menu-icon">
-
-        <svg xmlns="https://png.pngtree.com/png-clipart/20220530/original/pngtree-cartoon-laptop-png-image_7770778.png"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#059669"
-        stroke-width="2">
-
-        <rect x="3" y="5" width="18" height="14" rx="2"/>
-        <path d="M3 10h18"/>
-
-        </svg>
-
-        </div>
-
-        <div class="menu-title">Digitalisasi</div>
-
-        <div class="menu-desc">
-        CMS • DIGIPAY • KKP
-        </div>
-
+            <div class="menu-icon">💳</div>
+            <div class="menu-title">Digitalisasi</div>
+            <div class="menu-desc">
+            CMS • DIGIPAY • KKP
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
         if st.button("Buka Menu Digitalisasi", use_container_width=True):
             st.session_state.main_menu = "Digitalisasi"
-        
+    
     
     # ===============================
     # STOP DI SINI JIKA BELUM PILIH
@@ -7293,6 +7257,7 @@ def menu_highlights():
         return
 
     st.success(f"Data IKPA KPPN dimuat ({len(df_all)} baris)")
+    
 
     # ===============================
     # PILIH KPPN
@@ -10423,7 +10388,17 @@ def page_admin():
             st.session_state.activity_log.clear()
             st.success("Riwayat aktivitas berhasil dibersihkan.")
 
+# ===============================
+# SISTEM NOTIFIKASI LOADING
+# ===============================
+def add_notification(msg):
 
+    if "loading_notifications" not in st.session_state:
+        st.session_state.loading_notifications = []
+
+    st.session_state.loading_notifications.append(msg)
+    
+    
 # ===============================
 # MAIN APP
 # ===============================
@@ -10478,11 +10453,10 @@ def main():
     #  AUTO LOAD DATA IKPA
     # ============================================================
     if not st.session_state.data_storage:
-        with st.spinner("🔄 Memuat data IKPA..."):
             st.session_state.data_storage = load_data_from_github()
 
     if st.session_state.data_storage:
-        st.success(f"✅ {len(st.session_state.data_storage)} periode IKPA berhasil dimuat")
+        add_notification("Data IKPA berhasil dimuat dari GitHub")
     else:
         st.warning("⚠️ Data IKPA belum tersedia")
 
@@ -10500,17 +10474,13 @@ def main():
     # NOTIF BERHASIL LOAD (SEKALI)
     # ===============================
     if st.session_state.data_storage_kppn and not st.session_state.get("_kppn_loaded_notif"):
-        st.success(
-            f"✅ IKPA KPPN berhasil dimuat dari GitHub "
-            f"({len(st.session_state.data_storage_kppn)} periode)"
-        )
+        add_notification("Data IKPA KPPN berhasil dimuat dari GitHub")
         st.session_state["_kppn_loaded_notif"] = True
 
     # ============================================================
     # 3️⃣ AUTO LOAD DATA DIPA (HASIL PROCESSING STREAMLIT)
     # ============================================================
     if not st.session_state.DATA_DIPA_by_year:
-        with st.spinner("🔄 Memuat data DIPA..."):
             load_DATA_DIPA_from_github()
 
     # ============================================================
@@ -10538,14 +10508,13 @@ def main():
         st.session_state.DATA_DIPA_by_year and
         not st.session_state.ikpa_dipa_merged
     ):
-        with st.spinner("🔄 Menggabungkan data IKPA & DIPA..."):
             merge_ikpa_dipa_auto()
             
     # ============================================================
     # NOTIF GLOBAL STATUS DATA (MUNCUL SAAT APP DIBUKA)
     # ============================================================
     if st.session_state.get("ikpa_dipa_merged", False):
-        st.success(" Data IKPA & DIPA berhasil dimuat dan siap digunakan")
+        add_notification("Data IKPA & DIPA berhasil dimuat dan siap digunakan")
         
 
     # ============================================================
@@ -10555,7 +10524,7 @@ def main():
         kkp_count = load_kkp_from_github()
 
         if kkp_count > 0:
-            st.success(f"✅ {kkp_count} file KKP berhasil dimuat dari GitHub")
+            add_notification("Database utama KKP berhasil dimuat dari GitHub")
 
 
     # ============================================================
@@ -10566,22 +10535,33 @@ def main():
         st.session_state.auto_loaded_cms = True
 
         if cms_count > 0:
-            st.success(f"✅ {cms_count} file CMS berhasil dimuat")
+            add_notification("Data CMS berhasil dimuat")
 
     if "auto_loaded_digipay" not in st.session_state:
         digipay_count = load_digipay_from_github()
         st.session_state.auto_loaded_digipay = True
 
         if digipay_count > 0:
-            st.success(f"✅ {digipay_count} file DIGIPAY berhasil dimuat")
+            add_notification("Data DIGIPAY berhasil dimuat")
 
     if (
         st.session_state.get("auto_loaded_cms") or
         st.session_state.get("auto_loaded_digipay")
     ):
-        st.success("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
+        add_notification("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
         
+    # ===============================
+    # PANEL STATUS SISTEM
+    # ===============================
+    if "loading_notifications" in st.session_state:
 
+        st.success("Sistem berhasil dimuat dan siap digunakan")
+
+        with st.expander("Detail proses loading sistem"):
+
+            for msg in st.session_state.loading_notifications:
+                st.success(msg)
+    
     # ============================================================
     # Sidebar + Routing halaman
     # ============================================================
