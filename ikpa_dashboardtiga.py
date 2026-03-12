@@ -22,12 +22,40 @@ from st_aggrid import GridUpdateMode
 
 st.markdown("""
 <style>
-.stApp {
+
+/* HEADER BACKGROUND */
+.dashboard-hero {
+    position: relative;
+    height: 420px;
+    border-radius: 18px;
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+/* GAMBAR BACKGROUND */
+.dashboard-hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+
     background-image: url("https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/kppn_backgound.png");
     background-size: cover;
     background-position: center;
-    background-attachment: fixed;
+
+    filter: blur(3px);
+    opacity: 0.45;
+
+    transform: scale(1.05);
 }
+
+/* KONTEN DI ATAS GAMBAR */
+.dashboard-hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 40px;
+    color: #111827;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -1199,7 +1227,7 @@ def register_ikpa_satker(df_final, month, year, source="Manual"):
     df["Period_Sort"] = f"{int(year):04d}-{MONTH_ORDER.get(month, 0):02d}"
 
     # ===============================
-    # PERBAIKAN RANKING (DENSE)
+    # PERBAIKAN RANKING 
     # ===============================
     nilai_col = "Nilai Akhir (Nilai Total/Konversi Bobot)"
 
