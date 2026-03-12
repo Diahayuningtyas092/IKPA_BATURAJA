@@ -10397,6 +10397,42 @@ def add_notification(msg):
         st.session_state.loading_notifications = []
 
     st.session_state.loading_notifications.append(msg)
+
+st.markdown("""
+<style>
+
+.system-status{
+    padding:20px;
+    border-radius:10px;
+    background:#f8fafc;
+    border:1px solid #e2e8f0;
+    margin-bottom:20px;
+}
+
+.system-title{
+    font-size:18px;
+    font-weight:600;
+    margin-bottom:10px;
+}
+
+.status-item{
+    padding:8px 0;
+    font-size:14px;
+    color:#334155;
+    border-bottom:1px solid #f1f5f9;
+}
+
+.status-item:last-child{
+    border-bottom:none;
+}
+
+.status-ok{
+    color:#16a34a;
+    font-weight:600;
+}
+
+</style>
+""", unsafe_allow_html=True)
     
     
 # ===============================
@@ -10555,12 +10591,29 @@ def main():
     # ===============================
     if "loading_notifications" in st.session_state:
 
-        st.success("Sistem berhasil dimuat dan siap digunakan")
+        st.markdown("""
+        <div class="system-status">
+
+        <div class="system-title">
+        System Status
+        </div>
+
+        <div class="status-item">
+        <span class="status-ok">●</span> Sistem berhasil dimuat dan siap digunakan
+        </div>
+
+        </div>
+        """, unsafe_allow_html=True)
 
         with st.expander("Detail proses loading sistem"):
 
             for msg in st.session_state.loading_notifications:
-                st.success(msg)
+
+                st.markdown(f"""
+                <div class="status-item">
+                <span class="status-ok">●</span> {msg}
+                </div>
+                """, unsafe_allow_html=True)
     
     # ============================================================
     # Sidebar + Routing halaman
