@@ -1154,73 +1154,69 @@ st.set_page_config(
     layout="wide"
 )
 
+
 # ===============================
 # CSS DASHBOARD MODERN
 # ===============================
 st.markdown("""
 <style>
 
-/* HERO */
+/* HERO CONTAINER */
 .hero{
     position:relative;
-    border-radius:20px;
+    border-radius:22px;
     overflow:hidden;
-    padding:60px 50px;
+    padding:120px 60px;
     margin-bottom:40px;
 }
 
+/* BACKGROUND IMAGE */
 .hero::before{
     content:"";
     position:absolute;
     inset:0;
 
     background-image:url("https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/kppn_backgound.png");
+
     background-size:cover;
     background-position:center;
 
-    filter:blur(4px);
-    opacity:0.35;
-    transform:scale(1.08);
+    filter:blur(2px);          /* blur lebih kecil */
+    opacity:0.55;              /* transparansi */
+    transform:scale(1.15);     /* supaya gambar lebih besar */
 }
 
+/* LIGHT OVERLAY */
 .hero::after{
     content:"";
     position:absolute;
     inset:0;
-    background:rgba(255,255,255,0.65);
+    background:rgba(255,255,255,0.35);
 }
 
+/* TEXT CONTENT */
 .hero-content{
     position:relative;
     z-index:2;
 }
 
-/* MENU CARD */
-.menu-card{
-    background:white;
-    border-radius:18px;
-    padding:30px;
-    text-align:center;
-    box-shadow:0 10px 30px rgba(0,0,0,0.08);
-    transition:all 0.25s ease;
+/* TITLE BESAR */
+.hero-title{
+    font-size:56px;
+    font-weight:800;
+    color:#1f2937;
 }
 
-.menu-card:hover{
-    transform:translateY(-6px);
-    box-shadow:0 20px 40px rgba(0,0,0,0.15);
-}
-
-.menu-icon{
-    font-size:34px;
-}
-
-.menu-title{
-    font-size:20px;
-    font-weight:600;
+/* SUBTITLE */
+.hero-sub{
+    font-size:26px;
+    font-weight:500;
+    color:#374151;
 }
 
 </style>
 """, unsafe_allow_html=True)
+
 
 
 st.write("GitHub token loaded:", bool(st.secrets.get("GITHUB_TOKEN")))
@@ -3786,8 +3782,8 @@ def page_dashboard():
     st.markdown('<div class="hero">', unsafe_allow_html=True)
     st.markdown('<div class="hero-content">', unsafe_allow_html=True)
 
-    st.title("Dashboard Utama Kinerja Keuangan")
-    st.subheader("Satker Mitra KPPN Baturaja")
+    st.markdown('<div class="hero-title">Dashboard Utama Kinerja Keuangan</div>', unsafe_allow_html=True)
+    st.markdown('<div class="hero-sub">Satker Mitra KPPN Baturaja</div>', unsafe_allow_html=True)
 
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
