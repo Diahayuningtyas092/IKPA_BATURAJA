@@ -3779,14 +3779,20 @@ def page_dashboard():
         st.info("🔄 Data baru dimuat, mempersiapkan grafik...")
         st.rerun()
 
-    st.markdown('<div class="hero">', unsafe_allow_html=True)
-    st.markdown('<div class="hero-content">', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="hero">
+        <div class="hero-content">
+            <div class="hero-title">
+                Dashboard Utama Kinerja Keuangan
+            </div>
 
-    st.markdown('<div class="hero-title">Dashboard Utama Kinerja Keuangan</div>', unsafe_allow_html=True)
-    st.markdown('<div class="hero-sub">Satker Mitra KPPN Baturaja</div>', unsafe_allow_html=True)
-
-    st.markdown('</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+            <div class="hero-sub">
+                Satker Mitra KPPN Baturaja
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+    
     
     st.markdown("""
     <style>
@@ -3877,12 +3883,15 @@ def page_dashboard():
         <div class="menu-card">
             <div class="menu-icon">📊</div>
             <div class="menu-title">IKPA</div>
-            <div>Indikator Kinerja Pelaksanaan Anggaran</div>
-        </div>
+            <div style="margin-bottom:15px">
+            Indikator Kinerja Pelaksanaan Anggaran
+            </div>
         """, unsafe_allow_html=True)
 
         if st.button("Buka Menu IKPA", key="btn_ikpa", use_container_width=True):
             st.session_state.main_menu = "IKPA"
+
+        st.markdown("</div>", unsafe_allow_html=True)
 
 
     with col2:
@@ -3891,12 +3900,15 @@ def page_dashboard():
         <div class="menu-card">
             <div class="menu-icon">💻</div>
             <div class="menu-title">Digitalisasi</div>
-            <div>CMS • DIGIPAY • KKP</div>
-        </div>
+            <div style="margin-bottom:15px">
+            CMS • DIGIPAY • KKP
+            </div>
         """, unsafe_allow_html=True)
 
         if st.button("Buka Menu Digitalisasi", key="btn_digital", use_container_width=True):
             st.session_state.main_menu = "Digitalisasi"
+
+        st.markdown("</div>", unsafe_allow_html=True)
     
     
     # ===============================
