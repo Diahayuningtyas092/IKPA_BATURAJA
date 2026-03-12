@@ -1224,24 +1224,22 @@ st.markdown("""
 .menu-card{
     background:white;
     border-radius:20px;
-    padding:35px 30px;
+    padding:35px;
+    text-align:center;
 
     box-shadow:0 10px 30px rgba(0,0,0,0.08);
     border:1px solid rgba(0,0,0,0.05);
-
-    text-align:center;
-    transition:all 0.25s ease;
-}
-
-.menu-card:hover{
-    transform:translateY(-6px);
-    box-shadow:0 20px 40px rgba(0,0,0,0.15);
 }
 
 .menu-icon{
-    width:48px;
-    height:48px;
-    margin:0 auto 12px auto;
+    width:60px;
+    height:60px;
+    margin:0 auto 15px auto;
+}
+
+.menu-icon svg{
+    width:60px;
+    height:60px;
 }
 
 .menu-title{
@@ -3917,10 +3915,31 @@ def page_dashboard():
     with col1:
         st.markdown("""
         <div class="menu-card">
-            <div class="menu-title">IKPA</div>
-            <div class="menu-desc">
-            Indikator Kinerja Pelaksanaan Anggaran
-            </div>
+
+        <div class="menu-icon">
+
+        <svg xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#2563eb"
+        stroke-width="2">
+
+        <path d="M3 3v18h18"/>
+        <path d="M7 15v4"/>
+        <path d="M11 11v8"/>
+        <path d="M15 7v12"/>
+        <path d="M19 13v6"/>
+
+        </svg>
+
+        </div>
+
+        <div class="menu-title">IKPA</div>
+
+        <div class="menu-desc">
+        Indikator Kinerja Pelaksanaan Anggaran
+        </div>
+
         </div>
         """, unsafe_allow_html=True)
 
@@ -3931,10 +3950,28 @@ def page_dashboard():
     with col2:
         st.markdown("""
         <div class="menu-card">
-            <div class="menu-title">Digitalisasi</div>
-            <div class="menu-desc">
-            CMS • DIGIPAY • KKP
-            </div>
+
+        <div class="menu-icon">
+
+        <svg xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#059669"
+        stroke-width="2">
+
+        <rect x="3" y="5" width="18" height="14" rx="2"/>
+        <path d="M3 10h18"/>
+
+        </svg>
+
+        </div>
+
+        <div class="menu-title">Digitalisasi</div>
+
+        <div class="menu-desc">
+        CMS • DIGIPAY • KKP
+        </div>
+
         </div>
         """, unsafe_allow_html=True)
 
