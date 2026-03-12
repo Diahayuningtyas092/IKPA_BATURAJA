@@ -10417,22 +10417,20 @@ def page_admin():
 
 def show_loading_logo():
     
-    st.markdown("""
-    <div class="loading-container">
+    st.markdown(
+        """
+        <div style="display:flex;
+                    justify-content:center;
+                    align-items:center;
+                    height:70vh;">
 
-        <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png"
-             class="loading-logo">
+            <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png"
+                 style="width:320px;">
 
-        <div class="loading-title">
-            Dashboard IKPA
         </div>
-
-        <div class="loading-sub">
-            KPPN Baturaja
-        </div>
-
-    </div>
-    """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True
+    )
     
 
 st.markdown("""
