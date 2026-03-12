@@ -10416,10 +10416,16 @@ def page_admin():
 
 
 def show_loading_logo():
-    st.image(
-        "https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png",
-        width=320
+    
+    st.markdown(
+        """
+        <div style="display:flex;justify-content:center;align-items:center;height:70vh;">
+        <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png" width="500">
+        </div>
+        """,
+        unsafe_allow_html=True
     )
+    
 
 st.markdown("""
 <style>
