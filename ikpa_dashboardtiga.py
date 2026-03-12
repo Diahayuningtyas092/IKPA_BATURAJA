@@ -32,7 +32,7 @@ st.markdown("""
 }
 
 .loading-logo{
-    width:240px;
+    width:220px;
     margin-bottom:20px;
 }
 
@@ -10415,21 +10415,21 @@ def page_admin():
             st.success("Riwayat aktivitas berhasil dibersihkan.")
 
 
-def show_loading():
+def show_loading_logo():
     
     st.markdown("""
     <div class="loading-container">
 
-    <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png"
-    class="loading-logo">
+        <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png"
+        class="loading-logo">
 
-    <div class="loading-title">
-    Dashboard IKPA
-    </div>
+        <div class="loading-title">
+        Dashboard IKPA
+        </div>
 
-    <div class="loading-sub">
-    KPPN Baturaja
-    </div>
+        <div class="loading-sub">
+        KPPN Baturaja
+        </div>
 
     </div>
     """, unsafe_allow_html=True)
@@ -10475,11 +10475,14 @@ st.markdown("""
 # ===============================
 # MAIN APP
 # ===============================
-def main():
-    show_loading()
+def main(): 
+    loading_placeholder = st.empty()
 
-    with st.spinner("Memuat data sistem..."):
-        time.sleep(1)
+    with loading_placeholder.container():
+        show_loading_logo()
+
+    # setelah selesai loading
+    loading_placeholder.empty()
 
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
