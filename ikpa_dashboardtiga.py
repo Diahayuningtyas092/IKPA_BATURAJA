@@ -20,6 +20,15 @@ import time
 from st_aggrid import GridUpdateMode
 
 
+# ===============================
+# SISTEM NOTIFIKASI LOADING
+# ===============================
+def add_notification(msg):
+
+    if "loading_notifications" not in st.session_state:
+        st.session_state.loading_notifications = []
+
+    st.session_state.loading_notifications.append(msg)
 
 
 def render_table_pin_satker(df):
@@ -10385,15 +10394,6 @@ def page_admin():
             st.session_state.activity_log.clear()
             st.success("Riwayat aktivitas berhasil dibersihkan.")
 
-# ===============================
-# SISTEM NOTIFIKASI LOADING
-# ===============================
-def add_notification(msg):
-
-    if "loading_notifications" not in st.session_state:
-        st.session_state.loading_notifications = []
-
-    st.session_state.loading_notifications.append(msg)
 
 st.markdown("""
 <style>
