@@ -3915,26 +3915,12 @@ def page_dashboard():
     # IKPA
     # =========================
     with col1:
-
         st.markdown("""
         <div class="menu-card">
-
-            <div class="menu-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" 
-                fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#2563eb">
-
-                <path stroke-linecap="round" stroke-linejoin="round"
-                d="M3 3v18h18M7 14v4M11 10v8M15 6v12M19 12v6"/>
-
-                </svg>
-            </div>
-
             <div class="menu-title">IKPA</div>
-
             <div class="menu-desc">
             Indikator Kinerja Pelaksanaan Anggaran
             </div>
-
         </div>
         """, unsafe_allow_html=True)
 
@@ -3942,36 +3928,19 @@ def page_dashboard():
             st.session_state.main_menu = "IKPA"
 
 
-    # =========================
-    # DIGITALISASI
-    # =========================
     with col2:
-
         st.markdown("""
         <div class="menu-card">
-
-            <div class="menu-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" 
-                fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#059669">
-
-                <path stroke-linecap="round" stroke-linejoin="round"
-                d="M3 5h18M7 5v14M17 5v14M3 19h18"/>
-
-                </svg>
-            </div>
-
             <div class="menu-title">Digitalisasi</div>
-
             <div class="menu-desc">
             CMS • DIGIPAY • KKP
             </div>
-
         </div>
         """, unsafe_allow_html=True)
 
         if st.button("Buka Menu Digitalisasi", use_container_width=True):
             st.session_state.main_menu = "Digitalisasi"
-    
+        
     
     # ===============================
     # STOP DI SINI JIKA BELUM PILIH
