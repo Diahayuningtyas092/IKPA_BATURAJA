@@ -1230,7 +1230,6 @@ st.markdown("""
     border:1px solid rgba(0,0,0,0.05);
 
     text-align:center;
-
     transition:all 0.25s ease;
 }
 
@@ -1239,36 +1238,25 @@ st.markdown("""
     box-shadow:0 20px 40px rgba(0,0,0,0.15);
 }
 
-/* ICON */
 .menu-icon{
-    font-size:36px;
-    margin-bottom:10px;
+    width:48px;
+    height:48px;
+    margin:0 auto 12px auto;
 }
 
-/* TITLE */
 .menu-title{
     font-size:22px;
     font-weight:700;
-    color:#1f2937;
 }
 
-/* DESCRIPTION */
 .menu-desc{
     font-size:14px;
     color:#6b7280;
-    margin-top:6px;
-}
-
-/* BUTTON STYLE */
-.stButton > button{
-    border-radius:10px;
-    border:1px solid #d1d5db;
-    font-weight:600;
 }
 
 </style>
 """, unsafe_allow_html=True)
-
+# ====================================================================
 
 
 st.write("GitHub token loaded:", bool(st.secrets.get("GITHUB_TOKEN")))
@@ -3923,15 +3911,30 @@ def page_dashboard():
 
     col1, col2 = st.columns(2)
 
+    # =========================
+    # IKPA
+    # =========================
     with col1:
 
         st.markdown("""
         <div class="menu-card">
-            <div class="menu-icon">📊</div>
+
+            <div class="menu-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" 
+                fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#2563eb">
+
+                <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 3v18h18M7 14v4M11 10v8M15 6v12M19 12v6"/>
+
+                </svg>
+            </div>
+
             <div class="menu-title">IKPA</div>
+
             <div class="menu-desc">
             Indikator Kinerja Pelaksanaan Anggaran
             </div>
+
         </div>
         """, unsafe_allow_html=True)
 
@@ -3939,15 +3942,30 @@ def page_dashboard():
             st.session_state.main_menu = "IKPA"
 
 
+    # =========================
+    # DIGITALISASI
+    # =========================
     with col2:
 
         st.markdown("""
         <div class="menu-card">
-            <div class="menu-icon">💳</div>
+
+            <div class="menu-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" 
+                fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="#059669">
+
+                <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 5h18M7 5v14M17 5v14M3 19h18"/>
+
+                </svg>
+            </div>
+
             <div class="menu-title">Digitalisasi</div>
+
             <div class="menu-desc">
             CMS • DIGIPAY • KKP
             </div>
+
         </div>
         """, unsafe_allow_html=True)
 
