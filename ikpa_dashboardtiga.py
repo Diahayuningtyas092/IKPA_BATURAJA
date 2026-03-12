@@ -10423,6 +10423,14 @@ def show_loading_logo():
         <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png"
         class="loading-logo">
 
+        <div class="loading-title">
+        Dashboard IKPA
+        </div>
+
+        <div class="loading-sub">
+        KPPN Baturaja
+        </div>
+
     </div>
     """, unsafe_allow_html=True)
     
