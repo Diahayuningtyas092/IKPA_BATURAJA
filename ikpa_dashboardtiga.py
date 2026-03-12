@@ -20,6 +20,38 @@ import time
 from st_aggrid import GridUpdateMode
 
 
+st.markdown("""
+<style>
+
+.loading-container{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    height:80vh;
+    text-align:center;
+}
+
+.loading-logo{
+    width:220px;
+    margin-bottom:25px;
+}
+
+.loading-title{
+    font-size:28px;
+    font-weight:700;
+    color:#1e293b;
+}
+
+.loading-sub{
+    font-size:16px;
+    color:#64748b;
+    margin-top:5px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 # ===============================
 # SISTEM NOTIFIKASI LOADING
 # ===============================
@@ -2001,7 +2033,7 @@ def load_DATA_DIPA_from_github():
             st.warning(f"⚠️ DIPA {tahun} gagal diproses: {e}")
 
     if loaded_years:
-        add_notification("✅ DIPA berhasil dimuat: " + ", ".join(loaded_years))
+        add_notification("DIPA berhasil dimuat: " + ", ".join(loaded_years))
     else:
         st.error("❌ Tidak ada data DIPA yang dapat diproses.")
 
@@ -2346,7 +2378,7 @@ def load_kkp_master_from_github():
 load_success = load_kkp_master_from_github()
 
 if load_success:
-    add_notification("✅ Database utama KKP berhasil dimuat dari GitHub")
+    add_notification("Database utama KKP berhasil dimuat dari GitHub")
 else:
     st.info("ℹ️ Belum ada database utama KKP di GitHub")
 
@@ -8081,16 +8113,6 @@ def page_admin():
 
         st.warning("⚠️ Data belum siap atau perlu diproses")
 
-        # Tombol proses awal
-        if st.button("🔄 Load & Olah Data"):
-            with st.spinner(" Memuat & menggabungkan data..."):
-                st.session_state.ikpa_dipa_merged = False
-                load_DATA_DIPA_from_github()
-                load_data_from_github()
-                merge_ikpa_dipa_auto()
-            st.success("✅ Proses selesai")
-            st.rerun()
-
         # Reset hanya muncul kalau data ada tapi merge gagal
         if st.session_state.get("data_storage") or st.session_state.get("DATA_DIPA_by_year"):
             with st.expander(" Admin Lanjutan (Opsional)"):
@@ -10395,6 +10417,26 @@ def page_admin():
             st.success("Riwayat aktivitas berhasil dibersihkan.")
 
 
+def show_loading():
+    
+    st.markdown("""
+    <div class="loading-container">
+
+        <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png"
+        class="loading-logo">
+
+        <div class="loading-title">
+        Dashboard IKPA
+        </div>
+
+        <div class="loading-sub">
+        KPPN Baturaja
+        </div>
+
+    </div>
+    """, unsafe_allow_html=True)
+    
+
 st.markdown("""
 <style>
 
@@ -10436,6 +10478,10 @@ st.markdown("""
 # MAIN APP
 # ===============================
 def main():
+    show_loading()
+
+    with st.spinner("Memuat data sistem..."):
+        time.sleep(1)
 
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
