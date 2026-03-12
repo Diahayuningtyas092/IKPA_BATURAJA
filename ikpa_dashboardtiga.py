@@ -1149,59 +1149,78 @@ st.set_page_config(
     layout="wide"
 )
 
+st.set_page_config(
+    page_title="Dashboard IKPA",
+    layout="wide"
+)
+
+# ===============================
+# CSS DASHBOARD MODERN
+# ===============================
 st.markdown("""
 <style>
 
-/* HEADER AREA */
-.hero-header {
-    position: relative;
-    height: 360px;
-    border-radius: 16px;
-    overflow: hidden;
-    margin-bottom: 30px;
+/* HERO */
+.hero{
+    position:relative;
+    border-radius:20px;
+    overflow:hidden;
+    padding:60px 50px;
+    margin-bottom:40px;
 }
 
-/* BACKGROUND IMAGE */
-.hero-header::before {
-    content: "";
-    position: absolute;
-    inset: 0;
+.hero::before{
+    content:"";
+    position:absolute;
+    inset:0;
 
-    background-image: url("https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/kppn_backgound.png");
-    background-size: cover;
-    background-position: center;
+    background-image:url("https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/kppn_backgound.png");
+    background-size:cover;
+    background-position:center;
 
-    filter: blur(4px);
-    opacity: 0.35;
-
-    transform: scale(1.08);
+    filter:blur(4px);
+    opacity:0.35;
+    transform:scale(1.08);
 }
 
-/* CONTENT ABOVE IMAGE */
-.hero-content {
-    position: relative;
-    z-index: 2;
-    padding: 40px;
+.hero::after{
+    content:"";
+    position:absolute;
+    inset:0;
+    background:rgba(255,255,255,0.65);
+}
+
+.hero-content{
+    position:relative;
+    z-index:2;
+}
+
+/* MENU CARD */
+.menu-card{
+    background:white;
+    border-radius:18px;
+    padding:30px;
+    text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    transition:all 0.25s ease;
+}
+
+.menu-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 20px 40px rgba(0,0,0,0.15);
+}
+
+.menu-icon{
+    font-size:34px;
+}
+
+.menu-title{
+    font-size:20px;
+    font-weight:600;
 }
 
 </style>
 """, unsafe_allow_html=True)
-
-st.markdown('<div class="hero-header">', unsafe_allow_html=True)
-st.markdown('<div class="hero-content">', unsafe_allow_html=True)
-
-st.success("DIPA berhasil dimuat: 2022, 2023, 2024, 2025")
-st.success("Data IKPA & DIPA berhasil dimuat dan siap digunakan")
-st.success("1 file CMS berhasil dimuat")
-st.success("1 file DIGIPAY berhasil dimuat")
-st.success("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
-
-st.title("Dashboard Utama Kinerja Keuangan Satker Mitra KPPN Baturaja")
-
-st.subheader("Pilih Menu")
-
-st.markdown("</div>", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
 
 
 st.write("GitHub token loaded:", bool(st.secrets.get("GITHUB_TOKEN")))
@@ -3764,7 +3783,14 @@ def page_dashboard():
         st.info("🔄 Data baru dimuat, mempersiapkan grafik...")
         st.rerun()
 
-    st.title("Dashboard Utama Kinerja Keuangan Satker Mitra KPPN Baturaja")
+    st.markdown('<div class="hero">', unsafe_allow_html=True)
+    st.markdown('<div class="hero-content">', unsafe_allow_html=True)
+
+    st.title("Dashboard Utama Kinerja Keuangan")
+    st.subheader("Satker Mitra KPPN Baturaja")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown("""
     <style>
@@ -3850,11 +3876,30 @@ def page_dashboard():
     col1, col2 = st.columns(2)
 
     with col1:
-        if st.button("📊 IKPA", use_container_width=True):
+
+        st.markdown("""
+        <div class="menu-card">
+            <div class="menu-icon">📊</div>
+            <div class="menu-title">IKPA</div>
+            <div>Indikator Kinerja Pelaksanaan Anggaran</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("Buka Menu IKPA", key="btn_ikpa", use_container_width=True):
             st.session_state.main_menu = "IKPA"
 
+
     with col2:
-        if st.button("💻 Digitalisasi", use_container_width=True):
+
+        st.markdown("""
+        <div class="menu-card">
+            <div class="menu-icon">💻</div>
+            <div class="menu-title">Digitalisasi</div>
+            <div>CMS • DIGIPAY • KKP</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("Buka Menu Digitalisasi", key="btn_digital", use_container_width=True):
             st.session_state.main_menu = "Digitalisasi"
     
     
