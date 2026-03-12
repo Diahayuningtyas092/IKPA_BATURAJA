@@ -28,29 +28,27 @@ st.markdown("""
     flex-direction:column;
     align-items:center;
     justify-content:center;
-    height:80vh;
-    text-align:center;
+    height:70vh;
 }
 
 .loading-logo{
-    width:220px;
-    margin-bottom:25px;
+    width:240px;
+    margin-bottom:20px;
 }
 
 .loading-title{
     font-size:28px;
     font-weight:700;
-    color:#1e293b;
 }
 
 .loading-sub{
     font-size:16px;
     color:#64748b;
-    margin-top:5px;
 }
 
 </style>
 """, unsafe_allow_html=True)
+
 
 # ===============================
 # SISTEM NOTIFIKASI LOADING
@@ -10422,16 +10420,16 @@ def show_loading():
     st.markdown("""
     <div class="loading-container">
 
-        <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png"
-        class="loading-logo">
+    <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png"
+    class="loading-logo">
 
-        <div class="loading-title">
-        Dashboard IKPA
-        </div>
+    <div class="loading-title">
+    Dashboard IKPA
+    </div>
 
-        <div class="loading-sub">
-        KPPN Baturaja
-        </div>
+    <div class="loading-sub">
+    KPPN Baturaja
+    </div>
 
     </div>
     """, unsafe_allow_html=True)
