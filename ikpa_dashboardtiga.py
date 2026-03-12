@@ -3918,7 +3918,7 @@ def page_dashboard():
 
         <div class="menu-icon">
 
-        <svg xmlns="http://www.w3.org/2000/svg"
+        <svg xmlns="https://w1.pngwing.com/pngs/470/982/png-transparent-marketing-chart-symbol-sales-user-text-line-logo.png"
         viewBox="0 0 24 24"
         fill="none"
         stroke="#2563eb"
@@ -3953,7 +3953,7 @@ def page_dashboard():
 
         <div class="menu-icon">
 
-        <svg xmlns="http://www.w3.org/2000/svg"
+        <svg xmlns="https://png.pngtree.com/png-clipart/20220530/original/pngtree-cartoon-laptop-png-image_7770778.png"
         viewBox="0 0 24 24"
         fill="none"
         stroke="#059669"
