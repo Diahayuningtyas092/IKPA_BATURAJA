@@ -10423,14 +10423,6 @@ def show_loading_logo():
         <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png"
         class="loading-logo">
 
-        <div class="loading-title">
-        Dashboard IKPA
-        </div>
-
-        <div class="loading-sub">
-        KPPN Baturaja
-        </div>
-
     </div>
     """, unsafe_allow_html=True)
     
@@ -10475,14 +10467,12 @@ st.markdown("""
 # ===============================
 # MAIN APP
 # ===============================
-def main(): 
+def main():
+    
     loading_placeholder = st.empty()
 
     with loading_placeholder.container():
         show_loading_logo()
-
-    # setelah selesai loading
-    loading_placeholder.empty()
 
     # ============================================================
     # 1️⃣ LOAD REFERENCE DATA (SEKALI SAJA)
@@ -10629,6 +10619,8 @@ def main():
         st.session_state.get("auto_loaded_digipay")
     ):
         add_notification("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
+        
+    loading_placeholder.empty()
         
     # ===============================
     # PANEL STATUS SISTEM
