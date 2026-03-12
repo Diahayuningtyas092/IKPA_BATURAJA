@@ -20,44 +20,7 @@ import time
 from st_aggrid import GridUpdateMode
 
 
-st.markdown("""
-<style>
 
-/* HEADER BACKGROUND */
-.dashboard-hero {
-    position: relative;
-    height: 420px;
-    border-radius: 18px;
-    overflow: hidden;
-    margin-bottom: 30px;
-}
-
-/* GAMBAR BACKGROUND */
-.dashboard-hero::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-
-    background-image: url("https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/kppn_backgound.png");
-    background-size: cover;
-    background-position: center;
-
-    filter: blur(3px);
-    opacity: 0.45;
-
-    transform: scale(1.05);
-}
-
-/* KONTEN DI ATAS GAMBAR */
-.dashboard-hero-content {
-    position: relative;
-    z-index: 2;
-    padding: 40px;
-    color: #111827;
-}
-
-</style>
-""", unsafe_allow_html=True)
 
 def render_table_pin_satker(df):
     df = df.copy()
@@ -1185,6 +1148,60 @@ st.set_page_config(
     page_icon="📊",
     layout="wide"
 )
+
+st.markdown("""
+<style>
+
+/* HEADER AREA */
+.hero-header {
+    position: relative;
+    height: 360px;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 30px;
+}
+
+/* BACKGROUND IMAGE */
+.hero-header::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+
+    background-image: url("https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/kppn_backgound.png");
+    background-size: cover;
+    background-position: center;
+
+    filter: blur(4px);
+    opacity: 0.35;
+
+    transform: scale(1.08);
+}
+
+/* CONTENT ABOVE IMAGE */
+.hero-content {
+    position: relative;
+    z-index: 2;
+    padding: 40px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown('<div class="hero-header">', unsafe_allow_html=True)
+st.markdown('<div class="hero-content">', unsafe_allow_html=True)
+
+st.success("DIPA berhasil dimuat: 2022, 2023, 2024, 2025")
+st.success("Data IKPA & DIPA berhasil dimuat dan siap digunakan")
+st.success("1 file CMS berhasil dimuat")
+st.success("1 file DIGIPAY berhasil dimuat")
+st.success("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
+
+st.title("Dashboard Utama Kinerja Keuangan Satker Mitra KPPN Baturaja")
+
+st.subheader("Pilih Menu")
+
+st.markdown("</div>", unsafe_allow_html=True)
+st.markdown("</div>", unsafe_allow_html=True)
 
 
 st.write("GitHub token loaded:", bool(st.secrets.get("GITHUB_TOKEN")))
