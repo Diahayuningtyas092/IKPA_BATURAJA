@@ -32,17 +32,17 @@ st.markdown("""
 }
 
 .loading-logo{
-    width:220px;
+    width:280px;
     margin-bottom:20px;
 }
 
 .loading-title{
-    font-size:28px;
+    font-size:40px;
     font-weight:700;
 }
 
 .loading-sub{
-    font-size:16px;
+    font-size:40px;
     color:#64748b;
 }
 
@@ -10421,14 +10421,14 @@ def show_loading_logo():
     <div class="loading-container">
 
         <img src="https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/logo_kppn_baturaja.png"
-        class="loading-logo">
+             class="loading-logo">
 
         <div class="loading-title">
-        Dashboard IKPA
+            Dashboard IKPA
         </div>
 
         <div class="loading-sub">
-        KPPN Baturaja
+            KPPN Baturaja
         </div>
 
     </div>
