@@ -1217,6 +1217,50 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+st.markdown("""
+<style>
+
+/* MENU CARD */
+.menu-card{
+    background:white;
+    border-radius:18px;
+    padding:30px;
+    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    border:1px solid rgba(0,0,0,0.05);
+    transition:all 0.25s ease;
+}
+
+/* HOVER */
+.menu-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 20px 40px rgba(0,0,0,0.15);
+}
+
+/* TITLE */
+.menu-title{
+    font-size:22px;
+    font-weight:700;
+    color:#1f2937;
+}
+
+/* DESCRIPTION */
+.menu-desc{
+    font-size:14px;
+    color:#6b7280;
+    margin-top:5px;
+}
+
+/* BUTTON */
+.stButton>button{
+    border-radius:10px;
+    border:1px solid #d1d5db;
+    background:white;
+    font-weight:600;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 
 st.write("GitHub token loaded:", bool(st.secrets.get("GITHUB_TOKEN")))
@@ -3875,13 +3919,14 @@ def page_dashboard():
 
         st.markdown("""
         <div class="menu-card">
-            <div class="menu-icon">📊</div>
             <div class="menu-title">IKPA</div>
-            <div>Indikator Kinerja Pelaksanaan Anggaran</div>
+            <div class="menu-desc">
+            Indikator Kinerja Pelaksanaan Anggaran
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("Buka Menu IKPA", key="btn_ikpa", use_container_width=True):
+        if st.button("Buka Menu IKPA", use_container_width=True):
             st.session_state.main_menu = "IKPA"
 
 
@@ -3889,13 +3934,14 @@ def page_dashboard():
 
         st.markdown("""
         <div class="menu-card">
-            <div class="menu-icon">💻</div>
             <div class="menu-title">Digitalisasi</div>
-            <div>CMS • DIGIPAY • KKP</div>
+            <div class="menu-desc">
+            CMS • DIGIPAY • KKP
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("Buka Menu Digitalisasi", key="btn_digital", use_container_width=True):
+        if st.button("Buka Menu Digitalisasi", use_container_width=True):
             st.session_state.main_menu = "Digitalisasi"
     
     
