@@ -1258,9 +1258,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 # ====================================================================
 
-
-st.write("GitHub token loaded:", bool(st.secrets.get("GITHUB_TOKEN")))
-
 def extract_kode_from_satker_field(s, width=6):
     """
     Jika kolom 'Satker' mengandung '001234 – NAMA SATKER', ambil angka di awal.
@@ -1995,7 +1992,7 @@ def load_DATA_DIPA_from_github():
             st.warning(f"⚠️ DIPA {tahun} gagal diproses: {e}")
 
     if loaded_years:
-        st.success("✅ DIPA berhasil dimuat: " + ", ".join(loaded_years))
+        add_notification("✅ DIPA berhasil dimuat: " + ", ".join(loaded_years))
     else:
         st.error("❌ Tidak ada data DIPA yang dapat diproses.")
 
@@ -2340,7 +2337,7 @@ def load_kkp_master_from_github():
 load_success = load_kkp_master_from_github()
 
 if load_success:
-    st.success("✅ Database utama KKP berhasil dimuat dari GitHub")
+    add_notification("✅ Database utama KKP berhasil dimuat dari GitHub")
 else:
     st.info("ℹ️ Belum ada database utama KKP di GitHub")
 
@@ -7256,7 +7253,7 @@ def menu_highlights():
         st.warning("⚠️ Data kosong pada rentang periode tersebut.")
         return
 
-    st.success(f"Data IKPA KPPN dimuat ({len(df_all)} baris)")
+    add_notification(f"Data IKPA KPPN dimuat ({len(df_all)} baris)")
     
 
     # ===============================
@@ -8065,7 +8062,7 @@ def page_admin():
     # ============================================================
     if st.session_state.get("ikpa_dipa_merged", False):
 
-        st.success(" Data IKPA & DIPA sudah siap digunakan dan merge berhasil")
+        add_notification(" Data IKPA & DIPA sudah siap digunakan dan merge berhasil")
         st.caption("Tidak diperlukan proses atau tindakan Admin")
 
     # ============================================================
@@ -8837,7 +8834,7 @@ def page_admin():
                     st.success(f"✅ Data Referensi diperbarui ({len(merged)} total baris).")
                 else:
                     st.session_state.reference_df = new_ref
-                    st.success(f"✅ Data Referensi baru dimuat ({len(new_ref)} baris).")
+                    add_notification(f"✅ Data Referensi baru dimuat ({len(new_ref)} baris).")
 
                 # ============================================================
                 # 🔄 RE-APPLY REFERENSI KE SEMUA DATA IKPA (INI KUNCINYA)
@@ -10326,7 +10323,7 @@ def page_admin():
         try:
             df_ref, repo, existing_file = load_template_referensi_from_github()
 
-            st.success("✅ Data referensi berhasil dimuat dari GitHub")
+            add_notification("✅ Data referensi berhasil dimuat dari GitHub")
 
             # ============================
             # CONVERT TO EXCEL (IN-MEMORY)
