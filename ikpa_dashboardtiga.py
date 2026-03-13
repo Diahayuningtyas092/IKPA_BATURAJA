@@ -1199,45 +1199,60 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* SIDEBAR MENU BUTTON */
+/* SIDEBAR BUTTON */
 section[data-testid="stSidebar"] div.stButton > button{
 
     width:100%;
+    text-align:left;
 
-    background:#e6f2f5;
+    padding:12px 14px;
+
+    border-radius:10px;
 
     border:none;
 
-    border-radius:6px;
-
-    text-align:left;
-
-    padding:10px 12px;
-
-    font-size:15px;
+    background:#eef6f8;
 
     color:#0f4c5c;
 
-    height:auto;
+    font-size:15px;
+
+    transition:all 0.2s ease;
 
 }
 
 /* HOVER EFFECT */
 section[data-testid="stSidebar"] div.stButton > button:hover{
 
-    background:#d0e7ec;
+    background:#d6ebf0;
+
+    transform:translateX(4px);
 
 }
 
-/* JARAK ANTAR MENU */
-section[data-testid="stSidebar"] div.stButton{
+/* ACTIVE MENU */
+.sidebar-active{
 
-    margin-bottom:6px;
+    background:#bfe3ec !important;
+
+    font-weight:600;
+
+}
+
+/* SIDEBAR INFO CARD */
+section[data-testid="stSidebar"] .stAlert{
+
+    border-radius:14px;
+
+    background:#e8f0fe;
+
+    border:none;
 
 }
 
 </style>
 """, unsafe_allow_html=True)
+
 
 # =========================================================
 st.markdown("""
@@ -10706,6 +10721,7 @@ def main():
     if "page" not in st.session_state:
         st.session_state.page = "Dashboard Utama"
 
+    # MENU
     if st.sidebar.button("📊 Dashboard Utama", use_container_width=True):
         st.session_state.page = "Dashboard Utama"
 
@@ -10717,6 +10733,7 @@ def main():
 
     st.sidebar.markdown("---")
 
+    # INFO CARD
     st.sidebar.info("""
     **Dashboard IKPA**  
     Indikator Kinerja Pelaksanaan Anggaran  
@@ -10724,16 +10741,18 @@ def main():
 
     📧 Support: ameer.noor@kemenkeu.go.id
     """)
+
+
     # ===============================
-    # 🔹 Routing Halaman
+    # Routing Halaman
     # ===============================
-    if st.session_state.page == "📊 Dashboard Utama":
+    if st.session_state.page == "Dashboard Utama":
         page_dashboard()
 
-    elif st.session_state.page == "📈 Dashboard Internal":
+    elif st.session_state.page == "Dashboard Internal":
         page_trend()
 
-    elif st.session_state.page == "🔐 Admin":
+    elif st.session_state.page == "Admin":
         page_admin()
 
 # ===============================
