@@ -1195,6 +1195,22 @@ st.set_page_config(
     layout="wide"
 )
 
+st.markdown("""
+<style>
+
+/* HILANGKAN MARGIN ATAS STREAMLIT */
+.block-container{
+    padding-top:1rem;
+}
+
+/* hilangkan header kosong */
+header[data-testid="stHeader"]{
+    height:0;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
 
 # ===============================
 # CSS DASHBOARD MODERN
@@ -1207,8 +1223,9 @@ st.markdown("""
     position:relative;
     border-radius:22px;
     overflow:hidden;
-    padding:120px 60px;
-    margin-bottom:40px;
+
+    padding:240px 60px;     /* diperbesar (sebelumnya 120px) */
+    margin-bottom:30px;
 }
 
 /* BACKGROUND IMAGE */
@@ -1222,9 +1239,9 @@ st.markdown("""
     background-size:cover;
     background-position:center;
 
-    filter:blur(2px);          /* blur lebih kecil */
-    opacity:0.55;              /* transparansi */
-    transform:scale(1.15);     /* supaya gambar lebih besar */
+    filter:blur(0.5px);      /* blur jauh dikurangi */
+    opacity:0.85;            /* gambar lebih jelas */
+    transform:scale(1.1);
 }
 
 /* LIGHT OVERLAY */
@@ -1232,7 +1249,7 @@ st.markdown("""
     content:"";
     position:absolute;
     inset:0;
-    background:rgba(255,255,255,0.35);
+    background:rgba(255,255,255,0.15);   /* overlay lebih ringan */
 }
 
 /* TEXT CONTENT */
@@ -1257,6 +1274,7 @@ st.markdown("""
 
 </style>
 """, unsafe_allow_html=True)
+
 
 # ========================================================
 st.markdown("""
@@ -1297,6 +1315,7 @@ st.markdown("""
 
 </style>
 """, unsafe_allow_html=True)
+
 # ====================================================================
 
 def extract_kode_from_satker_field(s, width=6):
@@ -10634,17 +10653,38 @@ def main():
     if st.session_state.show_system_status and "loading_notifications" in st.session_state:
 
         st.markdown("""
-        <div class="system-status">
+        <style>
 
-        <div class="system-title">
-        System Status
-        </div>
+        /* SYSTEM STATUS BOX */
+        .system-status{
+            background:#f1f5f9;
+            border-radius:10px;
+            border:1px solid #e2e8f0;
 
-        <div class="status-item">
-        <span class="status-ok">●</span> Sistem berhasil dimuat dan siap digunakan
-        </div>
+            padding:10px 16px;   /* sebelumnya lebih besar */
+            margin-bottom:8px;   /* lebih rapat ke elemen bawah */
+        }
 
-        </div>
+        /* JUDUL */
+        .system-title{
+            font-size:15px;      /* sebelumnya sekitar 18-20 */
+            font-weight:600;
+            margin-bottom:3px;
+        }
+
+        /* TEXT STATUS */
+        .status-item{
+            font-size:13px;
+            line-height:1.4;
+        }
+
+        /* DOT HIJAU */
+        .status-ok{
+            color:#16a34a;
+            margin-right:6px;
+        }
+
+        </style>
         """, unsafe_allow_html=True)
 
         with st.expander("Detail proses loading sistem"):
