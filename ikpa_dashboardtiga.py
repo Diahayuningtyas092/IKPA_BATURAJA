@@ -1279,40 +1279,44 @@ st.markdown("""
 st.markdown("""
 <style>
 
-.menu-card{
-    background:white;
+/* MENU CARD */
+div.stButton > button {
+
+    height:240px;
+
     border-radius:22px;
-    padding:70px 40px;
+
     border:1px solid #e2e8f0;
 
-    text-align:center;
+    background:white;
 
-    box-shadow:0 10px 25px rgba(0,0,0,0.08);
+    font-size:26px;
+    font-weight:700;
+
+    color:#1e293b;
+
+    line-height:1.6;
+
+    box-shadow:0 10px 30px rgba(0,0,0,0.08);
 
     transition:all 0.25s ease;
 }
 
-.menu-card:hover{
-    transform:translateY(-8px);
-    border:1px solid #93c5fd;
-    box-shadow:0 18px 40px rgba(59,130,246,0.25);
+/* HOVER EFFECT */
+div.stButton > button:hover {
+
+    transform:translateY(-10px);
+
+    border:1px solid #60a5fa;
+
+    box-shadow:0 20px 45px rgba(59,130,246,0.25);
+
     background:linear-gradient(180deg,#ffffff,#f0f9ff);
 }
 
-.menu-icon{
-    font-size:55px;
-    margin-bottom:18px;
-}
-
-.menu-title{
-    font-size:30px;
-    font-weight:700;
-    color:#1e293b;
-}
-
-.menu-desc{
-    font-size:16px;
-    color:#64748b;
+/* ICON STYLE */
+div.stButton > button:before {
+    font-size:60px;
 }
 
 </style>
@@ -3895,38 +3899,22 @@ def page_dashboard():
     col1, col2 = st.columns(2)
     with col1:
 
-        if st.button("", key="ikpa_card", use_container_width=True):
-
+        if st.button(
+            "📊\n\nIKPA\n\nIndikator Kinerja Pelaksanaan Anggaran",
+            use_container_width=True
+        ):
             st.session_state.main_menu = "IKPA"
             st.rerun()
-
-        st.markdown("""
-        <div class="menu-card">
-            <div class="menu-icon">📊</div>
-            <div class="menu-title">IKPA</div>
-            <div class="menu-desc">
-            Indikator Kinerja Pelaksanaan Anggaran
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
 
 
     with col2:
 
-        if st.button("", key="digital_card", use_container_width=True):
-
+        if st.button(
+            "💳\n\nDigitalisasi\n\nCMS • DIGIPAY • KKP",
+            use_container_width=True
+        ):
             st.session_state.main_menu = "Digitalisasi"
             st.rerun()
-
-        st.markdown("""
-        <div class="menu-card">
-            <div class="menu-icon">💳</div>
-            <div class="menu-title">Digitalisasi</div>
-            <div class="menu-desc">
-            CMS • DIGIPAY • KKP
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
     
     # ===============================
     # STOP DI SINI JIKA BELUM PILIH
