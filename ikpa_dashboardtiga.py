@@ -1280,38 +1280,57 @@ st.markdown("""
 st.markdown("""
 <style>
 
-/* CARD MENU BUTTON */
-.menu-card button{
+/* CARD MENU */
+.menu-card{
+    background:white;
+    border-radius:22px;
+    padding:70px 40px;
+    border:1px solid #e2e8f0;
 
-    height:220px !important;
+    text-align:center;
 
-    border-radius:22px !important;
+    box-shadow:0 10px 25px rgba(0,0,0,0.08);
 
-    border:1px solid #e2e8f0 !important;
-
-    background:white !important;
-
-    font-size:22px !important;
-
-    font-weight:700 !important;
-
-    color:#1e293b !important;
-
-    box-shadow:0 10px 25px rgba(0,0,0,0.08) !important;
-
-    transition:all 0.25s ease !important;
+    transition:all 0.25s ease;
 }
 
 /* HOVER */
-.menu-card button:hover{
-
+.menu-card:hover{
     transform:translateY(-8px);
+    border:1px solid #93c5fd;
+    box-shadow:0 18px 40px rgba(59,130,246,0.25);
+    background:linear-gradient(180deg,#ffffff,#f0f9ff);
+}
 
-    border:1px solid #93c5fd !important;
+/* ICON */
+.menu-icon{
+    font-size:55px;
+    margin-bottom:18px;
+}
 
-    box-shadow:0 18px 40px rgba(59,130,246,0.25) !important;
+/* TITLE */
+.menu-title{
+    font-size:30px;
+    font-weight:700;
+    color:#1e293b;
+}
 
-    background:linear-gradient(180deg,#ffffff,#f0f9ff) !important;
+/* DESC */
+.menu-desc{
+    font-size:16px;
+    color:#64748b;
+}
+
+/* TOMBOL TRANSPARAN UNTUK CARD */
+.card-click button{
+    position:absolute;
+    inset:0;
+    background:transparent !important;
+    border:none !important;
+}
+
+.card-container{
+    position:relative;
 }
 
 </style>
@@ -3893,33 +3912,50 @@ def page_dashboard():
     st.markdown('<div class="menu-header">Pilih Menu</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
-
     with col1:
 
-        st.markdown('<div class="menu-card">', unsafe_allow_html=True)
+        st.markdown('<div class="card-container">', unsafe_allow_html=True)
 
-        if st.button("📊  \n\nIKPA  \n\nIndikator Kinerja Pelaksanaan Anggaran",
-                    key="ikpa_menu",
-                    use_container_width=True):
+        st.markdown("""
+        <div class="menu-card">
+            <div class="menu-icon">📊</div>
+            <div class="menu-title">IKPA</div>
+            <div class="menu-desc">
+            Indikator Kinerja Pelaksanaan Anggaran
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
+        st.markdown('<div class="card-click">', unsafe_allow_html=True)
+
+        if st.button("", key="ikpa_card"):
             st.session_state.main_menu = "IKPA"
             st.rerun()
 
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div></div>', unsafe_allow_html=True)
 
 
     with col2:
 
-        st.markdown('<div class="menu-card">', unsafe_allow_html=True)
+        st.markdown('<div class="card-container">', unsafe_allow_html=True)
 
-        if st.button("💳  \n\nDigitalisasi  \n\nCMS • DIGIPAY • KKP",
-                    key="digital_menu",
-                    use_container_width=True):
+        st.markdown("""
+        <div class="menu-card">
+            <div class="menu-icon">💳</div>
+            <div class="menu-title">Digitalisasi</div>
+            <div class="menu-desc">
+            CMS • DIGIPAY • KKP
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
+        st.markdown('<div class="card-click">', unsafe_allow_html=True)
+
+        if st.button("", key="digital_card"):
             st.session_state.main_menu = "Digitalisasi"
             st.rerun()
 
-        st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div></div>', unsafe_allow_html=True)
         
     # ===============================
     # STOP DI SINI JIKA BELUM PILIH
