@@ -1239,18 +1239,30 @@ section[data-testid="stSidebar"] div.stButton{
 </style>
 """, unsafe_allow_html=True)
 
-
+# =========================================================
 st.markdown("""
 <style>
 
-/* HILANGKAN MARGIN ATAS STREAMLIT */
+/* Hilangkan padding container utama */
 .block-container{
-    padding-top:0rem;
+    padding-top:0rem !important;
 }
 
-/* hilangkan header kosong */
+/* Hilangkan space dari header Streamlit */
 header[data-testid="stHeader"]{
-    height:0;
+    height:0px !important;
+    min-height:0px !important;
+}
+
+/* Hilangkan padding pada main section */
+section.main > div{
+    padding-top:0rem !important;
+    margin-top:0rem !important;
+}
+
+/* Jika masih ada jarak dari element pertama */
+div[data-testid="stVerticalBlock"] > div:first-child{
+    margin-top:0rem !important;
 }
 
 </style>
@@ -1300,7 +1312,7 @@ section.main > div{
 
     background-size:cover;
 
-    background-position:top center 40%;
+    background-position:center 40%;
 
     filter:blur(0.5px);
     opacity:0.9;
