@@ -1280,43 +1280,44 @@ st.markdown("""
 st.markdown("""
 <style>
 
-/* MENU BUTTON JADI CARD */
-div.menu-card-button > button{
+/* CARD MENU BUTTON */
+.menu-card button{
 
-    height:220px;
-    border-radius:22px;
+    height:220px !important;
 
-    border:1px solid #e2e8f0;
+    border-radius:22px !important;
 
-    background:white;
+    border:1px solid #e2e8f0 !important;
 
-    font-size:22px;
-    font-weight:700;
+    background:white !important;
 
-    color:#1e293b;
+    font-size:22px !important;
 
-    box-shadow:0 10px 25px rgba(0,0,0,0.08);
+    font-weight:700 !important;
 
-    transition:all 0.25s ease;
+    color:#1e293b !important;
+
+    box-shadow:0 10px 25px rgba(0,0,0,0.08) !important;
+
+    transition:all 0.25s ease !important;
 }
 
-/* HOVER EFFECT */
-div.menu-card-button > button:hover{
+/* HOVER */
+.menu-card button:hover{
 
     transform:translateY(-8px);
 
-    border:1px solid #93c5fd;
+    border:1px solid #93c5fd !important;
 
-    box-shadow:0 18px 40px rgba(59,130,246,0.25);
+    box-shadow:0 18px 40px rgba(59,130,246,0.25) !important;
 
-    background:linear-gradient(180deg,#ffffff,#f0f9ff);
+    background:linear-gradient(180deg,#ffffff,#f0f9ff) !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 # ====================================================================
-
 def extract_kode_from_satker_field(s, width=6):
     """
     Jika kolom 'Satker' mengandung '001234 – NAMA SATKER', ambil angka di awal.
@@ -3892,10 +3893,15 @@ def page_dashboard():
     st.markdown('<div class="menu-header">Pilih Menu</div>', unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('<div class="menu-card-button">', unsafe_allow_html=True)
 
-        if st.button("📊\n\nIKPA\n\nIndikator Kinerja Pelaksanaan Anggaran", use_container_width=True):
+    with col1:
+
+        st.markdown('<div class="menu-card">', unsafe_allow_html=True)
+
+        if st.button("📊  \n\nIKPA  \n\nIndikator Kinerja Pelaksanaan Anggaran",
+                    key="ikpa_menu",
+                    use_container_width=True):
+
             st.session_state.main_menu = "IKPA"
             st.rerun()
 
@@ -3903,14 +3909,18 @@ def page_dashboard():
 
 
     with col2:
-        st.markdown('<div class="menu-card-button">', unsafe_allow_html=True)
 
-        if st.button("💳\n\nDigitalisasi\n\nCMS • DIGIPAY • KKP", use_container_width=True):
+        st.markdown('<div class="menu-card">', unsafe_allow_html=True)
+
+        if st.button("💳  \n\nDigitalisasi  \n\nCMS • DIGIPAY • KKP",
+                    key="digital_menu",
+                    use_container_width=True):
+
             st.session_state.main_menu = "Digitalisasi"
             st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)
-    
+        
     # ===============================
     # STOP DI SINI JIKA BELUM PILIH
     # ===============================
