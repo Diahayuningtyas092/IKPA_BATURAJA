@@ -10649,11 +10649,26 @@ def main():
     if "page" not in st.session_state:
         st.session_state.page = "📊 Dashboard Utama"
 
-    selected_page = st.sidebar.radio(
-        "Pilih Halaman",
-        options=["📊 Dashboard Utama", "📈 Dashboard Internal", "🔐 Admin"],
-        key="page"
-    )
+    # ===============================
+    # Sidebar Navigation Menu
+    # ===============================
+    st.sidebar.markdown("---")
+
+    if st.sidebar.button("📊 Dashboard Utama", use_container_width=True):
+        st.session_state.page = "📊 Dashboard Utama"
+
+    st.sidebar.markdown("---")
+
+    if st.sidebar.button("📈 Dashboard Internal", use_container_width=True):
+        st.session_state.page = "📈 Dashboard Internal"
+
+    st.sidebar.markdown("---")
+
+    if st.sidebar.button("🔐 Admin", use_container_width=True):
+        st.session_state.page = "🔐 Admin"
+
+    st.sidebar.markdown("---")
+        
 
     st.sidebar.markdown("---")
     st.sidebar.info("""
