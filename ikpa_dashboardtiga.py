@@ -1280,39 +1280,30 @@ st.markdown("""
 st.markdown("""
 <style>
 
-/* TITLE */
-.menu-header{
-    font-size:32px;
-    font-weight:700;
-    margin-bottom:20px;
-    color:#1f2937;
-}
-
-/* CARD */
+/* MENU CARD */
 .menu-card{
     background:white;
     border-radius:22px;
-
-    padding:50px 40px;
+    padding:45px 40px;
 
     border:1px solid rgba(0,0,0,0.05);
-
-    box-shadow:0 12px 30px rgba(0,0,0,0.08);
+    box-shadow:0 10px 25px rgba(0,0,0,0.08);
 
     text-align:center;
 
     transition:all 0.25s ease;
+    cursor:pointer;
 }
 
-/* HOVER EFFECT */
+/* HOVER */
 .menu-card:hover{
-    transform:translateY(-8px);
-    box-shadow:0 20px 45px rgba(0,0,0,0.15);
+    transform:translateY(-6px);
+    box-shadow:0 20px 40px rgba(0,0,0,0.15);
 }
 
 /* ICON */
 .menu-icon{
-    font-size:46px;
+    font-size:48px;
     margin-bottom:14px;
 }
 
@@ -1320,10 +1311,9 @@ st.markdown("""
 .menu-title{
     font-size:26px;
     font-weight:700;
-    margin-bottom:6px;
 }
 
-/* DESCRIPTION */
+/* DESC */
 .menu-desc{
     font-size:15px;
     color:#6b7280;
@@ -3901,81 +3891,6 @@ def page_dashboard():
     st.markdown('</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
     
-    st.markdown("""
-    <style>
-    /* Warna tombol popover */
-    div[data-testid="stPopover"] button {
-        background-color: #FFF9E6 !important;
-        border: 1px solid #E6C200 !important;
-        color: #664400 !important;
-    }
-    div[data-testid="stPopover"] button:hover {
-        background-color: #FFE4B5 !important;
-        color: black !important;
-    }
-    button[data-testid="baseButton"][kind="popover"] {
-        background-color: #FFF9E6 !important;
-        border: 1px solid #E6C200 !important;
-        color: #664400 !important;
-    }
-    button[data-testid="baseButton"][kind="popover"]:hover {
-        background-color: #FFE4B5 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    
-    
-    st.markdown("""
-    <style>
-
-    /* Base button */
-    div.stButton > button {
-        height: 95px;
-        border-radius: 20px;
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
-        font-size: 18px;
-        font-weight: 600;
-        color: #1e293b;
-        transition: all 0.25s ease;
-    }
-
-    /* Hover effect */
-    div.stButton > button:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 10px 25px rgba(59,130,246,0.15);
-        border: 1px solid #93c5fd;
-    }
-
-    /* IKPA active */
-    %s
-
-    /* Digitalisasi active */
-    %s
-
-    </style>
-    """ % (
-
-    """
-    div[data-testid="column"]:nth-of-type(1) div.stButton > button {
-        background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important;
-        border: 1px solid #7dd3fc !important;
-        color: #0c4a6e !important;
-        box-shadow: 0 10px 25px rgba(59,130,246,0.25);
-    }
-    """ if st.session_state.get("main_menu") == "IKPA" else "",
-
-    """
-    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
-        background: linear-gradient(135deg, #e0f2fe, #bae6fd) !important;
-        border: 1px solid #7dd3fc !important;
-        color: #0c4a6e !important;
-        box-shadow: 0 10px 25px rgba(59,130,246,0.25);
-    }
-    """ if st.session_state.get("main_menu") == "Digitalisasi" else ""
-
-    ), unsafe_allow_html=True)
     
 
     if "main_menu" not in st.session_state:
@@ -3986,6 +3901,12 @@ def page_dashboard():
     col1, col2 = st.columns(2)
 
     with col1:
+
+        if st.button("ikpa_card", key="ikpa_card", use_container_width=True):
+
+            st.session_state.menu = "IKPA"
+            st.rerun()
+
         st.markdown("""
         <div class="menu-card">
             <div class="menu-icon">📊</div>
@@ -3996,12 +3917,14 @@ def page_dashboard():
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("Buka Menu IKPA"):
-            st.session_state.menu = "IKPA"
-            st.rerun()
-
 
     with col2:
+
+        if st.button("digital_card", key="digital_card", use_container_width=True):
+
+            st.session_state.menu = "Digitalisasi"
+            st.rerun()
+
         st.markdown("""
         <div class="menu-card">
             <div class="menu-icon">💳</div>
@@ -4011,11 +3934,6 @@ def page_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-
-        if st.button("Buka Menu Digitalisasi"):
-            st.session_state.menu = "Digitalisasi"
-            st.rerun()
-    
     
     # ===============================
     # STOP DI SINI JIKA BELUM PILIH
