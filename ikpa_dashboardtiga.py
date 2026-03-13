@@ -10471,6 +10471,10 @@ st.markdown("""
 # ===============================
 def main():
     
+    # flag aplikasi baru dibuka
+    if "show_system_status" not in st.session_state:
+        st.session_state.show_system_status = True
+    
     loading_placeholder = st.empty()
 
     with loading_placeholder.container():
@@ -10623,11 +10627,7 @@ def main():
         add_notification("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
         
     loading_placeholder.empty()
-    
-    # flag untuk menampilkan system status hanya sekali
-    if "show_system_status" not in st.session_state:
-        st.session_state.show_system_status = True
-        
+
     # ===============================
     # PANEL STATUS SISTEM
     # ===============================
