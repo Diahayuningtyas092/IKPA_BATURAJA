@@ -1284,39 +1284,34 @@ st.markdown("""
 .menu-card{
     background:white;
     border-radius:22px;
-    padding:55px 40px;
+    padding:70px 40px;
 
     border:1px solid #e2e8f0;
 
     text-align:center;
 
-    box-shadow:0 8px 25px rgba(0,0,0,0.08);
+    box-shadow:0 10px 25px rgba(0,0,0,0.08);
 
     transition:all 0.25s ease;
-
-    cursor:pointer;
 }
 
-/* HOVER EFFECT */
+/* HOVER */
 .menu-card:hover{
     transform:translateY(-8px);
-
     border:1px solid #93c5fd;
-
     box-shadow:0 18px 40px rgba(59,130,246,0.25);
-
     background:linear-gradient(180deg,#ffffff,#f0f9ff);
 }
 
 /* ICON */
 .menu-icon{
-    font-size:52px;
-    margin-bottom:16px;
+    font-size:55px;
+    margin-bottom:18px;
 }
 
 /* TITLE */
 .menu-title{
-    font-size:28px;
+    font-size:30px;
     font-weight:700;
     color:#1e293b;
 }
@@ -1325,6 +1320,21 @@ st.markdown("""
 .menu-desc{
     font-size:16px;
     color:#64748b;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# =====================================================================
+st.markdown("""
+<style>
+
+/* HILANGKAN STYLE BUTTON */
+div.stButton > button{
+    background:transparent;
+    border:none;
+    height:0;
+    padding:0;
 }
 
 </style>
@@ -3910,7 +3920,7 @@ def page_dashboard():
 
     with col1:
 
-        if st.button("IKPA", key="menu_ikpa", use_container_width=True):
+        if st.button("", key="ikpa_card", use_container_width=True):
 
             st.session_state.main_menu = "IKPA"
             st.rerun()
@@ -3928,7 +3938,7 @@ def page_dashboard():
 
     with col2:
 
-        if st.button("Digitalisasi", key="menu_digital", use_container_width=True):
+        if st.button("", key="digital_card", use_container_width=True):
 
             st.session_state.main_menu = "Digitalisasi"
             st.rerun()
