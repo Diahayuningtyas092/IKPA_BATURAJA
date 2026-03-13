@@ -10623,11 +10623,15 @@ def main():
         add_notification("Data CMS & DIGIPAY berhasil dimuat dan siap digunakan")
         
     loading_placeholder.empty()
+    
+    # flag untuk menampilkan system status hanya sekali
+    if "show_system_status" not in st.session_state:
+        st.session_state.show_system_status = True
         
     # ===============================
     # PANEL STATUS SISTEM
     # ===============================
-    if "loading_notifications" in st.session_state:
+    if st.session_state.show_system_status and "loading_notifications" in st.session_state:
 
         st.markdown("""
         <div class="system-status">
@@ -10652,6 +10656,8 @@ def main():
                 <span class="status-ok">●</span> {msg}
                 </div>
                 """, unsafe_allow_html=True)
+        
+        st.session_state.show_system_status = False
             
             
     # ============================================================
