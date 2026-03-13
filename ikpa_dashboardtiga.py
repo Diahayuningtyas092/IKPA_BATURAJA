@@ -3996,24 +3996,25 @@ def page_dashboard():
         </div>
         """, unsafe_allow_html=True)
 
-        if st.button("Buka Menu IKPA", use_container_width=True):
-            st.session_state.main_menu = "IKPA"
+        if st.button("Buka Menu IKPA"):
+            st.session_state.menu = "IKPA"
+            st.rerun()
 
 
-        with col2:
-            st.markdown("""
-            <div class="menu-card">
-                <div class="menu-icon">💳</div>
-                <div class="menu-title">Digitalisasi</div>
-                <div class="menu-desc">
-                CMS • DIGIPAY • KKP
-                </div>
+    with col2:
+        st.markdown("""
+        <div class="menu-card">
+            <div class="menu-icon">💳</div>
+            <div class="menu-title">Digitalisasi</div>
+            <div class="menu-desc">
+            CMS • DIGIPAY • KKP
             </div>
-            """, unsafe_allow_html=True)
-        
+        </div>
+        """, unsafe_allow_html=True)
 
-        if st.button("Buka Menu Digitalisasi", use_container_width=True):
-            st.session_state.main_menu = "Digitalisasi"
+        if st.button("Buka Menu Digitalisasi"):
+            st.session_state.menu = "Digitalisasi"
+            st.rerun()
     
     
     # ===============================
