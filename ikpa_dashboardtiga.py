@@ -1284,15 +1284,15 @@ div.stButton > button {
 
     height:260px;
 
-    border-radius:22px;
+    border-radius:30px;
 
     border:1px solid #e2e8f0;
 
     background:white;
 
-    font-size:30px;   /* ukuran judul */
+    font-size:50px;   /* ukuran judul */
 
-    font-weight:700;
+    font-weight:800;
 
     color:#1e293b;
 
@@ -1317,7 +1317,7 @@ div.stButton > button:hover {
 
 /* ICON BESAR */
 div.stButton > button span {
-    font-size:60px;
+    font-size:100px;
 }
 
 </style>
