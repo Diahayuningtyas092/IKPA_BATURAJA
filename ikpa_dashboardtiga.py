@@ -1275,19 +1275,21 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
 # ========================================================
 st.markdown("""
 <style>
 
-/* CARD MENU */
-.menu-card{
-    background:white;
+/* MENU CARD BUTTON */
+.menu-button button{
+
+    height:260px;
     border-radius:22px;
-    padding:70px 40px;
+
     border:1px solid #e2e8f0;
 
-    text-align:center;
+    background:white;
+
+    font-size:0px; /* sembunyikan teks button */
 
     box-shadow:0 10px 25px rgba(0,0,0,0.08);
 
@@ -1295,42 +1297,15 @@ st.markdown("""
 }
 
 /* HOVER */
-.menu-card:hover{
+.menu-button button:hover{
+
     transform:translateY(-8px);
+
     border:1px solid #93c5fd;
+
     box-shadow:0 18px 40px rgba(59,130,246,0.25);
+
     background:linear-gradient(180deg,#ffffff,#f0f9ff);
-}
-
-/* ICON */
-.menu-icon{
-    font-size:55px;
-    margin-bottom:18px;
-}
-
-/* TITLE */
-.menu-title{
-    font-size:30px;
-    font-weight:700;
-    color:#1e293b;
-}
-
-/* DESC */
-.menu-desc{
-    font-size:16px;
-    color:#64748b;
-}
-
-/* TOMBOL TRANSPARAN UNTUK CARD */
-.card-click button{
-    position:absolute;
-    inset:0;
-    background:transparent !important;
-    border:none !important;
-}
-
-.card-container{
-    position:relative;
 }
 
 </style>
@@ -3914,49 +3889,47 @@ def page_dashboard():
     col1, col2 = st.columns(2)
     with col1:
 
-        st.markdown('<div class="card-container">', unsafe_allow_html=True)
+        st.markdown('<div class="menu-button">', unsafe_allow_html=True)
+
+        if st.button("", key="ikpa_card", use_container_width=True):
+
+            st.session_state.main_menu = "IKPA"
+            st.rerun()
 
         st.markdown("""
-        <div class="menu-card">
-            <div class="menu-icon">📊</div>
-            <div class="menu-title">IKPA</div>
-            <div class="menu-desc">
+        <div style="position:absolute; margin-top:-190px; text-align:center; width:100%;">
+            <div style="font-size:55px;">📊</div>
+            <div style="font-size:30px;font-weight:700;">IKPA</div>
+            <div style="font-size:16px;color:#64748b;">
             Indikator Kinerja Pelaksanaan Anggaran
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="card-click">', unsafe_allow_html=True)
-
-        if st.button("", key="ikpa_card"):
-            st.session_state.main_menu = "IKPA"
-            st.rerun()
-
-        st.markdown('</div></div>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
 
     with col2:
 
-        st.markdown('<div class="card-container">', unsafe_allow_html=True)
+        st.markdown('<div class="menu-button">', unsafe_allow_html=True)
+
+        if st.button("", key="digital_card", use_container_width=True):
+
+            st.session_state.main_menu = "Digitalisasi"
+            st.rerun()
 
         st.markdown("""
-        <div class="menu-card">
-            <div class="menu-icon">💳</div>
-            <div class="menu-title">Digitalisasi</div>
-            <div class="menu-desc">
+        <div style="position:absolute; margin-top:-190px; text-align:center; width:100%;">
+            <div style="font-size:55px;">💳</div>
+            <div style="font-size:30px;font-weight:700;">Digitalisasi</div>
+            <div style="font-size:16px;color:#64748b;">
             CMS • DIGIPAY • KKP
             </div>
         </div>
         """, unsafe_allow_html=True)
 
-        st.markdown('<div class="card-click">', unsafe_allow_html=True)
-
-        if st.button("", key="digital_card"):
-            st.session_state.main_menu = "Digitalisasi"
-            st.rerun()
-
-        st.markdown('</div></div>', unsafe_allow_html=True)
-        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
     # ===============================
     # STOP DI SINI JIKA BELUM PILIH
     # ===============================
