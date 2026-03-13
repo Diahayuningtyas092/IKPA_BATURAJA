@@ -24,42 +24,6 @@ from st_aggrid import GridUpdateMode
 st.markdown("""
 <style>
 
-/* SIDEBAR MENU LIST */
-section[data-testid="stSidebar"] div.stButton > button{
-
-    background:#e6f2f5;
-
-    border:none;
-
-    border-radius:0;
-
-    text-align:left;
-
-    padding:14px 12px;
-
-    font-size:16px;
-
-    color:#0f4c5c;
-
-}
-
-/* HOVER EFFECT */
-section[data-testid="stSidebar"] div.stButton > button:hover{
-
-    background:#d0e7ec;
-
-}
-
-</style>
-""", unsafe_allow_html=True)
-
-
-
-
-
-st.markdown("""
-<style>
-
 .loading-container{
     display:flex;
     flex-direction:column;
@@ -1235,9 +1199,53 @@ st.set_page_config(
 st.markdown("""
 <style>
 
+/* SIDEBAR MENU BUTTON */
+section[data-testid="stSidebar"] div.stButton > button{
+
+    width:100%;
+
+    background:#e6f2f5;
+
+    border:none;
+
+    border-radius:6px;
+
+    text-align:left;
+
+    padding:10px 12px;
+
+    font-size:15px;
+
+    color:#0f4c5c;
+
+    height:auto;
+
+}
+
+/* HOVER EFFECT */
+section[data-testid="stSidebar"] div.stButton > button:hover{
+
+    background:#d0e7ec;
+
+}
+
+/* JARAK ANTAR MENU */
+section[data-testid="stSidebar"] div.stButton{
+
+    margin-bottom:6px;
+
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+st.markdown("""
+<style>
+
 /* HILANGKAN MARGIN ATAS STREAMLIT */
 .block-container{
-    padding-top:1rem;
+    padding-top:0rem;
 }
 
 /* hilangkan header kosong */
@@ -10680,31 +10688,23 @@ def main():
     # ============================================================
     # Sidebar + Routing halaman
     # ============================================================
-    # ===============================
-# Sidebar Navigation
-# ===============================
+    st.sidebar.title("🧭 Navigasi")
+    st.sidebar.markdown("---")
 
-st.sidebar.title("🧭 Navigasi")
-st.sidebar.markdown("---")
+    if "page" not in st.session_state:
+        st.session_state.page = "Dashboard Utama"
 
-if "page" not in st.session_state:
-    st.session_state.page = "Dashboard Utama"
+    if st.sidebar.button("📊 Dashboard Utama", use_container_width=True):
+        st.session_state.page = "Dashboard Utama"
 
-menu_items = [
-    ("📊 Dashboard Utama", "Dashboard Utama"),
-    ("📈 Dashboard Internal", "Dashboard Internal"),
-    ("🔐 Admin", "Admin")
-]
+    if st.sidebar.button("📈 Dashboard Internal", use_container_width=True):
+        st.session_state.page = "Dashboard Internal"
 
-for label, value in menu_items:
-
-    if st.sidebar.button(label, use_container_width=True):
-        st.session_state.page = value
+    if st.sidebar.button("🔐 Admin", use_container_width=True):
+        st.session_state.page = "Admin"
 
     st.sidebar.markdown("---")
-        
 
-    st.sidebar.markdown("---")
     st.sidebar.info("""
     **Dashboard IKPA**  
     Indikator Kinerja Pelaksanaan Anggaran  
@@ -10712,7 +10712,6 @@ for label, value in menu_items:
 
     📧 Support: ameer.noor@kemenkeu.go.id
     """)
-
     # ===============================
     # 🔹 Routing Halaman
     # ===============================
