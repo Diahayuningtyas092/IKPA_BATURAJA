@@ -1255,12 +1255,12 @@ section.main > div{
 
     background-size:cover;
 
-    background-position:top center;
+    background-position:center 35%;
 
-    filter:blur(0.5px);
-    opacity:0.85;
+    filter:blur(1px);
+    opacity:0.9;
 
-    transform:scale(1.05);
+    transform:scale(1.0);
 }
 
 
