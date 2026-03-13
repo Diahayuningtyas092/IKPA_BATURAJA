@@ -1280,36 +1280,52 @@ st.markdown("""
 st.markdown("""
 <style>
 
+/* TITLE */
+.menu-header{
+    font-size:32px;
+    font-weight:700;
+    margin-bottom:20px;
+    color:#1f2937;
+}
+
+/* CARD */
 .menu-card{
     background:white;
-    border-radius:20px;
-    padding:35px 30px;
+    border-radius:22px;
 
-    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    padding:50px 40px;
+
     border:1px solid rgba(0,0,0,0.05);
 
+    box-shadow:0 12px 30px rgba(0,0,0,0.08);
+
     text-align:center;
+
     transition:all 0.25s ease;
 }
 
+/* HOVER EFFECT */
 .menu-card:hover{
-    transform:translateY(-6px);
-    box-shadow:0 20px 40px rgba(0,0,0,0.15);
+    transform:translateY(-8px);
+    box-shadow:0 20px 45px rgba(0,0,0,0.15);
 }
 
+/* ICON */
 .menu-icon{
-    width:48px;
-    height:48px;
-    margin:0 auto 12px auto;
+    font-size:46px;
+    margin-bottom:14px;
 }
 
+/* TITLE */
 .menu-title{
-    font-size:22px;
+    font-size:26px;
     font-weight:700;
+    margin-bottom:6px;
 }
 
+/* DESCRIPTION */
 .menu-desc{
-    font-size:14px;
+    font-size:15px;
     color:#6b7280;
 }
 
@@ -3961,15 +3977,15 @@ def page_dashboard():
 
     ), unsafe_allow_html=True)
     
-    st.markdown("### Pilih Menu")
 
     if "main_menu" not in st.session_state:
         st.session_state.main_menu = None
 
+    st.markdown('<div class="menu-header">Pilih Menu</div>', unsafe_allow_html=True)
+
     col1, col2 = st.columns(2)
 
     with col1:
-
         st.markdown("""
         <div class="menu-card">
             <div class="menu-icon">📊</div>
@@ -3984,17 +4000,17 @@ def page_dashboard():
             st.session_state.main_menu = "IKPA"
 
 
-    with col2:
-
-        st.markdown("""
-        <div class="menu-card">
-            <div class="menu-icon">💳</div>
-            <div class="menu-title">Digitalisasi</div>
-            <div class="menu-desc">
-            CMS • DIGIPAY • KKP
+        with col2:
+            st.markdown("""
+            <div class="menu-card">
+                <div class="menu-icon">💳</div>
+                <div class="menu-title">Digitalisasi</div>
+                <div class="menu-desc">
+                CMS • DIGIPAY • KKP
+                </div>
             </div>
-        </div>
-        """, unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+        
 
         if st.button("Buka Menu Digitalisasi", use_container_width=True):
             st.session_state.main_menu = "Digitalisasi"
