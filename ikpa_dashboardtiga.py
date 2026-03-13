@@ -1282,7 +1282,7 @@ st.markdown("""
 /* MENU CARD */
 div.stButton > button {
 
-    height:240px;
+    height:260px;
 
     border-radius:22px;
 
@@ -1290,14 +1290,15 @@ div.stButton > button {
 
     background:white;
 
-    font-size:26px;
+    font-size:30px;   /* ukuran judul */
+
     font-weight:700;
 
     color:#1e293b;
 
-    line-height:1.6;
+    line-height:1.8;
 
-    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    box-shadow:0 12px 35px rgba(0,0,0,0.08);
 
     transition:all 0.25s ease;
 }
@@ -1314,8 +1315,8 @@ div.stButton > button:hover {
     background:linear-gradient(180deg,#ffffff,#f0f9ff);
 }
 
-/* ICON STYLE */
-div.stButton > button:before {
+/* ICON BESAR */
+div.stButton > button span {
     font-size:60px;
 }
 
@@ -3905,7 +3906,6 @@ def page_dashboard():
         ):
             st.session_state.main_menu = "IKPA"
             st.rerun()
-
 
     with col2:
 
