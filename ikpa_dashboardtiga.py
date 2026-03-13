@@ -10354,7 +10354,7 @@ def page_admin():
         try:
             df_ref, repo, existing_file = load_template_referensi_from_github()
 
-            add_notification("✅ Data referensi berhasil dimuat dari GitHub")
+            add_notification("Data referensi berhasil dimuat dari GitHub")
 
             # ============================
             # CONVERT TO EXCEL (IN-MEMORY)
