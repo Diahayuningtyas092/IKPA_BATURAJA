@@ -1218,15 +1218,32 @@ header[data-testid="stHeader"]{
 st.markdown("""
 <style>
 
+/* HILANGKAN MARGIN ATAS STREAMLIT */
+.block-container{
+    padding-top:0rem;
+}
+
+/* HILANGKAN HEADER SPACE */
+header[data-testid="stHeader"]{
+    height:0px;
+}
+
+/* KONTEN LEBIH KE ATAS */
+section.main > div{
+    padding-top:0rem;
+}
+
+
 /* HERO CONTAINER */
 .hero{
     position:relative;
     border-radius:22px;
     overflow:hidden;
 
-    padding:240px 60px;     /* diperbesar (sebelumnya 120px) */
+    padding:240px 60px;
     margin-bottom:30px;
 }
+
 
 /* BACKGROUND IMAGE */
 .hero::before{
@@ -1237,20 +1254,25 @@ st.markdown("""
     background-image:url("https://raw.githubusercontent.com/Diahayuningtyas092/IKPA_BATURAJA/main/kppn_backgound.png");
 
     background-size:cover;
-    background-position:center;
 
-    filter:blur(0.5px);      /* blur jauh dikurangi */
-    opacity:0.85;            /* gambar lebih jelas */
-    transform:scale(1.1);
+    background-position:top center;
+
+    filter:blur(0.5px);
+    opacity:0.85;
+
+    transform:scale(1.05);
 }
+
 
 /* LIGHT OVERLAY */
 .hero::after{
     content:"";
     position:absolute;
     inset:0;
-    background:rgba(255,255,255,0.15);   /* overlay lebih ringan */
+
+    background:rgba(255,255,255,0.15);
 }
+
 
 /* TEXT CONTENT */
 .hero-content{
@@ -1258,12 +1280,14 @@ st.markdown("""
     z-index:2;
 }
 
+
 /* TITLE BESAR */
 .hero-title{
     font-size:56px;
     font-weight:800;
     color:#1f2937;
 }
+
 
 /* SUBTITLE */
 .hero-sub{
