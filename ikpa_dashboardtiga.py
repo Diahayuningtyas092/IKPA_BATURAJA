@@ -54,11 +54,13 @@ st.markdown("""
 # SISTEM NOTIFIKASI LOADING
 # ===============================
 def add_notification(msg):
-
+    
     if "loading_notifications" not in st.session_state:
         st.session_state.loading_notifications = []
 
-    st.session_state.loading_notifications.append(msg)
+    # supaya tidak dobel
+    if msg not in st.session_state.loading_notifications:
+        st.session_state.loading_notifications.append(msg)
 
 
 def render_table_pin_satker(df):
@@ -10650,7 +10652,8 @@ def main():
                 <span class="status-ok">●</span> {msg}
                 </div>
                 """, unsafe_allow_html=True)
-    
+            
+            
     # ============================================================
     # Sidebar + Routing halaman
     # ============================================================
