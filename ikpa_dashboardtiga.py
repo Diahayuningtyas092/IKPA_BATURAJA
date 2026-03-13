@@ -1199,60 +1199,45 @@ st.set_page_config(
 st.markdown("""
 <style>
 
-/* SIDEBAR BUTTON */
+/* SIDEBAR MENU BUTTON */
 section[data-testid="stSidebar"] div.stButton > button{
 
     width:100%;
-    text-align:left;
 
-    padding:12px 14px;
-
-    border-radius:10px;
+    background:#e6f2f5;
 
     border:none;
 
-    background:#eef6f8;
+    border-radius:6px;
 
-    color:#0f4c5c;
+    text-align:left;
+
+    padding:10px 12px;
 
     font-size:15px;
 
-    transition:all 0.2s ease;
+    color:#0f4c5c;
+
+    height:auto;
 
 }
 
 /* HOVER EFFECT */
 section[data-testid="stSidebar"] div.stButton > button:hover{
 
-    background:#d6ebf0;
-
-    transform:translateX(4px);
+    background:#d0e7ec;
 
 }
 
-/* ACTIVE MENU */
-.sidebar-active{
+/* JARAK ANTAR MENU */
+section[data-testid="stSidebar"] div.stButton{
 
-    background:#bfe3ec !important;
-
-    font-weight:600;
-
-}
-
-/* SIDEBAR INFO CARD */
-section[data-testid="stSidebar"] .stAlert{
-
-    border-radius:14px;
-
-    background:#e8f0fe;
-
-    border:none;
+    margin-bottom:6px;
 
 }
 
 </style>
 """, unsafe_allow_html=True)
-
 
 # =========================================================
 st.markdown("""
@@ -10721,7 +10706,6 @@ def main():
     if "page" not in st.session_state:
         st.session_state.page = "Dashboard Utama"
 
-    # MENU
     if st.sidebar.button("📊 Dashboard Utama", use_container_width=True):
         st.session_state.page = "Dashboard Utama"
 
@@ -10733,7 +10717,6 @@ def main():
 
     st.sidebar.markdown("---")
 
-    # INFO CARD
     st.sidebar.info("""
     **Dashboard IKPA**  
     Indikator Kinerja Pelaksanaan Anggaran  
@@ -10741,7 +10724,6 @@ def main():
 
     📧 Support: ameer.noor@kemenkeu.go.id
     """)
-
 
     # ===============================
     # Routing Halaman
