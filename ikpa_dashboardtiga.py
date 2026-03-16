@@ -9577,10 +9577,18 @@ def page_admin():
 
                 df_final = pd.concat(all_valid_data, ignore_index=True)
 
+                # Standarisasi kolom satker
+                df_final["SATKER"] = df_final[col_satker]
+
+                UNIQUE_KEY = "SATKER"
+                
                 # ============================================================
                 # 🔥 SMART OVERWRITE CMS MASTER
                 # ============================================================
-                UNIQUE_KEY = col_satker
+                df_final["SATKER"] = df_final[col_satker]
+
+                UNIQUE_KEY = "SATKER"
+
                 df_final = df_final.drop_duplicates(subset=[UNIQUE_KEY])
 
                 if st.session_state.cms_master.empty:
