@@ -10373,34 +10373,72 @@ def page_admin():
             
         
         # ============================================================
-        # DOWNLOAD DATA CMS
+        # DOWNLOAD DATA CMS 
         # ============================================================
         st.markdown("---")
         st.subheader("📥 Download Data CMS")
 
         if "cms_master" in st.session_state and not st.session_state.cms_master.empty:
 
-            buffer = io.BytesIO()
+            df_master = st.session_state.cms_master.copy()
 
-            with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-                st.session_state.cms_master.to_excel(
-                    writer,
-                    index=False,
-                    sheet_name="CMS_109_BATURAJA"
+            # ============================================================
+            # Auto deteksi tahun dan triwulan yang tersedia
+            # ============================================================
+            available_years = sorted(df_master["TAHUN"].dropna().unique())
+            available_tw = sorted(df_master["TRIWULAN"].dropna().unique())
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                selected_year_dl = st.selectbox(
+                    "Pilih Tahun",
+                    options=available_years
                 )
 
-            buffer.seek(0)
+            with col2:
+                selected_tw_dl = st.selectbox(
+                    "Pilih Triwulan",
+                    options=available_tw
+                )
 
-            st.download_button(
-                label="Download Data CMS",
-                data=buffer,
-                file_name="CMS_MASTER.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
+            # ============================================================
+            # Filter data
+            # ============================================================
+            df_download = df_master[
+                (df_master["TAHUN"] == selected_year_dl) &
+                (df_master["TRIWULAN"] == selected_tw_dl)
+            ]
+
+            st.caption(f"Jumlah data: {len(df_download)}")
+
+            if not df_download.empty:
+
+                buffer = io.BytesIO()
+
+                with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
+                    df_download.to_excel(
+                        writer,
+                        index=False,
+                        sheet_name=f"CMS_{selected_tw_dl}_{selected_year_dl}"
+                    )
+
+                buffer.seek(0)
+
+                file_name = f"CMS_{selected_tw_dl}_{selected_year_dl}.xlsx"
+
+                st.download_button(
+                    label="⬇️ Download Data CMS",
+                    data=buffer,
+                    file_name=file_name,
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+
+            else:
+                st.warning("⚠️ Tidak ada data untuk periode tersebut.")
 
         else:
             st.info("ℹ️ Belum ada data CMS tersedia untuk diunduh.")
-
 
 
         # Download Data Satker Tidak Terdaftar
