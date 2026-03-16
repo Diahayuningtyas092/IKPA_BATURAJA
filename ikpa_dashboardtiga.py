@@ -1445,46 +1445,62 @@ st.markdown("""
 st.markdown("""
 <style>
 
-/* SIDEBAR BACKGROUND */
+/* SIDEBAR BACKGROUND SOFT BLUE */
 section[data-testid="stSidebar"]{
-    background:linear-gradient(180deg,#0f172a,#1e293b);
+    background:linear-gradient(180deg,#eaf4ff,#dbeafe);
 }
 
-/* SIDEBAR TITLE */
+/* JUDUL NAVIGASI */
 section[data-testid="stSidebar"] h1{
-    color:white;
+    color:#1e3a8a;
 }
 
-/* SIDEBAR BUTTON */
+/* GARIS PEMISAH */
+section[data-testid="stSidebar"] hr{
+    border-color:#c7dbff;
+}
+
+/* TOMBOL MENU SIDEBAR */
 section[data-testid="stSidebar"] div.stButton > button{
 
-    background:linear-gradient(135deg,#334155,#1e293b);
+    background:linear-gradient(135deg,#ffffff,#f1f7ff);
 
-    color:white;
+    color:#1e293b;
 
     border:none;
 
-    border-radius:10px;
+    border-radius:12px;
 
-    padding:10px;
+    padding:10px 14px;
 
     font-weight:600;
 
+    box-shadow:0 6px 18px rgba(0,0,0,0.08);
+
     transition:all 0.25s ease;
+
 }
 
-/* HOVER */
+/* HOVER EFFECT */
 section[data-testid="stSidebar"] div.stButton > button:hover{
 
-    background:linear-gradient(135deg,#2563eb,#1d4ed8);
+    background:linear-gradient(135deg,#e0ecff,#c7dbff);
 
     transform:translateX(4px);
 
 }
 
-/* SIDEBAR INFO TEXT */
-section[data-testid="stSidebar"] .stMarkdown{
-    color:#cbd5f5;
+/* BOX INFO BAWAH */
+section[data-testid="stSidebar"] .stAlert{
+
+    background:#e6f0ff;
+
+    border:none;
+
+    border-radius:14px;
+
+    color:#1e3a8a;
+
 }
 
 </style>
