@@ -1353,89 +1353,68 @@ section.main > div{
 </style>
 """, unsafe_allow_html=True)
 
-# ===============================
-# CSS DASHBOARD MODERN
-# ===============================
-st.markdown("""
-<style>
 
-/* HERO CONTAINER */
-.hero{
-    position:relative;
-    border-radius:22px;
-    overflow:hidden;
-    padding:240px 60px;
-}
-
-</style>
-""", unsafe_allow_html=True)
-# ===========================================================
-
+# ====================================================
 st.markdown("""
 <style>
 
 /* CONTAINER MENU */
 .menu-container{
-    margin-top:10px;
+    margin-top:20px;
 }
 
 /* CARD MENU */
 .menu-container div.stButton > button{
 
-    height:160px;
+    height:150px;
 
-    border-radius:20px;
+    border-radius:18px;
 
-    border:none;
+    border:1px solid #dbeafe;
 
-    background:linear-gradient(135deg,#eef5ff,#dbeafe);
+    background:linear-gradient(135deg,#f5f9ff,#e0ecff);
 
     color:#1e293b;
 
-    font-size:28px;
+    font-size:24px;
 
     font-weight:700;
 
-    letter-spacing:0.5px;
+    text-align:center;
 
     display:flex;
     flex-direction:column;
     align-items:center;
     justify-content:center;
 
-    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+    line-height:1.4;
 
-    transition:all 0.35s ease;
+    box-shadow:0 8px 25px rgba(0,0,0,0.06);
 
-}
+    transition:all 0.3s ease;
 
-/* SUBTITLE */
-.menu-container div.stButton > button small{
-    font-size:15px;
-    font-weight:500;
-    color:#475569;
 }
 
 /* HOVER EFFECT */
 .menu-container div.stButton > button:hover{
 
-    transform:translateY(-8px) scale(1.02);
+    transform:translateY(-6px);
 
-    background:linear-gradient(135deg,#dbeafe,#bfdbfe);
+    background:linear-gradient(135deg,#e0ecff,#c7dbff);
 
-    box-shadow:0 25px 60px rgba(37,99,235,0.35);
+    box-shadow:0 18px 45px rgba(37,99,235,0.25);
 
 }
 
 /* ANIMASI MASUK */
 .menu-container div.stButton > button{
-    animation:fadeUp 0.6s ease;
+    animation:fadeUp 0.5s ease;
 }
 
 @keyframes fadeUp{
     from{
         opacity:0;
-        transform:translateY(20px);
+        transform:translateY(15px);
     }
     to{
         opacity:1;
