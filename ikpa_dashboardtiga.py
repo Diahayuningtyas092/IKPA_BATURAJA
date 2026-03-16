@@ -1245,7 +1245,7 @@ st.markdown("""
 
 /* Jarak atas halaman */
 .block-container{
-    padding-top:0.5rem !important;
+    padding-top:0rem !important;
 }
 
 /* Kecilkan header streamlit tanpa menghilangkan layout */
