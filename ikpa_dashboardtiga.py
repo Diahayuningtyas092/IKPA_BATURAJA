@@ -1372,44 +1372,119 @@ st.markdown("""
 
 
 # ===============================
-# CSS MENU CARD
+# CSS MENU CARD MODERN
 # ===============================
 st.markdown("""
 <style>
 
-/* MENU CARD SAJA */
-.menu-card div.stButton > button {
-
-    height:260px;
-    border-radius:30px;
-    border:1px solid #e2e8f0;
-    background:white;
-
-    font-size:50px;
-    font-weight:800;
-    color:#1e293b;
-
-    line-height:1.8;
-
-    box-shadow:0 12px 35px rgba(0,0,0,0.08);
-    transition:all 0.25s ease;
+/* CONTAINER MENU */
+.menu-card{
+    margin-top:20px;
 }
 
-/* HOVER EFFECT */
-.menu-card div.stButton > button:hover {
+/* MENU CARD */
+.menu-card div.stButton > button{
 
-    transform:translateY(-10px);
+    height:240px;
+    border-radius:24px;
 
-    border:1px solid #60a5fa;
+    border:none;
 
-    box-shadow:0 20px 45px rgba(59,130,246,0.25);
+    background:linear-gradient(135deg,#ffffff,#f8fafc);
 
-    background:linear-gradient(180deg,#ffffff,#f0f9ff);
+    font-size:42px;
+    font-weight:800;
+
+    color:#1e293b;
+
+    box-shadow:0 15px 40px rgba(0,0,0,0.08);
+
+    transition:all 0.35s ease;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
 }
 
 /* ICON BESAR */
-.menu-card div.stButton > button span {
-    font-size:100px;
+.menu-card div.stButton > button span{
+    font-size:95px;
+}
+
+/* HOVER EFFECT */
+.menu-card div.stButton > button:hover{
+
+    transform:translateY(-10px) scale(1.02);
+
+    background:linear-gradient(135deg,#eff6ff,#dbeafe);
+
+    box-shadow:0 25px 60px rgba(59,130,246,0.35);
+
+}
+
+/* ANIMASI MASUK */
+.menu-card div.stButton > button{
+    animation:fadeUp 0.6s ease;
+}
+
+@keyframes fadeUp{
+    from{
+        opacity:0;
+        transform:translateY(25px);
+    }
+    to{
+        opacity:1;
+        transform:translateY(0);
+    }
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+
+/* SIDEBAR BACKGROUND */
+section[data-testid="stSidebar"]{
+    background:linear-gradient(180deg,#0f172a,#1e293b);
+}
+
+/* SIDEBAR TITLE */
+section[data-testid="stSidebar"] h1{
+    color:white;
+}
+
+/* SIDEBAR BUTTON */
+section[data-testid="stSidebar"] div.stButton > button{
+
+    background:linear-gradient(135deg,#334155,#1e293b);
+
+    color:white;
+
+    border:none;
+
+    border-radius:10px;
+
+    padding:10px;
+
+    font-weight:600;
+
+    transition:all 0.25s ease;
+}
+
+/* HOVER */
+section[data-testid="stSidebar"] div.stButton > button:hover{
+
+    background:linear-gradient(135deg,#2563eb,#1d4ed8);
+
+    transform:translateX(4px);
+
+}
+
+/* SIDEBAR INFO TEXT */
+section[data-testid="stSidebar"] .stMarkdown{
+    color:#cbd5f5;
 }
 
 </style>
