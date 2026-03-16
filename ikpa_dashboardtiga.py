@@ -9498,8 +9498,11 @@ def page_admin():
 
                     header_row = None
                     for i in range(min(20, len(df_raw))):
+
                         row_text = " ".join(df_raw.iloc[i].astype(str)).upper()
-                        if "SATKER" in row_text and "KANWIL" in row_text:
+
+                        # Header CMS biasanya mengandung SATKER
+                        if "SATKER" in row_text:
                             header_row = i
                             break
 
