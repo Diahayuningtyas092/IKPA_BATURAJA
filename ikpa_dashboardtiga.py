@@ -1353,36 +1353,50 @@ section.main > div{
 </style>
 """, unsafe_allow_html=True)
 
-# ========================================================
+# ===============================
+# CSS DASHBOARD MODERN
+# ===============================
 st.markdown("""
 <style>
 
-/* MENU CARD */
-div.stButton > button {
+/* HERO CONTAINER */
+.hero{
+    position:relative;
+    border-radius:22px;
+    overflow:hidden;
+    padding:240px 60px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# ===============================
+# CSS MENU CARD
+# ===============================
+st.markdown("""
+<style>
+
+/* MENU CARD SAJA */
+.menu-card div.stButton > button {
 
     height:260px;
-
     border-radius:30px;
-
     border:1px solid #e2e8f0;
-
     background:white;
 
-    font-size:50px;   /* ukuran judul */
-
+    font-size:50px;
     font-weight:800;
-
     color:#1e293b;
 
     line-height:1.8;
 
     box-shadow:0 12px 35px rgba(0,0,0,0.08);
-
     transition:all 0.25s ease;
 }
 
 /* HOVER EFFECT */
-div.stButton > button:hover {
+.menu-card div.stButton > button:hover {
 
     transform:translateY(-10px);
 
@@ -1394,12 +1408,27 @@ div.stButton > button:hover {
 }
 
 /* ICON BESAR */
-div.stButton > button span {
+.menu-card div.stButton > button span {
     font-size:100px;
 }
 
 </style>
 """, unsafe_allow_html=True)
+
+st.markdown('<div class="menu-card">', unsafe_allow_html=True)
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.button("📊\nDashboard")
+
+with col2:
+    st.button("📈\nAnalisis")
+
+with col3:
+    st.button("⚙️\nAdmin")
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 # ====================================================================
 def extract_kode_from_satker_field(s, width=6):
