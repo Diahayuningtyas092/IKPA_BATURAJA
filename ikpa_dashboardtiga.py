@@ -1243,29 +1243,28 @@ section[data-testid="stSidebar"] div.stButton{
 st.markdown("""
 <style>
 
-/* Jarak atas sedikit supaya tidak kepotong */
+/* Jarak atas halaman */
 .block-container{
-    padding-top:1rem !important;
+    padding-top:0.5rem !important;
 }
 
-/* Sembunyikan header Streamlit dengan cara aman */
+/* Kecilkan header streamlit tanpa menghilangkan layout */
 header[data-testid="stHeader"]{
-    display:none;
+    height:40px;
 }
 
-/* Rapikan main container */
+/* Rapikan main */
 section.main > div{
-    padding-top:1rem !important;
+    padding-top:0rem !important;
 }
 
-/* Hilangkan gap elemen pertama */
+/* Hilangkan gap pertama */
 div[data-testid="stVerticalBlock"] > div:first-child{
-    margin-top:1rem !important;
+    margin-top:0rem !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
-
 
 # ===============================
 # CSS DASHBOARD MODERN
