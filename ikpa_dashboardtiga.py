@@ -1415,21 +1415,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="menu-card">', unsafe_allow_html=True)
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.button("📊\nDashboard")
-
-with col2:
-    st.button("📈\nAnalisis")
-
-with col3:
-    st.button("⚙️\nAdmin")
-
-st.markdown('</div>', unsafe_allow_html=True)
-
 # ====================================================================
 def extract_kode_from_satker_field(s, width=6):
     """
