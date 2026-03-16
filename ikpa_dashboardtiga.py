@@ -1255,12 +1255,12 @@ header[data-testid="stHeader"]{
 
 /* Rapikan main container */
 section.main > div{
-    padding-top:0rem !important;
+    padding-top:1rem !important;
 }
 
 /* Hilangkan gap elemen pertama */
 div[data-testid="stVerticalBlock"] > div:first-child{
-    margin-top:0rem !important;
+    margin-top:1rem !important;
 }
 
 </style>
