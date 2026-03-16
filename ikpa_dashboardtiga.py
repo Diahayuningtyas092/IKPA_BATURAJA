@@ -1369,69 +1369,73 @@ st.markdown("""
 
 </style>
 """, unsafe_allow_html=True)
+# ===========================================================
 
-
-# ===============================
-# CSS MENU CARD MODERN
-# ===============================
 st.markdown("""
 <style>
 
 /* CONTAINER MENU */
-.menu-card{
-    margin-top:20px;
+.menu-container{
+    margin-top:10px;
 }
 
-/* MENU CARD */
-.menu-card div.stButton > button{
+/* CARD MENU */
+.menu-container div.stButton > button{
 
-    height:240px;
-    border-radius:24px;
+    height:160px;
+
+    border-radius:20px;
 
     border:none;
 
-    background:linear-gradient(135deg,#ffffff,#f8fafc);
-
-    font-size:42px;
-    font-weight:800;
+    background:linear-gradient(135deg,#eef5ff,#dbeafe);
 
     color:#1e293b;
 
-    box-shadow:0 15px 40px rgba(0,0,0,0.08);
+    font-size:28px;
 
-    transition:all 0.35s ease;
+    font-weight:700;
+
+    letter-spacing:0.5px;
 
     display:flex;
+    flex-direction:column;
     align-items:center;
     justify-content:center;
 
+    box-shadow:0 10px 30px rgba(0,0,0,0.08);
+
+    transition:all 0.35s ease;
+
 }
 
-/* ICON BESAR */
-.menu-card div.stButton > button span{
-    font-size:95px;
+/* SUBTITLE */
+.menu-container div.stButton > button small{
+    font-size:15px;
+    font-weight:500;
+    color:#475569;
 }
 
 /* HOVER EFFECT */
-.menu-card div.stButton > button:hover{
+.menu-container div.stButton > button:hover{
 
-    transform:translateY(-10px) scale(1.02);
+    transform:translateY(-8px) scale(1.02);
 
-    background:linear-gradient(135deg,#eff6ff,#dbeafe);
+    background:linear-gradient(135deg,#dbeafe,#bfdbfe);
 
-    box-shadow:0 25px 60px rgba(59,130,246,0.35);
+    box-shadow:0 25px 60px rgba(37,99,235,0.35);
 
 }
 
 /* ANIMASI MASUK */
-.menu-card div.stButton > button{
+.menu-container div.stButton > button{
     animation:fadeUp 0.6s ease;
 }
 
 @keyframes fadeUp{
     from{
         opacity:0;
-        transform:translateY(25px);
+        transform:translateY(20px);
     }
     to{
         opacity:1;
@@ -1442,6 +1446,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# =========================================================
 st.markdown("""
 <style>
 
