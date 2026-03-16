@@ -1243,24 +1243,22 @@ section[data-testid="stSidebar"] div.stButton{
 st.markdown("""
 <style>
 
-/* Hilangkan padding container utama */
+/* Jarak atas sedikit supaya tidak kepotong */
 .block-container{
-    padding-top:0rem !important;
+    padding-top:1rem !important;
 }
 
-/* Hilangkan space dari header Streamlit */
+/* Sembunyikan header Streamlit dengan cara aman */
 header[data-testid="stHeader"]{
-    height:0px !important;
-    min-height:0px !important;
+    display:none;
 }
 
-/* Hilangkan padding pada main section */
+/* Rapikan main container */
 section.main > div{
     padding-top:0rem !important;
-    margin-top:0rem !important;
 }
 
-/* Jika masih ada jarak dari element pertama */
+/* Hilangkan gap elemen pertama */
 div[data-testid="stVerticalBlock"] > div:first-child{
     margin-top:0rem !important;
 }
