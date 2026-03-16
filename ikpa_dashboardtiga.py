@@ -9577,40 +9577,64 @@ def page_admin():
 
                 df_final = pd.concat(all_valid_data, ignore_index=True)
 
-                # Standarisasi kolom satker
-                df_final["SATKER"] = df_final[col_satker]
-
-                UNIQUE_KEY = "SATKER"
                 
                 # ============================================================
-                # 🔥 SMART OVERWRITE CMS MASTER
+                # SMART OVERWRITE CMS MASTER
                 # ============================================================
-                df_final["SATKER"] = df_final[col_satker]
+
+                # Standarisasi kolom SATKER
+                df_final["SATKER"] = (
+                    df_final[col_satker]
+                    .astype(str)
+                    .str.extract(r"(\d+)")[0]
+                    .fillna("")
+                    .str.zfill(6)
+                )
 
                 UNIQUE_KEY = "SATKER"
 
+                # Hapus duplikasi di file upload
                 df_final = df_final.drop_duplicates(subset=[UNIQUE_KEY])
 
                 if st.session_state.cms_master.empty:
+
                     st.session_state.cms_master = df_final.copy()
                     new_count = len(df_final)
                     overwrite_count = 0
+
                 else:
+
                     master_df = st.session_state.cms_master.copy()
 
+                    # ============================================================
+                    # Pengaman agar kolom SATKER selalu ada
+                    # ============================================================
+                    if UNIQUE_KEY not in master_df.columns:
+                        master_df[UNIQUE_KEY] = ""
+
+                    if UNIQUE_KEY not in df_final.columns:
+                        st.error("❌ Kolom SATKER tidak ditemukan pada file CMS")
+                        st.stop()
+
+                    # ============================================================
+                    # Hitung data yang akan di-overwrite
+                    # ============================================================
                     overwrite_mask = master_df[UNIQUE_KEY].isin(df_final[UNIQUE_KEY])
                     overwrite_count = overwrite_mask.sum()
 
+                    # Hapus data lama yang akan diganti
                     master_df = master_df[~overwrite_mask]
 
+                    # Gabungkan data baru
                     master_df = pd.concat(
                         [master_df, df_final],
                         ignore_index=True
                     )
 
                     new_count = len(df_final) - overwrite_count
-                    st.session_state.cms_master = master_df.copy()
 
+                    st.session_state.cms_master = master_df.copy()
+    
                 # ============================================================
                 # SIMPAN KE GITHUB
                 # ============================================================
