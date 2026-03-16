@@ -10383,7 +10383,13 @@ def page_admin():
             df_master = st.session_state.cms_master.copy()
 
             # ============================================================
-            # Auto deteksi tahun dan triwulan yang tersedia
+            # Normalisasi tipe data agar tidak terjadi TypeError
+            # ============================================================
+            df_master["TAHUN"] = df_master["TAHUN"].astype(str)
+            df_master["TRIWULAN"] = df_master["TRIWULAN"].astype(str)
+
+            # ============================================================
+            # Auto deteksi tahun dan triwulan
             # ============================================================
             available_years = sorted(df_master["TAHUN"].dropna().unique())
             available_tw = sorted(df_master["TRIWULAN"].dropna().unique())
