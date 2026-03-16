@@ -1309,7 +1309,7 @@ section.main > div{
 
     background-size:cover;
 
-    background-position:top center 55%;
+    background-position:top 40%;
 
     filter:blur(0.5px);
     opacity:0.9;
