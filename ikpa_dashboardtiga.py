@@ -9988,6 +9988,10 @@ def page_admin():
 
             cms_df = st.session_state.cms_master.copy()
 
+            # NORMALISASI TIPE DATA
+            cms_df["TAHUN"] = cms_df["TAHUN"].astype(int)
+            cms_df["TRIWULAN"] = cms_df["TRIWULAN"].astype(str).str.upper()
+
             # ============================================================
             # DETEKSI TAHUN OTOMATIS
             # ============================================================
@@ -10009,7 +10013,7 @@ def page_admin():
             # DETEKSI TRIWULAN BERDASARKAN TAHUN
             # ============================================================
             tw_options = sorted(
-                cms_df[cms_df["TAHUN"] == delete_year]["TRIWULAN"]
+                cms_df[cms_df["TAHUN"] == int(delete_year)]["TRIWULAN"]
                 .dropna()
                 .unique()
             )
