@@ -10007,8 +10007,11 @@ def page_admin():
             col1, col2 = st.columns(2)
 
             with col1:
-                delete_year = sb2("Pilih Tahun", available_years)
-
+                delete_year = st.selectbox(
+                    "Pilih Tahun",
+                    options=available_years,
+                    key="delete_cms_year"
+                )
 
 
             # ================================
@@ -10032,7 +10035,11 @@ def page_admin():
             tw_options = sorted(list(set(tw_options)))
 
             with col2:
-                delete_tw = sb2("Pilih Triwulan", tw_options)
+                delete_tw = st.selectbox(
+                    "Pilih Triwulan",
+                    options=tw_options,
+                    key="delete_cms_tw"
+                )
 
             confirm_delete_cms = st.checkbox(
                 f"⚠️ Hapus Data CMS Tahun {delete_year} {delete_tw}",
@@ -10462,10 +10469,18 @@ def page_admin():
             col1, col2 = st.columns(2)
 
             with col1:
-                selected_year_dl = sb2("Pilih Tahun", available_years)
+                selected_year_dl = st.selectbox(
+                    "Pilih Tahun",
+                    options=available_years,
+                    key="download_cms_year"
+                )
 
             with col2:
-                selected_tw_dl = sb2("Pilih Triwulan", available_tw)
+                selected_tw_dl = st.selectbox(
+                    "Pilih Triwulan",
+                    options=available_tw,
+                    key="download_cms_tw"
+                )
 
             df_download = df_master[
                 (df_master["TAHUN"] == selected_year_dl) &
