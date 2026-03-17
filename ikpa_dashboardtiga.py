@@ -10008,11 +10008,28 @@ def page_admin():
             # ================================
             # DETEKSI TRIWULAN
             # ================================
-            tw_options = sorted(
-                cms_df[cms_df["TAHUN"].astype(int) == delete_year]["TRIWULAN"]
-                .dropna()
-                .unique()
-            )
+            # ================================
+            # DETEKSI TRIWULAN DARI GITHUB
+            # ================================
+            token = st.secrets["GITHUB_TOKEN"]
+            repo_name = st.secrets["GITHUB_REPO"]
+
+            g = Github(auth=Auth.Token(token))
+            repo = g.get_repo(repo_name)
+
+            contents = repo.get_contents("data_CMS")
+
+            tw_options = []
+
+            for file in contents:
+
+                if file.name.endswith(f"_{delete_year}.xlsx") and "CMS_109_" in file.name:
+
+                    # contoh: CMS_109_TW3_2025.xlsx
+                    tw = file.name.split("_")[2]
+                    tw_options.append(tw)
+
+            tw_options = sorted(tw_options)
 
             with col2:
                 delete_tw = st.selectbox(
