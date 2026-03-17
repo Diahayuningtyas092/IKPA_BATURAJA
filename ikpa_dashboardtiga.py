@@ -20,11 +20,6 @@ import time
 from st_aggrid import GridUpdateMode
 import uuid
 
-def sb(label, options, index=0):
-    return st.selectbox(label, options=options, index=index, key=str(uuid.uuid4()))
-
-def sb2(label, options):
-    return st.selectbox(label, options=options, key=str(uuid.uuid4()))
 
 st.markdown("""
 <style>
@@ -9460,19 +9455,36 @@ def page_admin():
         st.markdown("### Filter Periode Data")
         col1, col2 = st.columns(2)
 
+        # ===============================
+        # FILTER PERIODE 
+        # ===============================
+        st.markdown("### Filter Periode Data")
+        col1, col2 = st.columns(2)
+
+        year_options = list(range(2022, current_year + 1))
+        tw_options = ["TW1", "TW2", "TW3", "TW4"]
+
         with col1:
-            selected_year = sb(
+            selected_year = st.selectbox(
                 "Pilih Tahun",
-                list(range(2022, current_year + 1)),
-                index=len(list(range(2022, current_year + 1))) - 1
+                options=year_options,
+                index=len(year_options) - 1,
+                key="upload_cms_year"
             )
 
         with col2:
-            selected_triwulan = sb(
+            selected_triwulan = st.selectbox(
                 "Pilih Triwulan",
-                ["TW1", "TW2", "TW3", "TW4"],
-                index=["TW1", "TW2", "TW3", "TW4"].index(default_tw)
+                options=tw_options,
+                index=tw_options.index(default_tw),
+                key="upload_cms_tw"
             )
+
+        # ===============================
+        # NORMALISASI (WAJIB)
+        # ===============================
+        selected_year = int(selected_year)
+        selected_triwulan = selected_triwulan.upper().strip()
 
         uploaded_cms = st.file_uploader(
             "Upload File Excel CMS (Multi Sheet)",
