@@ -9986,43 +9986,99 @@ def page_admin():
 
         else:
 
+            cms_df = st.session_state.cms_master.copy()
+
+            # ============================================================
+            # DETEKSI TAHUN OTOMATIS
+            # ============================================================
+            available_years = sorted(
+                cms_df["TAHUN"].dropna().astype(int).unique(),
+                reverse=True
+            )
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                delete_year = st.selectbox(
+                    "Pilih Tahun",
+                    options=available_years,
+                    key="delete_cms_year"
+                )
+
+            # ============================================================
+            # DETEKSI TRIWULAN BERDASARKAN TAHUN
+            # ============================================================
+            tw_options = sorted(
+                cms_df[cms_df["TAHUN"] == delete_year]["TRIWULAN"]
+                .dropna()
+                .unique()
+            )
+
+            with col2:
+                delete_tw = st.selectbox(
+                    "Pilih Triwulan",
+                    options=tw_options,
+                    key="delete_cms_tw"
+                )
+
+            # ============================================================
+            # KONFIRMASI
+            # ============================================================
             confirm_delete_cms = st.checkbox(
-                "⚠️ Hapus seluruh Data CMS dari sistem dan GitHub.",
+                f"⚠️ Hapus Data CMS Tahun {delete_year} {delete_tw}",
                 key="confirm_delete_cms"
             )
 
             if st.button("🗑️ Hapus Data CMS", type="primary") and confirm_delete_cms:
 
                 try:
-                    # Hapus dari session
-                    st.session_state.cms_master = pd.DataFrame()
 
-                    # Hapus dari GitHub
-                    token = st.secrets["GITHUB_TOKEN"]
-                    repo_name = st.secrets["GITHUB_REPO"]
+                    # ============================================================
+                    # FILTER DATA YANG DIHAPUS
+                    # ============================================================
+                    before_count = len(cms_df)
 
-                    g = Github(auth=Auth.Token(token))
-                    repo = g.get_repo(repo_name)
-
-                    file_path = "data_CMS/CMS_MASTER.xlsx"
-
-                    try:
-                        file = repo.get_contents(file_path)
-                        repo.delete_file(
-                            file.path,
-                            "Delete CMS_MASTER.xlsx",
-                            file.sha
+                    cms_df = cms_df[
+                        ~(
+                            (cms_df["TAHUN"] == delete_year) &
+                            (cms_df["TRIWULAN"] == delete_tw)
                         )
-                    except Exception:
-                        pass
+                    ]
 
-                    st.success("✅ Data CMS berhasil dihapus dari sistem & GitHub.")
+                    deleted_rows = before_count - len(cms_df)
+
+                    # Update session
+                    st.session_state.cms_master = cms_df.copy()
+
+                    # ============================================================
+                    # SIMPAN ULANG KE GITHUB
+                    # ============================================================
+                    excel_bytes = io.BytesIO()
+
+                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
+                        cms_df.to_excel(
+                            writer,
+                            index=False,
+                            sheet_name="CMS_MASTER"
+                        )
+
+                    excel_bytes.seek(0)
+
+                    save_file_to_github(
+                        excel_bytes.getvalue(),
+                        "CMS_MASTER.xlsx",
+                        folder="data_CMS"
+                    )
+
+                    st.success(
+                        f"✅ {deleted_rows} data CMS Tahun {delete_year} {delete_tw} berhasil dihapus."
+                    )
+
                     st.snow()
                     st.rerun()
 
                 except Exception as e:
                     st.error(f"❌ Gagal menghapus Data CMS: {e}")
-
         
         # HAPUS DATA REFERENSI
         # =====================================================
