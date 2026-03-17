@@ -9439,9 +9439,6 @@ def page_admin():
         st.markdown("---")
         st.subheader("Upload Data CMS")
 
-        # ============================================================
-        # FILTER PERIODE (AUTO DEFAULT TAHUN & TRIWULAN)
-        # ============================================================
         now = datetime.now()
         current_year = now.year
         current_month = now.month
@@ -9462,24 +9459,22 @@ def page_admin():
             selected_year = st.selectbox(
                 "Pilih Tahun",
                 options=list(range(2022, current_year + 1)),
-                index=len(list(range(2022, current_year + 1))) - 1
+                index=len(list(range(2022, current_year + 1))) - 1,
+                key="upload_cms_year"
             )
 
         with col2:
             selected_triwulan = st.selectbox(
                 "Pilih Triwulan",
                 options=["TW1", "TW2", "TW3", "TW4"],
-                index=["TW1", "TW2", "TW3", "TW4"].index(default_tw)
+                index=["TW1", "TW2", "TW3", "TW4"].index(default_tw),
+                key="upload_cms_tw"
             )
-
-        st.session_state.selected_year = selected_year
-        st.session_state.selected_triwulan = selected_triwulan
-
 
         uploaded_cms = st.file_uploader(
             "Upload File Excel CMS (Multi Sheet)",
             type=["xlsx"],
-            key="upload_cms_admin"
+            key="upload_cms_file"
         )
 
         # ============================================================
@@ -9977,7 +9972,6 @@ def page_admin():
         # ============================================================
         # 🗑️ HAPUS DATA CMS
         # ============================================================
-
         st.markdown("---")
         st.subheader("🗑️ Hapus Data CMS")
 
@@ -9989,25 +9983,21 @@ def page_admin():
 
             cms_df = st.session_state.cms_master.copy()
 
-            # ================================
-            # DETEKSI TAHUN
-            # ================================
-            available_years = sorted(
-                cms_df["TAHUN"].dropna().astype(int).unique(),
-                reverse=True
-            )
+            # NORMALISASI
+            cms_df["TAHUN"] = cms_df["TAHUN"].astype(int)
+            cms_df["TRIWULAN"] = cms_df["TRIWULAN"].astype(str).str.upper()
+
+            available_years = sorted(cms_df["TAHUN"].unique(), reverse=True)
 
             col1, col2 = st.columns(2)
 
             with col1:
                 delete_year = st.selectbox(
                     "Pilih Tahun",
-                    options=available_years
+                    options=available_years,
+                    key="delete_cms_year"
                 )
 
-            # ================================
-            # DETEKSI TRIWULAN
-            # ================================
             # ================================
             # DETEKSI TRIWULAN DARI GITHUB
             # ================================
@@ -10022,19 +10012,17 @@ def page_admin():
             tw_options = []
 
             for file in contents:
-
                 if file.name.endswith(f"_{delete_year}.xlsx") and "CMS_109_" in file.name:
-
-                    # contoh: CMS_109_TW3_2025.xlsx
                     tw = file.name.split("_")[2]
                     tw_options.append(tw)
 
-            tw_options = sorted(tw_options)
+            tw_options = sorted(list(set(tw_options)))
 
             with col2:
                 delete_tw = st.selectbox(
                     "Pilih Triwulan",
-                    options=tw_options
+                    options=tw_options if tw_options else ["-"],
+                    key="delete_cms_tw"
                 )
 
             confirm_delete_cms = st.checkbox(
@@ -10042,72 +10030,36 @@ def page_admin():
                 key="confirm_delete_cms"
             )
 
-            if st.button("🗑️ Hapus Data CMS", type="primary") and confirm_delete_cms:
+            if st.button("🗑️ Hapus Data CMS", key="btn_delete_cms") and confirm_delete_cms:
 
                 try:
-
-                    # ======================================
-                    # 1️⃣ Hapus dari session
-                    # ======================================
                     before = len(cms_df)
 
                     cms_df = cms_df[
                         ~(
-                            (cms_df["TAHUN"].astype(int) == delete_year) &
+                            (cms_df["TAHUN"] == delete_year) &
                             (cms_df["TRIWULAN"] == delete_tw)
                         )
                     ]
 
                     deleted_rows = before - len(cms_df)
-
                     st.session_state.cms_master = cms_df.copy()
 
-                    # ======================================
-                    # 2️⃣ Hapus file CMS di GitHub
-                    # ======================================
-                    token = st.secrets["GITHUB_TOKEN"]
-                    repo_name = st.secrets["GITHUB_REPO"]
-
-                    g = Github(auth=Auth.Token(token))
-                    repo = g.get_repo(repo_name)
-
+                    # HAPUS FILE GITHUB
                     file_name = f"CMS_109_{delete_tw}_{delete_year}.xlsx"
                     file_path = f"data_CMS/{file_name}"
 
                     try:
                         file = repo.get_contents(file_path)
-
-                        repo.delete_file(
-                            file.path,
-                            f"Delete {file_name}",
-                            file.sha
-                        )
-
-                    except Exception:
+                        repo.delete_file(file.path, f"Delete {file_name}", file.sha)
+                    except:
                         pass
 
-                    # ======================================
-                    # 3️⃣ Log Aktivitas
-                    # ======================================
-                    if "activity_log" not in st.session_state:
-                        st.session_state.activity_log = []
-
-                    st.session_state.activity_log.append({
-                        "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                        "Menu": "Hapus Data",
-                        "Aksi": f"Hapus CMS {delete_tw} {delete_year}",
-                        "Status": "✅ Sukses"
-                    })
-
-                    st.success(
-                        f"✅ {deleted_rows} data CMS {delete_tw} {delete_year} berhasil dihapus."
-                    )
-
-                    st.snow()
+                    st.success(f"✅ {deleted_rows} data CMS berhasil dihapus")
                     st.rerun()
 
                 except Exception as e:
-                    st.error(f"❌ Gagal menghapus Data CMS: {e}")
+                    st.error(f"❌ {e}")
 
 
         
@@ -10493,35 +10445,28 @@ def page_admin():
 
             df_master = st.session_state.cms_master.copy()
 
-            # ============================================================
-            # Normalisasi tipe data agar tidak terjadi TypeError
-            # ============================================================
             df_master["TAHUN"] = df_master["TAHUN"].astype(str)
             df_master["TRIWULAN"] = df_master["TRIWULAN"].astype(str)
 
-            # ============================================================
-            # Auto deteksi tahun dan triwulan
-            # ============================================================
-            available_years = sorted(df_master["TAHUN"].dropna().unique())
-            available_tw = sorted(df_master["TRIWULAN"].dropna().unique())
+            available_years = sorted(df_master["TAHUN"].unique())
+            available_tw = sorted(df_master["TRIWULAN"].unique())
 
             col1, col2 = st.columns(2)
 
             with col1:
                 selected_year_dl = st.selectbox(
                     "Pilih Tahun",
-                    options=available_years
+                    options=available_years,
+                    key="download_cms_year"
                 )
 
             with col2:
                 selected_tw_dl = st.selectbox(
                     "Pilih Triwulan",
-                    options=available_tw
+                    options=available_tw,
+                    key="download_cms_tw"
                 )
 
-            # ============================================================
-            # Filter data
-            # ============================================================
             df_download = df_master[
                 (df_master["TAHUN"] == selected_year_dl) &
                 (df_master["TRIWULAN"] == selected_tw_dl)
@@ -10534,28 +10479,23 @@ def page_admin():
                 buffer = io.BytesIO()
 
                 with pd.ExcelWriter(buffer, engine="openpyxl") as writer:
-                    df_download.to_excel(
-                        writer,
-                        index=False,
-                        sheet_name=f"CMS_{selected_tw_dl}_{selected_year_dl}"
-                    )
+                    df_download.to_excel(writer, index=False)
 
                 buffer.seek(0)
-
-                file_name = f"CMS_{selected_tw_dl}_{selected_year_dl}.xlsx"
 
                 st.download_button(
                     label="⬇️ Download Data CMS",
                     data=buffer,
-                    file_name=file_name,
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    file_name=f"CMS_{selected_tw_dl}_{selected_year_dl}.xlsx",
+                    key="download_cms_btn"
                 )
 
             else:
                 st.warning("⚠️ Tidak ada data untuk periode tersebut.")
 
         else:
-            st.info("ℹ️ Belum ada data CMS tersedia untuk diunduh.")
+            st.info("ℹ️ Belum ada data CMS tersedia.")
+    
 
 
         # Download Data Satker Tidak Terdaftar
