@@ -1309,7 +1309,7 @@ section.main > div{
 
     background-size:cover;
 
-    background-position:top 40%;
+    background-position:top 50%;
 
     filter:blur(0.5px);
     opacity:0.9;
@@ -9579,7 +9579,7 @@ def page_admin():
 
                 
                 # ============================================================
-                # SMART OVERWRITE CMS MASTER
+                # SMART OVERWRITE CMS MASTER (PERIODE AMAN)
                 # ============================================================
 
                 # Standarisasi kolom SATKER
@@ -9591,10 +9591,14 @@ def page_admin():
                     .str.zfill(6)
                 )
 
-                UNIQUE_KEY = "SATKER"
+                # ============================================================
+                # UNIQUE KEY CMS (SATKER + TAHUN + TRIWULAN)
+                # ============================================================
+
+                UNIQUE_KEY = ["SATKER", "TAHUN", "TRIWULAN"]
 
                 # Hapus duplikasi di file upload
-                df_final = df_final.drop_duplicates(subset=[UNIQUE_KEY])
+                df_final = df_final.drop_duplicates(subset=UNIQUE_KEY)
 
                 if st.session_state.cms_master.empty:
 
@@ -9607,19 +9611,36 @@ def page_admin():
                     master_df = st.session_state.cms_master.copy()
 
                     # ============================================================
-                    # Pengaman agar kolom SATKER selalu ada
+                    # Pengaman kolom wajib
                     # ============================================================
-                    if UNIQUE_KEY not in master_df.columns:
-                        master_df[UNIQUE_KEY] = ""
+                    for col in UNIQUE_KEY:
+                        if col not in master_df.columns:
+                            master_df[col] = ""
 
-                    if UNIQUE_KEY not in df_final.columns:
-                        st.error("❌ Kolom SATKER tidak ditemukan pada file CMS")
-                        st.stop()
+                    for col in UNIQUE_KEY:
+                        if col not in df_final.columns:
+                            st.error(f"❌ Kolom {col} tidak ditemukan pada file CMS")
+                            st.stop()
 
                     # ============================================================
-                    # Hitung data yang akan di-overwrite
+                    # BUAT MERGE KEY PER PERIODE
                     # ============================================================
-                    overwrite_mask = master_df[UNIQUE_KEY].isin(df_final[UNIQUE_KEY])
+                    master_df["MERGE_KEY"] = (
+                        master_df["SATKER"] + "_" +
+                        master_df["TAHUN"].astype(str) + "_" +
+                        master_df["TRIWULAN"]
+                    )
+
+                    df_final["MERGE_KEY"] = (
+                        df_final["SATKER"] + "_" +
+                        df_final["TAHUN"].astype(str) + "_" +
+                        df_final["TRIWULAN"]
+                    )
+
+                    # ============================================================
+                    # HITUNG DATA YANG AKAN DI-OVERWRITE
+                    # ============================================================
+                    overwrite_mask = master_df["MERGE_KEY"].isin(df_final["MERGE_KEY"])
                     overwrite_count = overwrite_mask.sum()
 
                     # Hapus data lama yang akan diganti
@@ -9630,6 +9651,9 @@ def page_admin():
                         [master_df, df_final],
                         ignore_index=True
                     )
+
+                    # Hapus kolom helper
+                    master_df = master_df.drop(columns=["MERGE_KEY"], errors="ignore")
 
                     new_count = len(df_final) - overwrite_count
 
