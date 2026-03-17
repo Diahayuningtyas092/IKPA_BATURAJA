@@ -18,8 +18,13 @@ from st_aggrid import AgGrid, GridOptionsBuilder
 from st_aggrid import JsCode
 import time
 from st_aggrid import GridUpdateMode
+import uuid
 
+def sb(label, options, index=0):
+    return st.selectbox(label, options=options, index=index, key=str(uuid.uuid4()))
 
+def sb2(label, options):
+    return st.selectbox(label, options=options, key=str(uuid.uuid4()))
 
 st.markdown("""
 <style>
@@ -9456,19 +9461,17 @@ def page_admin():
         col1, col2 = st.columns(2)
 
         with col1:
-            selected_year = st.selectbox(
+            selected_year = sb(
                 "Pilih Tahun",
-                options=list(range(2022, current_year + 1)),
-                index=len(list(range(2022, current_year + 1))) - 1,
-                key="upload_cms_year"
+                list(range(2022, current_year + 1)),
+                index=len(list(range(2022, current_year + 1))) - 1
             )
 
         with col2:
-            selected_triwulan = st.selectbox(
+            selected_triwulan = sb(
                 "Pilih Triwulan",
-                options=["TW1", "TW2", "TW3", "TW4"],
-                index=["TW1", "TW2", "TW3", "TW4"].index(default_tw),
-                key="upload_cms_tw"
+                ["TW1", "TW2", "TW3", "TW4"],
+                index=["TW1", "TW2", "TW3", "TW4"].index(default_tw)
             )
 
         uploaded_cms = st.file_uploader(
@@ -9992,11 +9995,9 @@ def page_admin():
             col1, col2 = st.columns(2)
 
             with col1:
-                delete_year = st.selectbox(
-                    "Pilih Tahun",
-                    options=available_years,
-                    key="delete_cms_year"
-                )
+                delete_year = sb2("Pilih Tahun", available_years)
+
+
 
             # ================================
             # DETEKSI TRIWULAN DARI GITHUB
@@ -10019,11 +10020,7 @@ def page_admin():
             tw_options = sorted(list(set(tw_options)))
 
             with col2:
-                delete_tw = st.selectbox(
-                    "Pilih Triwulan",
-                    options=tw_options if tw_options else ["-"],
-                    key="delete_cms_tw"
-                )
+                delete_tw = sb2("Pilih Triwulan", tw_options)
 
             confirm_delete_cms = st.checkbox(
                 f"⚠️ Hapus Data CMS Tahun {delete_year} {delete_tw}",
@@ -10060,7 +10057,6 @@ def page_admin():
 
                 except Exception as e:
                     st.error(f"❌ {e}")
-
 
         
         # HAPUS DATA REFERENSI
@@ -10165,7 +10161,7 @@ def page_admin():
             if st.button(
                 "🗑️ Hapus Data Digipay",
                 type="primary",
-                key="delete_button_digipay_admin"
+                key="delete_digipay_year"
             ) and confirm_delete:
 
                 try:
@@ -10454,18 +10450,10 @@ def page_admin():
             col1, col2 = st.columns(2)
 
             with col1:
-                selected_year_dl = st.selectbox(
-                    "Pilih Tahun",
-                    options=available_years,
-                    key="download_cms_year"
-                )
+                selected_year_dl = sb2("Pilih Tahun", available_years)
 
             with col2:
-                selected_tw_dl = st.selectbox(
-                    "Pilih Triwulan",
-                    options=available_tw,
-                    key="download_cms_tw"
-                )
+                selected_tw_dl = sb2("Pilih Triwulan", available_tw)
 
             df_download = df_master[
                 (df_master["TAHUN"] == selected_year_dl) &
