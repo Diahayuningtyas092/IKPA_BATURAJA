@@ -9973,10 +9973,11 @@ def page_admin():
                 except Exception as e:
                     st.error(f"❌ Gagal menghapus Data Digipay: {e}")
                     
-        
+
         # ============================================================
         # 🗑️ HAPUS DATA CMS
         # ============================================================
+
         st.markdown("---")
         st.subheader("🗑️ Hapus Data CMS")
 
@@ -9988,13 +9989,9 @@ def page_admin():
 
             cms_df = st.session_state.cms_master.copy()
 
-            # NORMALISASI TIPE DATA
-            cms_df["TAHUN"] = cms_df["TAHUN"].astype(int)
-            cms_df["TRIWULAN"] = cms_df["TRIWULAN"].astype(str).str.upper()
-
-            # ============================================================
-            # DETEKSI TAHUN OTOMATIS
-            # ============================================================
+            # ================================
+            # DETEKSI TAHUN
+            # ================================
             available_years = sorted(
                 cms_df["TAHUN"].dropna().astype(int).unique(),
                 reverse=True
@@ -10005,15 +10002,14 @@ def page_admin():
             with col1:
                 delete_year = st.selectbox(
                     "Pilih Tahun",
-                    options=available_years,
-                    key="delete_cms_year"
+                    options=available_years
                 )
 
-            # ============================================================
-            # DETEKSI TRIWULAN BERDASARKAN TAHUN
-            # ============================================================
+            # ================================
+            # DETEKSI TRIWULAN
+            # ================================
             tw_options = sorted(
-                cms_df[cms_df["TAHUN"] == int(delete_year)]["TRIWULAN"]
+                cms_df[cms_df["TAHUN"].astype(int) == delete_year]["TRIWULAN"]
                 .dropna()
                 .unique()
             )
@@ -10021,13 +10017,9 @@ def page_admin():
             with col2:
                 delete_tw = st.selectbox(
                     "Pilih Triwulan",
-                    options=tw_options,
-                    key="delete_cms_tw"
+                    options=tw_options
                 )
 
-            # ============================================================
-            # KONFIRMASI
-            # ============================================================
             confirm_delete_cms = st.checkbox(
                 f"⚠️ Hapus Data CMS Tahun {delete_year} {delete_tw}",
                 key="confirm_delete_cms"
@@ -10037,45 +10029,61 @@ def page_admin():
 
                 try:
 
-                    # ============================================================
-                    # FILTER DATA YANG DIHAPUS
-                    # ============================================================
-                    before_count = len(cms_df)
+                    # ======================================
+                    # 1️⃣ Hapus dari session
+                    # ======================================
+                    before = len(cms_df)
 
                     cms_df = cms_df[
                         ~(
-                            (cms_df["TAHUN"] == delete_year) &
+                            (cms_df["TAHUN"].astype(int) == delete_year) &
                             (cms_df["TRIWULAN"] == delete_tw)
                         )
                     ]
 
-                    deleted_rows = before_count - len(cms_df)
+                    deleted_rows = before - len(cms_df)
 
-                    # Update session
                     st.session_state.cms_master = cms_df.copy()
 
-                    # ============================================================
-                    # SIMPAN ULANG KE GITHUB
-                    # ============================================================
-                    excel_bytes = io.BytesIO()
+                    # ======================================
+                    # 2️⃣ Hapus file CMS di GitHub
+                    # ======================================
+                    token = st.secrets["GITHUB_TOKEN"]
+                    repo_name = st.secrets["GITHUB_REPO"]
 
-                    with pd.ExcelWriter(excel_bytes, engine="openpyxl") as writer:
-                        cms_df.to_excel(
-                            writer,
-                            index=False,
-                            sheet_name="CMS_MASTER"
+                    g = Github(auth=Auth.Token(token))
+                    repo = g.get_repo(repo_name)
+
+                    file_name = f"CMS_109_{delete_tw}_{delete_year}.xlsx"
+                    file_path = f"data_CMS/{file_name}"
+
+                    try:
+                        file = repo.get_contents(file_path)
+
+                        repo.delete_file(
+                            file.path,
+                            f"Delete {file_name}",
+                            file.sha
                         )
 
-                    excel_bytes.seek(0)
+                    except Exception:
+                        pass
 
-                    save_file_to_github(
-                        excel_bytes.getvalue(),
-                        "CMS_MASTER.xlsx",
-                        folder="data_CMS"
-                    )
+                    # ======================================
+                    # 3️⃣ Log Aktivitas
+                    # ======================================
+                    if "activity_log" not in st.session_state:
+                        st.session_state.activity_log = []
+
+                    st.session_state.activity_log.append({
+                        "Waktu": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "Menu": "Hapus Data",
+                        "Aksi": f"Hapus CMS {delete_tw} {delete_year}",
+                        "Status": "✅ Sukses"
+                    })
 
                     st.success(
-                        f"✅ {deleted_rows} data CMS Tahun {delete_year} {delete_tw} berhasil dihapus."
+                        f"✅ {deleted_rows} data CMS {delete_tw} {delete_year} berhasil dihapus."
                     )
 
                     st.snow()
@@ -10083,6 +10091,8 @@ def page_admin():
 
                 except Exception as e:
                     st.error(f"❌ Gagal menghapus Data CMS: {e}")
+
+
         
         # HAPUS DATA REFERENSI
         # =====================================================
